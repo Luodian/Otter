@@ -1,5 +1,3 @@
-black
-mypy
-pylint
-pytest
-requests
+version https://git-lfs.github.com/spec/v1
+oid sha256:a441e7e6ef823aa6377fcef134551f24152cd60d86b56d615d28b5fbd41b173e
+size 33
