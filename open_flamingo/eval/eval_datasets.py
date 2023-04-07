@@ -61,7 +61,7 @@ class VQADataset(Dataset):
             )
         elif self.vqa_dataset == "ok_vqa":
             return os.path.join(
-                self.image_dir_path, f"COCO_val2014_{question['image_id']:012d}.jpg"
+                self.image_dir_path, f"COCO_train2014_{question['image_id']:012d}.jpg"
             )
         else:
             raise Exception(f"Unknown VQA dataset {self.vqa_dataset}")
