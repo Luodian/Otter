@@ -6,6 +6,13 @@
 """
 
 import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import open_clip
+
+from open_flamingo.src.flamingo import Flamingo
+from open_flamingo.src.flamingo_lm import FlamingoLMMixin
+from open_flamingo.src.utils import extend_instance
+from open_flamingo.src.factory import _infer_decoder_layers_attr_name
 from lavis.common.registry import registry
 
 from lavis.models.peft_flamingo_models.peft_flamingo import PEFT_FLAMINGO
@@ -13,14 +20,11 @@ from lavis.models.blip_models.blip_outputs import (
     BlipOutput,
     BlipIntermediateOutput,
 )
-from lavis.models.med import XBertLMHeadDecoder
-from lavis.models.vit import VisionTransformerEncoder
-
 
 @registry.register_model("peft_flamingo_caption")
 class PEFT_FLAMINGO_Caption(PEFT_FLAMINGO):
     """
-    BLIP captioning model.
+    PEFT FLAMINGO captioning model.
 
     Supported model types:
         - base_coco: fine-tuned BLIP base model on COCO caption dataset (Karparthy split).
@@ -206,14 +210,67 @@ class PEFT_FLAMINGO_Caption(PEFT_FLAMINGO):
     @classmethod
     def from_config(cls, cfg):
         # vision encoder
-        image_encoder = VisionTransformerEncoder.from_config(cfg)
-        # text encoder + multimodal decoder
-        text_decoder = XBertLMHeadDecoder.from_config(cfg)
+        # image_encoder = VisionTransformerEncoder.from_config(cfg)
+        clip_vision_encoder_path = cfg.get("clip_vision_encoder_path", None)
+        clip_vision_encoder_pretrained = cfg.get("clip_vision_encoder_pretrained", True)
+        tokenizer_path = cfg.get("tokenizer_path", None)
+        use_local_files = cfg.get("use_local_files", False)
+        lang_encoder_path = cfg.get("lang_encoder_path", None)
+        cross_attn_every_n_layers = cfg.get("cross_attn_every_n_layers", 1)
+        decoder_layers_attr_name = cfg.get("decoder_layers_attr_name", None)
+        pretrained_checkpoint_path = cfg.get("pretrained_checkpoint_path", None)
+        
+        image_encoder, _, image_processor = open_clip.create_model_and_transforms(clip_vision_encoder_path, pretrained=clip_vision_encoder_pretrained)
+        # set the vision encoder to output the visual features
+        image_encoder.visual.output_tokens = True
+        
+        text_tokenizer = AutoTokenizer.from_pretrained(
+            tokenizer_path, local_files_only=use_local_files
+        )
+        # add Flamingo special tokens to the tokenizer
+        text_tokenizer.add_special_tokens(
+            {"additional_special_tokens": ["<|endofchunk|>", "<image>"]}
+        )
+        if text_tokenizer.pad_token is None:
+            # Issue: GPT models don't have a pad token, which we use to
+            # modify labels for the loss.
+            text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
 
-        prompt = cfg.get("prompt", None)
-        max_txt_len = cfg.get("max_txt_len", 40)
+        lang_encoder = AutoModelForCausalLM.from_pretrained(
+            lang_encoder_path, local_files_only=use_local_files
+        )
+        extend_instance(lang_encoder, FlamingoLMMixin)
 
-        model = cls(image_encoder, text_decoder, prompt=prompt, max_txt_len=max_txt_len)
-        model.load_checkpoint_from_config(cfg)
+        if decoder_layers_attr_name is None:
+            decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
+        lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
+        lang_encoder.resize_token_embeddings(len(text_tokenizer))
+
+        model = Flamingo(
+            image_encoder,
+            lang_encoder,
+            text_tokenizer.encode("<|endofchunk|>")[-1],
+            text_tokenizer.encode("<image>")[-1],
+            vis_dim=open_clip.get_model_config(clip_vision_encoder_path)["vision_cfg"][
+                "width"
+            ],
+            cross_attn_every_n_layers=cross_attn_every_n_layers,
+            # **flamingo_kwargs,
+        )
+
+        # Freeze all parameters
+        model.requires_grad_(False)
+        assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
+
+        # Unfreeze perceiver, gated_cross_attn_layers, and LM input embeddings
+        model.perceiver.requires_grad_(True)
+        model.lang_encoder.gated_cross_attn_layers.requires_grad_(True)
+        model.lang_encoder.get_input_embeddings().requires_grad_(True)
+
+        print(
+            f"Flamingo model initialized with {sum(p.numel() for p in model.parameters() if p.requires_grad) / 1e6} M trainable parameters"
+        )
+        print(f"Loading checkpoint from {pretrained_checkpoint_path}...")
+        model.load_state_dict(torch.load(pretrained_checkpoint_path), strict=False)
 
         return model
