@@ -1,0 +1,58 @@
+ # Copyright (c) 2022, salesforce.com, inc.
+ # All rights reserved.
+ # SPDX-License-Identifier: BSD-3-Clause
+ # For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
+
+model:
+  arch: img2prompt_vqa
+  model_type: base
+
+  image_question_matching_model:
+    arch: blip_image_text_matching
+    load_finetuned: True
+
+    finetuned: "https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model_large_retrieval_coco_train2014.pth"
+
+    # vit encoder
+    vit_type: "large"
+    vit_grad_ckpt: False
+    vit_ckpt_layer: 0
+
+    image_size: 384
+
+    # bert config
+    med_config_path: "configs/models/med_large_config.json"
+
+    embed_dim: 256
+
+  image_captioning_model:
+    arch: blip_caption
+    load_finetuned: True
+
+    finetuned: "https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model_large_caption_coco_train2014.pth"
+
+    vit_type: "large"
+    vit_grad_ckpt: True
+    vit_ckpt_layer: 5
+
+    image_size: 384
+
+    # bert config
+    med_config_path: "configs/models/med_large_config.json"
+
+    # generation configs
+    prompt: "a picture of "
+
+  question_generation_moodel:
+    pretrained: "https://storage.googleapis.com/sfr-vision-language-research/LAVIS/projects/img2prompt/T5_large_QG.pth"
+
+
+
+preprocess:
+  vis_processor:
+      eval:
+        name: "blip_image_eval"
+        image_size: 384
+  text_processor:
+      eval:
+        name: "blip_caption"

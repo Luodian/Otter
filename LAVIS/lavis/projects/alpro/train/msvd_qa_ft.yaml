@@ -1,0 +1,62 @@
+ # Copyright (c) 2022, salesforce.com, inc.
+ # All rights reserved.
+ # SPDX-License-Identifier: BSD-3-Clause
+ # For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
+
+model:
+  arch: alpro_qa
+  model_type: msvd
+  load_finetuned: False
+
+  num_classes: 2423
+
+  timesformer:
+    use_grad_ckpt: True
+    ckpt_layer: 12
+
+
+datasets:
+  msvd_qa: # name of the dataset builder
+    vis_processor:
+        train:
+          name: "alpro_video_train"
+          n_frms: 16
+          image_size: 224
+        eval:
+          name: "alpro_video_eval"
+          n_frms: 16
+          image_size: 224
+    text_processor:
+        train:
+          name: "blip_caption"
+        eval:
+          name: "blip_caption"
+
+run:
+  task: multimodal_classification
+  # optimization-specific
+  lr_sched: "linear_warmup_cosine_lr"
+  init_lr: 5e-5
+  min_lr: 1e-6
+  weight_decay: 1e-4
+  max_epoch: 10
+  batch_size_train: 24
+  batch_size_eval: 64
+  num_workers: 4
+
+  seed: 42
+  output_dir: "output/ALPRO/msvd_qa"
+
+  amp: False
+  resume_ckpt_path: null
+
+  evaluate: False 
+  train_splits: ["train"]
+  valid_splits: ["val", "test"]
+  test_splits: ["test"]
+
+  # distribution-specific
+  device: "cuda"
+  world_size: 1
+  dist_url: "env://"
+  distributed: True

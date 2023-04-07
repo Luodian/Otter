@@ -1,16 +1,3 @@
-einops
-einops-exts
-transformers
-torch
-torchvision
-pillow
-more-itertools
-datasets
-braceexpand
-webdataset
-wandb
-nltk
-scipy
-inflection
-sentencepiece
-open_clip_torch
+version https://git-lfs.github.com/spec/v1
+oid sha256:2ef11836b5e9aadf4cf373143db3a0574bf3134310e49fe7893a37a53121231f
+size 444
