@@ -1,0 +1,39 @@
+ # Copyright (c) 2022, salesforce.com, inc.
+ # All rights reserved.
+ # SPDX-License-Identifier: BSD-3-Clause
+ # For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
+
+model:
+  arch: alpro_qa
+  model_type: msrvtt
+
+datasets:
+  msrvtt_qa: # name of the dataset builder
+    vis_processor:
+        eval:
+          name: "alpro_video_eval"
+          n_frms: 16
+          image_size: 224
+    text_processor:
+        eval:
+          name: "blip_caption"
+
+run:
+  task: multimodal_classification
+  # optimization-specific
+  batch_size_train: 32
+  batch_size_eval: 64
+  num_workers: 4
+
+  seed: 42
+  output_dir: "output/ALPRO/msrvtt_qa"
+
+  evaluate: True
+  valid_splits: ["val"]
+  test_splits: ["test"]
+
+  # distribution-specific
+  device: "cuda"
+  world_size: 1
+  dist_url: "env://"
+  distributed: True

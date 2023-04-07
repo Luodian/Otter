@@ -1,0 +1,42 @@
+ # Copyright (c) 2022, salesforce.com, inc.
+ # All rights reserved.
+ # SPDX-License-Identifier: BSD-3-Clause
+ # For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
+
+model:
+  arch: alpro_retrieval
+  model_type: msrvtt
+
+datasets:
+  msrvtt_retrieval: # name of the dataset builder
+    vis_processor:
+        eval:
+          name: "alpro_video_eval"
+          n_frms: 8
+          image_size: 224
+    text_processor:
+        eval:
+          name: "blip_caption"
+
+run:
+  task: retrieval
+  # optimization-specific
+  batch_size_train: 24
+  batch_size_eval: 64
+  num_workers: 4
+
+  # k_test: 256
+  k_test: 1000
+
+  seed: 42
+  output_dir: "output/ALPRO/msrvtt_retrieval"
+
+  evaluate: True
+  test_splits: ["test"]
+
+  # distribution-specific
+  device: "cuda"
+  world_size: 1
+  dist_url: "env://"
+  distributed: True
+  use_dist_eval_sampler: False
