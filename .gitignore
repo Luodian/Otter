@@ -1,0 +1,5 @@
+*.pyc
+open_flamingo.egg-info
+.vscode
+LAVIS/*
+llama-7b-hf/*
