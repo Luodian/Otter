@@ -54,11 +54,14 @@ class PEFT_FLAMINGO_Caption(PEFT_FLAMINGO):
         self.prompt = prompt
         self.prompt_length = len(self.tokenizer(self.prompt).input_ids) - 1
 
+        self.eoc_token_id = self.tokenizer.encode("<|endofchunk|>")[-1]
+        self.media_token_id = self.tokenizer.encode("<image>")[-1]
+
         self.model = Flamingo(
-            image_encoder,
-            lang_encoder,
-            text_tokenizer.encode("<|endofchunk|>")[-1],
-            text_tokenizer.encode("<image>")[-1],
+            vision_encoder=image_encoder,
+            lang_encoder=lang_encoder,
+            eoc_token_id=self.eoc_token_id,
+            media_token_id=self.media_token_id,
             vis_dim=open_clip.get_model_config(clip_vision_encoder_path)["vision_cfg"][
                 "width"
             ],
@@ -95,48 +98,6 @@ class PEFT_FLAMINGO_Caption(PEFT_FLAMINGO):
         )
 
         self.model = LoraModel(config, self.model)
-        # self.model = LoraModel(config, self.model)
-
-        # total_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
-        # print(f"Total number of trainable parameters in LoRA is {total_params / 1e6}M")
-        
-
-    def forward_encoder(self, samples):
-        image_embeds = self.visual_encoder.forward_features(samples["image"])
-        return image_embeds
-
-    def forward_decoder(self, samples, image_embeds):
-        # prepare inputs for forwarding decoder
-        raw_text = samples["text_input"]
-        text = self.tokenizer(
-            raw_text,
-            padding="longest",
-            truncation=True,
-            max_length=self.max_txt_len,
-            return_tensors="pt",
-        ).to(self.device)
-        text.input_ids[:, 0] = self.tokenizer.bos_token_id
-
-        # prepare targets for forwarding decoder
-        decoder_targets = text.input_ids.masked_fill(
-            text.input_ids == self.tokenizer.pad_token_id, -100
-        )
-        decoder_targets[:, : self.prompt_length] = -100
-
-        # forward decoder
-        image_atts = torch.ones(image_embeds.size()[:-1], dtype=torch.long).to(
-            self.device
-        )
-        decoder_output = self.text_decoder(
-            input_ids=text.input_ids,
-            attention_mask=text.attention_mask,
-            encoder_hidden_states=image_embeds,
-            encoder_attention_mask=image_atts,
-            labels=decoder_targets,
-            return_dict=True,
-        )
-
-        return decoder_output, decoder_targets
 
     def forward(self, samples):
         r"""
@@ -195,9 +156,6 @@ class PEFT_FLAMINGO_Caption(PEFT_FLAMINGO):
 
         output = {'loss': loss}
 
-        # image_embeds = self.forward_encoder(samples)
-        # decoder_output, decoder_targets = self.forward_decoder(samples, image_embeds)
-
         # return decoder_out
         return output
 
@@ -249,28 +207,21 @@ class PEFT_FLAMINGO_Caption(PEFT_FLAMINGO):
         if num_beams > 1:
             images = images.repeat_interleave(num_beams, dim=0)
 
-        self.model._encode_vision_x(images)
-        # output = self.model.lang_encoder.generate()
+        prompt = [self.prompt] * images.size(0)
+        prompt = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+        prompt.input_ids[:, 0] = self.tokenizer.bos_token_id
+        prompt.input_ids = prompt.input_ids[:, :-1]
 
-        # get decoded text
-        # decoder_out = self.text_decoder.generate_from_encoder(
-        #     tokenized_prompt=prompt,
-        #     visual_embeds=image_embeds,
-        #     sep_token_id=self.tokenizer.sep_token_id,
-        #     pad_token_id=self.tokenizer.pad_token_id,
-        #     use_nucleus_sampling=use_nucleus_sampling,
-        #     num_beams=num_beams,
-        #     max_length=max_length,
-        #     min_length=min_length,
-        #     top_p=top_p,
-        #     repetition_penalty=repetition_penalty,
-        # )
+        outputs = self.model.generate(
+            vision_x=images,
+            lang_x=prompt["input_ids"],
+            attention_mask=prompt["attention_mask"],
+            max_new_tokens=max_length,
+            num_beams=num_beams,
+            length_penalty=repetition_penalty,
+        )
 
-        # outputs = self.tokenizer.batch_decode(decoder_out, skip_special_tokens=True)
-        # captions = [output[len(self.prompt) :] for output in outputs]
-        captions = None
-
-        return captions
+        return outputs
 
     @classmethod
     def from_config(cls, cfg):
