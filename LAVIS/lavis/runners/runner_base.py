@@ -112,7 +112,7 @@ class RunnerBase:
                 else:
                     p_wd.append(p)
                 num_parameters += p.data.nelement()
-            logging.info("number of trainable parameters: %d" % num_parameters)
+            logging.info(f"The number of trainable parameters: {num_parameters / 1e6} M")
             optim_params = [
                 {
                     "params": p_wd,
