@@ -121,12 +121,21 @@ class RunnerBase:
                 {"params": p_non_wd, "weight_decay": 0},
             ]
             beta2 = self.config.run_cfg.get("beta2", 0.999)
-            self._optimizer = torch.optim.AdamW(
-                optim_params,
-                lr=float(self.config.run_cfg.init_lr),
-                weight_decay=float(self.config.run_cfg.weight_decay),
-                betas=(0.9, beta2),
-            )
+            if self.config.run_cfg.get('enable_8bit') is True:
+                import bitsandbytes as bnb
+                self._optimizer = bnb.optim.Adam8bit(
+                    optim_params,
+                    lr=float(self.config.run_cfg.init_lr),
+                    weight_decay=float(self.config.run_cfg.weight_decay),
+                    betas=(0.9, beta2),
+                )
+            else:
+                self._optimizer = torch.optim.AdamW(
+                    optim_params,
+                    lr=float(self.config.run_cfg.init_lr),
+                    weight_decay=float(self.config.run_cfg.weight_decay),
+                    betas=(0.9, beta2),
+                )
 
         return self._optimizer
 
