@@ -8,6 +8,7 @@
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import open_clip
+from peft.src.peft import LoraModel, LoraConfig
 
 from open_flamingo.src.flamingo import Flamingo
 from open_flamingo.src.flamingo_lm import FlamingoLMMixin
@@ -80,8 +81,22 @@ class PEFT_FLAMINGO_Caption(PEFT_FLAMINGO):
         print(f"Loading checkpoint from {pretrained_checkpoint_path}...")
         msg = self.model.load_state_dict(torch.load(pretrained_checkpoint_path), strict=False)
         # print(msg)
-
         self.model.device = torch.device("cuda")
+
+        config = LoraConfig(
+            peft_type="LORA",
+            task_type="SEQ_2_SEQ_LM",
+            r=8,
+            lora_alpha=32,
+            target_modules=["q", "v"],
+            lora_dropout=0.01,
+        )
+
+        lora_model = LoraModel(config, self.model)
+
+        total_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
+        print(f"Total number of trainable parameters in LoRA is {total_params / 1e6}M")
+        
 
     def forward_encoder(self, samples):
         image_embeds = self.visual_encoder.forward_features(samples["image"])
@@ -226,30 +241,31 @@ class PEFT_FLAMINGO_Caption(PEFT_FLAMINGO):
         'the famous singapore fountain at sunset']
         """
         # prepare inputs for decoder generation.
-        encoder_out = self.forward_encoder(samples)
-        image_embeds = torch.repeat_interleave(encoder_out, num_captions, 0)
 
-        prompt = [self.prompt] * image_embeds.size(0)
-        prompt = self.tokenizer(prompt, return_tensors="pt").to(self.device)
-        prompt.input_ids[:, 0] = self.tokenizer.bos_token_id
-        prompt.input_ids = prompt.input_ids[:, :-1]
+        images = samples["image"].unsqueeze(1).unsqueeze(2)
+        if num_beams > 1:
+            images = images.repeat_interleave(num_beams, dim=0)
+
+        self.model._encode_vision_x(images)
+        # output = self.model.lang_encoder.generate()
 
         # get decoded text
-        decoder_out = self.text_decoder.generate_from_encoder(
-            tokenized_prompt=prompt,
-            visual_embeds=image_embeds,
-            sep_token_id=self.tokenizer.sep_token_id,
-            pad_token_id=self.tokenizer.pad_token_id,
-            use_nucleus_sampling=use_nucleus_sampling,
-            num_beams=num_beams,
-            max_length=max_length,
-            min_length=min_length,
-            top_p=top_p,
-            repetition_penalty=repetition_penalty,
-        )
+        # decoder_out = self.text_decoder.generate_from_encoder(
+        #     tokenized_prompt=prompt,
+        #     visual_embeds=image_embeds,
+        #     sep_token_id=self.tokenizer.sep_token_id,
+        #     pad_token_id=self.tokenizer.pad_token_id,
+        #     use_nucleus_sampling=use_nucleus_sampling,
+        #     num_beams=num_beams,
+        #     max_length=max_length,
+        #     min_length=min_length,
+        #     top_p=top_p,
+        #     repetition_penalty=repetition_penalty,
+        # )
 
-        outputs = self.tokenizer.batch_decode(decoder_out, skip_special_tokens=True)
-        captions = [output[len(self.prompt) :] for output in outputs]
+        # outputs = self.tokenizer.batch_decode(decoder_out, skip_special_tokens=True)
+        # captions = [output[len(self.prompt) :] for output in outputs]
+        captions = None
 
         return captions
 
