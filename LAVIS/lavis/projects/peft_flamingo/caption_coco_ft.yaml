@@ -42,6 +42,7 @@ run:
   batch_size_train: 32
   batch_size_eval: 64
   num_workers: 4
+  enable_8bit: True
 
   max_len: 20
   min_len: 5

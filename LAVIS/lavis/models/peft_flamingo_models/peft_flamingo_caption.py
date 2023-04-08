@@ -8,7 +8,7 @@
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import open_clip
-from peft.src.peft import LoraModel, LoraConfig
+from peft.src.peft import LoraModel, LoraConfig, prepare_model_for_int8_training, get_peft_model
 
 from open_flamingo.src.flamingo import Flamingo
 from open_flamingo.src.flamingo_lm import FlamingoLMMixin
@@ -83,16 +83,19 @@ class PEFT_FLAMINGO_Caption(PEFT_FLAMINGO):
         # print(msg)
         self.model.device = torch.device("cuda")
 
+        self.model = prepare_model_for_int8_training(self.model)
+
         config = LoraConfig(
             peft_type="LORA",
-            task_type="SEQ_2_SEQ_LM",
+            task_type="CAUSAL_LM",
             r=8,
-            lora_alpha=32,
-            target_modules=["q", "v"],
-            lora_dropout=0.01,
+            lora_alpha=16,
+            target_modules=["q_proj", "v_proj"],
+            lora_dropout=0.05,
         )
 
         self.model = LoraModel(config, self.model)
+        # self.model = LoraModel(config, self.model)
 
         # total_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
         # print(f"Total number of trainable parameters in LoRA is {total_params / 1e6}M")
