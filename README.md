@@ -38,7 +38,7 @@ pip install gpustat
 Our model is trained on 4 V100 GPUs. You may use the following command to train the model.
 
 ``` bash
-torchrun 
+torchrun --nproc_per_node=4 LAVIS/train.py --cfg-path=LAVIS/lavis/projets/peft_flamingo/caption_coco_ft.yaml
 ```
 
 ### Hyperparameters
