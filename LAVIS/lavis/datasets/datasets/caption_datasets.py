@@ -11,6 +11,7 @@ from collections import OrderedDict
 from lavis.datasets.datasets.base_dataset import BaseDataset
 from PIL import Image
 
+import random
 
 class __DisplMixin:
     def displ_item(self, index):
@@ -26,15 +27,19 @@ class __DisplMixin:
 
 
 class CaptionDataset(BaseDataset, __DisplMixin):
-    def __init__(self, vis_processor, text_processor, vis_root, ann_paths):
+    def __init__(self, vis_processor, text_processor, vis_root, ann_paths, finetuned_shots=0):
         """
         vis_root (string): Root directory of images (e.g. coco/images/)
         ann_root (string): directory to store the annotation file
         """
-        super().__init__(vis_processor, text_processor, vis_root, ann_paths)
+        super().__init__(vis_processor, text_processor, vis_root, ann_paths, finetuned_shots=0)
 
         self.img_ids = {}
         n = 0
+
+        if finetuned_shots > 0:
+            self.annotation = random.sample(self.annotation, finetuned_shots)
+            
         for ann in self.annotation:
             img_id = ann["image_id"]
             if img_id not in self.img_ids.keys():
