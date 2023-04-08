@@ -174,6 +174,8 @@ class BaseDatasetBuilder:
         ann_info = build_info.annotations
         vis_info = build_info.get(self.data_type)
 
+        finetuned_shots = self.config.vis_processor.train.get("finetuned_shots", None)
+
         datasets = dict()
         for split in ann_info.keys():
             if split not in ["train", "val", "test"]:
@@ -222,6 +224,7 @@ class BaseDatasetBuilder:
                 text_processor=text_processor,
                 ann_paths=ann_paths,
                 vis_root=vis_path,
+                finetuned_shots=finetuned_shots,
             )
 
         return datasets
