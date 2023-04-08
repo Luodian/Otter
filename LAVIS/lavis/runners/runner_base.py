@@ -93,6 +93,8 @@ class RunnerBase:
                     )
             else:
                 self._wrapped_model = self._model
+        else:
+            self._wrapped_model = self._model
 
         return self._wrapped_model
 

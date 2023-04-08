@@ -17,7 +17,7 @@ model:
   vit_grad_ckpt: False
   vit_ckpt_layer: 0
 
-  image_size: 384
+  image_size: 224
 
   # bert config
   med_config_path: "configs/models/med_config.json"

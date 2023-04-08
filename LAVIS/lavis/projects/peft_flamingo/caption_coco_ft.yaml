@@ -19,8 +19,10 @@ datasets:
     vis_processor:
         train:
           name: "blip_image_train"
+          image_size: 224
         eval:
           name: "blip_image_eval"
+          image_size: 224
     text_processor:
         train:
           name: "blip_caption"
@@ -37,8 +39,8 @@ run:
   min_lr: 0
   weight_decay: 0.05
   max_epoch: 5
-  batch_size_train: 32
-  batch_size_eval: 64
+  batch_size_train: 8
+  batch_size_eval: 16
   num_workers: 4
 
   max_len: 20
