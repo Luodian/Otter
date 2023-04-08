@@ -41,18 +41,47 @@ class PEFT_FLAMINGO_Caption(PEFT_FLAMINGO):
         "large_coco": "configs/models/blip_caption_large_coco.yaml",
     }
 
-    def __init__(self, image_encoder, text_decoder, prompt=None, max_txt_len=40):
+    def __init__(self, image_encoder, lang_encoder, text_tokenizer, 
+                 clip_vision_encoder_path, cross_attn_every_n_layers=1, 
+                 pretrained_checkpoint_path=None, max_txt_len=40, prompt=None):
         super().__init__()
 
-        self.tokenizer = self.init_tokenizer()
-
-        self.visual_encoder = image_encoder
-        self.text_decoder = text_decoder
+        self.image_encoder = image_encoder
+        self.lang_encoder = lang_encoder
+        self.tokenizer = text_tokenizer
 
         self.prompt = prompt
         self.prompt_length = len(self.tokenizer(self.prompt).input_ids) - 1
 
+        self.model = Flamingo(
+            image_encoder,
+            lang_encoder,
+            text_tokenizer.encode("<|endofchunk|>")[-1],
+            text_tokenizer.encode("<image>")[-1],
+            vis_dim=open_clip.get_model_config(clip_vision_encoder_path)["vision_cfg"][
+                "width"
+            ],
+            cross_attn_every_n_layers=cross_attn_every_n_layers,
+            # **flamingo_kwargs,
+        )
+
         self.max_txt_len = max_txt_len
+
+        # Freeze all parameters
+        self.model.requires_grad_(False)
+        assert sum(p.numel() for p in self.model.parameters() if p.requires_grad) == 0
+
+        # Unfreeze perceiver, gated_cross_attn_layers, and LM input embeddings
+        self.model.perceiver.requires_grad_(True)
+        self.model.lang_encoder.gated_cross_attn_layers.requires_grad_(True)
+        self.model.lang_encoder.get_input_embeddings().requires_grad_(True)
+
+        print(f"Flamingo model initialized with {sum(p.numel() for p in self.model.parameters() if p.requires_grad) / 1e6} M trainable parameters")
+        print(f"Loading checkpoint from {pretrained_checkpoint_path}...")
+        msg = self.model.load_state_dict(torch.load(pretrained_checkpoint_path), strict=False)
+        # print(msg)
+
+        self.model.device = torch.device("cuda")
 
     def forward_encoder(self, samples):
         image_embeds = self.visual_encoder.forward_features(samples["image"])
@@ -123,19 +152,36 @@ class PEFT_FLAMINGO_Caption(PEFT_FLAMINGO):
         torch.Size([1, 13])
         ```"""
 
-        image_embeds = self.forward_encoder(samples)
-        decoder_output, decoder_targets = self.forward_decoder(samples, image_embeds)
+        images = samples["image"].unsqueeze(1).unsqueeze(2)
+        
+        # image_embeds = self.image_encoder.forward_features(images)
+        
+        raw_text = samples["text_input"]
+        text = self.tokenizer(raw_text, 
+                              padding="longest", 
+                              truncation=True, 
+                              max_length=self.max_txt_len, 
+                              return_tensors="pt").to(self.device)
+        text.input_ids[:, 0] = self.tokenizer.bos_token_id
+
+        # prepare targets for forwarding decoder
+        decoder_targets = text.input_ids.masked_fill(text.input_ids == self.tokenizer.pad_token_id, -100)
+        decoder_targets[:, : self.prompt_length] = -100
+
+        loss = self.model(
+            vision_x=images,
+            lang_x=text["input_ids"],
+            attention_mask=text["attention_mask"],
+            labels=decoder_targets,
+        )[0]
+
+        output = {'loss': loss}
+
+        # image_embeds = self.forward_encoder(samples)
+        # decoder_output, decoder_targets = self.forward_decoder(samples, image_embeds)
 
         # return decoder_out
-        return BlipOutput(
-            loss=decoder_output.loss,
-            loss_lm=decoder_output.loss,
-            intermediate_output=BlipIntermediateOutput(
-                image_embeds=image_embeds,
-                decoder_output=decoder_output,
-                decoder_labels=decoder_targets,
-            ),
-        )
+        return output
 
     def generate(
         self,
@@ -219,6 +265,9 @@ class PEFT_FLAMINGO_Caption(PEFT_FLAMINGO):
         cross_attn_every_n_layers = cfg.get("cross_attn_every_n_layers", 1)
         decoder_layers_attr_name = cfg.get("decoder_layers_attr_name", None)
         pretrained_checkpoint_path = cfg.get("pretrained_checkpoint_path", None)
+
+        prompt = cfg.get("prompt", None)
+        max_txt_len = cfg.get("max_txt_len", 40)
         
         image_encoder, _, image_processor = open_clip.create_model_and_transforms(clip_vision_encoder_path, pretrained=clip_vision_encoder_pretrained)
         # set the vision encoder to output the visual features
@@ -246,31 +295,6 @@ class PEFT_FLAMINGO_Caption(PEFT_FLAMINGO):
         lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
         lang_encoder.resize_token_embeddings(len(text_tokenizer))
 
-        model = Flamingo(
-            image_encoder,
-            lang_encoder,
-            text_tokenizer.encode("<|endofchunk|>")[-1],
-            text_tokenizer.encode("<image>")[-1],
-            vis_dim=open_clip.get_model_config(clip_vision_encoder_path)["vision_cfg"][
-                "width"
-            ],
-            cross_attn_every_n_layers=cross_attn_every_n_layers,
-            # **flamingo_kwargs,
-        )
-
-        # Freeze all parameters
-        model.requires_grad_(False)
-        assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
-
-        # Unfreeze perceiver, gated_cross_attn_layers, and LM input embeddings
-        model.perceiver.requires_grad_(True)
-        model.lang_encoder.gated_cross_attn_layers.requires_grad_(True)
-        model.lang_encoder.get_input_embeddings().requires_grad_(True)
-
-        print(
-            f"Flamingo model initialized with {sum(p.numel() for p in model.parameters() if p.requires_grad) / 1e6} M trainable parameters"
-        )
-        print(f"Loading checkpoint from {pretrained_checkpoint_path}...")
-        model.load_state_dict(torch.load(pretrained_checkpoint_path), strict=False)
+        model = cls(image_encoder, lang_encoder, text_tokenizer, clip_vision_encoder_path, cross_attn_every_n_layers, pretrained_checkpoint_path, prompt=prompt, max_txt_len=max_txt_len)
 
         return model
