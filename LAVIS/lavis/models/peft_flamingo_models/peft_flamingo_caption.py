@@ -92,10 +92,10 @@ class PEFT_FLAMINGO_Caption(PEFT_FLAMINGO):
             lora_dropout=0.01,
         )
 
-        lora_model = LoraModel(config, self.model)
+        self.model = LoraModel(config, self.model)
 
-        total_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
-        print(f"Total number of trainable parameters in LoRA is {total_params / 1e6}M")
+        # total_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
+        # print(f"Total number of trainable parameters in LoRA is {total_params / 1e6}M")
         
 
     def forward_encoder(self, samples):
