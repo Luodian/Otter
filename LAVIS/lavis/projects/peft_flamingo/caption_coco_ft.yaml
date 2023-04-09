@@ -20,6 +20,7 @@ datasets:
         train:
           name: "blip_image_train"
           image_size: 224
+          finetuned_shots: 128
         eval:
           name: "blip_image_eval"
           image_size: 224
