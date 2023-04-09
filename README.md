@@ -1,5 +1,9 @@
 # PET-VLM
 
+## Original LAVIS
+
+if something goes wrong, please checkout to `original_lavis` branch to conduct test. Some errors actually exist in original lavis repo.
+
 ## Overview
 
 PET-VLM project aims to finetune a Large Visual Language Model (VLM) on downstream tasks. We use the OpenFlamingo-9B using a CLIP ViT-Large vision encoder and a LLaMA-7B language model. We finetune the VLM on VQA and COCO dataset.
