@@ -14,6 +14,7 @@ datasets:
     vis_processor:
         train:
           name: "blip_image_train"
+          finetuned_shots: 128
         eval:
           name: "blip_image_eval"
     text_processor:
