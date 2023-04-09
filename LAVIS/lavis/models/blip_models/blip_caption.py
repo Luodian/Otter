@@ -21,11 +21,9 @@ from lavis.models.vit import VisionTransformerEncoder
 class BlipCaption(BlipBase):
     """
     BLIP captioning model.
-
     Supported model types:
         - base_coco: fine-tuned BLIP base model on COCO caption dataset (Karparthy split).
         - large_coco: fine-tuned BLIP large model on COCO caption dataset (Karparthy split).
-
     Usage:
         >>> from lavis.models import load_model
         >>> model = load_model("blip_caption", "base_coco")
@@ -100,7 +98,6 @@ class BlipCaption(BlipBase):
                 - loss_lm (torch.Tensor): A scalar tensor containing the LM loss.
                 - intermediate_outputs (BlipIntermediateOutput): A BlipIntermediateOutput object containing intermediate outputs.
                   see :class:`lavis.models.blip_models.blip_outputs.BlipOutput` for more details.
-
         Example:
         ```python
         >>> from PIL import Image
@@ -157,14 +154,13 @@ class BlipCaption(BlipBase):
             num_captions (int): Number of captions to be generated for each image.
         Returns:
             captions (list): A list of strings of length batch_size * num_captions.
-
         Example:
         ```python
         >>> from PIL import Image
         >>> from lavis.models import load_model_and_preprocess
         >>> model, vis_processors, txt_processors = load_model_and_preprocess("blip_caption")
         >>> raw_image = Image.open("docs/data/merlion.png").convert("RGB")
-        >>> image = vis_processors["eval"](ra_image).unsqueeze(0)
+        >>> image = vis_processors["eval"](raw_image).unsqueeze(0)
         >>> samples = {"image": image}
         >>> captions = model.generate(samples)
         >>> captions
