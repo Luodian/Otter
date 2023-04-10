@@ -1,0 +1,8 @@
+{
+    "lang_encoder_path": "/data/jinghao+zhengyu/wjh/PET-VLM/data/llm/models/models--decapoda-research--llama-7b-hf/snapshots/5f98eefcc80e437ef68d457ad7bf167c2c6a1348",
+    "tokenizer_path": "/data/jinghao+zhengyu/wjh/PET-VLM/data/llm/models/models--decapoda-research--llama-7b-hf/snapshots/5f98eefcc80e437ef68d457ad7bf167c2c6a1348",
+    "vision_encoder_path": "ViT-L-14",
+    "vision_encoder_pretrained": "openai",
+    "use_local_files": true,
+    "cross_attn_every_n_layers": 4
+}
