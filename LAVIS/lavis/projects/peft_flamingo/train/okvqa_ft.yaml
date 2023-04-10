@@ -4,22 +4,26 @@
  # For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
 
 model:
-  arch: blip_vqa
-
-  model_type: aokvqa
+  arch: peft_flamingo_vqa
+  clip_vision_encoder_path: ViT-L-14
+  clip_vision_encoder_pretrained: openai
+  lang_encoder_path: ./llama-7b-hf 
+  tokenizer_path: ./llama-7b-hf
+  cross_attn_every_n_layers: 4
+  pretrained_checkpoint_path: /home/v-boli7/azure_storage/models/openflamingo/checkpoint.pt
+  model_type: okvqa
   load_finetuned: False
-
-  image_size: 480
+  image_size: 224
 
 datasets:
-  aok_vqa: # name of the dataset builder
+  ok_vqa: # name of the dataset builder
     vis_processor:
         train:
           name: "blip_image_train"
-          image_size: 480
+          image_size: 224
         eval:
           name: "blip_image_eval"
-          image_size: 480
+          image_size: 224
     text_processor:
         train:
           name: "blip_question"
@@ -27,14 +31,14 @@ datasets:
           name: "blip_question"
 
 run:
-  task: aok_vqa
+  task: vqa
   # optimization-specific
   lr_sched: "linear_warmup_cosine_lr"
-  init_lr: 2e-5
+  init_lr: 3e-5
   min_lr: 1e-5
   weight_decay: 0.02
   max_epoch: 7
-  batch_size_train: 32
+  batch_size_train: 16
   batch_size_eval: 16
   num_workers: 4
 
@@ -46,14 +50,13 @@ run:
   inference_method: "rank"
 
   seed: 42
-  output_dir: "output/BLIP/AOKVQA"
+  output_dir: "output/PEFT_FLAMINGO/OKVQA"
 
   amp: False
   resume_ckpt_path: null
 
   evaluate: False 
   train_splits: ["train"]
-  valid_splits: ["val"]
   test_splits: ["test"]
 
   # distribution-specific
