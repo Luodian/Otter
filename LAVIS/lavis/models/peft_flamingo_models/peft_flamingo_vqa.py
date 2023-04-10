@@ -9,17 +9,24 @@ import torch
 import torch.nn.functional as F
 from lavis.common.registry import registry
 from lavis.models.base_model import tile
-from lavis.models.blip_models.blip import BlipBase
+from open_flamingo.src.flamingo import Flamingo
+from open_flamingo.src.flamingo_lm import FlamingoLMMixin
+from open_flamingo.src.utils import extend_instance
+from open_flamingo.src.factory import _infer_decoder_layers_attr_name
+from lavis.models.peft_flamingo_models.peft_flamingo import PEFT_FLAMINGO
 from lavis.models.blip_models.blip_outputs import (
     BlipOutput,
     BlipIntermediateOutput,
 )
+import open_clip
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft.src.peft import LoraModel, LoraConfig, prepare_model_for_int8_training, get_peft_model
 from lavis.models.med import XBertEncoder, XBertLMHeadDecoder
 from lavis.models.vit import VisionTransformerEncoder
 
 
-@registry.register_model("blip_vqa")
-class BlipVQA(BlipBase):
+@registry.register_model("peft_flamingo_vqa")
+class PEFT_FLAMINGO_VQA(PEFT_FLAMINGO):
     """
     BLIP VQA models.
 
@@ -40,16 +47,64 @@ class BlipVQA(BlipBase):
         "aokvqa": "configs/models/blip_vqa_aokvqa.yaml",
     }
 
-    def __init__(self, image_encoder, text_encoder, text_decoder, max_txt_len=35):
+    def __init__(self, image_encoder, lang_encoder, text_tokenizer, 
+                 clip_vision_encoder_path, cross_attn_every_n_layers=1, 
+                 pretrained_checkpoint_path=None, max_txt_len=40):
         super().__init__()
-        self.tokenizer = self.init_tokenizer()
+        self.image_encoder = image_encoder
+        self.lang_encoder = lang_encoder
+        self.tokenizer = text_tokenizer
 
-        self.visual_encoder = image_encoder
+        # special_tokens_dict = {
+        #     'eoc_token_id': '<|endofchunk|>',
+        #     'media_token_id': '<image>'
+        # }
 
-        self.text_encoder = text_encoder
-        self.text_decoder = text_decoder
+        # self.tokenizer.add_special_tokens(special_tokens_dict)
+        self.eoc_token_id = self.tokenizer.encode("<|endofchunk|>")[-1]
+        self.media_token_id = self.tokenizer.encode("<image>")[-1]
+
+        self.model = Flamingo(
+            vision_encoder=image_encoder,
+            lang_encoder=lang_encoder,
+            eoc_token_id=self.eoc_token_id,
+            media_token_id=self.media_token_id,
+            vis_dim=open_clip.get_model_config(clip_vision_encoder_path)["vision_cfg"][
+                "width"
+            ],
+            cross_attn_every_n_layers=cross_attn_every_n_layers,
+            # **flamingo_kwargs,
+        )
 
         self.max_txt_len = max_txt_len
+
+        # Freeze all parameters
+        self.model.requires_grad_(False)
+        assert sum(p.numel() for p in self.model.parameters() if p.requires_grad) == 0
+
+        # Unfreeze perceiver, gated_cross_attn_layers, and LM input embeddings
+        self.model.perceiver.requires_grad_(True)
+        self.model.lang_encoder.gated_cross_attn_layers.requires_grad_(True)
+        self.model.lang_encoder.get_input_embeddings().requires_grad_(True)
+
+        print(f"Flamingo model initialized with {sum(p.numel() for p in self.model.parameters() if p.requires_grad) / 1e6} M trainable parameters")
+        print(f"Loading checkpoint from {pretrained_checkpoint_path}...")
+        msg = self.model.load_state_dict(torch.load(pretrained_checkpoint_path), strict=False)
+        # print(msg)
+        self.model.device = torch.device("cuda")
+
+        self.model = prepare_model_for_int8_training(self.model)
+
+        config = LoraConfig(
+            peft_type="LORA",
+            task_type="CAUSAL_LM",
+            r=8,
+            lora_alpha=16,
+            target_modules=["q_proj", "v_proj"],
+            lora_dropout=0.05,
+        )
+
+        self.model = LoraModel(config, self.model)
 
     def forward(self, samples):
         """
@@ -86,22 +141,6 @@ class BlipVQA(BlipBase):
             odict_keys(['image_embeds', 'encoder_output', 'decoder_output', 'decoder_labels'])
         ```
         """
-        encoder_output, image_embeds = self.forward_encoder(samples)
-        loss, decoder_output, decoder_targets = self.forward_decoder(
-            samples=samples, encoder_out=encoder_output
-        )
-
-        return BlipOutput(
-            loss=loss,
-            intermediate_output=BlipIntermediateOutput(
-                image_embeds=image_embeds,
-                encoder_output=encoder_output,
-                decoder_output=decoder_output,
-                decoder_labels=decoder_targets,
-            ),
-        )
-
-    def forward_encoder(self, samples):
         questions = samples["text_input"]
         questions = self.tokenizer(
             questions,
@@ -110,24 +149,8 @@ class BlipVQA(BlipBase):
             max_length=self.max_txt_len,
             return_tensors="pt",
         ).to(self.device)
-        questions.input_ids[:, 0] = self.tokenizer.enc_token_id
+        questions.input_ids[:, 0] = self.eoc_token_id
         samples.update({"tokenized_text": questions})
-
-        image_embeds = self.visual_encoder.forward_features(samples["image"])
-        encoder_output = self.text_encoder.forward_automask(
-            tokenized_text=samples["tokenized_text"], visual_embeds=image_embeds
-        )
-
-        return encoder_output, image_embeds
-
-    def forward_decoder(self, samples, encoder_out, **kwargs):
-        answers = self.tokenizer(
-            samples["answer"], padding="longest", return_tensors="pt"
-        ).to(self.device)
-        answers.input_ids[:, 0] = self.tokenizer.bos_token_id
-        answer_targets = answers.input_ids.masked_fill(
-            answers.input_ids == self.tokenizer.pad_token_id, -100
-        )
 
         question_states = []
         question_atts = []
@@ -142,20 +165,98 @@ class BlipVQA(BlipBase):
         question_states = torch.stack(question_states, dim=0)
         question_atts = torch.stack(question_atts, dim=0)
 
-        answer_output = self.text_decoder(
-            answers.input_ids,
-            attention_mask=answers.attention_mask,
-            encoder_hidden_states=question_states,
-            encoder_attention_mask=question_atts,
-            labels=answer_targets,
-            return_dict=True,
-            reduction="none",
+        images = samples["image"].unsqueeze(1).unsqueeze(2)
+
+        answers = self.tokenizer(
+            samples["answer"], padding="longest", return_tensors="pt"
+        ).to(self.device)
+        answers.input_ids[:, 0] = self.tokenizer.bos_token_id
+        answer_targets = answers.input_ids.masked_fill(
+            answers.input_ids == self.tokenizer.pad_token_id, -100
         )
 
-        loss = samples["weight"] * answer_output.loss
-        bsz = samples["image"].size(0)
+        # question_states = []
+        # question_atts = []
 
-        loss = loss.sum() / bsz
+        question = samples["tokenized_text"]
+        output = self.model(
+            vision_x=images,
+            lang_x=question.input_ids,
+            attention_mask=question.attention_mask,
+            labels=answer_targets,
+        )
+        loss = output[0]
+        answer_output = output[1]
+        
+        # loss, decoder_output, decoder_targets = self.forward_decoder(samples)
+
+        return loss
+
+    def forward_encoder(self, samples):
+        questions = samples["text_input"]
+        questions = self.tokenizer(
+            questions,
+            padding="longest",
+            truncation=True,
+            max_length=self.max_txt_len,
+            return_tensors="pt",
+        ).to(self.device)
+        questions.input_ids[:, 0] = self.eoc_token_id
+        samples.update({"tokenized_text": questions})
+
+        images = samples["image"].unsqueeze(1).unsqueeze(2)
+        self.model._encode_vision_x(vision_x=images)
+
+        # image_embeds = self.visual_encoder.forward_features(samples["image"])
+        # encoder_output = self.text_encoder.forward_automask(
+        #     tokenized_text=samples["tokenized_text"], visual_embeds=image_embeds
+        # )
+
+        # return encoder_output, image_embeds
+
+    def forward_decoder(self, samples, **kwargs):
+        answers = self.tokenizer(
+            samples["answer"], padding="longest", return_tensors="pt"
+        ).to(self.device)
+        answers.input_ids[:, 0] = self.tokenizer.bos_token_id
+        answer_targets = answers.input_ids.masked_fill(
+            answers.input_ids == self.tokenizer.pad_token_id, -100
+        )
+
+        # question_states = []
+        # question_atts = []
+
+        question = samples["tokenized_text"]
+        output = self.model.lang_encoder(
+            input_ids=question.input_ids,
+            attention_mask=question.attention_mask,
+            labels=answer_targets,
+        )
+        loss = output[0]
+        answer_output = output[1]
+        # question_output = encoder_out
+
+        # for b, n in enumerate(samples["n_answers"]):
+        #     question_states += [question_output.last_hidden_state[b]] * n
+        #     question_atts += [question.attention_mask[b]] * n
+
+        # question_states = torch.stack(question_states, dim=0)
+        # question_atts = torch.stack(question_atts, dim=0)
+
+        # answer_output = self.text_decoder(
+        #     answers.input_ids,
+        #     attention_mask=answers.attention_mask,
+        #     encoder_hidden_states=question_states,
+        #     encoder_attention_mask=question_atts,
+        #     labels=answer_targets,
+        #     return_dict=True,
+        #     reduction="none",
+        # )
+
+        # loss = samples["weight"] * answer_output.loss
+        # bsz = samples["image"].size(0)
+
+        # loss = loss.sum() / bsz
 
         return loss, answer_output, answer_targets
 
@@ -354,22 +455,46 @@ class BlipVQA(BlipBase):
         return answers
 
     @classmethod
-    def from_config(cls, cfg=None):
-        image_encoder = VisionTransformerEncoder.from_config(cfg)
+    def from_config(cls, cfg):
+        # vision encoder
+        # image_encoder = VisionTransformerEncoder.from_config(cfg)
+        clip_vision_encoder_path = cfg.get("clip_vision_encoder_path", None)
+        clip_vision_encoder_pretrained = cfg.get("clip_vision_encoder_pretrained", True)
+        tokenizer_path = cfg.get("tokenizer_path", None)
+        use_local_files = cfg.get("use_local_files", False)
+        lang_encoder_path = cfg.get("lang_encoder_path", None)
+        cross_attn_every_n_layers = cfg.get("cross_attn_every_n_layers", 1)
+        decoder_layers_attr_name = cfg.get("decoder_layers_attr_name", None)
+        pretrained_checkpoint_path = cfg.get("pretrained_checkpoint_path", None)
 
-        # text encoder + multimodal encoder
-        text_encoder = XBertEncoder.from_config(cfg)
-        text_decoder = XBertLMHeadDecoder.from_config(cfg)
-
-        max_txt_len = cfg.get("max_txt_len", 35)
-
-        model = cls(
-            image_encoder=image_encoder,
-            text_encoder=text_encoder,
-            text_decoder=text_decoder,
-            max_txt_len=max_txt_len,
+        max_txt_len = cfg.get("max_txt_len", 40)
+        
+        image_encoder, _, image_processor = open_clip.create_model_and_transforms(clip_vision_encoder_path, pretrained=clip_vision_encoder_pretrained)
+        # set the vision encoder to output the visual features
+        image_encoder.visual.output_tokens = True
+        
+        text_tokenizer = AutoTokenizer.from_pretrained(
+            tokenizer_path, local_files_only=use_local_files
         )
+        # add Flamingo special tokens to the tokenizer
+        text_tokenizer.add_special_tokens(
+            {"additional_special_tokens": ["<|endofchunk|>", "<image>"]}
+        )
+        if text_tokenizer.pad_token is None:
+            # Issue: GPT models don't have a pad token, which we use to
+            # modify labels for the loss.
+            text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
 
-        model.load_checkpoint_from_config(cfg)
+        lang_encoder = AutoModelForCausalLM.from_pretrained(
+            lang_encoder_path, local_files_only=use_local_files
+        )
+        extend_instance(lang_encoder, FlamingoLMMixin)
+
+        if decoder_layers_attr_name is None:
+            decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
+        lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
+        lang_encoder.resize_token_embeddings(len(text_tokenizer))
+
+        model = cls(image_encoder, lang_encoder, text_tokenizer, clip_vision_encoder_path, cross_attn_every_n_layers, pretrained_checkpoint_path, max_txt_len=max_txt_len)
 
         return model
