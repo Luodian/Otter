@@ -33,6 +33,10 @@ conda install -c conda-forge more-itertools=9.1.0 -y
 pip install git+https://github.com/huggingface/transformers
 conda install -c conda-forge black=23.3.0 -y
 pip install gpustat
+
+# install standford-corenlp-full
+cd LAVIS/coco-caption;
+sh get_stanford_models.sh
 ```
 
 </details>
