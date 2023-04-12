@@ -220,8 +220,8 @@ class PEFT_FLAMINGO_Caption(PEFT_FLAMINGO):
             num_beams=num_beams,
             length_penalty=repetition_penalty,
         )
-
-        return outputs
+        captions = [output[len(self.prompt) :] for output in outputs]
+        return captions
 
     @classmethod
     def from_config(cls, cfg):
