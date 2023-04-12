@@ -175,9 +175,6 @@ class PEFT_FLAMINGO_VQA(PEFT_FLAMINGO):
             answers.input_ids == self.tokenizer.pad_token_id, -100
         )
 
-        # question_states = []
-        # question_atts = []
-
         question = samples["tokenized_text"]
         output = self.model(
             vision_x=images,
