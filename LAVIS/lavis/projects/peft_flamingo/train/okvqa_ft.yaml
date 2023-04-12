@@ -4,62 +4,62 @@
  # For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
 
 model:
-  arch: peft_flamingo_caption
-  clip_vision_encoder_path: ViT-B-32
+  arch: peft_flamingo_vqa
+  clip_vision_encoder_path: ViT-L-14
   clip_vision_encoder_pretrained: openai
-  lang_encoder_path: facebook/opt-1.3b
-  tokenizer_path: facebook/opt-1.3b
+  lang_encoder_path: ./llama-7b-hf 
+  tokenizer_path: ./llama-7b-hf
   cross_attn_every_n_layers: 4
   pretrained_checkpoint_path: /home/v-boli7/azure_storage/models/openflamingo/checkpoint.pt
-  model_type: base_coco
+  model_type: okvqa
   load_finetuned: False
+  image_size: 224
 
 datasets:
-  coco_caption: # name of the dataset builder
+  ok_vqa: # name of the dataset builder
     vis_processor:
         train:
           name: "blip_image_train"
           image_size: 224
-          finetuned_shots: 128
         eval:
           name: "blip_image_eval"
           image_size: 224
     text_processor:
         train:
-          name: "blip_caption"
-          prompt: "a picture of "
+          name: "blip_question"
         eval:
-          name: "blip_caption"
+          name: "blip_question"
 
 run:
-  # task: retrieval
-  task: captioning
-  # optimizer
+  task: vqa
+  # optimization-specific
   lr_sched: "linear_warmup_cosine_lr"
-  init_lr: 1e-5
-  min_lr: 0
-  weight_decay: 0.05
-  max_epoch: 5
-  batch_size_train: 32
-  batch_size_eval: 64
+  init_lr: 3e-5
+  min_lr: 1e-5
+  weight_decay: 0.02
+  max_epoch: 7
+  batch_size_train: 16
+  batch_size_eval: 16
   num_workers: 4
-  enable_8bit: True
 
-  max_len: 20
-  min_len: 5
-  num_beams: 3
+  # inference-specific
+  max_len: 10
+  min_len: 1
+  num_beams: 256
+  num_ans_candidates: 128
+  inference_method: "rank"
 
   seed: 42
-  output_dir: "output/PEFT_FLAMINGO/Caption_coco"
+  output_dir: "output/PEFT_FLAMINGO/OKVQA"
 
   amp: False
   resume_ckpt_path: null
 
   evaluate: False 
   train_splits: ["train"]
-  valid_splits: ["val"]
   test_splits: ["test"]
 
+  # distribution-specific
   device: "cuda"
   world_size: 1
   dist_url: "env://"

@@ -4,14 +4,22 @@
  # For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
 
 model:
-  arch: blip_caption
+  arch: peft_flamingo_caption
+  clip_vision_encoder_path: ViT-B-32
+  clip_vision_encoder_pretrained: openai
+  lang_encoder_path: facebook/opt-1.3b
+  tokenizer_path: facebook/opt-1.3b
+  cross_attn_every_n_layers: 4
+  pretrained_checkpoint_path: /home/v-boli7/azure_storage/models/openflamingo/checkpoint.pt
   model_type: base_coco
+  load_finetuned: False
 
 datasets:
   coco_caption: # name of the dataset builder
     vis_processor:
         eval:
           name: "blip_image_eval"
+          image_size: 224
     text_processor:
         eval:
           name: "blip_caption"
@@ -29,7 +37,7 @@ run:
   num_beams: 3
 
   seed: 42
-  output_dir: "output/BLIP/Caption_coco"
+  output_dir: "output/PEFT_FLAMINGO/Caption_coco"
 
   evaluate: True
   test_splits: ["test"]

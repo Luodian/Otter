@@ -174,7 +174,10 @@ class BaseDatasetBuilder:
         ann_info = build_info.annotations
         vis_info = build_info.get(self.data_type)
 
-        finetuned_shots = self.config.vis_processor.train.get("finetuned_shots", None)
+        try:
+            finetuned_shots = self.config.vis_processor.train.get("finetuned_shots", None)
+        except AttributeError:
+            finetuned_shots = 128
 
         datasets = dict()
         for split in ann_info.keys():
@@ -223,8 +226,7 @@ class BaseDatasetBuilder:
                 vis_processor=vis_processor,
                 text_processor=text_processor,
                 ann_paths=ann_paths,
-                vis_root=vis_path,
-                finetuned_shots=finetuned_shots,
+                vis_root=vis_path
             )
 
         return datasets

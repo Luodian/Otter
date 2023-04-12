@@ -82,7 +82,7 @@ class PEFT_FLAMINGO_Caption(PEFT_FLAMINGO):
 
         print(f"Flamingo model initialized with {sum(p.numel() for p in self.model.parameters() if p.requires_grad) / 1e6} M trainable parameters")
         print(f"Loading checkpoint from {pretrained_checkpoint_path}...")
-        msg = self.model.load_state_dict(torch.load(pretrained_checkpoint_path), strict=False)
+        # msg = self.model.load_state_dict(torch.load(pretrained_checkpoint_path), strict=False)
         # print(msg)
         self.model.device = torch.device("cuda")
 
@@ -220,8 +220,8 @@ class PEFT_FLAMINGO_Caption(PEFT_FLAMINGO):
             num_beams=num_beams,
             length_penalty=repetition_penalty,
         )
-
-        return outputs
+        captions = [output[len(self.prompt) :] for output in outputs]
+        return captions
 
     @classmethod
     def from_config(cls, cfg):
