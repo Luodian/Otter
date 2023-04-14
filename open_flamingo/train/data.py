@@ -661,6 +661,53 @@ def get_coco_vqa_dataset(args, image_processor, tokenizer, epoch=0, floor=False)
 
     return DataInfo(dataloader=dataloader, shared_epoch=shared_epoch)
 
+from PIL import Image, ImageFile
+from io import BytesIO
+import base64
+from tqdm import tqdm
+import json
+from ofa_compress.data_utils.input_dataset import FileDataset
+
+def get_multi_instruction_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
+    multi_instruct_path = args.multi_instruct_path
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
+    dataset = FileDataset(multi_instruct_path, "0,1,2,3,4,5,6,7")
+    for _ in tqdm(dataset):
+        uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
+        image = Image.open(BytesIO(base64.urlsafe_b64decode(image))).convert("RGB")
+        image.save(f"{uniq_id}.jpg")
+        print(caption)
+        break
+
+    # create a shared epoch store to sync epoch to dataloader worker proc
+    shared_epoch = SharedEpoch(epoch=epoch)
+    
+    round_fn = math.floor if floor else math.ceil
+    global_batch_size = args.batch_size * args.world_size
+
+    num_samples = len(dataset)
+    num_batches = round_fn(num_samples / global_batch_size)
+    num_workers = max(1, args.workers)
+    num_worker_batches = round_fn(num_batches / num_workers)  # per dataloader worker
+    num_batches = num_worker_batches * num_workers
+    num_samples = num_batches * global_batch_size
+    # each worker is iterating over this
+    # dataset = dataset.with_epoch(num_worker_batches)
+
+    dataloader = wds.WebLoader(
+        dataset,
+        batch_size=None,
+        shuffle=False,
+        num_workers=args.workers,
+        persistent_workers=True,
+    )
+
+    # add meta-data to dataloader instance for convenience
+    dataloader.num_batches = num_batches
+    dataloader.num_samples = num_samples
+
+    return DataInfo(dataloader=dataloader, shared_epoch=shared_epoch)
+
 def get_dataset_fn(dataset_type):
     if dataset_type == "image_text":
         return get_laion_dataset
@@ -668,6 +715,8 @@ def get_dataset_fn(dataset_type):
         return get_mmc4_dataset
     elif dataset_type == "coco_vqa":
         return get_coco_vqa_dataset
+    elif dataset_type == "multi_instruct":
+        return get_multi_instruction_dataset
     else:
         raise ValueError(f"Unsupported dataset type: {dataset_type}")
 

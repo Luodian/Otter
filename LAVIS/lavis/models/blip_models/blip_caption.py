@@ -138,7 +138,6 @@ class BlipCaption(BlipBase):
         max_length=30,
         min_length=10,
         top_p=0.9,
-        repetition_penalty=1.0,
         num_captions=1,
     ):
         """

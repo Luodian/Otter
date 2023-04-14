@@ -167,3 +167,5 @@ cache/
 */.coverage
 */.coverage.*
 */.c
+
+*.zip
