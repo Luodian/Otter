@@ -30,6 +30,7 @@ def train_one_epoch(
     epoch,
     laion_loader,
     mmc4_loader,
+    multi_instruct_loader,
     tokenizer,
     optimizer,
     lr_scheduler,
