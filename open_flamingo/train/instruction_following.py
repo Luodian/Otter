@@ -229,8 +229,6 @@ def main():
     parser.add_argument("--num_epochs", type=int, default=1)
     parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
     # Sum of gradient optimization batch size
-    # parser.add_argument("--batch_size_mmc4", type=int, default=128)
-    # parser.add_argument("--batch_size_laion", type=int, default=128)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
     parser.add_argument(
