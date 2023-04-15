@@ -24,6 +24,12 @@ from open_flamingo.train.train_utils import AverageMeter, get_autocast, get_cast
 from tqdm import tqdm
 import time
 
+from PIL import Image, ImageFile
+from io import BytesIO
+import base64
+from ofa_compress.arguments import add_data_args
+
+
 def random_seed(seed=42, rank=0):
     torch.manual_seed(seed + rank)
     np.random.seed(seed + rank)
@@ -58,26 +64,30 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
         global_step = num_steps + epoch * num_batches_per_epoch
 
-        #### LAION FORWARD PASS ####
-        images = batch_multi_instruct[0].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(1).unsqueeze(1)
+        # print(batch_multi_instruct)
+        #### MULTI_INSTRUCT FORWARD PASS ####
+        
+        images = batch_multi_instruct['net_input']['patch_images'].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(1).unsqueeze(1)
 
-        input_ids = batch_multi_instruct[1][0].to(device_id, dtype=cast_dtype, non_blocking=True)
-        attention_mask = batch_multi_instruct[1][1].to(device_id, dtype=cast_dtype, non_blocking=True)
+        input_ids = batch_multi_instruct['net_input']['input_ids'].to(device_id, dtype=cast_dtype, non_blocking=True)
+        attention_mask = batch_multi_instruct['net_input']['attention_masks'].to(device_id, dtype=cast_dtype, non_blocking=True)
 
-        labels = input_ids.clone()
-        labels[labels == tokenizer.pad_token_id] = -100
-        labels[:, 0] = -100
-        labels[labels == media_token_id] = -100
-        labels.to(device_id)
+        labels = batch_multi_instruct['target'].to(device_id, dtype=cast_dtype, non_blocking=True)
+
+        # labels = input_ids.clone()
+        # labels[labels == tokenizer.pad_token_id] = -100
+        # labels[:, 0] = -100
+        # labels[labels == media_token_id] = -100
+        # labels.to(device_id)
 
         with autocast():
-            loss_laion = model(
+            loss_multi_instruct = model(
                 vision_x=images,
                 lang_x=input_ids,
                 attention_mask=attention_mask,
                 labels=labels,
             )[0]
-        divided_loss_laion = loss_laion / args.gradient_accumulation_steps
+        divided_loss_multi_instruct = loss_multi_instruct / args.gradient_accumulation_steps
 
         #### C4 FORWARD PASS ####
         # images = batch_mmc4[0].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(2)
@@ -127,8 +137,8 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         # divided_loss_mmc4 = loss_mmc4 / args.gradient_accumulation_steps
 
         #### BACKWARD PASS ####
-        loss = divided_loss_laion * args.loss_multiplier + divided_loss_mmc4 * args.loss_multiplier_mmc4
-        loss.backward()
+        # loss = divided_loss_laion * args.loss_multiplier + divided_loss_multi_instruct * args.loss_multiplier_mmc4
+        divided_loss_multi_instruct.backward()
 
         #### MASK GRADIENTS FOR EMBEDDINGS ####
         # Note (anas): Do not apply weight decay to embeddings as it will break this function.
@@ -155,20 +165,18 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
             if args.rank == 0 and args.report_to_wandb:
                 # compute within rank 0
-                laion_samples_per_second = args.gradient_accumulation_steps * args.batch_size_laion * args.world_size / step_time_m.val
-                laion_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_laion / step_time_m.val
+                multi_instruct_samples_per_second = args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.val
+                multi_instruct_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size / step_time_m.val
 
-                c4_samples_per_second = args.gradient_accumulation_steps * args.batch_size_mmc4 * args.world_size / step_time_m.val
-                c4_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_mmc4 / step_time_m.val
+                # c4_samples_per_second = args.gradient_accumulation_steps * args.batch_size_mmc4 * args.world_size / step_time_m.val
+                # c4_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_mmc4 / step_time_m.val
 
                 wandb.log(
                     {
                         "data_time": data_time_m.avg,
                         "step_time": step_time_m.avg,
-                        "laion_samples_per_second": laion_samples_per_second,
-                        "laion_samples_per_second_per_gpu": laion_samples_per_second_per_gpu,
-                        "c4_samples_per_second": c4_samples_per_second,
-                        "c4_samples_per_second_per_gpu": c4_samples_per_second_per_gpu,
+                        "multi_instruct_samples_per_second": multi_instruct_samples_per_second,
+                        "multi_instruct_samples_per_second_per_gpu": multi_instruct_samples_per_second_per_gpu,
                         "lr": optimizer.param_groups[0]["lr"],
                     },
                     commit=False,
@@ -178,15 +186,15 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
                 wandb.log(
                     {
-                        "loss_laion": divided_loss_laion.item(),
+                        "loss_multi_instruct": divided_loss_multi_instruct.item(),
                         "global_step": global_step,
                     },
-                    commit=False,
-                )
-                wandb.log(
-                    {"loss_mmc4": divided_loss_mmc4.item(), "global_step": global_step},
                     commit=True,
                 )
+                # wandb.log(
+                #     {"loss_mmc4": divided_loss_mmc4.item(), "global_step": global_step},
+                #     commit=True,
+                # )
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
@@ -264,7 +272,7 @@ def main():
         help="Floating point precision.",
     )
     # data args
-    parser.add_argument("--workers", type=int, default=1)
+    parser.add_argument("--workers", type=int, default=0)
     parser.add_argument("--train_num_samples", type=int, default=10000)
     # parser.add_argument("--train_num_samples_laion", type=int, default=10000)
     parser.add_argument("--dataset_resampled", action="store_true")
@@ -305,6 +313,7 @@ def main():
         help="save checkpoints to wandb",
     )
 
+    parser = add_data_args(parser)
     args = parser.parse_args()
 
     # if args.laion_shards.startswith("s3"):
