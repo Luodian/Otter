@@ -72,6 +72,14 @@ python -m torch.distributed.run --nproc_per_node=1 open_flamingo/train/instructi
 
 ## Experiments Results
 
+We report accuracy on following datasets after instruction following (IF) tuning. 
+
+1. COCO Caption
+2. VQAv2
+3. OKVQA
+4. ImageNet
+5. Flickr30
+
 ### VQAv2 (VQA accuracy)
 
 |            | 0-shot | 4-shot | 8-shot | 16-shot | 32-shot |
