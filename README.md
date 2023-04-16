@@ -41,18 +41,44 @@ sh get_stanford_models.sh
 
 </details>
 
+### Dataset Preparation
+
+Download a subset pretraining multi_instruct dataset
+
+```bash
+wget https://ofa-beijing.oss-cn-beijing.aliyuncs.com/datasets/pretrain_data/pretrain_data_examples.zip;
+unzip pretrain_data_examples.zip ./example_multi_instruct_data
+```
+
 ### Training
 
-Our model is trained on 4 V100 GPUs. You may use the following command to train the model.
+Train on multi_instruct example datasets, use following commands:
 
 ``` bash
-# demo run on finetuning coco_caption
-torchrun --nproc_per_node=4 LAVIS/train.py --cfg-path=LAVIS/lavis/projets/peft_flamingo/caption_coco_ft.yaml
+python -m torch.distributed.run --nproc_per_node=1 open_flamingo/train/instruction_following.py \
+--run_name=flamingo3B \
+--lm_path=facebook/opt-1.3b \
+--tokenizer_path=facebook/opt-1.3b \
+--dataset_resampled \
+--multi_instruct_path=./example_multi_instruct_data/vision_language_examples.tsv \
+--batch_size=8 --num_epochs=30 \
+--report_to_wandb --wandb_project=flamingo3B \
+--wandb_entity=drluodian \
+--delete_previous_checkpoint \
+--run_name=dev/multi_instruct_caption_flamingo3B 
 ```
 
 ### Hyperparameters
 
 ## Experiments Results
+
+We report accuracy on following datasets after instruction following (IF) tuning. 
+
+1. COCO Caption
+2. VQAv2
+3. OKVQA
+4. ImageNet
+5. Flickr30
 
 ### VQAv2 (VQA accuracy)
 

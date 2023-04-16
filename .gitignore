@@ -169,3 +169,5 @@ cache/
 */.c
 
 *.zip
+*.pt
+wandb/*
