@@ -13,6 +13,7 @@ from multiprocessing import Value
 
 import braceexpand
 import torch
+import torch.utils
 import torchvision
 import webdataset as wds
 from PIL import Image
@@ -667,17 +668,25 @@ import base64
 from tqdm import tqdm
 import json
 from ofa_compress.data_utils.input_dataset import FileDataset
+from ofa_compress.data_utils.ofa_dataset import collate_fn
+from ofa_compress.data_utils.unify_dataset import UnifyDataset
+from ofa_compress.arguments import add_data_args
+import argparse
+
 
 def get_multi_instruction_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     multi_instruct_path = args.multi_instruct_path
     ImageFile.LOAD_TRUNCATED_IMAGES = True
-    dataset = FileDataset(multi_instruct_path, "0,1,2,3,4,5,6,7")
-    for _ in tqdm(dataset):
-        uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
-        image = Image.open(BytesIO(base64.urlsafe_b64decode(image))).convert("RGB")
-        image.save(f"{uniq_id}.jpg")
-        print(caption)
-        break
+    dataset = FileDataset(multi_instruct_path, args.selected_cols)
+    args.task = 'pretrain'
+    args.tokenizer = tokenizer
+    unified_dataset = UnifyDataset(args, dataset)
+    # for _ in tqdm(dataset):
+    #     uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
+    #     image = Image.open(BytesIO(base64.urlsafe_b64decode(image))).convert("RGB")
+    #     image.save(f"{uniq_id}.jpg")
+    #     print(caption)
+    #     break
 
     # create a shared epoch store to sync epoch to dataloader worker proc
     shared_epoch = SharedEpoch(epoch=epoch)
@@ -685,7 +694,7 @@ def get_multi_instruction_dataset(args, image_processor, tokenizer, epoch=0, flo
     round_fn = math.floor if floor else math.ceil
     global_batch_size = args.batch_size * args.world_size
 
-    num_samples = len(dataset)
+    num_samples = len(unified_dataset)
     num_batches = round_fn(num_samples / global_batch_size)
     num_workers = max(1, args.workers)
     num_worker_batches = round_fn(num_batches / num_workers)  # per dataloader worker
@@ -694,13 +703,15 @@ def get_multi_instruction_dataset(args, image_processor, tokenizer, epoch=0, flo
     # each worker is iterating over this
     # dataset = dataset.with_epoch(num_worker_batches)
 
-    dataloader = wds.WebLoader(
-        dataset,
-        batch_size=None,
-        shuffle=False,
-        num_workers=args.workers,
-        persistent_workers=True,
-    )
+    # dataloader = wds.WebLoader(
+    #     dataset,
+    #     batch_size=None,
+    #     shuffle=False,
+    #     num_workers=args.workers,
+    #     persistent_workers=True,
+    # )
+    
+    dataloader = torch.utils.data.DataLoader(unified_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers, pin_memory=True, drop_last=True, collate_fn=unified_dataset.collate)
 
     # add meta-data to dataloader instance for convenience
     dataloader.num_batches = num_batches
