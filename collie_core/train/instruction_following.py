@@ -89,53 +89,6 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
             )[0]
         divided_loss_multi_instruct = loss_multi_instruct / args.gradient_accumulation_steps
 
-        #### C4 FORWARD PASS ####
-        # images = batch_mmc4[0].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(2)
-        # input_ids = torch.stack([x[0] for x in batch_mmc4[1]]).squeeze(1)
-        # attention_mask = torch.stack([x[1] for x in batch_mmc4[1]]).squeeze(1)
-
-        # # NOTE: irena: expected shape of clip_text_input_ids / attention_mask is (N, I, max_seq_len)
-        # labels = input_ids.clone()
-        # labels[labels == tokenizer.pad_token_id] = -100
-        # labels[:, 0] = -100
-
-        # for i in range(labels.shape[0]):
-        #     # remove loss for any token before the first <image> token
-        #     label_idx = 0
-        #     while label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id:
-        #         labels[i][label_idx] = -100
-        #         label_idx += 1
-
-        #     # get index of all endofchunk tokens in the sequence
-        #     endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
-        #     for endofchunk_idx in endofchunk_idxs:
-        #         token_idx = endofchunk_idx + 1
-        #         while token_idx < labels.shape[1] and labels[i][token_idx] != media_token_id:
-        #             labels[i][token_idx] = -100
-        #             token_idx += 1
-
-        # labels[labels == media_token_id] = -100
-        # labels.to(device_id)
-
-        # with autocast():
-        #     loss_mmc4 = model(
-        #         vision_x=images,
-        #         lang_x=input_ids,
-        #         attention_mask=attention_mask,
-        #         labels=labels,
-        #     )[0]
-
-        #     # if loss is nan, skip this batch
-        #     if torch.isnan(loss_mmc4):
-        #         print("loss is nan, skipping this batch")
-        #         print("input_ids: ", tokenizer.batch_decode(input_ids))
-        #         print("labels: ", labels)
-        #         print("images: ", images)
-        #         optimizer.zero_grad()
-        #         continue
-
-        # divided_loss_mmc4 = loss_mmc4 / args.gradient_accumulation_steps
-
         #### BACKWARD PASS ####
         # loss = divided_loss_laion * args.loss_multiplier + divided_loss_multi_instruct * args.loss_multiplier_mmc4
         divided_loss_multi_instruct.backward()
@@ -188,14 +141,10 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
                     },
                     commit=True,
                 )
-                # wandb.log(
-                #     {"loss_mmc4": divided_loss_mmc4.item(), "global_step": global_step},
-                #     commit=True,
-                # )
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
-            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi_Instruct: {loss_multi_instruct.item():.3f}")
+            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss LAION: {loss_laion.item():.3f} // Loss MMC4: {loss_mmc4.item():.3f}")
 
 
 def main():
@@ -249,11 +198,6 @@ def main():
         action="store_true",
         help="delete previous checkpoint when saving new checkpoint",
     )
-    # parser.add_argument(
-    #     "--laion_shards",
-    #     type=str,
-    #     help="path to laion shards, this should be a glob pattern such as /path/to/shards/shard-{0000..0999}.tar",
-    # )
     parser.add_argument(
         "--multi_instruct_path",
         type=str,
@@ -321,18 +265,8 @@ def main():
     parser = add_data_args(parser)
     args = parser.parse_args()
 
-    # if args.laion_shards.startswith("s3"):
-    #     args.laion_shards = f"pipe:aws s3 cp {args.laion_shards} -"
-
-    # if args.mmc4_shards.startswith("s3"):
-    #     args.mmc4_shards = f"pipe:aws s3 cp {args.mmc4_shards} -"
-
     if args.save_checkpoints_to_wandb and not args.report_to_wandb:
         raise ValueError("save_checkpoints_to_wandb requires report_to_wandb")
-
-    # assert (args.train_num_samples_laion // args.batch_size_laion) == (
-    #     args.train_num_samples_mmc4 // args.batch_size_mmc4
-    # ), "number of samples per epoch must be equal for mmc4 and laion"
 
     if args.offline:
         os.environ["WANDB_MODE"] = "offline"
@@ -372,9 +306,6 @@ def main():
     ddp_model = DDP(model, device_ids=[device_id])
 
     multi_instruct_dataset = get_data(args, image_processor, tokenizer, "multi_instruct")
-
-    # laion_dataset = get_data(args, image_processor, tokenizer, "image_text")
-    # mmc4_dataset = get_data(args, image_processor, tokenizer, "mmc4")
 
     def get_grouped_params(model):
         params_with_wd, params_without_wd = [], []
@@ -432,19 +363,12 @@ def main():
             print(f"Loading checkpoint from {args.resume_from_checkpoint}")
         checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
         ddp_model.load_state_dict(checkpoint, False)
-        # optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        # lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
-        # resume_from_epoch = checkpoint["epoch"] + 1
 
     ddp_model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
         multi_instruct_dataset.set_epoch(epoch)
         multi_instruct_loader = multi_instruct_dataset.dataloader
-        # laion_dataset.set_epoch(epoch)
-        # laion_loader = laion_dataset.dataloader
-        # mmc4_dataset.set_epoch(epoch)
-        # mmc4_loader = mmc4_dataset.dataloader
 
         train_one_epoch(
             args=args,
