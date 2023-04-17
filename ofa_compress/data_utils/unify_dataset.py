@@ -143,12 +143,13 @@ class UnifyDataset(OFADataset):
         scales = [(args.patch_image_size, args.patch_image_size)]
 
         # for image-text pair
-        self.detection_large_resolution_transform = Compose([
-            RandomHorizontalFlip(),
-            LargeScaleJitter(output_size=args.patch_image_size, aug_scale_min=1.0, aug_scale_max=1.5),
-            ToTensor(),
-            Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], max_image_size=args.max_image_size)
-        ])
+        # self.detection_large_resolution_transform = Compose([
+        #     RandomHorizontalFlip(),
+        #     LargeScaleJitter(output_size=args.patch_image_size, aug_scale_min=1.0, aug_scale_max=1.5),
+        #     ToTensor(),
+        #     Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], max_image_size=args.max_image_size)
+        # ])
+        # TODO: check if random augment is correct, especially for some questions related to colors.
         self.patch_resize_transform = transforms.Compose([
             RandomResize(scales),
             transforms.CenterCrop(args.patch_image_size),
@@ -157,25 +158,25 @@ class UnifyDataset(OFADataset):
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
         ])
-        # for pure image
-        self.patch_crop_transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
-        ])
-        # for detection
-        self.detection_transform = Compose([
-            RandomHorizontalFlip(),
-            LargeScaleJitter(output_size=self.code_image_size*2, aug_scale_min=1.0, aug_scale_max=1.5),
-            ToTensor(),
-            Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], max_image_size=args.max_image_size)
-        ])
-        # for visual grounding
-        self.positioning_transform = self.visual_grounding_transform = Compose([
-            RandomResize(scales, max_size=672),
-            ObjectCenterCrop((args.patch_image_size, args.patch_image_size)),
-            ToTensor(),
-            Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], max_image_size=args.max_image_size)
-        ])
+        # # for pure image
+        # self.patch_crop_transform = transforms.Compose([
+        #     transforms.ToTensor(),
+        #     transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+        # ])
+        # # for detection
+        # self.detection_transform = Compose([
+        #     RandomHorizontalFlip(),
+        #     LargeScaleJitter(output_size=self.code_image_size*2, aug_scale_min=1.0, aug_scale_max=1.5),
+        #     ToTensor(),
+        #     Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], max_image_size=args.max_image_size)
+        # ])
+        # # for visual grounding
+        # self.positioning_transform = self.visual_grounding_transform = Compose([
+        #     RandomResize(scales, max_size=672),
+        #     ObjectCenterCrop((args.patch_image_size, args.patch_image_size)),
+        #     ToTensor(),
+        #     Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], max_image_size=args.max_image_size)
+        # ])
         self.dataset = dataset
 
         self.bos_item = torch.LongTensor([args.tokenizer.bos_token_id])
@@ -301,9 +302,16 @@ class UnifyDataset(OFADataset):
 
         elif type == 'qa':
             question = self.pre_question(question, self.max_src_length)
-            ref_dict = {item.split('|!+')[1]: float(item.split('|!+')[0]) for item in refs.split('&&')}
-            answer = max(ref_dict, key=ref_dict.get)
-            conf = ref_dict[answer]
+            if dataset_name == "vqav2":
+                ref_dict = {item.split('|!+')[1]: float(item.split('|!+')[0]) for item in refs.split('&&')}
+                answer = max(ref_dict, key=ref_dict.get)
+                conf = ref_dict[answer]
+            elif dataset_name == "gqa":
+                answer = refs.strip()
+                conf = torch.tensor([1.0])
+            # ref_dict = {item.split('|!+')[1]: float(item.split('|!+')[0]) for item in refs.split('&&')}
+            # answer = max(ref_dict, key=ref_dict.get)
+            # conf = ref_dict[answer]
             src_text = self.tokenizer(" {}".format(question), return_tensors="pt", add_special_tokens=False)
             src_item = src_text['input_ids'].squeeze(0)
             src_item_mask = src_text['attention_mask'].squeeze(0)
@@ -312,6 +320,7 @@ class UnifyDataset(OFADataset):
             conf = torch.tensor([conf])
             pos_src_item = self.tokenizer(
                 ' what is the answer to question " {} ". is " {} "?'.format(question, answer), return_tensors="pt", add_special_tokens=False).input_ids.squeeze(0)
+
             # neg_src_item = self.tokenizer(
             #     ' what is the answer to question " {} ". is " {} "?'.format(question, self.get_negative_answer(answer, conf)), return_tensors="pt", add_special_tokens=False).input_ids.squeeze(0)
 

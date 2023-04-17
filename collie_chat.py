@@ -7,6 +7,7 @@ import torch
 import torch.backends.cudnn as cudnn
 import gradio as gr
 
+from collie_core.collie_chat.chat import Chat, CONV_LANG, CONV_VISION
 # from minigpt4.common.config import Config
 # from minigpt4.common.dist_utils import get_rank
 # from minigpt4.common.registry import registry
@@ -18,6 +19,10 @@ import gradio as gr
 # from minigpt4.processors import *
 # from minigpt4.runners import *
 # from minigpt4.tasks import *
+
+from open_flamingo import create_model_and_transforms
+from huggingface_hub import hf_hub_download
+import torch
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Demo")
@@ -44,61 +49,76 @@ def setup_seeds(config):
     cudnn.deterministic = True
 
 
+def initialize_model(lm_path, cross_attn_every_n_layers, checkpoint_path=None):
+    model, image_processor, tokenizer = create_model_and_transforms(
+        clip_vision_encoder_path="ViT-L-14",
+        clip_vision_encoder_pretrained="openai",
+        lang_encoder_path=lm_path,
+        tokenizer_path=lm_path,
+        cross_attn_every_n_layers=cross_attn_every_n_layers
+    )
+
+    model.to("cuda")
+    model.eval()
+
+    # grab model checkpoint from huggingface hub
+    # checkpoint_path = hf_hub_download("openflamingo/OpenFlamingo-9B", "checkpoint.pt")
+    if checkpoint_path is not None:
+        msg = model.load_state_dict(torch.load(checkpoint_path), strict=False)
+        print(msg)
+    return model, image_processor, tokenizer
+
 # ========================================
 #             Model Initialization
 # ========================================
 
-# print('Initializing Chat')
-# cfg = Config(parse_args())
-
-# model_config = cfg.model_cfg
-# model_cls = registry.get_model_class(model_config.arch)
-# model = model_cls.from_config(model_config).to('cuda:0')
-
-# vis_processor_cfg = cfg.datasets_cfg.cc_sbu_align.vis_processor.train
-# vis_processor = registry.get_processor_class(vis_processor_cfg.name).from_config(vis_processor_cfg)
-# chat = Chat(model, vis_processor)
-# print('Initialization Finished')
+model, image_processor, tokenizer = initialize_model(lm_path="facebook/opt-1.3b", cross_attn_every_n_layers=1)
+chat_model = Chat(model, image_processor, tokenizer)
 
 # ========================================
 #             Gradio Setting
 # ========================================
 
-def gradio_reset(chat_state, img_list):
+def gradio_reset(chat_state):
     chat_state.messages = []
-    img_list = []
-    return None, gr.update(value=None, interactive=True), gr.update(placeholder='Please upload your image first', interactive=False),gr.update(value="Upload & Start Chat", interactive=True), chat_state, img_list
+    return None, gr.update(value=None, interactive=True), gr.update(placeholder='Please upload your image first', interactive=False),gr.update(value="Upload & Start Chat", interactive=True), chat_state
 
-def upload_img(gr_img, text_input, chat_state):
+def upload_img(gr_img, input_text, chat_state):
     if gr_img is None:
         return None, None, gr.update(interactive=True)
     chat_state = CONV_VISION.copy()
-    img_list = []
-    llm_message = chat.upload_img(gr_img, chat_state, img_list)
-    return gr.update(interactive=False), gr.update(interactive=True, placeholder='Type and press Enter'), gr.update(value="Start Chatting", interactive=False), chat_state, img_list
+    llm_message = chat_model.upload_img(gr_img, chat_state)
+    return gr.update(interactive=False), gr.update(interactive=True, placeholder='Type and press Enter'), gr.update(value="Start Chatting", interactive=False), chat_state
 
-def gradio_ask(user_message, chatbot, chat_state):
+def gradio_ask(user_message, chatbot, chat_state=None):
     if len(user_message) == 0:
         return gr.update(interactive=True, placeholder='Input should not be empty!'), chatbot, chat_state
-    chat.ask(user_message, chat_state)
+    chat_state = CONV_LANG.copy()
+    chat_model.ask(user_message, chat_state)
     chatbot = chatbot + [[user_message, None]]
     return '', chatbot, chat_state
 
 
-def gradio_answer(chatbot, chat_state, img_list, num_beams, temperature):
-    llm_message = chat.answer(conv=chat_state, img_list=img_list, max_new_tokens=1000, num_beams=num_beams, temperature=temperature)[0]
+def gradio_answer(chatbot, chat_state, num_beams, temperature):
+    llm_message = chat_model.answer(conv=chat_state, max_new_tokens=1000, num_beams=num_beams, temperature=temperature)[0]
     chatbot[-1][1] = llm_message
-    return chatbot, chat_state, img_list
+    return chatbot, chat_state
+
 
 title = """<header>
-                <h1>Welcome to Collie Chat!</h1>
-                <img src="./assets/collie_icon.png" alt="Collie Icon">
-            </header>
-            <section>
-                <h3>
-                    Collie is a visual language models tuned by instruction following. Collie interprets and deciphers complex visual information, enabling seamless integration of images and text. Collie is built on OpenFlamingo.
-                </h3>
-            </section>"""
+<style>
+h1 {text-align: center;}
+</style>
+<h1>Collie: A Visual Language Model with Efficient Instruction Tuning.</h1>
+</header>
+<section>
+<h3>
+    Collie interprets and deciphers complex visual information, enabling seamless integration of images and text. Collie is built on OpenFlamingo.
+</h3>
+<h3>
+    It's currently under development and for internel test only.
+</h3>
+</section>"""
 # description = """<h3>This is the demo of Collie. Upload your images and start chatting!</h3>"""
 # article = """<strong>Paper</strong>: <a href='https://github.com/Vision-CAIR/MiniGPT-4/blob/main/MiniGPT_4.pdf' target='_blank'>Here</a>
 # <strong>Code</strong>: <a href='https://github.com/Vision-CAIR/MiniGPT-4' target='_blank'>Here</a>
@@ -109,44 +129,41 @@ title = """<header>
 
 with gr.Blocks() as demo:
     gr.Markdown(title)
-    # gr.Markdown(description)
-    # gr.Markdown(article)
-
     with gr.Row():
         with gr.Column(scale=0.5):
-            image = gr.Image(type="pil")
+            image = gr.Image(type="pil", value="./assets/demo1.jpg", label="Image")
             upload_button = gr.Button(value="Upload & Start Chat", interactive=True, variant="primary")
             clear = gr.Button("Restart")
-            
-            num_beams = gr.Slider(
-                minimum=1,
-                maximum=16,
-                value=5,
-                step=1,
-                interactive=True,
-                label="beam search numbers)",
-            )
-            
-            temperature = gr.Slider(
-                minimum=0.1,
-                maximum=2.0,
-                value=1.0,
-                step=0.1,
-                interactive=True,
-                label="Temperature",
-            )
+
+            with gr.Accordion("Advanced options", open=False):
+                num_beams = gr.Slider(
+                    minimum=1,
+                    maximum=16,
+                    value=3,
+                    step=1,
+                    interactive=True,
+                    label="beam search numbers",
+                )
+                
+                temperature = gr.Slider(
+                    minimum=0.1,
+                    maximum=2.0,
+                    value=1.0,
+                    step=0.1,
+                    interactive=True,
+                    label="temperature",
+                )
 
         with gr.Column():
             chat_state = gr.State()
-            img_list = gr.State()
             chatbot = gr.Chatbot(label='Collie')
-            text_input = gr.Textbox(label='User', placeholder='Please upload your image first', interactive=False)
+            text_input = gr.Textbox(label='User', placeholder='Ask me anything here')
     
-    upload_button.click(upload_img, [image, text_input, chat_state], [image, text_input, upload_button, chat_state, img_list])
+    upload_button.click(upload_img, [image, text_input, chat_state], [image, text_input, upload_button, chat_state])
     
     text_input.submit(gradio_ask, [text_input, chatbot, chat_state], [text_input, chatbot, chat_state]).then(
-        gradio_answer, [chatbot, chat_state, img_list, num_beams, temperature], [chatbot, chat_state, img_list]
+        gradio_answer, [chatbot, chat_state, num_beams, temperature], [chatbot, chat_state]
     )
-    clear.click(gradio_reset, [chat_state, img_list], [chatbot, image, text_input, upload_button, chat_state, img_list], queue=False)
+    clear.click(gradio_reset, [chat_state], [chatbot, image, text_input, upload_button, chat_state], queue=False)
 
 demo.launch(share=True, enable_queue=True)
