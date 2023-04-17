@@ -1,4 +1,6 @@
-# PET-VLM
+<header><img src="./assets/collie_icon.png" alt="Collie Icon"><h1>Collie: A Visual Language Model with Efficient Instruction Tuning</h1></header>
+
+Collie is a visual language models tuned by instruction following. Collie interprets and deciphers complex visual information, enabling seamless integration of images and text. Collie is built on OpenFlamingo.
 
 ## Original LAVIS
 
@@ -97,7 +99,3 @@ We report accuracy on following datasets after instruction following (IF) tuning
 ### Authors
 
 Equal contribution, alphabetical order
-
-[Li Bo](https://brianboli.com/)
-
-[Wang Jinghao](https://king159.github.io/)
