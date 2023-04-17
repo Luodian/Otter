@@ -1,3 +1,38 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:2ef11836b5e9aadf4cf373143db3a0574bf3134310e49fe7893a37a53121231f
-size 444
+einops
+einops-exts
+transformers>=4.28.0
+torch==2.0.0
+torchvision
+bitsandbytes
+pillow
+more-itertools
+datasets
+wandb
+nltk
+scipy
+inflection
+open_clip_torch
+contexttimer
+decord
+einops>=0.4.1
+fairscale==0.4.4
+ftfy
+iopath
+ipython
+omegaconf
+opencv-python-headless==4.5.5.64
+opendatasets
+packaging
+pandas
+plotly
+pre-commit
+pycocoevalcap
+pycocotools
+python-magic
+scikit-image
+sentencepiece
+spacy
+streamlit
+timm==0.4.12
+tqdm
+wheel
