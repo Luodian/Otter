@@ -219,6 +219,12 @@ def main():
         help="how often to add a cross-attention layer after each transformer layer",
     )
     parser.add_argument(
+        "--external_save_dir",
+        type=str,
+        default=None,
+        help="set to save model to external path",
+    )
+    parser.add_argument(
         "--run_name",
         type=str,
         default="openflamingo3B",
@@ -236,6 +242,10 @@ def main():
         type=str,
         help="path to checkpoint to resume from, this should contain model, optimizer, and lr_scheduler states",
         default=None,
+    )
+    parser.add_argument(
+        "--overwrite_checkpoint",
+        action="store_true",
     )
     parser.add_argument(
         "--delete_previous_checkpoint",
@@ -256,12 +266,12 @@ def main():
     parser.add_argument("--learning_rate", default=1e-4, type=float)
     parser.add_argument(
         "--lr_scheduler",
-        default="constant",
+        default="cosine",
         type=str,
         help="constant, linear, or cosine",
     )
     parser.add_argument("--loss_multiplier_multi_instruct", type=float, default=1.0)
-    parser.add_argument("--warmup_steps", default=5000, type=int)
+    parser.add_argument("--warmup_steps", default=1000, type=int)
     parser.add_argument("--weight_decay", default=0.1, type=float)
     parser.add_argument(
         "--precision",
@@ -410,23 +420,24 @@ def main():
         lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps)
 
     # check if a checkpoint exists for this run
-    if os.path.exists(f"{args.run_name}") and args.resume_from_checkpoint is None:
-        checkpoint_list = glob.glob(f"{args.run_name}/checkpoint_*.pt")
+    args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
+    if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is None and args.overwrite_checkpoint is False:
+        checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
         if len(checkpoint_list) == 0:
-            print(f"Found no checkpoints for run {args.run_name}.")
+            print(f"Found no checkpoints for run {args.external_save_dir}.")
         else:
             args.resume_from_checkpoint = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
-            print(f"Found checkpoint {args.resume_from_checkpoint} for run {args.run_name}.")
+            print(f"Found checkpoint {args.resume_from_checkpoint} for run {args.external_save_dir}.")
 
     resume_from_epoch = 0
     if args.resume_from_checkpoint is not None:
         if args.rank == 0:
             print(f"Loading checkpoint from {args.resume_from_checkpoint}")
         checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
-        ddp_model.load_state_dict(checkpoint["model_state_dict"], False)
-        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
-        resume_from_epoch = checkpoint["epoch"] + 1
+        ddp_model.load_state_dict(checkpoint, False)
+        # optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        # lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
+        # resume_from_epoch = checkpoint["epoch"] + 1
 
     ddp_model.train()
 
@@ -451,8 +462,8 @@ def main():
         )
 
         if args.rank == 0:
-            if not os.path.exists(args.run_name):
-                os.makedirs(args.run_name)
+            if not os.path.exists(args.external_save_dir):
+                os.makedirs(args.external_save_dir)
 
             checkpoint_dict = {
                 "epoch": epoch,
@@ -461,22 +472,22 @@ def main():
                 "lr_scheduler_state_dict": lr_scheduler.state_dict(),
             }
 
-            print(f"Saving checkpoint to {args.run_name}/checkpoint_{epoch}.pt")
-            torch.save(checkpoint_dict, f"{args.run_name}/checkpoint_{epoch}.pt")
+            # print(f"Saving checkpoint to {args.run_name}/checkpoint_{epoch}.pt")
+            torch.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
             if args.report_to_wandb and args.save_checkpoints_to_wandb:
-                wandb.save(f"{args.run_name}/checkpoint_{epoch}.pt")
+                wandb.save(f"{args.external_save_dir}/checkpoint_{epoch}.pt")
 
             if args.delete_previous_checkpoint:
                 if epoch > 0:
-                    os.remove(f"{args.run_name}/checkpoint_{epoch-1}.pt")
+                    os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
 
     if args.rank == 0:
-        if not os.path.exists(args.run_name):
-            os.makedirs(args.run_name)
+        if not os.path.exists(args.external_save_dir):
+            os.makedirs(args.external_save_dir)
 
-        torch.save(get_checkpoint(ddp_model), f"{args.run_name}/final_weights.pt")
+        torch.save(get_checkpoint(ddp_model), f"{args.external_save_dir}/final_weights.pt")
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
-            wandb.save(f"{args.run_name}/final_weights.pt")
+            wandb.save(f"{args.external_save_dir}/final_weights.pt")
 
 
 if __name__ == "__main__":
