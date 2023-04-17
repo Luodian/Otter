@@ -171,3 +171,4 @@ cache/
 *.zip
 *.pt
 wandb/*
+archived/*
