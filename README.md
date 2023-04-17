@@ -97,7 +97,3 @@ We report accuracy on following datasets after instruction following (IF) tuning
 ### Authors
 
 Equal contribution, alphabetical order
-
-[Li Bo](https://brianboli.com/)
-
-[Wang Jinghao](https://king159.github.io/)
