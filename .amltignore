@@ -174,7 +174,5 @@ wandb/*
 archived/*
 amlt/*
 .amltconfig
-example_unified_data/*
-
-#yuanhan
-tools
+LAVIS/*
+*.png
