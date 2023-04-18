@@ -1,1 +1,0 @@
-python -m torch.distributed.run --nproc_per_node=8 evaluate.py --cfg-path lavis/projects/pnp-vqa/eval/gqa_eval_3b.yaml
