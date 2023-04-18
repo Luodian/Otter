@@ -174,4 +174,5 @@ wandb/*
 archived/*
 amlt/*
 .amltconfig
-example_unified_data/*
+LAVIS/*
+*.png

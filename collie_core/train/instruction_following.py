@@ -12,7 +12,7 @@ import wandb
 from data import get_data
 from distributed import init_distributed_device, world_info_from_env
 from torch.nn.parallel import DistributedDataParallel as DDP
-from train_utils import get_checkpoint, train_one_epoch
+# from train_utils import get_checkpoint, train_one_epoch
 from transformers import (
     get_constant_schedule_with_warmup,
     get_cosine_schedule_with_warmup,
@@ -24,10 +24,9 @@ from open_flamingo.train.train_utils import AverageMeter, get_autocast, get_cast
 from tqdm import tqdm
 import time
 
-from PIL import Image, ImageFile
-from io import BytesIO
-import base64
 from ofa_compress.arguments import add_data_args
+
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig
 
 
 def random_seed(seed=42, rank=0):
@@ -35,6 +34,14 @@ def random_seed(seed=42, rank=0):
     np.random.seed(seed + rank)
     random.seed(seed + rank)
 
+def get_checkpoint(model):
+    state_dict = model.state_dict()
+
+    for name, p in model.named_parameters():
+        if not p.requires_grad:
+            del state_dict[name]
+
+    return state_dict
 
 def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimizer, lr_scheduler, device_id, wandb):
     num_batches_per_epoch = multi_instruct_loader.num_batches
@@ -303,7 +310,19 @@ def main():
     device_id = args.rank % torch.cuda.device_count()
     model = model.to(device_id)
 
-    ddp_model = DDP(model, device_ids=[device_id])
+    # model = FSDP(
+    #         model,
+    #         auto_wrap_policy=my_auto_wrap_policy,
+    #         sharding_strategy=ShardingStrategy.FULL_SHARD,
+    #         mixed_precision=fpSixteen,
+    #         device_id=torch.cuda.current_device(),
+    #         use_orig_params=True,
+    #     )
+
+    from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+    torch.cuda.set_device(device_id)
+    sharded_model = FSDP(model)
+    # ddp_model = DDP(model, device_ids=[device_id])
 
     multi_instruct_dataset = get_data(args, image_processor, tokenizer, "multi_instruct")
 
@@ -325,7 +344,7 @@ def main():
             {"params": params_without_wd, "weight_decay": 0.0},
         ]
 
-    optimizer = torch.optim.AdamW(get_grouped_params(ddp_model), lr=args.learning_rate)
+    optimizer = torch.optim.AdamW(get_grouped_params(sharded_model), lr=args.learning_rate)
 
     total_training_steps = ((args.train_num_samples) // (args.batch_size * args.world_size)) * args.num_epochs
 
@@ -362,9 +381,9 @@ def main():
         if args.rank == 0:
             print(f"Loading checkpoint from {args.resume_from_checkpoint}")
         checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
-        ddp_model.load_state_dict(checkpoint, False)
+        sharded_model.load_state_dict(checkpoint, False)
 
-    ddp_model.train()
+    sharded_model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
         multi_instruct_dataset.set_epoch(epoch)
@@ -372,7 +391,7 @@ def main():
 
         train_one_epoch(
             args=args,
-            model=ddp_model,
+            model=sharded_model,
             epoch=epoch,
             tokenizer=tokenizer,
             optimizer=optimizer,
@@ -388,7 +407,7 @@ def main():
 
             checkpoint_dict = {
                 "epoch": epoch,
-                "model_state_dict": get_checkpoint(ddp_model),
+                "model_state_dict": get_checkpoint(sharded_model),
                 "optimizer_state_dict": optimizer.state_dict(),
                 "lr_scheduler_state_dict": lr_scheduler.state_dict(),
             }
@@ -406,7 +425,7 @@ def main():
         if not os.path.exists(args.external_save_dir):
             os.makedirs(args.external_save_dir)
 
-        torch.save(get_checkpoint(ddp_model), f"{args.external_save_dir}/final_weights.pt")
+        torch.save(get_checkpoint(sharded_model), f"{args.external_save_dir}/final_weights.pt")
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
 
