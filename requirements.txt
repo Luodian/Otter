@@ -1,6 +1,7 @@
 git+https://github.com/huggingface/transformers
 torch==2.0.0
 torchvision
+mlflow
 braceexpand
 bitsandbytes
 pillow
