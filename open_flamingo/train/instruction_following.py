@@ -12,7 +12,8 @@ import wandb
 from data import get_data
 from distributed import init_distributed_device, world_info_from_env
 from torch.nn.parallel import DistributedDataParallel as DDP
-from train_utils import get_checkpoint, train_one_epoch
+
+# from train_utils import get_checkpoint, train_one_epoch
 from transformers import (
     get_constant_schedule_with_warmup,
     get_cosine_schedule_with_warmup,
@@ -34,6 +35,16 @@ def random_seed(seed=42, rank=0):
     torch.manual_seed(seed + rank)
     np.random.seed(seed + rank)
     random.seed(seed + rank)
+
+
+def get_checkpoint(model):
+    state_dict = model.state_dict()
+
+    for name, p in model.named_parameters():
+        if not p.requires_grad:
+            del state_dict[name]
+
+    return state_dict
 
 
 def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimizer, lr_scheduler, device_id, wandb):
@@ -66,13 +77,13 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
         # print(batch_multi_instruct)
         #### MULTI_INSTRUCT FORWARD PASS ####
-        
-        images = batch_multi_instruct['net_input']['patch_images'].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(1).unsqueeze(1)
 
-        input_ids = batch_multi_instruct['net_input']['input_ids'].to(device_id, dtype=cast_dtype, non_blocking=True)
-        attention_mask = batch_multi_instruct['net_input']['attention_masks'].to(device_id, dtype=cast_dtype, non_blocking=True)
+        images = batch_multi_instruct["net_input"]["patch_images"].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(1).unsqueeze(1)
 
-        labels = batch_multi_instruct['target'].to(device_id, dtype=cast_dtype, non_blocking=True)
+        input_ids = batch_multi_instruct["net_input"]["input_ids"].to(device_id, dtype=cast_dtype, non_blocking=True)
+        attention_mask = batch_multi_instruct["net_input"]["attention_masks"].to(device_id, dtype=cast_dtype, non_blocking=True)
+
+        labels = batch_multi_instruct["target"].to(device_id, dtype=cast_dtype, non_blocking=True)
 
         # labels = input_ids.clone()
         # labels[labels == tokenizer.pad_token_id] = -100
@@ -441,10 +452,6 @@ def main():
     for epoch in range(resume_from_epoch, args.num_epochs):
         multi_instruct_dataset.set_epoch(epoch)
         multi_instruct_loader = multi_instruct_dataset.dataloader
-        # laion_dataset.set_epoch(epoch)
-        # laion_loader = laion_dataset.dataloader
-        # mmc4_dataset.set_epoch(epoch)
-        # mmc4_loader = mmc4_dataset.dataloader
 
         train_one_epoch(
             args=args,
