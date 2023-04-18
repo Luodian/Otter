@@ -301,13 +301,34 @@ class UnifyDataset(OFADataset):
 
 
         elif type == 'qa':
-            question = self.pre_question(question, self.max_src_length)
             if dataset_name == "vqav2":
+                question = self.pre_question(question, self.max_src_length)
                 ref_dict = {item.split('|!+')[1]: float(item.split('|!+')[0]) for item in refs.split('&&')}
                 answer = max(ref_dict, key=ref_dict.get)
                 conf = ref_dict[answer]
             elif dataset_name == "gqa":
+                question = self.pre_question(question, self.max_src_length)
                 answer = refs.strip()
+                conf = torch.tensor([1.0])
+            elif dataset_name == "conversation_58k":
+                self.max_src_length = self.max_tgt_length = 256
+                question = self.pre_question(question, self.max_src_length)
+                question = question.strip("<image>")
+                answer = refs.strip().replace("#"," ")
+                conf = torch.tensor([1.0])
+            elif dataset_name == "detail_23k":
+                self.max_src_length = self.max_tgt_length = 256
+                question = self.pre_question(question, self.max_src_length)
+                question = question.strip("<image>")
+                answer = refs.strip().replace("#"," ")
+                conf = torch.tensor([1.0])
+            elif dataset_name == "conversation_58k":
+                import pdb;pdb.set_trace()
+                self.max_src_length = self.max_tgt_length = 256
+                question = self.pre_question(question, self.max_src_length)
+                caption = caption.replace("<#>"," ")
+                question = caption+" "+question.strip("<image>")
+                answer = refs.strip().replace("#"," ")
                 conf = torch.tensor([1.0])
             # ref_dict = {item.split('|!+')[1]: float(item.split('|!+')[0]) for item in refs.split('&&')}
             # answer = max(ref_dict, key=ref_dict.get)
