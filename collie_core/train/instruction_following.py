@@ -8,11 +8,12 @@ import random
 
 import numpy as np
 import torch
+import torch.nn
 import wandb
 from data import get_data
 from distributed import init_distributed_device, world_info_from_env
 from torch.nn.parallel import DistributedDataParallel as DDP
-from train_utils import get_checkpoint, train_one_epoch
+# from train_utils import get_checkpoint, train_one_epoch
 from transformers import (
     get_constant_schedule_with_warmup,
     get_cosine_schedule_with_warmup,
@@ -24,17 +25,37 @@ from open_flamingo.train.train_utils import AverageMeter, get_autocast, get_cast
 from tqdm import tqdm
 import time
 
-from PIL import Image, ImageFile
-from io import BytesIO
-import base64
 from ofa_compress.arguments import add_data_args
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig
 
+from torch.distributed.fsdp.wrap import (
+    transformer_auto_wrap_policy,
+    MixedPrecision,
+    enable_wrap,
+    wrap,
+)
+import functools
 
 def random_seed(seed=42, rank=0):
     torch.manual_seed(seed + rank)
     np.random.seed(seed + rank)
     random.seed(seed + rank)
 
+def save_fsdp(sharded_model, epoch=0, optimizer=None, lr_scheduler=None, final_weight=False, args=None):
+    save_policy = FullStateDictConfig(offload_to_cpu=True, rank0_only=True)
+    with FSDP.state_dict_type(sharded_model, StateDictType.FULL_STATE_DICT, save_policy):
+        cpu_state = sharded_model.state_dict()
+        
+    checkpoint_dict = {
+        "epoch": epoch,
+        "model_state_dict": cpu_state,
+        "optimizer_state_dict": optimizer.state_dict(),
+        "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+    }
+    if final_weight:
+        torch.save(checkpoint_dict, f"{args.external_save_dir}/final_weight.pt")
+    else:
+        torch.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
 
 def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimizer, lr_scheduler, device_id, wandb):
     num_batches_per_epoch = multi_instruct_loader.num_batches
@@ -301,9 +322,45 @@ def main():
         )
 
     device_id = args.rank % torch.cuda.device_count()
-    model = model.to(device_id)
+    # model = model.to(device_id)
+    # model = FSDP(
+    #         model,
+    #         auto_wrap_policy=my_auto_wrap_policy,
+    #         sharding_strategy=ShardingStrategy.FULL_SHARD,
+    #         mixed_precision=fpSixteen,
+    #         device_id=torch.cuda.current_device(),
+    #         use_orig_params=True,
+    #     )
 
-    ddp_model = DDP(model, device_ids=[device_id])
+    # bf16_ready = (
+    #     torch.version.cuda
+    #     and torch.cuda.is_bf16_supported()
+    #     and LooseVersion(torch.version.cuda) >= "11.0"
+    #     and dist.is_nccl_available()
+    #     and nccl.version() >= (2, 10)
+    # )
+
+    # if bf16_ready:
+    bfSixteen = MixedPrecision(
+        param_dtype=torch.bfloat16,
+        # Gradient communication precision.
+        reduce_dtype=torch.bfloat16,
+        # Buffer precision.
+        buffer_dtype=torch.bfloat16,
+    )
+    # make sure perceiver part are shared in FSDP mode
+    auto_wrap_policy = functools.partial(
+        transformer_auto_wrap_policy,
+        transformer_layer_cls={
+            model.perceiver,
+        },
+    )
+    torch.cuda.set_device(device_id)
+    sharded_model = FSDP(model, 
+                         auto_wrap_policy=auto_wrap_policy,
+                         mixed_precision=bfSixteen,
+                         device_id=torch.cuda.current_device(),
+                         sharding_strategy=ShardingStrategy.FULL_SHARD) # Zero-3: params, grads, optimizer states
 
     multi_instruct_dataset = get_data(args, image_processor, tokenizer, "multi_instruct")
 
@@ -325,7 +382,7 @@ def main():
             {"params": params_without_wd, "weight_decay": 0.0},
         ]
 
-    optimizer = torch.optim.AdamW(get_grouped_params(ddp_model), lr=args.learning_rate)
+    optimizer = torch.optim.AdamW(get_grouped_params(sharded_model), lr=args.learning_rate)
 
     total_training_steps = ((args.train_num_samples) // (args.batch_size * args.world_size)) * args.num_epochs
 
@@ -362,9 +419,9 @@ def main():
         if args.rank == 0:
             print(f"Loading checkpoint from {args.resume_from_checkpoint}")
         checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
-        ddp_model.load_state_dict(checkpoint, False)
+        sharded_model.load_state_dict(checkpoint, False)
 
-    ddp_model.train()
+    sharded_model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
         multi_instruct_dataset.set_epoch(epoch)
@@ -372,7 +429,7 @@ def main():
 
         train_one_epoch(
             args=args,
-            model=ddp_model,
+            model=sharded_model,
             epoch=epoch,
             tokenizer=tokenizer,
             optimizer=optimizer,
@@ -385,16 +442,8 @@ def main():
         if args.rank == 0:
             if not os.path.exists(args.external_save_dir):
                 os.makedirs(args.external_save_dir)
-
-            checkpoint_dict = {
-                "epoch": epoch,
-                "model_state_dict": get_checkpoint(ddp_model),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "lr_scheduler_state_dict": lr_scheduler.state_dict(),
-            }
-
-            # print(f"Saving checkpoint to {args.run_name}/checkpoint_{epoch}.pt")
-            torch.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+  
+            save_fsdp(sharded_model=sharded_model, optimizer=optimizer, lr_scheduler=lr_scheduler, epoch=epoch, args=args)
             if args.report_to_wandb and args.save_checkpoints_to_wandb:
                 wandb.save(f"{args.external_save_dir}/checkpoint_{epoch}.pt")
 
@@ -406,7 +455,7 @@ def main():
         if not os.path.exists(args.external_save_dir):
             os.makedirs(args.external_save_dir)
 
-        torch.save(get_checkpoint(ddp_model), f"{args.external_save_dir}/final_weights.pt")
+        save_fsdp(sharded_model=sharded_model, optimizer=optimizer, lr_scheduler=lr_scheduler, epoch=epoch, final_weight=True, args=args)
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
 
