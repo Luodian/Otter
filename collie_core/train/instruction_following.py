@@ -115,7 +115,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
                 zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
                 m.weight.grad = m.weight.grad * zero_mask
 
-        # model.apply(mask_embedding)
+        model.apply(mask_embedding)
 
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
