@@ -322,6 +322,8 @@ def main():
 
     device_id = args.rank % torch.cuda.device_count()
 
+    sharded_model = DDP(model.to(device_id))
+
     multi_instruct_dataset = get_data(args, image_processor, tokenizer, "multi_instruct")
 
     def get_grouped_params(model):
