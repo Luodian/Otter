@@ -8,12 +8,11 @@ import random
 
 import numpy as np
 import torch
+import torch.nn
 import wandb
 from data import get_data
 from distributed import init_distributed_device, world_info_from_env
 from torch.nn.parallel import DistributedDataParallel as DDP
-
-# from train_utils import get_checkpoint, train_one_epoch
 from transformers import (
     get_constant_schedule_with_warmup,
     get_cosine_schedule_with_warmup,
@@ -25,17 +24,37 @@ from open_flamingo.train.train_utils import AverageMeter, get_autocast, get_cast
 from tqdm import tqdm
 import time
 
-from PIL import Image, ImageFile
-from io import BytesIO
-import base64
 from ofa_compress.arguments import add_data_args
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig
 
+from torch.distributed.fsdp.wrap import (
+    transformer_auto_wrap_policy,
+    MixedPrecision,
+    enable_wrap,
+    wrap,
+)
+import functools
 
 def random_seed(seed=42, rank=0):
     torch.manual_seed(seed + rank)
     np.random.seed(seed + rank)
     random.seed(seed + rank)
 
+def save_fsdp(sharded_model, epoch=0, optimizer=None, lr_scheduler=None, final_weight=False, args=None):
+    save_policy = FullStateDictConfig(offload_to_cpu=True, rank0_only=True)
+    with FSDP.state_dict_type(sharded_model, StateDictType.FULL_STATE_DICT, save_policy):
+        cpu_state = sharded_model.state_dict()
+        
+    checkpoint_dict = {
+        "epoch": epoch,
+        "model_state_dict": cpu_state,
+        "optimizer_state_dict": optimizer.state_dict(),
+        "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+    }
+    if final_weight:
+        torch.save(checkpoint_dict, f"{args.external_save_dir}/final_weight.pt")
+    else:
+        torch.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
 
 def get_checkpoint(model):
     state_dict = model.state_dict()
@@ -100,53 +119,6 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
             )[0]
         divided_loss_multi_instruct = loss_multi_instruct / args.gradient_accumulation_steps
 
-        #### C4 FORWARD PASS ####
-        # images = batch_mmc4[0].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(2)
-        # input_ids = torch.stack([x[0] for x in batch_mmc4[1]]).squeeze(1)
-        # attention_mask = torch.stack([x[1] for x in batch_mmc4[1]]).squeeze(1)
-
-        # # NOTE: irena: expected shape of clip_text_input_ids / attention_mask is (N, I, max_seq_len)
-        # labels = input_ids.clone()
-        # labels[labels == tokenizer.pad_token_id] = -100
-        # labels[:, 0] = -100
-
-        # for i in range(labels.shape[0]):
-        #     # remove loss for any token before the first <image> token
-        #     label_idx = 0
-        #     while label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id:
-        #         labels[i][label_idx] = -100
-        #         label_idx += 1
-
-        #     # get index of all endofchunk tokens in the sequence
-        #     endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
-        #     for endofchunk_idx in endofchunk_idxs:
-        #         token_idx = endofchunk_idx + 1
-        #         while token_idx < labels.shape[1] and labels[i][token_idx] != media_token_id:
-        #             labels[i][token_idx] = -100
-        #             token_idx += 1
-
-        # labels[labels == media_token_id] = -100
-        # labels.to(device_id)
-
-        # with autocast():
-        #     loss_mmc4 = model(
-        #         vision_x=images,
-        #         lang_x=input_ids,
-        #         attention_mask=attention_mask,
-        #         labels=labels,
-        #     )[0]
-
-        #     # if loss is nan, skip this batch
-        #     if torch.isnan(loss_mmc4):
-        #         print("loss is nan, skipping this batch")
-        #         print("input_ids: ", tokenizer.batch_decode(input_ids))
-        #         print("labels: ", labels)
-        #         print("images: ", images)
-        #         optimizer.zero_grad()
-        #         continue
-
-        # divided_loss_mmc4 = loss_mmc4 / args.gradient_accumulation_steps
-
         #### BACKWARD PASS ####
         # loss = divided_loss_laion * args.loss_multiplier + divided_loss_multi_instruct * args.loss_multiplier_mmc4
         divided_loss_multi_instruct.backward()
@@ -199,14 +171,10 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
                     },
                     commit=True,
                 )
-                # wandb.log(
-                #     {"loss_mmc4": divided_loss_mmc4.item(), "global_step": global_step},
-                #     commit=True,
-                # )
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
-            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi_Instruct: {loss_multi_instruct.item():.3f}")
+            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {loss_multi_instruct.item():.3f}")
 
 
 def main():
@@ -260,11 +228,6 @@ def main():
         action="store_true",
         help="delete previous checkpoint when saving new checkpoint",
     )
-    # parser.add_argument(
-    #     "--laion_shards",
-    #     type=str,
-    #     help="path to laion shards, this should be a glob pattern such as /path/to/shards/shard-{0000..0999}.tar",
-    # )
     parser.add_argument(
         "--multi_instruct_path",
         type=str,
@@ -332,18 +295,8 @@ def main():
     parser = add_data_args(parser)
     args = parser.parse_args()
 
-    # if args.laion_shards.startswith("s3"):
-    #     args.laion_shards = f"pipe:aws s3 cp {args.laion_shards} -"
-
-    # if args.mmc4_shards.startswith("s3"):
-    #     args.mmc4_shards = f"pipe:aws s3 cp {args.mmc4_shards} -"
-
     if args.save_checkpoints_to_wandb and not args.report_to_wandb:
         raise ValueError("save_checkpoints_to_wandb requires report_to_wandb")
-
-    # assert (args.train_num_samples_laion // args.batch_size_laion) == (
-    #     args.train_num_samples_mmc4 // args.batch_size_mmc4
-    # ), "number of samples per epoch must be equal for mmc4 and laion"
 
     if args.offline:
         os.environ["WANDB_MODE"] = "offline"
@@ -378,14 +331,47 @@ def main():
         )
 
     device_id = args.rank % torch.cuda.device_count()
-    model = model.to(device_id)
+    # model = model.to(device_id)
+    # model = FSDP(
+    #         model,
+    #         auto_wrap_policy=my_auto_wrap_policy,
+    #         sharding_strategy=ShardingStrategy.FULL_SHARD,
+    #         mixed_precision=fpSixteen,
+    #         device_id=torch.cuda.current_device(),
+    #         use_orig_params=True,
+    #     )
 
-    ddp_model = DDP(model, device_ids=[device_id])
+    # bf16_ready = (
+    #     torch.version.cuda
+    #     and torch.cuda.is_bf16_supported()
+    #     and LooseVersion(torch.version.cuda) >= "11.0"
+    #     and dist.is_nccl_available()
+    #     and nccl.version() >= (2, 10)
+    # )
+
+    # if bf16_ready:
+    bfSixteen = MixedPrecision(
+        param_dtype=torch.bfloat16,
+        # Gradient communication precision.
+        reduce_dtype=torch.bfloat16,
+        # Buffer precision.
+        buffer_dtype=torch.bfloat16,
+    )
+    # make sure perceiver part are shared in FSDP mode
+    auto_wrap_policy = functools.partial(
+        transformer_auto_wrap_policy,
+        transformer_layer_cls={
+            model.perceiver,
+        },
+    )
+    torch.cuda.set_device(device_id)
+    sharded_model = FSDP(model, 
+                         auto_wrap_policy=auto_wrap_policy,
+                         mixed_precision=bfSixteen,
+                         device_id=torch.cuda.current_device(),
+                         sharding_strategy=ShardingStrategy.FULL_SHARD) # Zero-3: params, grads, optimizer states
 
     multi_instruct_dataset = get_data(args, image_processor, tokenizer, "multi_instruct")
-
-    # laion_dataset = get_data(args, image_processor, tokenizer, "image_text")
-    # mmc4_dataset = get_data(args, image_processor, tokenizer, "mmc4")
 
     def get_grouped_params(model):
         params_with_wd, params_without_wd = [], []
@@ -405,7 +391,7 @@ def main():
             {"params": params_without_wd, "weight_decay": 0.0},
         ]
 
-    optimizer = torch.optim.AdamW(get_grouped_params(ddp_model), lr=args.learning_rate)
+    optimizer = torch.optim.AdamW(get_grouped_params(sharded_model), lr=args.learning_rate)
 
     total_training_steps = ((args.train_num_samples) // (args.batch_size * args.world_size)) * args.num_epochs
 
@@ -442,12 +428,9 @@ def main():
         if args.rank == 0:
             print(f"Loading checkpoint from {args.resume_from_checkpoint}")
         checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
-        ddp_model.load_state_dict(checkpoint, False)
-        # optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        # lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
-        # resume_from_epoch = checkpoint["epoch"] + 1
+        sharded_model.load_state_dict(checkpoint, False)
 
-    ddp_model.train()
+    sharded_model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
         multi_instruct_dataset.set_epoch(epoch)
@@ -455,7 +438,7 @@ def main():
 
         train_one_epoch(
             args=args,
-            model=ddp_model,
+            model=sharded_model,
             epoch=epoch,
             tokenizer=tokenizer,
             optimizer=optimizer,
@@ -468,16 +451,8 @@ def main():
         if args.rank == 0:
             if not os.path.exists(args.external_save_dir):
                 os.makedirs(args.external_save_dir)
-
-            checkpoint_dict = {
-                "epoch": epoch,
-                "model_state_dict": get_checkpoint(ddp_model),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "lr_scheduler_state_dict": lr_scheduler.state_dict(),
-            }
-
-            # print(f"Saving checkpoint to {args.run_name}/checkpoint_{epoch}.pt")
-            torch.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+  
+            save_fsdp(sharded_model=sharded_model, optimizer=optimizer, lr_scheduler=lr_scheduler, epoch=epoch, args=args)
             if args.report_to_wandb and args.save_checkpoints_to_wandb:
                 wandb.save(f"{args.external_save_dir}/checkpoint_{epoch}.pt")
 
@@ -489,7 +464,7 @@ def main():
         if not os.path.exists(args.external_save_dir):
             os.makedirs(args.external_save_dir)
 
-        torch.save(get_checkpoint(ddp_model), f"{args.external_save_dir}/final_weights.pt")
+        save_fsdp(sharded_model=sharded_model, optimizer=optimizer, lr_scheduler=lr_scheduler, epoch=epoch, final_weight=True, args=args)
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
 
