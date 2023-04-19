@@ -172,6 +172,9 @@ cache/
 *.pt
 wandb/*
 archived/*
+amlt/*
+.amltignore
+.amltconfig
 
 #yuanhan
 tools
