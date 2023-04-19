@@ -30,6 +30,24 @@ from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictTy
 from accelerate import Accelerator
 from ofa_compress.data_utils.transforms import OriginLargeScaleJitter
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+from accelerate import load_checkpoint_and_dispatch
+from accelerate import Accelerator, DeepSpeedPlugin
+
+=======
+>>>>>>> update fp16
+from torch.distributed.fsdp.wrap import (
+    transformer_auto_wrap_policy,
+    enable_wrap,
+    wrap,
+)
+
+from torch.distributed.fsdp import MixedPrecision, ShardingStrategy
+
+import functools
+>>>>>>> update fp16
 
 def random_seed(seed=42, rank=0):
     torch.manual_seed(seed + rank)
@@ -72,11 +90,19 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
     data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
 
+<<<<<<< HEAD
     orig_embeds_params = {}
 
     for name, param in accelerator.unwrap_model(model).named_parameters():
         if "embed_tokens" in name:
             orig_embeds_params[name] = param.ds_tensor.clone()
+=======
+    # TODO: Yuanhan
+    if args.precision == "fp16":
+        scaler = GradScaler()
+    # import pdb;pdb.set_trace()
+    # model.gradient_checkpointing_enable()        
+>>>>>>> update fp16
 
     # loop through dataloader
     for num_steps, (batch_multi_instruct) in tqdm(
@@ -101,6 +127,15 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
         labels = batch_multi_instruct["target"].to(device_id, dtype=cast_dtype, non_blocking=True)
 
+<<<<<<< HEAD
+=======
+        # labels = input_ids.clone()
+        # labels[labels == tokenizer.pad_token_id] = -100
+        # labels[:, 0] = -100
+        # labels[labels == media_token_id] = -100
+        # labels.to(device_id)
+        # import pdb;pdb.set_trace()
+>>>>>>> update fp16
         with autocast():
             loss_multi_instruct = model(
                 vision_x=images,
@@ -108,18 +143,39 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
                 attention_mask=attention_mask,
                 labels=labels,
             )[0]
+        # import pdb;pdb.set_trace()
         divided_loss_multi_instruct = loss_multi_instruct / args.gradient_accumulation_steps
 
         #### BACKWARD PASS ####
+<<<<<<< HEAD
+=======
+        # loss = divided_loss_laion * args.loss_multiplier + divided_loss_multi_instruct * args.loss_multiplier_mmc4
+<<<<<<< HEAD
+        # divided_loss_multi_instruct.backward()
+>>>>>>> update fp16
         accelerator.backward(divided_loss_multi_instruct)
+=======
+        if args.precision == "fp16":
+            scaler.scale(divided_loss_multi_instruct).backward()
+        else:
+            divided_loss_multi_instruct.backward()
+        
+
+>>>>>>> update fp16
 
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
         # step optimizer and log
         if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (num_steps == num_batches_per_epoch - 1):
-            optimizer.step()
-            lr_scheduler.step()
-            optimizer.zero_grad()
+            if args.precision == "fp16":
+                scaler.step(optimizer)
+                scaler.update()
+                lr_scheduler.step()
+                optimizer.zero_grad()
+            else:
+                optimizer.step()
+                lr_scheduler.step()
+                optimizer.zero_grad()                
 
             # RESET PARAMS FOR EMBEDDINGS
             for name, param in accelerator.unwrap_model(model).named_parameters():
@@ -162,6 +218,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
             print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {loss_multi_instruct.item():.3f}")
+
 
 
 def main():
