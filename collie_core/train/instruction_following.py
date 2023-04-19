@@ -28,12 +28,8 @@ import time
 from ofa_compress.arguments import add_data_args
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig
 
-# from torch.distributed.fsdp.wrap import (
-#     transformer_auto_wrap_policy,
-#     MixedPrecision,
-#     enable_wrap,
-#     wrap,
-# )
+from accelerate import load_checkpoint_and_dispatch
+from accelerate import Accelerator, DeepSpeedPlugin
 import functools
 
 def random_seed(seed=42, rank=0):
@@ -57,8 +53,9 @@ def save_fsdp(sharded_model, epoch=0, optimizer=None, lr_scheduler=None, final_w
     else:
         torch.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
 
-def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimizer, lr_scheduler, device_id, wandb):
-    num_batches_per_epoch = multi_instruct_loader.num_batches
+def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
+    # num_batches_per_epoch = multi_instruct_loader.num_batches
+    num_batches_per_epoch = len(multi_instruct_loader)
     total_training_steps = num_batches_per_epoch * args.num_epochs
 
     autocast = get_autocast(args.precision)
@@ -95,12 +92,6 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
         labels = batch_multi_instruct['target'].to(device_id, dtype=cast_dtype, non_blocking=True)
 
-        # labels = input_ids.clone()
-        # labels[labels == tokenizer.pad_token_id] = -100
-        # labels[:, 0] = -100
-        # labels[labels == media_token_id] = -100
-        # labels.to(device_id)
-
         with autocast():
             loss_multi_instruct = model(
                 vision_x=images,
@@ -112,7 +103,8 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
         #### BACKWARD PASS ####
         # loss = divided_loss_laion * args.loss_multiplier + divided_loss_multi_instruct * args.loss_multiplier_mmc4
-        divided_loss_multi_instruct.backward()
+        # divided_loss_multi_instruct.backward()
+        accelerator.backward(divided_loss_multi_instruct)
 
         #### MASK GRADIENTS FOR EMBEDDINGS ####
         # Note (anas): Do not apply weight decay to embeddings as it will break this function.
@@ -123,7 +115,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
                 zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
                 m.weight.grad = m.weight.grad * zero_mask
 
-        model.apply(mask_embedding)
+        # model.apply(mask_embedding)
 
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
@@ -322,47 +314,6 @@ def main():
         )
 
     device_id = args.rank % torch.cuda.device_count()
-    # model = model.to(device_id)
-    # model = FSDP(
-    #         model,
-    #         auto_wrap_policy=my_auto_wrap_policy,
-    #         sharding_strategy=ShardingStrategy.FULL_SHARD,
-    #         mixed_precision=fpSixteen,
-    #         device_id=torch.cuda.current_device(),
-    #         use_orig_params=True,
-    #     )
-
-    # bf16_ready = (
-    #     torch.version.cuda
-    #     and torch.cuda.is_bf16_supported()
-    #     and LooseVersion(torch.version.cuda) >= "11.0"
-    #     and dist.is_nccl_available()
-    #     and nccl.version() >= (2, 10)
-    # )
-
-    # if bf16_ready:
-    # bfSixteen = MixedPrecision(
-    #     param_dtype=torch.bfloat16,
-    #     # Gradient communication precision.
-    #     reduce_dtype=torch.bfloat16,
-    #     # Buffer precision.
-    #     buffer_dtype=torch.bfloat16,
-    # )
-    # # make sure perceiver part are shared in FSDP mode
-    # auto_wrap_policy = functools.partial(
-    #     transformer_auto_wrap_policy,
-    #     transformer_layer_cls={
-    #         model.perceiver,
-    #     },
-    # )
-    model = model.to(device_id)
-    sharded_model = DDP(model)
-    # torch.cuda.set_device(device_id)
-    # sharded_model = FSDP(model, 
-    #                      auto_wrap_policy=auto_wrap_policy,
-    #                      mixed_precision=bfSixteen,
-    #                      device_id=torch.cuda.current_device(),
-    #                      sharding_strategy=ShardingStrategy.FULL_SHARD) # Zero-3: params, grads, optimizer states
 
     multi_instruct_dataset = get_data(args, image_processor, tokenizer, "multi_instruct")
 
@@ -384,7 +335,7 @@ def main():
             {"params": params_without_wd, "weight_decay": 0.0},
         ]
 
-    optimizer = torch.optim.AdamW(get_grouped_params(sharded_model), lr=args.learning_rate)
+    optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
 
     total_training_steps = ((args.train_num_samples) // (args.batch_size * args.world_size)) * args.num_epochs
 
@@ -421,22 +372,28 @@ def main():
         if args.rank == 0:
             print(f"Loading checkpoint from {args.resume_from_checkpoint}")
         checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
-        sharded_model.load_state_dict(checkpoint, False)
+        model.load_state_dict(checkpoint, False)
 
-    sharded_model.train()
+    deepspeed_plugin = DeepSpeedPlugin(zero_stage=3, gradient_accumulation_steps=1, offload_optimizer_device='cpu', offload_param_device='cpu')
+    accelerator = Accelerator(deepspeed_plugin=deepspeed_plugin, mixed_precision="fp16")
+    accelerator.state.deepspeed_plugin.deepspeed_config['train_micro_batch_size_per_gpu'] = args.batch_size
+    model, optimizer = accelerator.prepare(model, optimizer)
+    model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
         multi_instruct_dataset.set_epoch(epoch)
         multi_instruct_loader = multi_instruct_dataset.dataloader
+        multi_instruct_loader = accelerator.prepare(multi_instruct_loader)
 
         train_one_epoch(
             args=args,
-            model=sharded_model,
+            model=model,
             epoch=epoch,
             tokenizer=tokenizer,
             optimizer=optimizer,
             lr_scheduler=lr_scheduler,
             multi_instruct_loader=multi_instruct_loader,
+            accelerator=accelerator,
             device_id=device_id,
             wandb=wandb,
         )
@@ -445,7 +402,7 @@ def main():
             if not os.path.exists(args.external_save_dir):
                 os.makedirs(args.external_save_dir)
   
-            save_fsdp(sharded_model=sharded_model, optimizer=optimizer, lr_scheduler=lr_scheduler, epoch=epoch, args=args)
+            save_fsdp(sharded_model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, epoch=epoch, args=args)
             if args.report_to_wandb and args.save_checkpoints_to_wandb:
                 wandb.save(f"{args.external_save_dir}/checkpoint_{epoch}.pt")
 
@@ -457,7 +414,7 @@ def main():
         if not os.path.exists(args.external_save_dir):
             os.makedirs(args.external_save_dir)
 
-        save_fsdp(sharded_model=sharded_model, optimizer=optimizer, lr_scheduler=lr_scheduler, epoch=epoch, final_weight=True, args=args)
+        save_fsdp(sharded_model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, epoch=epoch, final_weight=True, args=args)
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
 
