@@ -310,7 +310,7 @@ class UnifyDataset(OFADataset):
                 question = self.pre_question(question, self.max_src_length)
                 answer = refs.strip()
                 conf = torch.tensor([1.0])
-            elif dataset_name == "conversation_58k":
+            elif dataset_name == "complex_reasoning_77k":
                 self.max_src_length = self.max_tgt_length = 256
                 question = self.pre_question(question, self.max_src_length)
                 question = question.strip("<image>")
