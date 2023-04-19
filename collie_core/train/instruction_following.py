@@ -28,12 +28,12 @@ import time
 from ofa_compress.arguments import add_data_args
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig
 
-from torch.distributed.fsdp.wrap import (
-    transformer_auto_wrap_policy,
-    MixedPrecision,
-    enable_wrap,
-    wrap,
-)
+# from torch.distributed.fsdp.wrap import (
+#     transformer_auto_wrap_policy,
+#     MixedPrecision,
+#     enable_wrap,
+#     wrap,
+# )
 import functools
 
 def random_seed(seed=42, rank=0):
@@ -165,7 +165,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
-            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss LAION: {loss_laion.item():.3f} // Loss MMC4: {loss_mmc4.item():.3f}")
+            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {loss_multi_instruct.item():.3f}")
 
 
 def main():
@@ -237,8 +237,8 @@ def main():
     parser.add_argument("--weight_decay", default=0.1, type=float)
     parser.add_argument(
         "--precision",
-        choices=["amp_bf16", "amp_bfloat16", "bf16", "fp16", "fp32"],
-        default="fp32",
+        choices=["amp_bf16", "amp_bfloat16", "bf16", "amp", "fp16", "fp32"],
+        default="amp",
         help="Floating point precision.",
     )
     # data args
@@ -341,26 +341,28 @@ def main():
     # )
 
     # if bf16_ready:
-    bfSixteen = MixedPrecision(
-        param_dtype=torch.bfloat16,
-        # Gradient communication precision.
-        reduce_dtype=torch.bfloat16,
-        # Buffer precision.
-        buffer_dtype=torch.bfloat16,
-    )
-    # make sure perceiver part are shared in FSDP mode
-    auto_wrap_policy = functools.partial(
-        transformer_auto_wrap_policy,
-        transformer_layer_cls={
-            model.perceiver,
-        },
-    )
-    torch.cuda.set_device(device_id)
-    sharded_model = FSDP(model, 
-                         auto_wrap_policy=auto_wrap_policy,
-                         mixed_precision=bfSixteen,
-                         device_id=torch.cuda.current_device(),
-                         sharding_strategy=ShardingStrategy.FULL_SHARD) # Zero-3: params, grads, optimizer states
+    # bfSixteen = MixedPrecision(
+    #     param_dtype=torch.bfloat16,
+    #     # Gradient communication precision.
+    #     reduce_dtype=torch.bfloat16,
+    #     # Buffer precision.
+    #     buffer_dtype=torch.bfloat16,
+    # )
+    # # make sure perceiver part are shared in FSDP mode
+    # auto_wrap_policy = functools.partial(
+    #     transformer_auto_wrap_policy,
+    #     transformer_layer_cls={
+    #         model.perceiver,
+    #     },
+    # )
+    model = model.to(device_id)
+    sharded_model = DDP(model)
+    # torch.cuda.set_device(device_id)
+    # sharded_model = FSDP(model, 
+    #                      auto_wrap_policy=auto_wrap_policy,
+    #                      mixed_precision=bfSixteen,
+    #                      device_id=torch.cuda.current_device(),
+    #                      sharding_strategy=ShardingStrategy.FULL_SHARD) # Zero-3: params, grads, optimizer states
 
     multi_instruct_dataset = get_data(args, image_processor, tokenizer, "multi_instruct")
 
