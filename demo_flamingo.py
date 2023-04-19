@@ -1,3 +1,4 @@
+from PIL import Image
 import requests
 import argparse
 import os
@@ -113,20 +114,20 @@ with gr.Blocks() as demo:
     gr.Markdown(title)
     with gr.Row():
         with gr.Column(scale=0.5):
-            image_1 = gr.Image(type="pil", value=requests.get(
+            image_1 = gr.Image(type="pil", value=Image.open(requests.get(
         "http://images.cocodataset.org/val2017/000000039769.jpg", 
         stream=True
-    ).raw, label="Image_1")
+    ).raw), label="Image_1")
             text_1 = gr.Textbox(label='text_1', placeholder='An image of two cats.')
-            image_2 = gr.Image(type="pil", value=requests.get(
+            image_2 = gr.Image(type="pil", value=Image.open(requests.get(
         "http://images.cocodataset.org/test-stuff2017/000000028137.jpg", 
         stream=True
-    ).raw, label="Image_2")
+    ).raw), label="Image_2")
             text_2 = gr.Textbox(label='text_2', placeholder='An image of a bathroom sink.')
-            image_3 = gr.Image(type="pil", value=requests.get(
+            image_3 = gr.Image(type="pil", value=Image.open(requests.get(
         "http://images.cocodataset.org/test-stuff2017/000000028352.jpg", 
         stream=True
-    ).raw, label="Image_3")
+    ).raw), label="Image_3")
             text_3 = gr.Textbox(label='text_3', placeholder='An image of')
             upload_button = gr.Button(value="Upload & Start", interactive=True, variant="primary")
             clear = gr.Button("Restart")
