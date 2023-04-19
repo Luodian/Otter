@@ -301,7 +301,6 @@ class UnifyDataset(OFADataset):
 
 
         elif type == 'qa':
-            import pdb;pdb.set_trace()
             if dataset_name == "vqav2":
                 question = self.pre_question(question, self.max_src_length)
                 ref_dict = {item.split('|!+')[1]: float(item.split('|!+')[0]) for item in refs.split('&&')}
