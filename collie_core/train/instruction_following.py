@@ -29,15 +29,9 @@ from ofa_compress.arguments import add_data_args
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig
 from accelerate import Accelerator
 from ofa_compress.data_utils.transforms import OriginLargeScaleJitter
-
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
 from accelerate import load_checkpoint_and_dispatch
 from accelerate import Accelerator, DeepSpeedPlugin
 
-=======
->>>>>>> update fp16
 from torch.distributed.fsdp.wrap import (
     transformer_auto_wrap_policy,
     enable_wrap,
@@ -98,8 +92,8 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
             orig_embeds_params[name] = param.ds_tensor.clone()
 =======
     # TODO: Yuanhan
-    if args.precision == "fp16":
-        scaler = GradScaler()
+    # if args.precision == "fp16":
+    #     scaler = GradScaler()
     # import pdb;pdb.set_trace()
     # model.gradient_checkpointing_enable()        
 >>>>>>> update fp16
@@ -127,15 +121,12 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
         labels = batch_multi_instruct["target"].to(device_id, dtype=cast_dtype, non_blocking=True)
 
-<<<<<<< HEAD
-=======
         # labels = input_ids.clone()
         # labels[labels == tokenizer.pad_token_id] = -100
         # labels[:, 0] = -100
         # labels[labels == media_token_id] = -100
         # labels.to(device_id)
         # import pdb;pdb.set_trace()
->>>>>>> update fp16
         with autocast():
             loss_multi_instruct = model(
                 vision_x=images,
@@ -150,32 +141,29 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 <<<<<<< HEAD
 =======
         # loss = divided_loss_laion * args.loss_multiplier + divided_loss_multi_instruct * args.loss_multiplier_mmc4
-<<<<<<< HEAD
         # divided_loss_multi_instruct.backward()
 >>>>>>> update fp16
         accelerator.backward(divided_loss_multi_instruct)
-=======
-        if args.precision == "fp16":
-            scaler.scale(divided_loss_multi_instruct).backward()
-        else:
-            divided_loss_multi_instruct.backward()
+        # if args.precision == "fp16":
+        #     scaler.scale(divided_loss_multi_instruct).backward()
+        # else:
+        #     divided_loss_multi_instruct.backward()
         
 
->>>>>>> update fp16
 
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
         # step optimizer and log
         if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (num_steps == num_batches_per_epoch - 1):
-            if args.precision == "fp16":
-                scaler.step(optimizer)
-                scaler.update()
-                lr_scheduler.step()
-                optimizer.zero_grad()
-            else:
-                optimizer.step()
-                lr_scheduler.step()
-                optimizer.zero_grad()                
+            # if args.precision == "fp16":
+            #     scaler.step(optimizer)
+            #     scaler.update()
+            #     lr_scheduler.step()
+            #     optimizer.zero_grad()
+            # else:
+            optimizer.step()
+            lr_scheduler.step()
+            optimizer.zero_grad()                
 
             # RESET PARAMS FOR EMBEDDINGS
             for name, param in accelerator.unwrap_model(model).named_parameters():
