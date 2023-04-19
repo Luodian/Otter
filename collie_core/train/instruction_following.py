@@ -41,7 +41,6 @@ from torch.distributed.fsdp.wrap import (
 from torch.distributed.fsdp import MixedPrecision, ShardingStrategy
 
 import functools
->>>>>>> update fp16
 
 def random_seed(seed=42, rank=0):
     torch.manual_seed(seed + rank)
@@ -84,19 +83,12 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
     data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
 
-<<<<<<< HEAD
+
     orig_embeds_params = {}
 
     for name, param in accelerator.unwrap_model(model).named_parameters():
         if "embed_tokens" in name:
             orig_embeds_params[name] = param.ds_tensor.clone()
-=======
-    # TODO: Yuanhan
-    # if args.precision == "fp16":
-    #     scaler = GradScaler()
-    # import pdb;pdb.set_trace()
-    # model.gradient_checkpointing_enable()        
->>>>>>> update fp16
 
     # loop through dataloader
     for num_steps, (batch_multi_instruct) in tqdm(
@@ -121,12 +113,6 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
         labels = batch_multi_instruct["target"].to(device_id, dtype=cast_dtype, non_blocking=True)
 
-        # labels = input_ids.clone()
-        # labels[labels == tokenizer.pad_token_id] = -100
-        # labels[:, 0] = -100
-        # labels[labels == media_token_id] = -100
-        # labels.to(device_id)
-        # import pdb;pdb.set_trace()
         with autocast():
             loss_multi_instruct = model(
                 vision_x=images,
@@ -138,16 +124,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         divided_loss_multi_instruct = loss_multi_instruct / args.gradient_accumulation_steps
 
         #### BACKWARD PASS ####
-<<<<<<< HEAD
-=======
-        # loss = divided_loss_laion * args.loss_multiplier + divided_loss_multi_instruct * args.loss_multiplier_mmc4
-        # divided_loss_multi_instruct.backward()
->>>>>>> update fp16
         accelerator.backward(divided_loss_multi_instruct)
-        # if args.precision == "fp16":
-        #     scaler.scale(divided_loss_multi_instruct).backward()
-        # else:
-        #     divided_loss_multi_instruct.backward()
         
 
 
@@ -155,12 +132,6 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
         # step optimizer and log
         if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (num_steps == num_batches_per_epoch - 1):
-            # if args.precision == "fp16":
-            #     scaler.step(optimizer)
-            #     scaler.update()
-            #     lr_scheduler.step()
-            #     optimizer.zero_grad()
-            # else:
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()                
@@ -366,8 +337,6 @@ def main():
         )
 
     device_id = args.rank % torch.cuda.device_count()
-
-    sharded_model = DDP(model.to(device_id))
 
     multi_instruct_dataset = get_data(args, image_processor, tokenizer, "multi_instruct")
 
