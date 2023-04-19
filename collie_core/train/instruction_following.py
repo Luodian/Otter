@@ -374,8 +374,9 @@ def main():
         checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
         model.load_state_dict(checkpoint, False)
 
-    deepspeed_plugin = DeepSpeedPlugin(zero_stage=3, gradient_accumulation_steps=1, offload_optimizer_device='cpu', offload_param_device='cpu')
-    accelerator = Accelerator(deepspeed_plugin=deepspeed_plugin, mixed_precision="fp16")
+    # deepspeed_plugin = DeepSpeedPlugin(zero_stage=3, gradient_accumulation_steps=1, offload_optimizer_device='cpu', offload_param_device='cpu')
+    # accelerator = Accelerator(deepspeed_plugin=deepspeed_plugin, mixed_precision="fp16")
+    accelerator = Accelerator()
     accelerator.state.deepspeed_plugin.deepspeed_config['train_micro_batch_size_per_gpu'] = args.batch_size
     model, optimizer = accelerator.prepare(model, optimizer)
     model.train()
