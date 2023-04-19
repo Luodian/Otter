@@ -1,8 +1,0 @@
-{
-    "lang_encoder_path": "facebook/opt-1.3b",
-    "tokenizer_path": "facebook/opt-1.3b",
-    "vision_encoder_path": "ViT-L-14",
-    "vision_encoder_pretrained": "openai",
-    "use_local_files": true,
-    "cross_attn_every_n_layers": 4
-}
