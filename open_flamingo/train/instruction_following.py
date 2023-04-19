@@ -56,6 +56,16 @@ def save_fsdp(sharded_model, epoch=0, optimizer=None, lr_scheduler=None, final_w
     else:
         torch.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
 
+def get_checkpoint(model):
+    state_dict = model.state_dict()
+
+    for name, p in model.named_parameters():
+        if not p.requires_grad:
+            del state_dict[name]
+
+    return state_dict
+
+
 def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimizer, lr_scheduler, device_id, wandb):
     num_batches_per_epoch = multi_instruct_loader.num_batches
     total_training_steps = num_batches_per_epoch * args.num_epochs
@@ -86,13 +96,13 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
         # print(batch_multi_instruct)
         #### MULTI_INSTRUCT FORWARD PASS ####
-        
-        images = batch_multi_instruct['net_input']['patch_images'].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(1).unsqueeze(1)
 
-        input_ids = batch_multi_instruct['net_input']['input_ids'].to(device_id, dtype=cast_dtype, non_blocking=True)
-        attention_mask = batch_multi_instruct['net_input']['attention_masks'].to(device_id, dtype=cast_dtype, non_blocking=True)
+        images = batch_multi_instruct["net_input"]["patch_images"].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(1).unsqueeze(1)
 
-        labels = batch_multi_instruct['target'].to(device_id, dtype=cast_dtype, non_blocking=True)
+        input_ids = batch_multi_instruct["net_input"]["input_ids"].to(device_id, dtype=cast_dtype, non_blocking=True)
+        attention_mask = batch_multi_instruct["net_input"]["attention_masks"].to(device_id, dtype=cast_dtype, non_blocking=True)
+
+        labels = batch_multi_instruct["target"].to(device_id, dtype=cast_dtype, non_blocking=True)
 
         # labels = input_ids.clone()
         # labels[labels == tokenizer.pad_token_id] = -100

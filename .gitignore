@@ -175,6 +175,7 @@ archived/*
 amlt/*
 .amltignore
 .amltconfig
+example_unified_data/*
 
 #yuanhan
 tools

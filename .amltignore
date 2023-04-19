@@ -1,3 +1,8 @@
+*.pyc
+open_flamingo.egg-info
+.vscode
+llama-7b-hf/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -152,5 +157,22 @@ debug*/
 *.dat
 *.tsv
 *.gz
+*.pyc
 
 cache/
+*/__pycache__/**
+*/.pytest_cache/**
+*/.mypy_cache/**
+*/.cache/**
+*/.coverage
+*/.coverage.*
+*/.c
+
+*.zip
+*.pt
+wandb/*
+archived/*
+amlt/*
+.amltconfig
+LAVIS/*
+*.png
