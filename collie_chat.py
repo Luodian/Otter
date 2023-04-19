@@ -8,25 +8,14 @@ import torch.backends.cudnn as cudnn
 import gradio as gr
 
 from collie_core.collie_chat.chat import Chat, CONV_LANG, CONV_VISION
-# from minigpt4.common.config import Config
-# from minigpt4.common.dist_utils import get_rank
-# from minigpt4.common.registry import registry
-# from minigpt4.conversation.conversation import Chat, CONV_VISION
-
-# # imports modules for registration
-# from minigpt4.datasets.builders import *
-# from minigpt4.models import *
-# from minigpt4.processors import *
-# from minigpt4.runners import *
-# from minigpt4.tasks import *
-
 from open_flamingo import create_model_and_transforms
 from huggingface_hub import hf_hub_download
 import torch
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Demo")
-    parser.add_argument("--cfg-path", required=True, help="path to configuration file.")
+    parser.add_argument("--lm_path", required=True, help="path to language model")
+    parser.add_argument("--checkpoint_path", required=True, help="path to best collie checkpoint")
     parser.add_argument(
         "--options",
         nargs="+",
@@ -72,7 +61,8 @@ def initialize_model(lm_path, cross_attn_every_n_layers, checkpoint_path=None):
 #             Model Initialization
 # ========================================
 
-model, image_processor, tokenizer = initialize_model(lm_path="facebook/opt-1.3b", cross_attn_every_n_layers=1)
+args = parse_args()
+model, image_processor, tokenizer = initialize_model(lm_path=args.lm_path, cross_attn_every_n_layers=args.cross_attn_every_n_layers, checkpoint_path=args.checkpoint_path)
 chat_model = Chat(model, image_processor, tokenizer)
 
 # ========================================

@@ -1,8 +1,8 @@
-einops
-einops-exts
-transformers>=4.28.0
+git+https://github.com/huggingface/transformers
 torch==2.0.0
 torchvision
+mlflow
+braceexpand
 bitsandbytes
 pillow
 more-itertools
@@ -20,6 +20,7 @@ ftfy
 iopath
 ipython
 omegaconf
+opencv-python
 opencv-python-headless==4.5.5.64
 opendatasets
 packaging
@@ -36,3 +37,6 @@ streamlit
 timm==0.4.12
 tqdm
 wheel
+einops
+einops-exts
+webdataset
