@@ -1,4 +1,5 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer
+# from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import LlamaForCausalLM, LlamaTokenizer
 import open_clip
 
 from .flamingo import Flamingo
@@ -19,7 +20,6 @@ def create_model_and_transforms(
     """
     Initialize a Flamingo model from a pretrained vision encoder and language encoder.
     Appends special tokens to the tokenizer and freezes backbones.
-
     Args:
         clip_vision_encoder_path (str): path to pretrained clip model (e.g. "ViT-B-32")
         clip_vision_encoder_pretrained (str): name of pretraining dataset for clip model (e.g. "laion2b_s32b_b79k")
@@ -39,7 +39,7 @@ def create_model_and_transforms(
     # set the vision encoder to output the visual features
     vision_encoder.visual.output_tokens = True
 
-    text_tokenizer = AutoTokenizer.from_pretrained(
+    text_tokenizer = LlamaTokenizer.from_pretrained(
         tokenizer_path, local_files_only=use_local_files
     )
     # add Flamingo special tokens to the tokenizer
@@ -51,7 +51,7 @@ def create_model_and_transforms(
         # modify labels for the loss.
         text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
 
-    lang_encoder = AutoModelForCausalLM.from_pretrained(
+    lang_encoder = LlamaForCausalLM.from_pretrained(
         lang_encoder_path, local_files_only=use_local_files
     )
     extend_instance(lang_encoder, FlamingoLMMixin)
@@ -83,7 +83,7 @@ def create_model_and_transforms(
     model.lang_encoder.get_input_embeddings().requires_grad_(True)
 
     print(
-        f"Flamingo model initialized with {sum(p.numel() for p in model.parameters() if p.requires_grad)} trainable parameters"
+        f"Flamingo model initialized with {sum(p.numel() for p in model.parameters() if p.requires_grad) / 1e9} B trainable parameters"
     )
 
     return model, image_processor, text_tokenizer
