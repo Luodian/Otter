@@ -1,4 +1,4 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import LlamaForCausalLM, LlamaTokenizer
 import open_clip
 
 from .flamingo import Flamingo
@@ -39,7 +39,7 @@ def create_model_and_transforms(
     # set the vision encoder to output the visual features
     vision_encoder.visual.output_tokens = True
 
-    text_tokenizer = AutoTokenizer.from_pretrained(
+    text_tokenizer = LlamaTokenizer.from_pretrained(
         tokenizer_path, local_files_only=use_local_files
     )
     # add Flamingo special tokens to the tokenizer
@@ -51,7 +51,7 @@ def create_model_and_transforms(
         # modify labels for the loss.
         text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
 
-    lang_encoder = AutoModelForCausalLM.from_pretrained(
+    lang_encoder = LlamaForCausalLM.from_pretrained(
         lang_encoder_path, local_files_only=use_local_files
     )
     extend_instance(lang_encoder, FlamingoLMMixin)
