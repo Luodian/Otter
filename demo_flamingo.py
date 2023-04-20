@@ -60,7 +60,7 @@ def initialize_model(lm_path, cross_attn_every_n_layers, checkpoint_path=None):
 # ========================================
 
 args = parse_args()
-model, image_processor, tokenizer = initialize_model(lm_path=args.lm_path, cross_attn_every_n_layers=args.cross_attn_every_n_layers, checkpoint_path=args.checkpoint_path)
+# model, image_processor, tokenizer = initialize_model(lm_path=args.lm_path, cross_attn_every_n_layers=args.cross_attn_every_n_layers, checkpoint_path=args.checkpoint_path)
 
 # ========================================
 #             Gradio Setting
@@ -73,24 +73,25 @@ def gradio_reset(chat_state):
 
 
 def upload_and_anwer(image_1, image_2, image_3, text_1, text_2, text_3, num_beams):
-    vision_x = [image_processor(image_1).unsqueeze(0), image_processor(image_2).unsqueeze(0), image_processor(image_3).unsqueeze(0)]
-    vision_x = torch.cat(vision_x, dim=0)
-    vision_x = vision_x.unsqueeze(1).unsqueeze(0)
-    vision_x = vision_x.to("cuda")
-    tokenizer.padding_side = "left"  # For generation padding tokens should be on the left
-    lang_x = tokenizer(
-        [f"<image>{text_1}<|endofchunk|><image>{text_2}<|endofchunk|><image>{text_3}"],
-        return_tensors="pt",
-    )
-    lang_x = {k: v.to("cuda") for k, v in lang_x.items()}
-    generated_tokens = model.generate(
-        vision_x=vision_x,
-        lang_x=lang_x["input_ids"],
-        attention_mask=lang_x["attention_mask"],
-        max_new_tokens=20,
-        num_beams=num_beams,
-    )
-    generated_text = tokenizer.decode(generated_tokens[0])
+    # vision_x = [image_processor(image_1).unsqueeze(0), image_processor(image_2).unsqueeze(0), image_processor(image_3).unsqueeze(0)]
+    # vision_x = torch.cat(vision_x, dim=0)
+    # vision_x = vision_x.unsqueeze(1).unsqueeze(0)
+    # vision_x = vision_x.to("cuda")
+    # tokenizer.padding_side = "left"  # For generation padding tokens should be on the left
+    # lang_x = tokenizer(
+    #     [f"<image>{text_1}<|endofchunk|><image>{text_2}<|endofchunk|><image>{text_3}"],
+    #     return_tensors="pt",
+    # )
+    # lang_x = {k: v.to("cuda") for k, v in lang_x.items()}
+    # generated_tokens = model.generate(
+    #     vision_x=vision_x,
+    #     lang_x=lang_x["input_ids"],
+    #     attention_mask=lang_x["attention_mask"],
+    #     max_new_tokens=20,
+    #     num_beams=num_beams,
+    # )
+    # generated_text = tokenizer.decode(generated_tokens[0])
+    generated_text = f"<image>{text_1}<|endofchunk|><image>{text_2}<|endofchunk|><image>{text_3}"
     return generated_text
 
 
