@@ -1,4 +1,4 @@
-# from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers import LlamaForCausalLM, LlamaTokenizer
 import open_clip
 
@@ -39,9 +39,14 @@ def create_model_and_transforms(
     # set the vision encoder to output the visual features
     vision_encoder.visual.output_tokens = True
 
-    text_tokenizer = LlamaTokenizer.from_pretrained(
-        tokenizer_path, local_files_only=use_local_files
-    )
+    if "llama" in lang_encoder_path.lower():
+        text_tokenizer = LlamaTokenizer.from_pretrained(
+            tokenizer_path, local_files_only=use_local_files
+        )
+    elif 'opt' in lang_encoder_path.lower():
+        text_tokenizer = AutoTokenizer.from_pretrained(
+            tokenizer_path, local_files_only=use_local_files
+        )
     # add Flamingo special tokens to the tokenizer
     text_tokenizer.add_special_tokens(
         {"additional_special_tokens": ["<|endofchunk|>", "<image>"]}
@@ -51,9 +56,14 @@ def create_model_and_transforms(
         # modify labels for the loss.
         text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
 
-    lang_encoder = LlamaForCausalLM.from_pretrained(
-        lang_encoder_path, local_files_only=use_local_files
-    )
+    if "llama" in lang_encoder_path.lower():
+        lang_encoder = LlamaForCausalLM.from_pretrained(
+            lang_encoder_path, local_files_only=use_local_files
+        )
+    elif 'opt' in lang_encoder_path.lower():
+        lang_encoder = AutoModelForCausalLM.from_pretrained(
+            lang_encoder_path, local_files_only=use_local_files
+        )
     extend_instance(lang_encoder, FlamingoLMMixin)
 
     if decoder_layers_attr_name is None:
