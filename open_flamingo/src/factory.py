@@ -39,7 +39,7 @@ def create_model_and_transforms(
     # set the vision encoder to output the visual features
     vision_encoder.visual.output_tokens = True
 
-    if "llama" in lang_encoder_path.lower():
+    if "llama" in lang_encoder_path.lower() or "vicuna" in lang_encoder_path.lower():
         text_tokenizer = LlamaTokenizer.from_pretrained(
             tokenizer_path, local_files_only=use_local_files
         )
@@ -56,7 +56,7 @@ def create_model_and_transforms(
         # modify labels for the loss.
         text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
 
-    if "llama" in lang_encoder_path.lower():
+    if "llama" in lang_encoder_path.lower() or "vicuna" in lang_encoder_path.lower():
         lang_encoder = LlamaForCausalLM.from_pretrained(
             lang_encoder_path, local_files_only=use_local_files
         )
