@@ -1,5 +1,6 @@
 compute_environment: LOCAL_MACHINE
 deepspeed_config:
+<<<<<<< HEAD:accelerate_config_zero3.yaml
   deepspeed_config_file: /home/v-boli7/projects/PET-VLM/ds_config.json
   # gradient_accumulation_steps: 1
   # gradient_clipping: 1.0
@@ -8,6 +9,10 @@ deepspeed_config:
   # zero3_init_flag: true
   # zero3_save_16bit_model: true
   # zero_stage: 3
+=======
+  deepspeed_config_file: ds_config.json
+  zero3_init_flag: true
+>>>>>>> debug LLava:accelerate_config.yaml
 distributed_type: DEEPSPEED
 downcast_bf16: 'no'
 dynamo_config:
@@ -18,7 +23,7 @@ dynamo_config:
 machine_rank: 0
 main_training_function: main
 num_machines: 1
-num_processes: 1
+num_processes: 8
 rdzv_backend: static
 same_network: true
 tpu_env: []
