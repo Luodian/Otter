@@ -10,6 +10,8 @@
 
     "zero_optimization": {
         "stage": 3,
+        "stage3_gather_16bit_weights_on_model_save": "auto",
+        "overlap_comm": true,
         "offload_optimizer": {
             "device": "cpu",
             "pin_memory": true
