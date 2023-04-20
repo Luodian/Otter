@@ -173,6 +173,7 @@ cache/
 wandb/*
 archived/*
 amlt/*
+scripts/*
 .amltignore
 .amltconfig
 example_unified_data/*
