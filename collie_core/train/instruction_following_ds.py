@@ -37,6 +37,23 @@ def random_seed(seed=42, rank=0):
     random.seed(seed + rank)
 
 
+def save_fsdp(sharded_model, epoch=0, optimizer=None, lr_scheduler=None, final_weight=False, args=None):
+    save_policy = FullStateDictConfig(offload_to_cpu=True, rank0_only=True)
+    with FSDP.state_dict_type(sharded_model, StateDictType.FULL_STATE_DICT, save_policy):
+        cpu_state = get_checkpoint(sharded_model)
+
+    checkpoint_dict = {
+        "epoch": epoch,
+        "model_state_dict": cpu_state,
+        "optimizer_state_dict": optimizer.state_dict(),
+        "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+    }
+    if final_weight:
+        torch.save(checkpoint_dict, f"{args.external_save_dir}/final_weight.pt")
+    else:
+        torch.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+
+
 def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
     # num_batches_per_epoch = multi_instruct_loader.num_batches
     num_batches_per_epoch = len(multi_instruct_loader)
@@ -55,6 +72,12 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
     data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
 
+    orig_embeds_params = {}
+
+    for name, param in accelerator.unwrap_model(model).named_parameters():
+        if "embed_tokens" in name:
+            orig_embeds_params[name] = param.ds_tensor.clone()
+
     # loop through dataloader
     for num_steps, (batch_multi_instruct) in tqdm(
         enumerate(multi_instruct_loader),
@@ -65,6 +88,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         data_time_m.update(time.time() - end)
 
         global_step = num_steps + epoch * num_batches_per_epoch
+
         #### MULTI_INSTRUCT FORWARD PASS ####
 
         images = batch_multi_instruct["net_input"]["patch_images"].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(1).unsqueeze(1)
@@ -86,17 +110,6 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         #### BACKWARD PASS ####
         accelerator.backward(divided_loss_multi_instruct)
 
-        #### MASK GRADIENTS FOR EMBEDDINGS ####
-        # Note (anas): Do not apply weight decay to embeddings as it will break this function.
-        def mask_embedding(m):
-            if isinstance(m, torch.nn.Embedding) and m.weight.requires_grad:
-                zero_mask = torch.zeros_like(m.weight.grad)
-                zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
-                zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
-                m.weight.grad = m.weight.grad * zero_mask
-
-        model.apply(mask_embedding)
-
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
         # step optimizer and log
@@ -104,6 +117,14 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()
+
+            # RESET PARAMS FOR EMBEDDINGS
+            for name, param in accelerator.unwrap_model(model).named_parameters():
+                if "embed_tokens" in name:
+                    ds_dim = param.ds_shape[1]
+                    # TODO: use index to reset params
+                    # media_index_no_updates = torch.arange(param.ds_tensor.shape) != media_token_id
+                    param.ds_tensor[: endofchunk_token_id * ds_dim] = orig_embeds_params[name][: endofchunk_token_id * ds_dim]
 
             # step time and reset end outside of rank 0
             step_time_m.update(time.time() - end)
@@ -214,7 +235,7 @@ def main():
         help="Floating point precision.",
     )
     # data args
-    parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--workers", type=int, default=0)
     parser.add_argument("--train_num_samples", type=int, default=10000)
     # parser.add_argument("--train_num_samples_laion", type=int, default=10000)
     parser.add_argument("--dataset_resampled", action="store_true")
