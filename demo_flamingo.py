@@ -1,7 +1,6 @@
 from PIL import Image
 import requests
 import argparse
-import os
 import random
 
 import numpy as np
@@ -12,7 +11,8 @@ import gradio as gr
 from collie_core.collie_chat.chat import Chat, CONV_LANG, CONV_VISION
 from open_flamingo import create_model_and_transforms
 from huggingface_hub import hf_hub_download
-
+from accelerate import Accelerator
+    
 def parse_args():
     parser = argparse.ArgumentParser(description="Demo")
     parser.add_argument("--lm_path", required=True, help="path to language model")
@@ -44,7 +44,13 @@ def initialize_model(args):
 
     if args.checkpoint_path is None:
         args.checkpoint_path = hf_hub_download("openflamingo/OpenFlamingo-9B", "checkpoint.pt")
-    msg = model.load_state_dict(torch.load(args.checkpoint_path), strict=False)
+        msg = model.load_state_dict(torch.load(args.checkpoint_path), strict=False)
+    else:
+        model_dict = torch.load(args.checkpoint_path)
+        if model_dict.get("model") is not None:
+            model_dict = model_dict["model"]
+        msg = model.load_state_dict(model_dict, strict=False)
+        del model_dict
     print(msg)
     return model, image_processor, tokenizer
 
