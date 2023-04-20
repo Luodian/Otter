@@ -3,13 +3,13 @@
         "enabled": "auto"
     },
     "zero_optimization": {
-        "stage": "auto",
+        "stage": "3",
         "stage3_gather_16bit_weights_on_model_save": "auto",
         "offload_optimizer": {
-            "device": "auto"
+            "device": "cpu"
         },
         "offload_param": {
-            "device": "auto"
+            "device": "cpu"
         }
     },
     "gradient_clipping": "auto",
