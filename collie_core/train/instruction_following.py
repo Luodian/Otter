@@ -287,7 +287,10 @@ def main():
 
     args.local_rank, args.rank, args.world_size = world_info_from_env()
 
-    device_id = init_distributed_device(args)
+    if args.world_size > 1:
+        device_id = init_distributed_device(args)
+    else:
+        device_id = 0
 
     random_seed(args.seed)
 
@@ -377,7 +380,8 @@ def main():
     # deepspeed_plugin = DeepSpeedPlugin(zero_stage=3, gradient_accumulation_steps=1, offload_optimizer_device='cpu', offload_param_device='cpu')
     # accelerator = Accelerator(deepspeed_plugin=deepspeed_plugin, mixed_precision="fp16")
     accelerator = Accelerator()
-    accelerator.state.deepspeed_plugin.deepspeed_config['train_micro_batch_size_per_gpu'] = args.batch_size
+    if accelerator.state.deepspeed_plugin is not None:
+        accelerator.state.deepspeed_plugin.deepspeed_config['train_micro_batch_size_per_gpu'] = args.batch_size
     model, optimizer = accelerator.prepare(model, optimizer)
     model.train()
 
@@ -402,8 +406,14 @@ def main():
         if args.rank == 0:
             if not os.path.exists(args.external_save_dir):
                 os.makedirs(args.external_save_dir)
-  
-            save_fsdp(sharded_model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, epoch=epoch, args=args)
+            
+            unwrapped_model = accelerator.unwrap_model(model)
+            accelerator.save({
+                "model": unwrapped_model.state_dict(),
+                "optimizer": optimizer.optimizer.state_dict(), # optimizer is an AcceleratedOptimizer object
+                "lr_scheduler": lr_scheduler.state_dict(),
+            }, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+            # print(f"save model at ./bundle.pth")
             if args.report_to_wandb and args.save_checkpoints_to_wandb:
                 wandb.save(f"{args.external_save_dir}/checkpoint_{epoch}.pt")
 
@@ -415,7 +425,12 @@ def main():
         if not os.path.exists(args.external_save_dir):
             os.makedirs(args.external_save_dir)
 
-        save_fsdp(sharded_model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, epoch=epoch, final_weight=True, args=args)
+        unwrapped_model = accelerator.unwrap_model(model)
+        accelerator.save({
+            "model": unwrapped_model.state_dict(),
+            "optimizer": optimizer.optimizer.state_dict(), # optimizer is an AcceleratedOptimizer object
+            "lr_scheduler": lr_scheduler.state_dict(),
+        }, f"{args.external_save_dir}/final_weights.pt")
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
 
