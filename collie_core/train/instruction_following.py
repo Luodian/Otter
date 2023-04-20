@@ -13,7 +13,6 @@ import wandb
 from data import get_data
 from distributed import init_distributed_device, world_info_from_env
 from torch.nn.parallel import DistributedDataParallel as DDP
-# from train_utils import get_checkpoint, train_one_epoch
 from transformers import (
     get_constant_schedule_with_warmup,
     get_cosine_schedule_with_warmup,
@@ -21,7 +20,7 @@ from transformers import (
 )
 
 from open_flamingo import create_model_and_transforms
-from open_flamingo.train.train_utils import AverageMeter, get_autocast, get_cast_dtype
+from open_flamingo.train.train_utils import AverageMeter, get_autocast, get_cast_dtype, get_checkpoint
 from tqdm import tqdm
 import time
 
@@ -78,6 +77,8 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         total=total_training_steps,
         initial=(epoch * num_batches_per_epoch),
     ):
+        if num_steps == 100:
+            break
         data_time_m.update(time.time() - end)
 
         global_step = num_steps + epoch * num_batches_per_epoch
@@ -220,7 +221,7 @@ def main():
     parser.add_argument("--learning_rate", default=1e-4, type=float)
     parser.add_argument(
         "--lr_scheduler",
-        default="cosine",
+        default="constant",
         type=str,
         help="constant, linear, or cosine",
     )
@@ -409,7 +410,7 @@ def main():
             
             unwrapped_model = accelerator.unwrap_model(model)
             accelerator.save({
-                "model": unwrapped_model.state_dict(),
+                "model": get_checkpoint(model=unwrapped_model),
                 "optimizer": optimizer.optimizer.state_dict(), # optimizer is an AcceleratedOptimizer object
                 "lr_scheduler": lr_scheduler.state_dict(),
             }, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
@@ -426,11 +427,7 @@ def main():
             os.makedirs(args.external_save_dir)
 
         unwrapped_model = accelerator.unwrap_model(model)
-        accelerator.save({
-            "model": unwrapped_model.state_dict(),
-            "optimizer": optimizer.optimizer.state_dict(), # optimizer is an AcceleratedOptimizer object
-            "lr_scheduler": lr_scheduler.state_dict(),
-        }, f"{args.external_save_dir}/final_weights.pt")
+        accelerator.save(get_checkpoint(model=unwrapped_model), f"{args.external_save_dir}/final_weights.pt")
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
 
