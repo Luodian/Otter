@@ -381,14 +381,15 @@ def main():
         checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
         model.load_state_dict(checkpoint, False)
 
+
     accelerator = Accelerator()
-    if accelerator.state.deepspeed_plugin is not None:
-        accelerator.state.deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = args.batch_size
-    model, optimizer, lr_scheduler = accelerator.prepare(model, optimizer, lr_scheduler)
-    multi_instruct_loader = accelerator.prepare(multi_instruct_dataset.dataloader)
+    multi_instruct_loader = multi_instruct_dataset.dataloader
+    model, optimizer, multi_instruct_loader = accelerator.prepare(model, optimizer, multi_instruct_loader)
     model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
+        multi_instruct_dataset.set_epoch(epoch)
+
         train_one_epoch(
             args=args, model=model, epoch=epoch, tokenizer=tokenizer, optimizer=optimizer, lr_scheduler=lr_scheduler, multi_instruct_loader=multi_instruct_loader, accelerator=accelerator, device_id=device_id, wandb=wandb
         )
