@@ -13,7 +13,6 @@ import wandb
 from data import get_data
 from distributed import init_distributed_device, world_info_from_env
 from torch.nn.parallel import DistributedDataParallel as DDP
-# from train_utils import get_checkpoint, train_one_epoch
 from transformers import (
     get_constant_schedule_with_warmup,
     get_cosine_schedule_with_warmup,
@@ -21,7 +20,7 @@ from transformers import (
 )
 
 from open_flamingo import create_model_and_transforms
-from open_flamingo.train.train_utils import AverageMeter, get_autocast, get_cast_dtype
+from open_flamingo.train.train_utils import AverageMeter, get_autocast, get_cast_dtype, get_checkpoint
 from tqdm import tqdm
 import time
 
@@ -78,6 +77,8 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         total=total_training_steps,
         initial=(epoch * num_batches_per_epoch),
     ):
+        if num_steps == 100:
+            break
         data_time_m.update(time.time() - end)
 
         global_step = num_steps + epoch * num_batches_per_epoch
@@ -115,7 +116,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
                 zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
                 m.weight.grad = m.weight.grad * zero_mask
 
-        # model.apply(mask_embedding)
+        model.apply(mask_embedding)
 
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
@@ -220,7 +221,7 @@ def main():
     parser.add_argument("--learning_rate", default=1e-4, type=float)
     parser.add_argument(
         "--lr_scheduler",
-        default="cosine",
+        default="constant",
         type=str,
         help="constant, linear, or cosine",
     )
@@ -287,7 +288,10 @@ def main():
 
     args.local_rank, args.rank, args.world_size = world_info_from_env()
 
-    device_id = init_distributed_device(args)
+    if args.world_size > 1:
+        device_id = init_distributed_device(args)
+    else:
+        device_id = 0
 
     random_seed(args.seed)
 
@@ -374,9 +378,11 @@ def main():
         checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
         model.load_state_dict(checkpoint, False)
 
-    deepspeed_plugin = DeepSpeedPlugin(zero_stage=3, gradient_accumulation_steps=1, offload_optimizer_device='cpu', offload_param_device='cpu')
-    accelerator = Accelerator(deepspeed_plugin=deepspeed_plugin, mixed_precision="fp16")
-    accelerator.state.deepspeed_plugin.deepspeed_config['train_micro_batch_size_per_gpu'] = args.batch_size
+    # deepspeed_plugin = DeepSpeedPlugin(zero_stage=3, gradient_accumulation_steps=1, offload_optimizer_device='cpu', offload_param_device='cpu')
+    # accelerator = Accelerator(deepspeed_plugin=deepspeed_plugin, mixed_precision="fp16")
+    accelerator = Accelerator()
+    if accelerator.state.deepspeed_plugin is not None:
+        accelerator.state.deepspeed_plugin.deepspeed_config['train_micro_batch_size_per_gpu'] = args.batch_size
     model, optimizer = accelerator.prepare(model, optimizer)
     model.train()
 
@@ -401,8 +407,14 @@ def main():
         if args.rank == 0:
             if not os.path.exists(args.external_save_dir):
                 os.makedirs(args.external_save_dir)
-  
-            save_fsdp(sharded_model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, epoch=epoch, args=args)
+            
+            unwrapped_model = accelerator.unwrap_model(model)
+            accelerator.save({
+                "model": get_checkpoint(model=unwrapped_model),
+                "optimizer": optimizer.optimizer.state_dict(), # optimizer is an AcceleratedOptimizer object
+                "lr_scheduler": lr_scheduler.state_dict(),
+            }, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+            # print(f"save model at ./bundle.pth")
             if args.report_to_wandb and args.save_checkpoints_to_wandb:
                 wandb.save(f"{args.external_save_dir}/checkpoint_{epoch}.pt")
 
@@ -414,7 +426,8 @@ def main():
         if not os.path.exists(args.external_save_dir):
             os.makedirs(args.external_save_dir)
 
-        save_fsdp(sharded_model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, epoch=epoch, final_weight=True, args=args)
+        unwrapped_model = accelerator.unwrap_model(model)
+        accelerator.save(get_checkpoint(model=unwrapped_model), f"{args.external_save_dir}/final_weights.pt")
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
 
