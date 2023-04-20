@@ -10,8 +10,9 @@ import numpy as np
 import torch
 import torch.nn
 import wandb
-from data import get_data
-from distributed import init_distributed_device, world_info_from_env
+import deepspeed
+from collie_core.train.data import get_data
+from collie_core.train.distributed import init_distributed_device, world_info_from_env
 from torch.nn.parallel import DistributedDataParallel as DDP
 from transformers import (
     get_constant_schedule_with_warmup,
@@ -26,21 +27,21 @@ import time
 
 from ofa_compress.arguments import add_data_args
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig
+from accelerate import Accelerator
+from ofa_compress.data_utils.transforms import OriginLargeScaleJitter
 
-from accelerate import load_checkpoint_and_dispatch
-from accelerate import Accelerator, DeepSpeedPlugin
-import functools
 
 def random_seed(seed=42, rank=0):
     torch.manual_seed(seed + rank)
     np.random.seed(seed + rank)
     random.seed(seed + rank)
 
+
 def save_fsdp(sharded_model, epoch=0, optimizer=None, lr_scheduler=None, final_weight=False, args=None):
     save_policy = FullStateDictConfig(offload_to_cpu=True, rank0_only=True)
     with FSDP.state_dict_type(sharded_model, StateDictType.FULL_STATE_DICT, save_policy):
-        cpu_state = sharded_model.state_dict()
-        
+        cpu_state = get_checkpoint(sharded_model)
+
     checkpoint_dict = {
         "epoch": epoch,
         "model_state_dict": cpu_state,
@@ -51,6 +52,7 @@ def save_fsdp(sharded_model, epoch=0, optimizer=None, lr_scheduler=None, final_w
         torch.save(checkpoint_dict, f"{args.external_save_dir}/final_weight.pt")
     else:
         torch.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+
 
 def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
     # num_batches_per_epoch = multi_instruct_loader.num_batches
@@ -70,6 +72,12 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
     data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
 
+    orig_embeds_params = {}
+
+    for name, param in accelerator.unwrap_model(model).named_parameters():
+        if "embed_tokens" in name:
+            orig_embeds_params[name] = param.ds_tensor.clone()
+
     # loop through dataloader
     for num_steps, (batch_multi_instruct) in tqdm(
         enumerate(multi_instruct_loader),
@@ -85,13 +93,13 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
         # print(batch_multi_instruct)
         #### MULTI_INSTRUCT FORWARD PASS ####
-        
-        images = batch_multi_instruct['net_input']['patch_images'].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(1).unsqueeze(1)
 
-        input_ids = batch_multi_instruct['net_input']['input_ids'].to(device_id, dtype=cast_dtype, non_blocking=True)
-        attention_mask = batch_multi_instruct['net_input']['attention_masks'].to(device_id, dtype=cast_dtype, non_blocking=True)
+        images = batch_multi_instruct["net_input"]["patch_images"].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(1).unsqueeze(1)
 
-        labels = batch_multi_instruct['target'].to(device_id, dtype=cast_dtype, non_blocking=True)
+        input_ids = batch_multi_instruct["net_input"]["input_ids"].to(device_id, dtype=cast_dtype, non_blocking=True)
+        attention_mask = batch_multi_instruct["net_input"]["attention_masks"].to(device_id, dtype=cast_dtype, non_blocking=True)
+
+        labels = batch_multi_instruct["target"].to(device_id, dtype=cast_dtype, non_blocking=True)
 
         with autocast():
             loss_multi_instruct = model(
@@ -103,20 +111,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         divided_loss_multi_instruct = loss_multi_instruct / args.gradient_accumulation_steps
 
         #### BACKWARD PASS ####
-        # loss = divided_loss_laion * args.loss_multiplier + divided_loss_multi_instruct * args.loss_multiplier_mmc4
-        # divided_loss_multi_instruct.backward()
         accelerator.backward(divided_loss_multi_instruct)
-
-        #### MASK GRADIENTS FOR EMBEDDINGS ####
-        # Note (anas): Do not apply weight decay to embeddings as it will break this function.
-        def mask_embedding(m):
-            if isinstance(m, torch.nn.Embedding) and m.weight.requires_grad:
-                zero_mask = torch.zeros_like(m.weight.grad)
-                zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
-                zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
-                m.weight.grad = m.weight.grad * zero_mask
-
-        model.apply(mask_embedding)
 
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
@@ -125,6 +120,14 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()
+
+            # RESET PARAMS FOR EMBEDDINGS
+            for name, param in accelerator.unwrap_model(model).named_parameters():
+                if "embed_tokens" in name:
+                    ds_dim = param.ds_shape[1]
+                    # TODO: use index to reset params
+                    # media_index_no_updates = torch.arange(param.ds_tensor.shape) != media_token_id
+                    param.ds_tensor[: endofchunk_token_id * ds_dim] = orig_embeds_params[name][: endofchunk_token_id * ds_dim]
 
             # step time and reset end outside of rank 0
             step_time_m.update(time.time() - end)
@@ -378,42 +381,30 @@ def main():
         checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
         model.load_state_dict(checkpoint, False)
 
-    # deepspeed_plugin = DeepSpeedPlugin(zero_stage=3, gradient_accumulation_steps=1, offload_optimizer_device='cpu', offload_param_device='cpu')
-    # accelerator = Accelerator(deepspeed_plugin=deepspeed_plugin, mixed_precision="fp16")
     accelerator = Accelerator()
     if accelerator.state.deepspeed_plugin is not None:
-        accelerator.state.deepspeed_plugin.deepspeed_config['train_micro_batch_size_per_gpu'] = args.batch_size
-    model, optimizer = accelerator.prepare(model, optimizer)
+        accelerator.state.deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = args.batch_size
+    model, optimizer, lr_scheduler = accelerator.prepare(model, optimizer, lr_scheduler)
+    multi_instruct_loader = accelerator.prepare(multi_instruct_dataset.dataloader)
     model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
-        multi_instruct_dataset.set_epoch(epoch)
-        multi_instruct_loader = multi_instruct_dataset.dataloader
-        multi_instruct_loader = accelerator.prepare(multi_instruct_loader)
-
         train_one_epoch(
-            args=args,
-            model=model,
-            epoch=epoch,
-            tokenizer=tokenizer,
-            optimizer=optimizer,
-            lr_scheduler=lr_scheduler,
-            multi_instruct_loader=multi_instruct_loader,
-            accelerator=accelerator,
-            device_id=device_id,
-            wandb=wandb,
+            args=args, model=model, epoch=epoch, tokenizer=tokenizer, optimizer=optimizer, lr_scheduler=lr_scheduler, multi_instruct_loader=multi_instruct_loader, accelerator=accelerator, device_id=device_id, wandb=wandb
         )
-
         if args.rank == 0:
             if not os.path.exists(args.external_save_dir):
                 os.makedirs(args.external_save_dir)
-            
+
             unwrapped_model = accelerator.unwrap_model(model)
-            accelerator.save({
-                "model": get_checkpoint(model=unwrapped_model),
-                "optimizer": optimizer.optimizer.state_dict(), # optimizer is an AcceleratedOptimizer object
-                "lr_scheduler": lr_scheduler.state_dict(),
-            }, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+            accelerator.save(
+                {
+                    "model": get_checkpoint(model=unwrapped_model),
+                    "optimizer": optimizer.optimizer.state_dict(),  # optimizer is an AcceleratedOptimizer object
+                    "lr_scheduler": lr_scheduler.state_dict(),
+                },
+                f"{args.external_save_dir}/checkpoint_{epoch}.pt",
+            )
             # print(f"save model at ./bundle.pth")
             if args.report_to_wandb and args.save_checkpoints_to_wandb:
                 wandb.save(f"{args.external_save_dir}/checkpoint_{epoch}.pt")
