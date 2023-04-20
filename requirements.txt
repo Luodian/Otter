@@ -4,6 +4,7 @@ torchvision
 mlflow
 braceexpand
 bitsandbytes
+deepspeed
 pillow
 more-itertools
 datasets
