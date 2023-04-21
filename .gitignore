@@ -181,3 +181,4 @@ example_unified_data/*
 tools
 
 checkpoint
+*conv.json
