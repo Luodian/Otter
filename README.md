@@ -96,6 +96,32 @@ We report accuracy on following datasets after instruction following (IF) tuning
 | OpenFlamingo-9B | 65.5   | 74.3   | 79.3   | 81.8    | 84.5    |
 | DeepMind Flamingo-9B | 79.4   | 93.1   | 99.0   | 102.2   | 106.3   |
 
+### Serving Demo
+#### Launch a controller
+```Shell
+python -m collie_core.serve.controller --host 0.0.0.0 --port 10000
+```
+
+#### Launch a model worker
+```Shell
+# GPU
+python -m collie_core.serve.model_worker --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model-name open_flamingo --num-gpus 1
+# CPU
+python -m collie_core.serve.model_worker --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model-name open_flamingo --num-gpus 0
+```
+Wait until the process finishes loading the model and you see "Uvicorn running on ...".
+
+#### Send a test message
+```Shell
+python -m collie_core.serve.test_message --model-name LLaVA-13B-v0 --controller http://localhost:10000
+```
+
+#### Launch a gradio web server.
+```Shell
+python -m collie_core.serve.gradio_web_server --controller http://localhost:10000
+```
+#### You can open your browser and chat with a model now.
+
 ### Authors
 
 Equal contribution, alphabetical order
