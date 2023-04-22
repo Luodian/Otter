@@ -180,3 +180,7 @@ example_unified_data/*
 
 #yuanhan
 tools
+flamingo3B
+flamingo9B
+flamingo9B-lora-vqa_train_gqa_train_balanced
+.deepspeed_env
