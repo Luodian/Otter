@@ -10,10 +10,8 @@ import numpy as np
 import torch
 import torch.nn
 import wandb
-import deepspeed
 from collie_core.train.data import get_data
 from collie_core.train.distributed import init_distributed_device, world_info_from_env
-from torch.nn.parallel import DistributedDataParallel as DDP
 from transformers import (
     get_constant_schedule_with_warmup,
     get_cosine_schedule_with_warmup,
@@ -26,32 +24,12 @@ from tqdm import tqdm
 import time
 
 from ofa_compress.arguments import add_data_args
-from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig
 from accelerate import Accelerator
-from ofa_compress.data_utils.transforms import OriginLargeScaleJitter
-
 
 def random_seed(seed=42, rank=0):
     torch.manual_seed(seed + rank)
     np.random.seed(seed + rank)
     random.seed(seed + rank)
-
-
-def save_fsdp(sharded_model, epoch=0, optimizer=None, lr_scheduler=None, final_weight=False, args=None):
-    save_policy = FullStateDictConfig(offload_to_cpu=True, rank0_only=True)
-    with FSDP.state_dict_type(sharded_model, StateDictType.FULL_STATE_DICT, save_policy):
-        cpu_state = get_checkpoint(sharded_model)
-
-    checkpoint_dict = {
-        "epoch": epoch,
-        "model_state_dict": cpu_state,
-        "optimizer_state_dict": optimizer.state_dict(),
-        "lr_scheduler_state_dict": lr_scheduler.state_dict(),
-    }
-    if final_weight:
-        torch.save(checkpoint_dict, f"{args.external_save_dir}/final_weight.pt")
-    else:
-        torch.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
 
 
 def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
@@ -64,7 +42,8 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
     endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)["input_ids"][-1]
-
+    answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
+    
     model.train()
 
     # setup logging
@@ -320,6 +299,35 @@ def main():
     device_id = args.rank % torch.cuda.device_count()
 
     multi_instruct_dataset = get_data(args, image_processor, tokenizer, "multi_instruct")
+    
+    args.train_num_samples = multi_instruct_dataset.dataloader.num_samples
+    total_training_steps = ((args.train_num_samples) // (args.batch_size * args.world_size)) * args.num_epochs
+
+    if args.rank == 0:
+        print(f"Total training steps: {total_training_steps}")
+
+    # check if a checkpoint exists for this run
+    args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
+    if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is None and args.overwrite_checkpoint is False:
+        checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
+        if len(checkpoint_list) == 0:
+            print(f"Found no checkpoints for run {args.external_save_dir}.")
+        else:
+            args.resume_from_checkpoint = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
+            print(f"Found checkpoint {args.resume_from_checkpoint} for run {args.external_save_dir}.")
+
+    resume_from_epoch = 0
+    if args.resume_from_checkpoint is not None:
+        if args.rank == 0:
+            print(f"Loading checkpoint from {args.resume_from_checkpoint}")
+        checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
+        model.load_state_dict(checkpoint, False)
+
+    # add <answer> token to tokenizer
+    tokenizer.add_special_tokens(
+        {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
+    )
+    model.lang_encoder.resize_token_embeddings(len(tokenizer))
 
     def get_grouped_params(model):
         params_with_wd, params_without_wd = [], []
@@ -341,11 +349,6 @@ def main():
 
     optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
 
-    total_training_steps = ((args.train_num_samples) // (args.batch_size * args.world_size)) * args.num_epochs
-
-    if args.rank == 0:
-        print(f"Total training steps: {total_training_steps}")
-
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
             optimizer,
@@ -360,24 +363,7 @@ def main():
         )
     else:
         lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps)
-
-    # check if a checkpoint exists for this run
-    args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
-    if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is None and args.overwrite_checkpoint is False:
-        checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
-        if len(checkpoint_list) == 0:
-            print(f"Found no checkpoints for run {args.external_save_dir}.")
-        else:
-            args.resume_from_checkpoint = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
-            print(f"Found checkpoint {args.resume_from_checkpoint} for run {args.external_save_dir}.")
-
-    resume_from_epoch = 0
-    if args.resume_from_checkpoint is not None:
-        if args.rank == 0:
-            print(f"Loading checkpoint from {args.resume_from_checkpoint}")
-        checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
-        model.load_state_dict(checkpoint, False)
-
+    
     accelerator = Accelerator()
     if accelerator.state.deepspeed_plugin is not None:
         accelerator.state.deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = args.batch_size
