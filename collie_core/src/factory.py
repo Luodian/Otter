@@ -14,7 +14,6 @@ def create_model_and_transforms(
     cross_attn_every_n_layers: int = 1,
     use_local_files: bool = False,
     decoder_layers_attr_name: str = None,
-    use_local_files=True,
     **flamingo_kwargs,
 ):
     """
