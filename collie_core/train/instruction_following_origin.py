@@ -83,7 +83,11 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         labels[labels == answer_token_id] = -100
         labels[labels == media_token_id] = -100
 
+<<<<<<< HEAD
         labels.to(device_id, dtype=cast_dtype, non_blocking=True)
+=======
+        labels.to(device_id)
+>>>>>>> debug unifiy_dataset
 
         with autocast():
             loss_multi_instruct = model(
