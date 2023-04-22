@@ -91,10 +91,11 @@ class Flamingo(nn.Module):
             # Case: do not use caching (i.e. this is a standard forward pass);
             self._encode_vision_x(vision_x=vision_x)
 
+        # import pdb;pdb.set_trace()
         output = self.lang_encoder(
-            input_ids=lang_x,
+            input_ids=lang_x.int(),
             attention_mask=attention_mask,
-            labels=labels,
+            labels=labels.long(),
             past_key_values=past_key_values,
             use_cache=use_cache,
         )
