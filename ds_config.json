@@ -10,7 +10,6 @@
 
     "zero_optimization": {
         "stage": 3,
-        "stage3_gather_16bit_weights_on_model_save": "auto",
         "overlap_comm": true,
         "offload_optimizer": {
             "device": "cpu",
@@ -20,12 +19,10 @@
             "device": "cpu",
             "pin_memory": true
         },
-        "overlap_comm": true,
         "contiguous_gradients": true,
         "sub_group_size": 1e9,
         "stage3_max_live_parameters": 1e9,
-        "stage3_max_reuse_distance": 1e9,
-        "stage3_gather_16bit_weights_on_model_save": true
+        "stage3_max_reuse_distance": 1e9
     },
     "gradient_accumulation_steps": 1,
     "gradient_clipping": 1.0,
