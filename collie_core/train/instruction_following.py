@@ -29,7 +29,18 @@ from ofa_compress.arguments import add_data_args
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig
 from accelerate import Accelerator
 from ofa_compress.data_utils.transforms import OriginLargeScaleJitter
+from accelerate import load_checkpoint_and_dispatch
+from accelerate import Accelerator, DeepSpeedPlugin
 
+from torch.distributed.fsdp.wrap import (
+    transformer_auto_wrap_policy,
+    enable_wrap,
+    wrap,
+)
+
+from torch.distributed.fsdp import MixedPrecision, ShardingStrategy
+
+import functools
 
 def random_seed(seed=42, rank=0):
     torch.manual_seed(seed + rank)
@@ -47,6 +58,8 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
     endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)["input_ids"][-1]
+    answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
+
 
     model.train()
 
@@ -68,11 +81,31 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         #### MULTI_INSTRUCT FORWARD PASS ####
 
         images = batch_multi_instruct["net_input"]["patch_images"].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(1).unsqueeze(1)
-
         input_ids = batch_multi_instruct["net_input"]["input_ids"].to(device_id, dtype=cast_dtype, non_blocking=True)
         attention_mask = batch_multi_instruct["net_input"]["attention_masks"].to(device_id, dtype=cast_dtype, non_blocking=True)
 
-        labels = batch_multi_instruct["target"].to(device_id, dtype=cast_dtype, non_blocking=True)
+        import pdb;pdb.set_trace()
+
+        labels = input_ids.clone()
+        labels[labels == tokenizer.pad_token_id] = -100
+        labels[:, 0] = -100
+
+        for i in range(labels.shape[0]):
+            # remove loss for any token before <answer> token
+            label_idx = 0
+            while (
+                label_idx < labels.shape[1] and labels[i][label_idx] != answer_token_id
+            ):
+                labels[i][label_idx] = -100
+                label_idx += 1
+
+        labels[labels == answer_token_id] = -100  
+
+        labels[labels == media_token_id] = -100
+
+        labels.to(device_id)
+
+        import pdb;pdb.set_trace()
 
         with autocast():
             loss_multi_instruct = model(
@@ -81,6 +114,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
                 attention_mask=attention_mask,
                 labels=labels,
             )[0]
+        # import pdb;pdb.set_trace()
         divided_loss_multi_instruct = loss_multi_instruct / args.gradient_accumulation_steps
 
         #### BACKWARD PASS ####
@@ -103,7 +137,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (num_steps == num_batches_per_epoch - 1):
             optimizer.step()
             lr_scheduler.step()
-            optimizer.zero_grad()
+            optimizer.zero_grad()                
 
             # step time and reset end outside of rank 0
             step_time_m.update(time.time() - end)
@@ -138,6 +172,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
             print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {loss_multi_instruct.item():.3f}")
+
 
 
 def main():
@@ -357,14 +392,15 @@ def main():
         checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
         model.load_state_dict(checkpoint, False)
 
+
     accelerator = Accelerator()
-    if accelerator.state.deepspeed_plugin is not None:
-        accelerator.state.deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = args.batch_size
-    model, optimizer, lr_scheduler = accelerator.prepare(model, optimizer, lr_scheduler)
-    multi_instruct_loader = accelerator.prepare(multi_instruct_dataset.dataloader)
+    multi_instruct_loader = multi_instruct_dataset.dataloader
+    model, optimizer, multi_instruct_loader = accelerator.prepare(model, optimizer, multi_instruct_loader)
     model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
+        multi_instruct_dataset.set_epoch(epoch)
+
         train_one_epoch(
             args=args, model=model, epoch=epoch, tokenizer=tokenizer, optimizer=optimizer, lr_scheduler=lr_scheduler, multi_instruct_loader=multi_instruct_loader, accelerator=accelerator, device_id=device_id, wandb=wandb
         )

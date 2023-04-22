@@ -100,7 +100,31 @@ class FileDataset(object):
             # print("reach the end of datafile, start a new reader")
             self.data_cnt = 0
             self._reader = self._get_reader()
-        column_l = self._reader.readline().rstrip("\n").split(self.separator)
+        cur_line = self._reader.readline()
+        column_l = cur_line.rstrip("\n").split(self.separator)
         self.data_cnt += 1
-        column_l = [dtype(column_l[col_id]) for col_id, dtype in zip(self.selected_col_ids, self.dtypes)]
+        try:
+            column_l = [dtype(column_l[col_id]) for col_id, dtype in zip(self.selected_col_ids, self.dtypes)]
+        except:
+            import pdb;pdb.set_trace()           
         return column_l
+
+
+if __name__ == '__main__':
+    from PIL import Image, ImageFile
+    from io import BytesIO
+    import base64
+    from tqdm import tqdm
+    import json
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
+    test_dataset = FileDataset("/mnt/lustre/yhzhang/data/LLaVA-Instruct-150K/complex_reasoning_77k_detail_23k_conversation_58.tsv", "0,1,2,3,4,5,6,7")
+    
+    uniq_id_dict = {}
+    for _ in tqdm(range(len(test_dataset))):
+        _ = test_dataset.__getitem__(0)
+        uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
+        try:
+            uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
+        except:
+            import pdb;pdb.set_trace()
+
