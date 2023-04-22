@@ -373,6 +373,9 @@ class UnifyDataset(OFADataset):
                 conf = torch.tensor([1.0])
             src_text = self.tokenizer(f"<image>User: {question} GPT:<answer> {answer}<|endofchunk|>", return_tensors="pt", add_special_tokens=False)
             src_item = src_text['input_ids'].squeeze(0)
+            src_item_mask = src_text['attention_mask'].squeeze(0)
+            conf = torch.tensor([conf])
+ 
         src_item = torch.cat([self.bos_item, src_item, self.eos_item])
         src_item_mask = torch.cat([self.bos_mask, src_item_mask, self.eos_mask])
 
