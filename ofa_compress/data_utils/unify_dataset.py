@@ -322,7 +322,6 @@ class UnifyDataset(OFADataset):
                 answer = refs.strip().replace("#"," ")
                 conf = torch.tensor([1.0])
             elif dataset_name == "conversation_58k":
-                # import pdb;pdb.set_trace()
                 self.max_src_length = self.max_tgt_length = 256
                 question = self.pre_question(question, self.max_src_length)
                 caption = caption.replace("<#>"," ")
@@ -335,15 +334,13 @@ class UnifyDataset(OFADataset):
             src_item = src_text['input_ids'].squeeze(0)
             src_item_mask = src_text['attention_mask'].squeeze(0)
             conf = torch.tensor([conf])
- 
-            import pdb;pdb.set_trace()
-
+            
         src_item = torch.cat([self.bos_item, src_item, self.eos_item])
         src_item_mask = torch.cat([self.bos_mask, src_item_mask, self.eos_mask])
 
-        if type == 'caption' and dataset_name == 'cc12m':
-            target_item[:2] = self.tokenizer.pad_token_id
-            target_item[-1] = self.eos_item
+        # if type == 'caption' and dataset_name == 'cc12m':
+        #     target_item[:2] = self.tokenizer.pad_token_id
+        #     target_item[-1] = self.eos_item
 
         example = {
             "id": uniq_id,

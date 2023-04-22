@@ -1,7 +1,6 @@
 """ Main training script """
 
 import argparse
-import copy
 import glob
 import os
 import random
@@ -10,10 +9,8 @@ import numpy as np
 import torch
 import torch.nn
 import wandb
-import deepspeed
 from collie_core.train.data import get_data
 from collie_core.train.distributed import init_distributed_device, world_info_from_env
-from torch.nn.parallel import DistributedDataParallel as DDP
 from transformers import (
     get_constant_schedule_with_warmup,
     get_cosine_schedule_with_warmup,
@@ -26,21 +23,9 @@ from tqdm import tqdm
 import time
 
 from ofa_compress.arguments import add_data_args
-from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig
 from accelerate import Accelerator
-from ofa_compress.data_utils.transforms import OriginLargeScaleJitter
-from accelerate import load_checkpoint_and_dispatch
-from accelerate import Accelerator, DeepSpeedPlugin
+from accelerate import Accelerator
 
-from torch.distributed.fsdp.wrap import (
-    transformer_auto_wrap_policy,
-    enable_wrap,
-    wrap,
-)
-
-from torch.distributed.fsdp import MixedPrecision, ShardingStrategy
-
-import functools
 
 def random_seed(seed=42, rank=0):
     torch.manual_seed(seed + rank)
@@ -59,7 +44,6 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
     endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)["input_ids"][-1]
     answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
-
 
     model.train()
 
@@ -84,8 +68,6 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         input_ids = batch_multi_instruct["net_input"]["input_ids"].to(device_id, dtype=cast_dtype, non_blocking=True)
         attention_mask = batch_multi_instruct["net_input"]["attention_masks"].to(device_id, dtype=cast_dtype, non_blocking=True)
 
-        import pdb;pdb.set_trace()
-
         labels = input_ids.clone()
         labels[labels == tokenizer.pad_token_id] = -100
         labels[:, 0] = -100
@@ -93,19 +75,14 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         for i in range(labels.shape[0]):
             # remove loss for any token before <answer> token
             label_idx = 0
-            while (
-                label_idx < labels.shape[1] and labels[i][label_idx] != answer_token_id
-            ):
+            while label_idx < labels.shape[1] and labels[i][label_idx] != answer_token_id:
                 labels[i][label_idx] = -100
                 label_idx += 1
 
-        labels[labels == answer_token_id] = -100  
-
+        labels[labels == answer_token_id] = -100
         labels[labels == media_token_id] = -100
 
-        labels.to(device_id)
-
-        import pdb;pdb.set_trace()
+        labels.to(device_id, dtype=cast_dtype, non_blocking=True)
 
         with autocast():
             loss_multi_instruct = model(
@@ -114,7 +91,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
                 attention_mask=attention_mask,
                 labels=labels,
             )[0]
-        # import pdb;pdb.set_trace()
+        
         divided_loss_multi_instruct = loss_multi_instruct / args.gradient_accumulation_steps
 
         #### BACKWARD PASS ####
@@ -127,6 +104,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
                 zero_mask = torch.zeros_like(m.weight.grad)
                 zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
                 zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
+                zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
                 m.weight.grad = m.weight.grad * zero_mask
 
         model.apply(mask_embedding)
@@ -137,7 +115,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (num_steps == num_batches_per_epoch - 1):
             optimizer.step()
             lr_scheduler.step()
-            optimizer.zero_grad()                
+            optimizer.zero_grad()
 
             # step time and reset end outside of rank 0
             step_time_m.update(time.time() - end)
@@ -172,7 +150,6 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
             print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {loss_multi_instruct.item():.3f}")
-
 
 
 def main():
@@ -355,6 +332,7 @@ def main():
 
     optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
 
+    args.train_num_samples = multi_instruct_dataset.dataloader.num_samples
     total_training_steps = ((args.train_num_samples) // (args.batch_size * args.world_size)) * args.num_epochs
 
     if args.rank == 0:
@@ -391,7 +369,6 @@ def main():
             print(f"Loading checkpoint from {args.resume_from_checkpoint}")
         checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
         model.load_state_dict(checkpoint, False)
-
 
     accelerator = Accelerator()
     multi_instruct_loader = multi_instruct_dataset.dataloader

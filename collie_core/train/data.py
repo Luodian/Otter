@@ -663,16 +663,9 @@ def get_coco_vqa_dataset(args, image_processor, tokenizer, epoch=0, floor=False)
     return DataInfo(dataloader=dataloader, shared_epoch=shared_epoch)
 
 from PIL import Image, ImageFile
-from io import BytesIO
-import base64
-from tqdm import tqdm
 import json
 from ofa_compress.data_utils.input_dataset import FileDataset
-from ofa_compress.data_utils.ofa_dataset import collate_fn
 from ofa_compress.data_utils.unify_dataset import UnifyDataset
-from ofa_compress.arguments import add_data_args
-import argparse
-
 
 def get_multi_instruction_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     multi_instruct_path = args.multi_instruct_path
@@ -681,12 +674,6 @@ def get_multi_instruction_dataset(args, image_processor, tokenizer, epoch=0, flo
     args.task = 'pretrain'
     args.tokenizer = tokenizer
     unified_dataset = UnifyDataset(args, dataset)
-    # for _ in tqdm(dataset):
-    #     uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
-    #     image = Image.open(BytesIO(base64.urlsafe_b64decode(image))).convert("RGB")
-    #     image.save(f"{uniq_id}.jpg")
-    #     print(caption)
-    #     break
 
     # create a shared epoch store to sync epoch to dataloader worker proc
     shared_epoch = SharedEpoch(epoch=epoch)
@@ -696,9 +683,9 @@ def get_multi_instruction_dataset(args, image_processor, tokenizer, epoch=0, flo
 
     num_samples = len(unified_dataset)
     num_batches = round_fn(num_samples / global_batch_size)
-    num_workers = max(1, args.workers)
-    num_worker_batches = round_fn(num_batches / num_workers)  # per dataloader worker
-    num_batches = num_worker_batches * num_workers
+    args.workers = max(1, args.workers)
+    num_worker_batches = round_fn(num_batches / args.workers)  # per dataloader worker
+    num_batches = num_worker_batches * args.workers
     num_samples = num_batches * global_batch_size
     # each worker is iterating over this
     # dataset = dataset.with_epoch(num_worker_batches)
