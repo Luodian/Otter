@@ -184,7 +184,6 @@ class UnifyDataset(OFADataset):
         self.bos_mask = torch.LongTensor([1])
         self.eos_mask = torch.LongTensor([1])
 
-
     def pre_question(self, question, max_ques_words):
         question = question.lower().lstrip(",.!?*#:;~").replace('-', ' ').replace('/', ' ')
 
@@ -323,175 +322,24 @@ class UnifyDataset(OFADataset):
                 answer = refs.strip().replace("#"," ")
                 conf = torch.tensor([1.0])
             elif dataset_name == "conversation_58k":
-                import pdb;pdb.set_trace()
+                # import pdb;pdb.set_trace()
                 self.max_src_length = self.max_tgt_length = 256
                 question = self.pre_question(question, self.max_src_length)
                 caption = caption.replace("<#>"," ")
                 question = caption+" "+question.strip("<image>")
                 answer = refs.strip().replace("#"," ")
                 conf = torch.tensor([1.0])
-            # ref_dict = {item.split('|!+')[1]: float(item.split('|!+')[0]) for item in refs.split('&&')}
-            # answer = max(ref_dict, key=ref_dict.get)
-            # conf = ref_dict[answer]
-            src_text = self.tokenizer(" {}".format(question), return_tensors="pt", add_special_tokens=False)
+
+            # src_text = self.tokenizer(" {}".format(question), return_tensors="pt", add_special_tokens=False)
+            src_text = self.tokenizer(f"<image>Question:{question} Answer:<answer>{answer}<|endofchunk|>", return_tensors="pt", add_special_tokens=False)
             src_item = src_text['input_ids'].squeeze(0)
             src_item_mask = src_text['attention_mask'].squeeze(0)
-            tgt_item = self.tokenizer(" {}".format(answer), return_tensors="pt", add_special_tokens=False).input_ids.squeeze(0)
-
             conf = torch.tensor([conf])
-            pos_src_item = self.tokenizer(
-                ' what is the answer to question " {} ". is " {} "?'.format(question, answer), return_tensors="pt", add_special_tokens=False).input_ids.squeeze(0)
-
-            # neg_src_item = self.tokenizer(
-            #     ' what is the answer to question " {} ". is " {} "?'.format(question, self.get_negative_answer(answer, conf)), return_tensors="pt", add_special_tokens=False).input_ids.squeeze(0)
-
-        # elif type == 'attribute':
-        #     object, attr_key, attr_value = attribute.strip().split('|!+')
-        #     if attr_value == 'transparent':
-        #         src_item = self.tokenizer(" what is transparent?", return_tensors="pt", add_special_tokens=False).input_ids.squeeze(0)
-
-        #         tgt_item = self.tokenizer(" {}".format(object), return_tensors="pt", add_special_tokens=False).input_ids.squeeze(0)
-
-        #         pos_src_item = self.tokenizer(" is the {} transparent?".format(object), return_tensors="pt", add_special_tokens=False).input_ids.squeeze(0)
-
-        #         neg_src_item = self.tokenizer(" is the {} transparent?".format(self.get_negative_object(object)), return_tensors="pt",
-        #                                       add_special_tokens=False).input_ids.squeeze(0)
-
-        #     elif attr_value in {'plastic', 'textile', 'leather', 'wooden'}:
-        #         rand_idx = random.randint(0, 1)
-        #         if rand_idx == 0:
-        #             src_item = self.tokenizer(" what is the {} made of?".format(object), return_tensors="pt",
-        #                                       add_special_tokens=False).input_ids.squeeze(0)
-        #             tgt_item = self.tokenizer(" {}".format(attr_value), return_tensors="pt",
-        #                                       add_special_tokens=False).input_ids.squeeze(0)
-        #         else:
-        #             src_item = self.tokenizer(" what is made of {}".format(attr_value), return_tensors="pt",
-        #                                       add_special_tokens=False).input_ids.squeeze(0)
-        #             tgt_item = self.tokenizer(" {}".format(object), return_tensors="pt",
-        #                                       add_special_tokens=False).input_ids.squeeze(0)
-        #         pos_src_item = self.tokenizer(" is the {} made of {}?".format(object, attr_value), return_tensors="pt",
-        #                                       add_special_tokens=False).input_ids.squeeze(0)
-        #         neg_src_item = self.tokenizer(
-        #             " is the {} made of {}?".format(object, self.get_negative_attribute(attr_value)), return_tensors="pt",
-        #                                       add_special_tokens=False).input_ids.squeeze(0)
-
-        #     elif attr_value in {'stand', 'walk', 'run', 'jump', 'sit', 'lay'}:
-        #         src_item = self.tokenizer(" what is the action of the {}?".format(object), return_tensors="pt",
-        #                                       add_special_tokens=False).input_ids.squeeze(0)
-        #         tgt_item = self.tokenizer(" {}".format(continuous_tense(attr_value)), return_tensors="pt",
-        #                                       add_special_tokens=False).input_ids.squeeze(0)
-        #         pos_src_item = self.tokenizer(
-        #             " is the {} {}?".format(object, continuous_tense(attr_value))
-        #             , return_tensors="pt",
-        #             add_special_tokens=False).input_ids.squeeze(0)
-        #         neg_src_item = self.tokenizer(
-        #             " is the {} {}?".format(
-        #                 object, continuous_tense(self.get_negative_attribute(attr_value))
-        #             )
-        #             , return_tensors="pt",
-        #             add_special_tokens=False).input_ids.squeeze(0)
-        #     elif attr_value in {'smile', 'cry'}:
-        #         src_item = self.tokenizer(" what expression is on the {}'s face?".format(object), return_tensors="pt",
-        #                                       add_special_tokens=False).input_ids.squeeze(0)
-        #         tgt_item = self.tokenizer(" {}".format(continuous_tense(attr_value)), return_tensors="pt",
-        #                                       add_special_tokens=False).input_ids.squeeze(0)
-        #         pos_src_item = self.tokenizer(
-        #             " is the {} {}?".format(object, continuous_tense(attr_value))
-        #             , return_tensors="pt",
-        #             add_special_tokens=False).input_ids.squeeze(0)
-        #         neg_src_item = self.tokenizer(
-        #             " is the {} {}?".format(
-        #                 object, continuous_tense(self.get_negative_attribute(attr_value))
-        #             )
-        #             , return_tensors="pt",
-        #             add_special_tokens=False).input_ids.squeeze(0)
-        #     elif attr_value in {'sing', 'talk'}:
-        #         src_item = self.tokenizer(" the {} is talking or singing?".format(object), return_tensors="pt",
-        #                                       add_special_tokens=False).input_ids.squeeze(0)
-        #         tgt_item = self.tokenizer(" {}".format(continuous_tense(attr_value)), return_tensors="pt",
-        #                                       add_special_tokens=False).input_ids.squeeze(0)
-        #         pos_src_item = self.tokenizer(
-        #             " is the {} {}?".format(object, continuous_tense(attr_value))
-        #             , return_tensors="pt",
-        #             add_special_tokens=False).input_ids.squeeze(0)
-        #         neg_src_item = self.tokenizer(
-        #             " is the {} {}?".format(
-        #                 object, continuous_tense(self.get_negative_attribute(attr_value))
-        #             )
-        #             , return_tensors="pt",
-        #             add_special_tokens=False).input_ids.squeeze(0)
-        #     else:
-        #         raise NotImplementedError
-        # elif type == 'relation':
-        #     object1, object2, relations = relation.strip().split('|!+')
-        #     relation_list = relations.strip().split(', ')
-        #     relation_set = set(relation_list)
-        #     relation = random.choice(relation_list)
-        #     src_item = self.tokenizer(' what is the relationship between " {} " and " {} "?'.format(object1, object2), return_tensors="pt",
-        #                                       add_special_tokens=False).input_ids.squeeze(0)
-        #     tgt_item = self.tokenizer(" {}".format(self.rel2cap[relation].format(object1, object2)), return_tensors="pt",
-        #                                       add_special_tokens=False).input_ids.squeeze(0)
-        #     pos_src_item = self.tokenizer(
-        #         " {}".format(self.rel2question[relation].format(object1, object2))
-        #         , return_tensors="pt",
-        #         add_special_tokens=False).input_ids.squeeze(0)
-        #     neg_src_item = self.tokenizer(
-        #         " {}".format(self.rel2question[self.get_negative_relation(relation_set)].format(object1, object2))
-        #         , return_tensors="pt",
-        #         add_special_tokens=False).input_ids.squeeze(0)
-        # elif type == 'positioning':
-        #     conf = torch.tensor([0.0]) if self.remove_visual_grounding else torch.tensor([1.0])
-        #     w, h = image.size
-        #     boxes_target = {"boxes": [], "labels": [], "area": [], "size": torch.tensor([h, w])}
-        #     x0, y0, x1, y1 = refs.strip().split(',')
-        #     boxes_target["boxes"] = torch.tensor([[float(x0), float(y0), float(x1), float(y1)]])
-        #     boxes_target["labels"] = np.array([0])
-        #     boxes_target["area"] = torch.tensor([(float(x1) - float(x0)) * (float(y1) - float(y0))])
-        #     patch_image, boxes_target = self.positioning_transform(image, boxes_target)
-        #     quant_x0 = "<bin_{}>".format(int((boxes_target["boxes"][0][0] * (self.num_bins - 1)).round()))
-        #     quant_y0 = "<bin_{}>".format(int((boxes_target["boxes"][0][1] * (self.num_bins - 1)).round()))
-        #     quant_x1 = "<bin_{}>".format(int((boxes_target["boxes"][0][2] * (self.num_bins - 1)).round()))
-        #     quant_y1 = "<bin_{}>".format(int((boxes_target["boxes"][0][3] * (self.num_bins - 1)).round()))
-        #     region_coord = "{} {} {} {}".format(quant_x0, quant_y0, quant_x1, quant_y1)
-        #     src_caption = self.pre_caption(caption, self.max_src_length)
-        #     src_item = self.tokenizer(' which region does the text " {} " describe?'.format(src_caption), return_tensors="pt",
-        #                                       add_special_tokens=False).input_ids.squeeze(0)
-        #     tgt_item = torch.tensor(self.tokenizer.convert_tokens_to_ids(region_coord.split()))
-        # elif type == 'detection':
-        #     w, h = image.size
-        #     boxes_target = {"boxes": [], "labels": [], "area": [], "size": torch.tensor([h, w])}
-        #     label_list = caption.strip().split('&&')
-        #     for label in label_list:
-        #         x0, y0, x1, y1, cat_id, cat = label.strip().split(',', 5)
-        #         boxes_target["boxes"].append([float(x0), float(y0), float(x1), float(y1)])
-        #         boxes_target["labels"].append(cat)
-        #         boxes_target["area"].append((float(x1) - float(x0)) * (float(y1) - float(y0)))
-        #     boxes_target["boxes"] = torch.tensor(boxes_target["boxes"])
-        #     boxes_target["labels"] = np.array(boxes_target["labels"])
-        #     boxes_target["area"] = torch.tensor(boxes_target["area"])
-        #     patch_image, boxes_target = self.detection_large_resolution_transform(image, boxes_target)
-        #     quant_boxes = []
-        #     for i, box in enumerate(boxes_target["boxes"]):
-        #         quant_boxes.extend(["<bin_{}>".format(int((pos * (self.num_bins - 1)).round())) for pos in box[:4]])
-        #         quant_boxes.extend(self.tokenizer.tokenize(' {}'.format(boxes_target["labels"][i])))
-        #     src_item = self.tokenizer(' what are the objects in the image?', return_tensors="pt",
-        #                                       add_special_tokens=False).input_ids.squeeze(0)
-        #     tgt_item = torch.tensor(self.tokenizer.convert_tokens_to_ids(quant_boxes))
-        #     neg_src_caption = self.pre_caption(self.get_negative_caption('', None), self.max_src_length)
-        #     neg_src_item = self.tokenizer(' does the image describe " {} "?'.format(neg_src_caption), return_tensors="pt",
-        #                                       add_special_tokens=False).input_ids.squeeze(0)
-        # else:
-        #     logger = logging.getLogger("Main")
-        #     logger.info('type {} not implement'.format(type))
-        #     raise NotImplementedError
+ 
+            import pdb;pdb.set_trace()
 
         src_item = torch.cat([self.bos_item, src_item, self.eos_item])
-        # padding src_item_mask to the same length as src_item
         src_item_mask = torch.cat([self.bos_mask, src_item_mask, self.eos_mask])
-        target_item = torch.cat([tgt_item, self.eos_item])
-        prev_output_item = torch.cat([self.bos_item, tgt_item])
-        pos_src_item = torch.cat([self.bos_item, pos_src_item, self.eos_item]) if pos_src_item is not None else None
-        neg_src_item = torch.cat([self.bos_item, neg_src_item, self.eos_item]) if neg_src_item is not None else None
 
         if type == 'caption' and dataset_name == 'cc12m':
             target_item[:2] = self.tokenizer.pad_token_id
@@ -503,36 +351,11 @@ class UnifyDataset(OFADataset):
             "text_mask": src_item_mask,
             "patch_image": patch_image,
             "patch_mask": patch_mask,
-            "target": target_item,
-            "prev_output_tokens": prev_output_item,
             "conf": conf,
         }
 
         examples = [example]
-        # prob = random.random()
-        # if type == 'positioning':
-        #     region_example = example.copy()
-        #     region_prefix_item = self.tokenizer('  what does the region describe? region:', return_tensors="pt", add_special_tokens=False).input_ids.squeeze(0)
-        #     region_coord_item = torch.tensor(self.tokenizer.convert_tokens_to_ids(region_coord.split()))
-        #     region_src_item = torch.cat([region_prefix_item, region_coord_item])
-        #     region_tgt_item = self.tokenizer(' {}'.format(self.pre_caption(caption, self.max_tgt_length)), return_tensors="pt", add_special_tokens=False).input_ids.squeeze(0)
-        #     region_example["source"] = torch.cat([self.bos_item, region_src_item, self.eos_item])
-        #     region_example["target"] = torch.cat([region_tgt_item, self.eos_item])
-        #     region_example["prev_output_tokens"] = torch.cat([self.bos_item, region_tgt_item])
-        #     region_example["conf"] = torch.tensor([0.0]) if self.remove_grounded_captioning else torch.tensor([1.0])
-        #     examples.append(region_example)
-        # elif prob >= 0.5 and not self.is_test and pos_src_item is not None:
-        #     pos_example = example.copy()
-        #     pos_example["source"] = pos_src_item
-        #     pos_example["target"] = torch.cat([self.pos_tgt_item, self.eos_item])
-        #     pos_example["prev_output_tokens"] = torch.cat([self.bos_item, self.pos_tgt_item])
-        #     examples.append(pos_example)
-        # elif  not self.is_test and neg_src_item is not None:
-        #     neg_example = example.copy()
-        #     neg_example["source"] = neg_src_item
-        #     neg_example["target"] = torch.cat([self.neg_tgt_item, self.eos_item])
-        #     neg_example["prev_output_tokens"] = torch.cat([self.bos_item, self.neg_tgt_item])
-        #     examples.append(neg_example)
+
         return examples
 
 

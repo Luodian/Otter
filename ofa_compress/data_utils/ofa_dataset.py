@@ -86,34 +86,21 @@ def collate_fn(samples, pad_idx, eos_idx):
         res = collate_tokens([s[key] for s in samples], pad_idx, eos_idx=eos_idx, pad_to_length=pading_size)
         return res
 
-    # src_lengths = torch.LongTensor([s["source"].ne(pad_idx).long().sum() for s in samples])
 
-    larger_size = max(max([s["target"].size(0) for s in samples]), max([s["source"].size(0) for s in samples]))
-
-    target = merge("target", pading_size=larger_size)
-    tgt_lengths = torch.LongTensor([s["target"].ne(pad_idx).long().sum() for s in samples])
-    ntokens = tgt_lengths.sum().item()
+    larger_size = max([s["source"].size(0) for s in samples])
 
     id = np.array([s["id"] for s in samples])
     src_tokens = merge("source", pading_size=larger_size)
     src_tokens_masks = merge('text_mask', pading_size=larger_size)
-    # src_tokens_masks = torch.stack([s["text_mask"] for s in samples], dim=0)
 
-    assert src_tokens.size(1) == target.size(1)
-
-    prev_output_tokens = merge("prev_output_tokens")
 
     batch = {
         "id": id,
         "nsentences": len(samples),
-        "ntokens": ntokens,
         "net_input": {
             "input_ids": src_tokens,
             "attention_masks": src_tokens_masks,
-            # "src_lengths": src_lengths,
-            "decoder_input_ids": prev_output_tokens
         },
-        "target": target,
     }
     if samples[0].get("patch_image", None) is not None:
         batch["net_input"]["patch_images"] = torch.stack([sample['patch_image'] for sample in samples], dim=0)
