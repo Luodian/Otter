@@ -227,8 +227,7 @@ def main():
     )
     # data args
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--train_num_samples", type=int, default=10000)
-    # parser.add_argument("--train_num_samples_laion", type=int, default=10000)
+    parser.add_argument("--train_num_samples", type=int)
     parser.add_argument("--dataset_resampled", action="store_true")
     # distributed training args
     parser.add_argument(
@@ -330,7 +329,7 @@ def main():
             {"params": params_without_wd, "weight_decay": 0.0},
         ]
 
-    args.train_num_samples = multi_instruct_dataset.dataloader.num_samples
+    args.train_num_samples = multi_instruct_dataset.dataloader.num_samples if args.train_num_samples is None else args.train_num_samples
     total_training_steps = ((args.train_num_samples) // (args.batch_size * args.world_size)) * args.num_epochs
 
     # check if a checkpoint exists for this run
