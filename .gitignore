@@ -178,7 +178,7 @@ scripts/*
 .amltconfig
 example_unified_data/*
 open_flamingo/*
-open_flaming_archived/*
+open_flamingo_archived/*
 
 #yuanhan
 tools
