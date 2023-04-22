@@ -24,14 +24,28 @@ import time
 
 from ofa_compress.arguments import add_data_args
 from accelerate import Accelerator
-from accelerate import Accelerator
-
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig
 
 def random_seed(seed=42, rank=0):
     torch.manual_seed(seed + rank)
     np.random.seed(seed + rank)
     random.seed(seed + rank)
 
+def save_fsdp(sharded_model, epoch=0, optimizer=None, lr_scheduler=None, final_weight=False, args=None):
+    save_policy = FullStateDictConfig(offload_to_cpu=True, rank0_only=True)
+    with FSDP.state_dict_type(sharded_model, StateDictType.FULL_STATE_DICT, save_policy):
+        cpu_state = get_checkpoint(sharded_model)
+
+    checkpoint_dict = {
+        "epoch": epoch,
+        "model_state_dict": cpu_state,
+        "optimizer_state_dict": optimizer.state_dict(),
+        "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+    }
+    if final_weight:
+        torch.save(checkpoint_dict, f"{args.external_save_dir}/final_weight.pt")
+    else:
+        torch.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
 
 def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
     # num_batches_per_epoch = multi_instruct_loader.num_batches
@@ -300,6 +314,26 @@ def main():
 
     print(f"Start running training on rank {args.rank}.")
 
+    # check if a checkpoint exists for this run
+    args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
+    if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is None and args.overwrite_checkpoint is False:
+        checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
+        if len(checkpoint_list) == 0:
+            print(f"Found no checkpoints for run {args.external_save_dir}.")
+        else:
+            args.resume_from_checkpoint = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
+            print(f"Found checkpoint {args.resume_from_checkpoint} for run {args.external_save_dir}.")
+
+    resume_from_epoch = 0
+    if args.resume_from_checkpoint is not None:
+        if args.rank == 0:
+            print(f"Loading checkpoint from {args.resume_from_checkpoint}")
+        checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
+        model.load_state_dict(checkpoint, False)
+
+    accelerator = Accelerator()
+    model = accelerator.prepare(model)
+
     if args.rank == 0 and args.report_to_wandb:
         wandb.init(
             project=args.wandb_project,
@@ -330,38 +364,10 @@ def main():
             {"params": params_without_wd, "weight_decay": 0.0},
         ]
 
+    optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
+
     args.train_num_samples = multi_instruct_dataset.dataloader.num_samples
     total_training_steps = ((args.train_num_samples) // (args.batch_size * args.world_size)) * args.num_epochs
-
-    # check if a checkpoint exists for this run
-    args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
-    if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is None and args.overwrite_checkpoint is False:
-        checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
-        if len(checkpoint_list) == 0:
-            print(f"Found no checkpoints for run {args.external_save_dir}.")
-        else:
-            args.resume_from_checkpoint = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
-            print(f"Found checkpoint {args.resume_from_checkpoint} for run {args.external_save_dir}.")
-
-    resume_from_epoch = 0
-    if args.resume_from_checkpoint is not None:
-        if args.rank == 0:
-            print(f"Loading checkpoint from {args.resume_from_checkpoint}")
-        checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
-        model.load_state_dict(checkpoint, False)
-
-    # add <answer> token to tokenizer
-    tokenizer.add_special_tokens(
-        {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
-    )
-
-    model.lang_encoder.resize_token_embeddings(len(tokenizer))
-        
-    optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
-    accelerator = Accelerator()
-    multi_instruct_loader = multi_instruct_dataset.dataloader
-    model, optimizer, multi_instruct_loader = accelerator.prepare(model, optimizer, multi_instruct_loader)
-    model.train()
 
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
@@ -380,6 +386,10 @@ def main():
         )
     else:
         lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps)
+
+    multi_instruct_loader = multi_instruct_dataset.dataloader
+    optimizer, multi_instruct_loader = accelerator.prepare(optimizer, multi_instruct_loader)
+    model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
         multi_instruct_dataset.set_epoch(epoch)
