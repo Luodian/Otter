@@ -1,5 +1,5 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from transformers import LlamaForCausalLM, LlamaTokenizer
+# from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import LlamaForCausalLM, LlamaTokenizer, OPTForCausalLM, AutoModelForCausalLM, AutoTokenizer
 import open_clip
 
 from .flamingo import Flamingo
@@ -38,33 +38,38 @@ def create_model_and_transforms(
     )
     # set the vision encoder to output the visual features
     vision_encoder.visual.output_tokens = True
-
-    if "llama" in lang_encoder_path.lower():
+    
+    if "llama" in tokenizer_path.lower():
         text_tokenizer = LlamaTokenizer.from_pretrained(
             tokenizer_path, local_files_only=use_local_files
         )
-    elif 'opt' in lang_encoder_path.lower():
+    else:
         text_tokenizer = AutoTokenizer.from_pretrained(
             tokenizer_path, local_files_only=use_local_files
         )
-    # add Flamingo special tokens to the tokenizer
+    # add Flamingo special tokens and QA special tokens to the tokenizer
     text_tokenizer.add_special_tokens(
-        {"additional_special_tokens": ["<|endofchunk|>", "<image>"]}
+        {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
     )
     if text_tokenizer.pad_token is None:
         # Issue: GPT models don't have a pad token, which we use to
         # modify labels for the loss.
         text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
 
+    
     if "llama" in lang_encoder_path.lower():
         lang_encoder = LlamaForCausalLM.from_pretrained(
             lang_encoder_path, local_files_only=use_local_files
         )
-    elif 'opt' in lang_encoder_path.lower():
+    elif "opt" in lang_encoder_path.lower():
+        lang_encoder = OPTForCausalLM.from_pretrained(
+            lang_encoder_path, local_files_only=use_local_files
+        )
+    else:
         lang_encoder = AutoModelForCausalLM.from_pretrained(
             lang_encoder_path, local_files_only=use_local_files
         )
-    extend_instance(lang_encoder, FlamingoLMMixin)
+    extend_instance(lang_encoder, FlamingoLMMixin)  
 
     if decoder_layers_attr_name is None:
         decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
