@@ -75,7 +75,24 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         input_ids = batch_multi_instruct["net_input"]["input_ids"].to(device_id, dtype=cast_dtype, non_blocking=True)
         attention_mask = batch_multi_instruct["net_input"]["attention_masks"].to(device_id, dtype=cast_dtype, non_blocking=True)
 
-        labels = batch_multi_instruct["target"].to(device_id, dtype=cast_dtype, non_blocking=True)
+        labels = input_ids.clone()
+        labels[labels == tokenizer.pad_token_id] = -100
+        labels[:, 0] = -100
+
+        for i in range(labels.shape[0]):
+            # remove loss for any token before <answer> token
+            label_idx = 0
+            while (
+                label_idx < labels.shape[1] and labels[i][label_idx] != answer_token_id
+            ):
+                labels[i][label_idx] = -100
+                label_idx += 1
+
+        labels[labels == answer_token_id] = -100  
+
+        labels[labels == media_token_id] = -100
+
+        labels.to(device_id)
 
         with autocast():
             loss_multi_instruct = model(
