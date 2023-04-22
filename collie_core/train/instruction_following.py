@@ -75,6 +75,8 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
     endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)["input_ids"][-1]
+    answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
+
 
     model.train()
 
@@ -107,11 +109,31 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         #### MULTI_INSTRUCT FORWARD PASS ####
 
         images = batch_multi_instruct["net_input"]["patch_images"].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(1).unsqueeze(1)
-
         input_ids = batch_multi_instruct["net_input"]["input_ids"].to(device_id, dtype=cast_dtype, non_blocking=True)
         attention_mask = batch_multi_instruct["net_input"]["attention_masks"].to(device_id, dtype=cast_dtype, non_blocking=True)
 
-        labels = batch_multi_instruct["target"].to(device_id, dtype=cast_dtype, non_blocking=True)
+        import pdb;pdb.set_trace()
+
+        labels = input_ids.clone()
+        labels[labels == tokenizer.pad_token_id] = -100
+        labels[:, 0] = -100
+
+        for i in range(labels.shape[0]):
+            # remove loss for any token before <answer> token
+            label_idx = 0
+            while (
+                label_idx < labels.shape[1] and labels[i][label_idx] != answer_token_id
+            ):
+                labels[i][label_idx] = -100
+                label_idx += 1
+
+        labels[labels == answer_token_id] = -100  
+
+        labels[labels == media_token_id] = -100
+
+        labels.to(device_id)
+
+        import pdb;pdb.set_trace()
 
         with autocast():
             loss_multi_instruct = model(
@@ -125,9 +147,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
         #### BACKWARD PASS ####
         accelerator.backward(divided_loss_multi_instruct)
-        
-
-
+         
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
         # step optimizer and log
