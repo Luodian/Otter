@@ -42,6 +42,12 @@ def initialize_model(args):
     model.to("cuda")
     model.eval()
 
+    tokenizer.add_special_tokens(
+        {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
+    )
+
+    model.lang_encoder.resize_token_embeddings(len(tokenizer))
+
     if args.checkpoint_path is None:
         args.checkpoint_path = hf_hub_download("openflamingo/OpenFlamingo-9B", "checkpoint.pt")
         msg = model.load_state_dict(torch.load(args.checkpoint_path), strict=False)
@@ -58,16 +64,34 @@ args = parse_args()
 model, image_processor, tokenizer = initialize_model(args)
 
 def upload_and_anwer(image_1, image_2, image_3, text_1, text_2, text_3, max_new_tokens, num_beams, temperature, topk, top_p, no_repeat_ngram_size, length_penalty, num_return_sequences, do_sample, early_stopping):
-    vision_x = [image_processor(image_1).unsqueeze(0), image_processor(image_2).unsqueeze(0), image_processor(image_3).unsqueeze(0)]
-    # vision_x = [image_processor(image_3).unsqueeze(0)]
+    # vision_x = [image_processor(image_1).unsqueeze(0), image_processor(image_2).unsqueeze(0), image_processor(image_3).unsqueeze(0)]
+    vision_x = []
+    if image_1 is not None:
+        vision_x.append(image_processor(image_1).unsqueeze(0))
+    if image_2 is not None:
+        vision_x.append(image_processor(image_2).unsqueeze(0))
+    if image_3 is not None:
+        vision_x.append(image_processor(image_3).unsqueeze(0))
     vision_x = torch.cat(vision_x, dim=0)
     vision_x = vision_x.unsqueeze(1).unsqueeze(0)
     vision_x = vision_x.to("cuda")
     tokenizer.padding_side = "left"  # For generation padding tokens should be on the left
+    # lang_x = tokenizer(
+    #     [f"<image>{text_1}<|endofchunk|><image>{text_2}<|endofchunk|><image>{text_3}"],
+    #     return_tensors="pt",
+    # )
+    text_prompt = ""
+    if text_1 != '':
+        text_prompt += f"<image>{text_1}<|endofchunk|>"
+    if text_2 != '':
+        text_prompt += f"<image>{text_2}<|endofchunk|>"
+    if text_3 != '':
+        text_prompt += f"<image>{text_3}"
     lang_x = tokenizer(
-        [f"<image>{text_1}<|endofchunk|><image>{text_2}<|endofchunk|><image>{text_3}"],
-        return_tensors="pt",
+        [text_prompt], return_tensors="pt",
     )
+    print(vision_x.shape)
+    print(text_prompt)
     do_sample = True if do_sample == 1 else False
     early_stopping = True if early_stopping == 1 else False
     lang_x = {k: v.to("cuda") for k, v in lang_x.items()}
