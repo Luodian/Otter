@@ -17,7 +17,7 @@ from transformers import (
     get_linear_schedule_with_warmup,
 )
 
-from open_flamingo import create_model_and_transforms
+from collie_core import create_model_and_transforms
 from open_flamingo.train.train_utils import AverageMeter, get_autocast, get_cast_dtype, get_checkpoint
 from tqdm import tqdm
 import time

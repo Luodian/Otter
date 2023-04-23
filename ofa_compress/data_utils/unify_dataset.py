@@ -338,10 +338,6 @@ class UnifyDataset(OFADataset):
         src_item = torch.cat([self.bos_item, src_item, self.eos_item])
         src_item_mask = torch.cat([self.bos_mask, src_item_mask, self.eos_mask])
 
-        # if type == 'caption' and dataset_name == 'cc12m':
-        #     target_item[:2] = self.tokenizer.pad_token_id
-        #     target_item[-1] = self.eos_item
-
         example = {
             "id": uniq_id,
             "source": src_item,
