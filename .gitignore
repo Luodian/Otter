@@ -177,9 +177,16 @@ scripts/*
 .amltignore
 .amltconfig
 example_unified_data/*
+open_flamingo/*
+open_flamingo_archived/*
 
 #yuanhan
 tools
-
 data
 azure
+flamingo3B
+flamingo9B
+flamingo9B-lora-vqa_train_gqa_train_balanced
+.deepspeed_env
+run_train_3B.sh
+run_train_9B.sh
