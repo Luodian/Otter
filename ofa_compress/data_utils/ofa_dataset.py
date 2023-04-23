@@ -82,7 +82,7 @@ def collate_fn(samples, pad_idx, eos_idx):
     if len(samples) == 0:
         return {}
 
-    def merge(key, pading_size=None):
+    def merge(key, pad_idx, pading_size=None):
         res = collate_tokens([s[key] for s in samples], pad_idx, eos_idx=eos_idx, pad_to_length=pading_size)
         return res
 
@@ -90,8 +90,8 @@ def collate_fn(samples, pad_idx, eos_idx):
     larger_size = max([s["source"].size(0) for s in samples])
 
     id = np.array([s["id"] for s in samples])
-    src_tokens = merge("source", pading_size=larger_size)
-    src_tokens_masks = merge('text_mask', pading_size=larger_size)
+    src_tokens = merge("source", pad_idx=pad_idx, pading_size=larger_size)
+    src_tokens_masks = merge('text_mask', pad_idx=0, pading_size=larger_size)
 
 
     batch = {
