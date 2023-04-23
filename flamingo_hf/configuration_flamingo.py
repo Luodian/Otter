@@ -6,6 +6,7 @@ from transformers.models.auto import CONFIG_MAPPING
 
 logger = logging.get_logger(__name__)
 
+
 class FlamingoConfig(PretrainedConfig):
     r"""
     [`FlamingoConfig`] is the configuration class to store the configuration of a [`FlamingoForConditionalGeneration`]. It is
@@ -45,21 +46,35 @@ class FlamingoConfig(PretrainedConfig):
     model_type = "flamingo"
     is_composition = True
 
-    def __init__(self, vision_config=None, text_config=None, cross_attn_every_n_layers: int = 4, **kwargs):
+    def __init__(
+        self,
+        vision_config=None,
+        text_config=None,
+        cross_attn_every_n_layers: int = 4,
+        use_media_placement_augmentation: bool = True,
+        **kwargs
+    ):
         super().__init__(**kwargs)
-        
+
         if vision_config is None:
             vision_config = {}
-            logger.info("vision_config is None. initializing the vision config with default values.")
+            logger.info(
+                "vision_config is None. initializing the vision config with default values."
+            )
 
         if text_config is None:
             text_config = {}
-            logger.info("text_config is None. Initializing the text config with default values (`OPTConfig`).")
-        
-        self.vision_config = CONFIG_MAPPING[vision_config.pop("model_type")](**vision_config)
+            logger.info(
+                "text_config is None. Initializing the text config with default values (`OPTConfig`)."
+            )
+
+        self.vision_config = CONFIG_MAPPING[vision_config.pop("model_type")](
+            **vision_config
+        )
         self.text_config = CONFIG_MAPPING[text_config.pop("model_type")](**text_config)
         self.cross_attn_every_n_layers = cross_attn_every_n_layers
-    
+        self.use_media_placement_augmentation = use_media_placement_augmentation
+
     def to_dict(self):
         """
         Serializes this instance to a Python dictionary. Override the default [`~PretrainedConfig.to_dict`].
@@ -72,8 +87,11 @@ class FlamingoConfig(PretrainedConfig):
         output["text_config"] = self.text_config.to_dict()
         output["model_type"] = self.__class__.model_type
         output["cross_attn_every_n_layers"] = self.cross_attn_every_n_layers
+        output[
+            "use_media_placement_augmentation"
+        ] = self.use_media_placement_augmentation
         return output
 
-        
+
 if __name__ == "__main__":
     configuration = FlamingoConfig.from_json_file("flamingo_hf/config.json")
