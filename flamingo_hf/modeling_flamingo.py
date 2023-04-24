@@ -470,7 +470,7 @@ class FlamingoLMMixin(nn.Module):
             layer.condition_attend_previous(None)
 
 
-class FlamingoPretrainedModel(PreTrainedModel):
+class FlamingoPreTrainedModel(PreTrainedModel):
     """
     An abstract class to handle weights initialization and a simple interface for downloading and loading pretrained
     models.
@@ -486,7 +486,7 @@ class FlamingoPretrainedModel(PreTrainedModel):
         return super()._init_weights(module)
 
 
-class FlamingoModel(FlamingoPretrainedModel):
+class FlamingoModel(FlamingoPreTrainedModel):
     config_class = FlamingoConfig
 
     def __init__(
@@ -650,9 +650,79 @@ class FlamingoModel(FlamingoPretrainedModel):
 
         for layer in self.lang_encoder._get_decoder_layers():
             layer.condition_vis_x(vision_x)
+            
+    @torch.no_grad()
+    def generate(
+        self,
+        vision_x: torch.Tensor,
+        lang_x: torch.Tensor,
+        attention_mask: torch.Tensor = None,
+        num_beams=1,
+        max_new_tokens=None,
+        temperature=1.0,
+        top_k=0,
+        top_p=1.0,
+        no_repeat_ngram_size=0,
+        prefix_allowed_tokens_fn=None,
+        length_penalty=1.0,
+        num_return_sequences=1,
+        do_sample=False,
+        early_stopping=False,
+        **kwargs,
+    ):
+        """
+        Generate text conditioned on vision and language inputs.
+
+        Args:
+            vision_x (torch.Tensor): Vision input
+                shape (B, T_img, F, C, H, W)
+                images in the same chunk are collated along T_img, and frames are collated along F
+                currently only F=1 is supported (single-frame videos)
+            lang_x (torch.Tensor): Language input
+                shape (B, T_txt)
+            max_length (int, optional): Maximum length of the output. Defaults to None.
+            attention_mask (torch.Tensor, optional): Attention mask. Defaults to None.
+            num_beams (int, optional): Number of beams. Defaults to 1.
+            max_new_tokens (int, optional): Maximum new tokens. Defaults to None.
+            temperature (float, optional): Temperature. Defaults to 1.0.
+            top_k (int, optional): Top k. Defaults to 0.
+            top_p (float, optional): Top p. Defaults to 1.0.
+            no_repeat_ngram_size (int, optional): No repeat ngram size. Defaults to 0.
+            length_penalty (float, optional): Length penalty. Defaults to 1.0.
+            num_return_sequences (int, optional): Number of return sequences. Defaults to 1.
+            do_sample (bool, optional): Do sample. Defaults to False.
+            early_stopping (bool, optional): Early stopping. Defaults to False.
+        Returns:
+            torch.Tensor: lang_x with generated tokens appended to it
+        """
+        if num_beams > 1:
+            vision_x = vision_x.repeat_interleave(num_beams, dim=0)
+
+        self._encode_vision_x(vision_x=vision_x)
+
+        output = self.lang_encoder.generate(
+            lang_x,
+            attention_mask=attention_mask,
+            eos_token_id=self.eoc_token_id,
+            num_beams=num_beams,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+            prefix_allowed_tokens_fn=prefix_allowed_tokens_fn,
+            no_repeat_ngram_size=no_repeat_ngram_size,
+            length_penalty=length_penalty,
+            num_return_sequences=num_return_sequences,
+            do_sample=do_sample,
+            early_stopping=early_stopping,
+            **kwargs,
+        )
+
+        self.lang_encoder.clear_conditioned_layers()
+        return output
 
 
-class FlamingoForConditionalGeneration(FlamingoPretrainedModel):
+class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
     config_class = FlamingoConfig
 
     def __init__(
@@ -661,26 +731,50 @@ class FlamingoForConditionalGeneration(FlamingoPretrainedModel):
     ):
         super().__init__(config)
 
-        self.vision_encoder = AutoModel.from_pretrained(
-            config.vision_config._name_or_path
-        )
-        self.text_tokenizer = AutoTokenizer.from_pretrained(
+        # TODO: hardcode right because autoXXX is too slow
+        text_tokenizer = LlamaTokenizer.from_pretrained(
             config.text_config._name_or_path
         )
-        self.text_tokenizer.add_special_tokens(
+        lang_encoder = LlamaForCausalLM.from_pretrained(
+            config.text_config._name_or_path
+        )
+        vision_encoder = CLIPModel.from_pretrained(
+            config.vision_config._name_or_path
+        ).vision_model
+        # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
+        text_tokenizer.add_special_tokens(
             {"additional_special_tokens": ["<|endofchunk|>", "<image>"]}
         )
-        self.lang_encoder = AutoModelForCausalLM.from_pretrained(
-            config.text_config._name_or_path
-        )
-        extend_instance(self.lang_encoder, FlamingoLMMixin)
-        if decoder_layers_attr_name is None:
-            decoder_layers_attr_name = _infer_decoder_layers_attr_name(
-                self.lang_encoder
-            )
-        self.lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        self.lang_encoder.resize_token_embeddings(len(self.text_tokenizer))
+        if text_tokenizer.pad_token is None:
+            text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
+        self.text_tokenizer = text_tokenizer
+        self.eoc_token_id = text_tokenizer.encode("<|endofchunk|>")[-1]
+        self.media_token_id = text_tokenizer.encode("<image>")[-1]
+
+        # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
+        extend_instance(lang_encoder, FlamingoLMMixin)
+        decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
+        lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
+        lang_encoder.resize_token_embeddings(len(text_tokenizer))
+        self.lang_encoder = lang_encoder
+
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
+        self.use_media_placement_augmentation = config.use_media_placement_augmentation
+
+        # vision_encoder = AutoModel.from_config(config.vision_config).vision_model
+
+        vision_encoder.output_tokens = True
+        self.vision_encoder = vision_encoder
+
+        self.vis_dim = 1024
+        self.perceiver = FlamingoPerceiverResampler(dim=self.vis_dim)
+
+        self.lang_encoder.init_flamingo(
+            media_token_id=self.media_token_id,
+            vis_hidden_size=self.vis_dim,
+            cross_attn_every_n_layers=self.cross_attn_every_n_layers,
+            use_media_placement_augmentation=self.use_media_placement_augmentation,
+        )
         self.post_init()
 
     def get_input_embeddings(self) -> nn.Module:

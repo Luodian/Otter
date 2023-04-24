@@ -27,7 +27,8 @@ from collie_core import create_model_and_transforms
 from huggingface_hub import hf_hub_download
 import transformers
 from transformers import LlamaForCausalLM, AutoModelForCausalLM
-from flamingo_hf import FlamingoForConditionalGeneration
+from flamingo_hf import FlamingoModel, FlamingoForConditionalGeneration
+import open_clip
 
 GB = 1 << 30
 
@@ -76,9 +77,12 @@ class ModelWorker:
     def load_model(self, lm_path, checkpoint_path, num_gpus, load_in_8bit, load_from_hf=True):      
         if load_from_hf:
             device_map = 'auto' if num_gpus > 0 else 'cpu'
-            model = FlamingoForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit)
+            model = FlamingoModel.from_pretrained(checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit)
             tokenizer = model.text_tokenizer
-            image_processor = transformers.CLIPImageProcessor()
+            _, _, image_processor = open_clip.create_model_and_transforms(
+                "ViT-L-14",
+                pretrained="openai",
+            )
         else:
             model, image_processor, tokenizer = create_model_and_transforms(
             clip_vision_encoder_path="ViT-L-14",
