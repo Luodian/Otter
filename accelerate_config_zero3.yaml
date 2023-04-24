@@ -1,13 +1,6 @@
 compute_environment: LOCAL_MACHINE
 deepspeed_config:
-  deepspeed_config_file: /home/v-boli7/projects/PET-VLM/ds_config.json
-  gradient_accumulation_steps: 1
-  gradient_clipping: 1.0
-  offload_optimizer_device: cpu
-  offload_param_device: cpu
-  zero3_init_flag: true
-  zero3_save_16bit_model: true
-  zero_stage: 3
+  deepspeed_config_file: /mnt/lustre/yhzhang/PET-VLM/ds_config.json
 distributed_type: DEEPSPEED
 downcast_bf16: 'no'
 dynamo_config:
@@ -17,6 +10,7 @@ dynamo_config:
   dynamo_use_fullgraph: true
 machine_rank: 0
 main_training_function: main
+main_process_port: 20688
 num_machines: 1
 num_processes: 1
 rdzv_backend: static
