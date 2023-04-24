@@ -97,6 +97,19 @@ We report accuracy on following datasets after instruction following (IF) tuning
 | DeepMind Flamingo-9B | 79.4   | 93.1   | 99.0   | 102.2   | 106.3   |
 
 ### Serving Demo
+
+#### Convert model into HF
+```Shell
+export AZURE_DIR="/media/ntu/volume1/home/s121md302_06/data/data/azure"
+export PYTHONPATH=.
+# Convert our model into HF, add <answer> token
+python flamingo_hf/converting_flamingo_to_pytorch.py --old ${AZURE_DIR}/models/collie_llama9b_multi_instruct_apr23/final_weights.pt --new checkpoint/collie_llama9b_multi_instruct_apr23/final_weights_hf.pt
+python flamingo_hf/save_hf.py --checkpoint checkpoint/collie_llama9b_multi_instruct_apr23/final_weights_hf.pt --save-dir checkpoint/collie_llama9b_multi_instruct_apr23_hf --add-answer-token
+# Convert official flamingo model into HF, don't add <answer> token
+python flamingo_hf/converting_flamingo_to_pytorch.py --old /media/ntu/volume1/home/s121md302_06/.cache/huggingface/hub/models--openflamingo--OpenFlamingo-9B/snapshots/b5cd34cb6c90775b262837b6a80a6a47123b4571/checkpoint.pt --new checkpoint/models--openflamingo--OpenFlamingo-9B/checkpoint.pt
+python flamingo_hf/save_hf.py --checkpoint checkpoint/models--openflamingo--OpenFlamingo-9B/checkpoint.pt --save-dir checkpoint/open_flamingo_9B_hf
+```
+
 #### Launch a controller
 ```Shell
 python -m collie_core.serve.controller --host 0.0.0.0 --port 10000
@@ -106,12 +119,10 @@ python -m collie_core.serve.controller --host 0.0.0.0 --port 10000
 ```Shell
 export AZURE_DIR="/media/ntu/volume1/home/s121md302_06/data/data/azure"
 # Init our model on GPU
-python -m collie_core.serve.model_worker --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model-name open_flamingo --checkpoint-path models/collie_llama9b_multi_instruct_apr23/final_weights.pt --num-gpus 1 
-# Init our model on CPU
-python -m collie_core.serve.model_worker --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model-name open_flamingo --checkpoint-path ${AZURE_DIR}/models/collie_llama9b_multi_instruct_apr23/final_weights.pt --num-gpus 0
+CUDA_VISIBLE_DEVICES=0,1 python -m collie_core.serve.model_worker --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model-name collie_llama9b_multi_instruct_apr23 --checkpoint-path checkpoint/collie_llama9b_multi_instruct_apr23_hf --num-gpus 2
 
-# Init original model on CPU
-python -m collie_core.serve.model_worker --controller http://localhost:10000 --port 40001 --worker http://localhost:40001 --model-name open_flamingo_original --num-gpus 0
+# Init original model on GPU
+CUDA_VISIBLE_DEVICES=2,3 python -m collie_core.serve.model_worker --controller http://localhost:10000 --port 40001 --worker http://localhost:40001 --model-name open_flamingo_original --checkpoint-path checkpoint/open_flamingo_9B_hf --num-gpus 2
 ```
 Wait until the process finishes loading the model and you see "Uvicorn running on ...".
 

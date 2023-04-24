@@ -25,7 +25,9 @@ from collie_core.utils import (build_logger, server_error_msg,
     pretty_print_semaphore)
 from collie_core import create_model_and_transforms
 from huggingface_hub import hf_hub_download
+import transformers
 from transformers import LlamaForCausalLM, AutoModelForCausalLM
+from flamingo_hf import FlamingoForConditionalGeneration
 
 GB = 1 << 30
 
@@ -55,7 +57,7 @@ class ModelWorker:
                  worker_id, no_register,
                  lm_path, model_name,
                  checkpoint_path, keep_aspect_ratio,
-                 num_gpus):
+                 num_gpus, load_8bit):
         self.controller_addr = controller_addr
         self.worker_addr = worker_addr
         self.worker_id = worker_id
@@ -63,7 +65,7 @@ class ModelWorker:
         logger.info(f"Loading the model {self.model_name} on worker {worker_id} ...")
         self.keep_aspect_ratio = keep_aspect_ratio
         self.tokenizer, self.model, self.image_processor, self.context_len = self.load_model(
-            lm_path, checkpoint_path, num_gpus)
+            lm_path, checkpoint_path, num_gpus, load_8bit)
 
         if not no_register:
             self.register_to_controller()
@@ -71,44 +73,42 @@ class ModelWorker:
                 target=heart_beat_worker, args=(self,))
             self.heart_beat_thread.start()
     
-    def load_model(self, lm_path, checkpoint_path, num_gpus):      
-        model, image_processor, tokenizer = create_model_and_transforms(
+    def load_model(self, lm_path, checkpoint_path, num_gpus, load_in_8bit, load_from_hf=True):      
+        if load_from_hf:
+            device_map = 'auto' if num_gpus > 0 else 'cpu'
+            model = FlamingoForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit)
+            tokenizer = model.text_tokenizer
+            image_processor = transformers.CLIPImageProcessor()
+        else:
+            model, image_processor, tokenizer = create_model_and_transforms(
             clip_vision_encoder_path="ViT-L-14",
             clip_vision_encoder_pretrained="openai",
             lang_encoder_path=lm_path,
             tokenizer_path=lm_path,
             cross_attn_every_n_layers=4
-        )
-        if checkpoint_path is not None: # our checkpoint adds special tokens
-            tokenizer.add_special_tokens(
-            {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
             )
-            model.lang_encoder.resize_token_embeddings(len(tokenizer))
+            if checkpoint_path is not None: # our checkpoint adds special tokens
+                tokenizer.add_special_tokens(
+                {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
+                )
+                model.lang_encoder.resize_token_embeddings(len(tokenizer))
+            
+            if checkpoint_path is None:
+                checkpoint_path = hf_hub_download("openflamingo/OpenFlamingo-9B", "checkpoint.pt")
+                msg = model.load_state_dict(torch.load(checkpoint_path), strict=False)
+            else:
+                model_dict = torch.load(checkpoint_path)
+                if model_dict.get("model") is not None:
+                    model_dict = model_dict["model"]
+                msg = model.load_state_dict(model_dict, strict=False)
+                del model_dict
+            logger.info(msg)
         
-        if checkpoint_path is None:
-            checkpoint_path = hf_hub_download("openflamingo/OpenFlamingo-9B", "checkpoint.pt")
-            msg = model.load_state_dict(torch.load(checkpoint_path), strict=False)
-        else:
-            model_dict = torch.load(checkpoint_path)
-            if model_dict.get("model") is not None:
-                model_dict = model_dict["model"]
-            msg = model.load_state_dict(model_dict, strict=False)
-            del model_dict
-        logger.info(msg)
+            if num_gpus > 0:
+                model.cuda()
         
-        if num_gpus == 1:
-            self.device = 'cuda'
-            model.cuda()
-        elif num_gpus > 1:
-            self.device = 'cuda'
-            raise NotImplementedError("Multi-GPU is not supported yet.")
-        else:
-            self.device = 'cpu'
+        self.device = 'cuda' if num_gpus > 0 else 'cpu'        
         logger.info(f"Loading the model to {self.device} ...")
-        # if hasattr(model.config, "max_sequence_length"):
-        #     context_len = model.config.max_sequence_length
-        # else:
-        #     context_len = 2048
         context_len = 2048
         
         return tokenizer, model, image_processor, context_len
@@ -267,6 +267,7 @@ if __name__ == "__main__":
     parser.add_argument("--limit-model-concurrency", type=int, default=5)
     parser.add_argument("--stream-interval", type=int, default=2)
     parser.add_argument("--no-register", action="store_true")
+    parser.add_argument("--load-8bit", action="store_true")
     args = parser.parse_args()
     logger.info(f"args: {args}")
 
@@ -278,5 +279,6 @@ if __name__ == "__main__":
                          args.model_name,
                          args.checkpoint_path,
                          args.keep_aspect_ratio,
-                         args.num_gpus)
+                         args.num_gpus,
+                         args.load_8bit,)
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
