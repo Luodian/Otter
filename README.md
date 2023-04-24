@@ -8,7 +8,7 @@ if something goes wrong, please checkout to `original_lavis` branch to conduct t
 
 ## Overview
 
-PET-VLM project aims to finetune a Large Visual Language Model (VLM) on downstream tasks. We use the OpenFlamingo-9B using a CLIP ViT-Large vision encoder and a LLaMA-7B language model. We finetune the VLM on VQA and COCO dataset.
+PET-VLM project aims to finetune a Large Visual Language Model (VLM) on downstream tasks. We use the OpenFlamingo-9B using a CLIP ViT-Large vision encoder and a LLaMA-7B language model.
 
 ## Fine-tuning
 
@@ -20,6 +20,7 @@ You may install via `conda create -f environment.yaml` or manually install the f
 
 ``` bash
 conda install pytorch=2.0.0 torchvision=0.15.0 pytorch-cuda=11.8 -c pytorch -c nvidia -y
+conda install -c conda-forge transformers=4.28.1 -y
 conda install -c conda-forge datasets=2.11.0 -y
 conda install -c conda-forge wandb=0.14.0 -y
 conda install -c conda-forge braceexpand=0.1.5 -y
@@ -32,7 +33,6 @@ pip install open_clip_torch==2.16.0
 pip install einops-exts==0.0.4
 conda install -c conda-forge tensorboard=2.12.0 -y
 conda install -c conda-forge more-itertools=9.1.0 -y
-pip install git+https://github.com/huggingface/transformers
 conda install -c conda-forge black=23.3.0 -y
 pip install gpustat
 
