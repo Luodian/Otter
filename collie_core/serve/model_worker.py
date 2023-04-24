@@ -14,7 +14,8 @@ import uuid
 from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.responses import StreamingResponse
 import requests
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer
+from threading import current_thread
 import torch
 import uvicorn
 from functools import partial
@@ -22,7 +23,7 @@ from functools import partial
 from collie_core.constants import WORKER_HEART_BEAT_INTERVAL
 from collie_core.utils import (build_logger, server_error_msg,
     pretty_print_semaphore)
-from open_flamingo import create_model_and_transforms
+from collie_core import create_model_and_transforms
 from huggingface_hub import hf_hub_download
 from transformers import LlamaForCausalLM, AutoModelForCausalLM
 
@@ -52,28 +53,26 @@ def heart_beat_worker(controller):
 class ModelWorker:
     def __init__(self, controller_addr, worker_addr,
                  worker_id, no_register,
-                 model_path, model_name,
-                 is_multi_modal, keep_aspect_ratio,
+                 lm_path, model_name,
+                 checkpoint_path, keep_aspect_ratio,
                  num_gpus):
         self.controller_addr = controller_addr
         self.worker_addr = worker_addr
         self.worker_id = worker_id
-        if model_path.endswith("/"):
-            model_path = model_path[:-1]
+        if checkpoint_path.endswith("/"):
+            checkpoint_path = checkpoint_path[:-1]
         if model_name is None:
-            model_paths = model_path.split("/")
-            if model_paths[-1].startswith('checkpoint-'):
-                self.model_name = model_paths[-2] + "_" + model_paths[-1]
+            checkpoint_paths = checkpoint_path.split("/")
+            if checkpoint_path[-1].startswith('checkpoint-'):
+                self.model_name = checkpoint_paths[-2] + "_" + checkpoint_paths[-1]
             else:
-                self.model_name = model_paths[-1]
+                self.model_name = checkpoint_paths[-1]
         else:
             self.model_name = model_name
-
         logger.info(f"Loading the model {self.model_name} on worker {worker_id} ...")
-        self.is_multi_modal = is_multi_modal
         self.keep_aspect_ratio = keep_aspect_ratio
         self.tokenizer, self.model, self.image_processor, self.context_len = self.load_model(
-            model_path, num_gpus, is_multi_modal)
+            lm_path, checkpoint_path, num_gpus)
 
         if not no_register:
             self.register_to_controller()
@@ -81,19 +80,30 @@ class ModelWorker:
                 target=heart_beat_worker, args=(self,))
             self.heart_beat_thread.start()
     
-    def load_model(self, model_path, num_gpus, is_multi_modal):
-        # hard code model initialization
-        flamingo_lm_path = "decapoda-research/llama-7b-hf"
-        
+    def load_model(self, lm_path, checkpoint_path, num_gpus):      
         model, image_processor, tokenizer = create_model_and_transforms(
             clip_vision_encoder_path="ViT-L-14",
             clip_vision_encoder_pretrained="openai",
-            lang_encoder_path=flamingo_lm_path,
-            tokenizer_path=flamingo_lm_path,
+            lang_encoder_path=lm_path,
+            tokenizer_path=lm_path,
             cross_attn_every_n_layers=4
         )
-        checkpoint_path = hf_hub_download("openflamingo/OpenFlamingo-9B", "checkpoint.pt")
-        model.load_state_dict(torch.load(checkpoint_path), strict=False)
+        tokenizer.add_special_tokens(
+        {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
+        )
+        model.lang_encoder.resize_token_embeddings(len(tokenizer))
+        
+        if checkpoint_path is None:
+            checkpoint_path = hf_hub_download("openflamingo/OpenFlamingo-9B", "checkpoint.pt")
+            msg = model.load_state_dict(torch.load(checkpoint_path), strict=False)
+        else:
+            model_dict = torch.load(checkpoint_path)
+            if model_dict.get("model") is not None:
+                model_dict = model_dict["model"]
+            msg = model.load_state_dict(model_dict, strict=False)
+            del model_dict
+        logger.info(msg)
+        
         if num_gpus == 1:
             self.device = 'cuda'
             model.cuda()
@@ -102,7 +112,7 @@ class ModelWorker:
             raise NotImplementedError("Multi-GPU is not supported yet.")
         else:
             self.device = 'cpu'
-        
+        logger.info(f"Loading the model to {self.device} ...")
         # if hasattr(model.config, "max_sequence_length"):
         #     context_len = model.config.max_sequence_length
         # else:
@@ -157,11 +167,11 @@ class ModelWorker:
             "speed": 1,
             "queue_length": self.get_queue_length(),
         }
-
+        
     @torch.inference_mode()
     def generate_stream(self, params):
+        logger.info(f"Generate stream...")
         tokenizer, model, image_processor = self.tokenizer, self.model, self.image_processor
-
         prompt = params["prompt"]
         ori_prompt = prompt
         images = params.get("images", None)
@@ -178,85 +188,25 @@ class ModelWorker:
                 vision_x = torch.cat(images, dim=0).unsqueeze(1).unsqueeze(0).to(self.device)
             else:
                 images = None
-
-        l_prompt = len(prompt)
-        temperature = float(params.get("temperature", 1.0))
-        max_new_tokens = min(int(params.get("max_new_tokens", 256)), 1024)
-        stop_str = params.get("stop", None)
-
-        input_ids = tokenizer(prompt).input_ids
-        output_ids = list(input_ids)
-        pred_ids = []
-
-        max_src_len = self.context_len - max_new_tokens - 8
-        input_ids = input_ids[-max_src_len:]
-
-        past_key_values = None
-        for i in range(max_new_tokens):
-            if i == 0:
-                out = model(
-                    lang_x=torch.as_tensor([input_ids]).to(self.device), 
-                    vision_x=vision_x,
-                    clear_conditioned_layers=False,
-                    use_cache=True)
-                logits = out.logits
-                past_key_values = out.past_key_values
-            else:
-                attention_mask = torch.ones(
-                    1, past_key_values[0][0].shape[-2] + 1, device=self.device)
-                out = model(vision_x=None,
-                            lang_x=torch.as_tensor([[token]], device=self.device),
-                            use_cached_vision_x=True,
-                            use_cache=True,
-                            attention_mask=attention_mask,
-                            clear_conditioned_layers=False,
-                            past_key_values=past_key_values)
-                logits = out.logits
-                past_key_values = out.past_key_values
-
-            last_token_logits = logits[0][-1]
-            if temperature < 1e-4:
-                token = int(torch.argmax(last_token_logits))
-            else:
-                probs = torch.softmax(last_token_logits / temperature, dim=-1)
-                token = int(torch.multinomial(probs, num_samples=1))
-
-            output_ids.append(token)
-            pred_ids.append(token)
-
-            if token == tokenizer.eos_token_id:
-                stopped = True
-            else:
-                stopped = False
-
-            if i % args.stream_interval == 0 or i == max_new_tokens - 1 or stopped:
-                output = tokenizer.decode(output_ids, skip_special_tokens=True)
-
-                if images is not None:
-                    # HACK: deal with images
-                    cur_out = tokenizer.decode(pred_ids, skip_special_tokens=True)
-                    pos = cur_out.rfind(stop_str)
-                    if pos != -1:
-                        cur_out = cur_out[:pos]
-                        stopped = True
-                    output = ori_prompt + cur_out
-                else:
-                    pos = output.rfind(stop_str, l_prompt)
-                    if pos != -1:
-                        output = output[:pos]
-                        stopped = True
-
-                ret = {
-                    "text": output,
-                    "error_code": 0,
-                }
-                yield json.dumps(ret).encode() + b"\0"
-
-            if stopped:
-                break
-
-        if past_key_values is not None:
-            del past_key_values
+        streamer = TextIteratorStreamer(tokenizer)
+        inputs = tokenizer(prompt, return_tensors="pt",).to(self.device)
+        generation_kwargs = dict(vision_x=vision_x,
+                                 lang_x=inputs["input_ids"],
+                                 attention_mask=inputs["attention_mask"],
+                                 streamer=streamer, 
+                                 max_new_tokens=50
+                                 )
+        thread = threading.Thread(target=model.generate, kwargs=generation_kwargs)
+        thread.start()
+        generated_text = ""
+        for output in streamer:
+            generated_text += output
+            logger.info(f"generated_text: {generated_text}")
+            ret = {
+                        "text": generated_text,
+                        "error_code": 0,
+                    }
+            yield json.dumps(ret).encode() + b"\0"
 
     def generate_stream_gate(self, params):
         try:
@@ -316,9 +266,9 @@ if __name__ == "__main__":
         default="http://localhost:21002")
     parser.add_argument("--controller-address", type=str,
         default="http://localhost:21001")
-    parser.add_argument("--model-path", type=str, default="facebook/opt-350m")
+    parser.add_argument("--lm-path", type=str, default="luodian/llama-7b-hf")
     parser.add_argument("--model-name", type=str)
-    parser.add_argument("--multi-modal", action="store_true")
+    parser.add_argument("--checkpoint-path", type=str)
     parser.add_argument("--keep-aspect-ratio", action="store_true")
     parser.add_argument("--num-gpus", type=int, default=1)
     parser.add_argument("--limit-model-concurrency", type=int, default=5)
@@ -331,9 +281,9 @@ if __name__ == "__main__":
                          args.worker_address,
                          worker_id,
                          args.no_register,
-                         args.model_path,
+                         args.lm_path,
                          args.model_name,
-                         args.multi_modal,
+                         args.checkpoint_path,
                          args.keep_aspect_ratio,
                          args.num_gpus)
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")

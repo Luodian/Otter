@@ -153,10 +153,10 @@ def add_text(state, text_demo_1, image_demo_1, text_demo_2, image_demo_2, text_3
     text = text[:1536]  # Hard cut-off
     if image_3 is not None:
         text = DEFAULT_IMAGE_TOKEN + text
-    if text_demo_2 is not None:
+    if text_demo_2 is not '':
         assert image_demo_2 is not None
         text = DEFAULT_IMAGE_TOKEN + text_demo_2 + DEFAULT_DEMO_END_TOKEN + text
-    if text_demo_1 is not None:
+    if text_demo_1 is not '':
         assert image_demo_1 is not None
         text = DEFAULT_IMAGE_TOKEN + text_demo_1 + DEFAULT_DEMO_END_TOKEN + text
         
