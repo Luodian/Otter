@@ -29,7 +29,7 @@ no_change_btn = gr.Button.update()
 enable_btn = gr.Button.update(interactive=True)
 disable_btn = gr.Button.update(interactive=False)
 
-priority = {
+priority = { # TODO: name our models
     "vanilla_open_flamingo": "aaaaaaa",
     "ours_1": "aaaaaab",
 }
@@ -153,10 +153,10 @@ def add_text(state, text_demo_1, image_demo_1, text_demo_2, image_demo_2, text_3
     text = text[:1536]  # Hard cut-off
     if image_3 is not None:
         text = DEFAULT_IMAGE_TOKEN + text
-    if text_demo_2 is not '':
+    if text_demo_2 != '':
         assert image_demo_2 is not None
         text = DEFAULT_IMAGE_TOKEN + text_demo_2 + DEFAULT_DEMO_END_TOKEN + text
-    if text_demo_1 is not '':
+    if text_demo_1 != '':
         assert image_demo_1 is not None
         text = DEFAULT_IMAGE_TOKEN + text_demo_1 + DEFAULT_DEMO_END_TOKEN + text
         
@@ -178,7 +178,7 @@ def post_process_code(code):
     return code
 
 
-def http_bot(state, model_selector, temperature, max_new_tokens, request: gr.Request):
+def http_bot(state, model_selector, max_new_tokens, temperature, top_k, top_p, no_repeat_ngram_size, length_penalty, do_sample, early_stopping, request: gr.Request):
     logger.info(f"http_bot. ip: {request.client.host}")
     start_tstamp = time.time()
     model_name = model_selector
@@ -213,15 +213,24 @@ def http_bot(state, model_selector, temperature, max_new_tokens, request: gr.Req
 
     # Construct prompt
     prompt = state.get_prompt()
+    
+    # Construct generation kwargs
+    generation_kwargs = {"max_new_tokens": max_new_tokens, 
+                         "temperature": temperature, 
+                         "top_k": top_k, 
+                         "top_p": top_p, 
+                         "no_repeat_ngram_size": no_repeat_ngram_size, 
+                         "length_penalty": length_penalty, 
+                         "do_sample": do_sample, 
+                         "early_stopping": early_stopping}
 
     # Make requests
     pload = {
         "model": model_name,
         "prompt": prompt,
-        "temperature": float(temperature),
-        "max_new_tokens": min(int(max_new_tokens), 1536),
         "stop": state.sep if state.sep_style == SeparatorStyle.SINGLE else state.sep2,
         "images": f'List of {len(state.get_images())} images',
+        "generation_kwargs": generation_kwargs
     }
     logger.info(f"==== request ====\n{pload}")
 
@@ -327,12 +336,18 @@ def build_demo(embed_mode):
                             placeholder="Enter text and press ENTER").style(container=True)
 
                 with gr.Accordion("Parameters", open=False, visible=False) as parameter_row:
-                    temperature = gr.Slider(minimum=0.0, maximum=1.0, value=0.7, step=0.1, interactive=True, label="Temperature",)
-                    max_output_tokens = gr.Slider(minimum=0, maximum=1024, value=512, step=64, interactive=True, label="Max output tokens",)
+                    max_new_tokens = gr.Slider(minimum=20, maximum=200, value=50, step=10, interactive=True, label="number of tokens to generate")
+                    temperature = gr.Slider(minimum=0, maximum=1, value=1, step=0.1, interactive=True, label="temperature")
+                    top_k = gr.Slider(minimum=0, maximum=10, value=0, step=1, interactive=True, label="top_k")
+                    top_p = gr.Slider(minimum=0, maximum=1, value=1.0, step=0.1, interactive=True, label="top_p")
+                    no_repeat_ngram_size = gr.Slider(minimum=1, maximum=10, value=3, step=1, interactive=True, label="no_repeat_ngram_size")
+                    length_penalty = gr.Slider(minimum=1, maximum=5, value=1, step=0.1, interactive=True, label="length_penalty")
+                    do_sample = gr.Checkbox(interactive=True, label="do_sample")
+                    early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
                 gr.Markdown(tos_markdown)
 
             with gr.Column(scale=6):
-                chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=550)
+                chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=1550)
                 with gr.Row():
                     with gr.Column(scale=8):
                         textbox_3 = gr.Textbox(show_label=False,
@@ -360,6 +375,7 @@ def build_demo(embed_mode):
         # Register listeners
         btn_list = [upvote_btn, downvote_btn, flag_btn, regenerate_btn, clear_btn]
         demo_list = [textbox_demo_1, imagebox_demo_1, textbox_demo_2, imagebox_demo_2]
+        prarameter_list = [max_new_tokens, temperature, top_k, top_p, no_repeat_ngram_size, length_penalty, do_sample, early_stopping]
         upvote_btn.click(upvote_last_response,
             [state, model_selector], [textbox_3, upvote_btn, downvote_btn, flag_btn])
         downvote_btn.click(downvote_last_response,
@@ -368,15 +384,15 @@ def build_demo(embed_mode):
             [state, model_selector], [textbox_3, upvote_btn, downvote_btn, flag_btn])
         regenerate_btn.click(regenerate, state,
             [state, chatbot, textbox_3, imagebox_3, ] + btn_list).then(
-            http_bot, [state, model_selector, temperature, max_output_tokens],
+            http_bot, [state, model_selector,] + prarameter_list,
             [state, chatbot] + btn_list)
         clear_btn.click(clear_history, None, [state, chatbot,] + demo_list + [textbox_3, imagebox_3, ] + btn_list)
 
         textbox_3.submit(add_text, [state, ] + demo_list + [textbox_3, imagebox_3, ], [state, chatbot,] + demo_list + [textbox_3, imagebox_3, ] + btn_list
-            ).then(http_bot, [state, model_selector, temperature, max_output_tokens],
+            ).then(http_bot, [state, model_selector,] + prarameter_list,
                    [state, chatbot] + btn_list)
         submit_btn.click(add_text, [state, ] + demo_list + [textbox_3, imagebox_3, ], [state, chatbot,] + demo_list + [textbox_3, imagebox_3, ] + btn_list
-            ).then(http_bot, [state, model_selector, temperature, max_output_tokens],
+            ).then(http_bot, [state, model_selector,] + prarameter_list,
                    [state, chatbot] + btn_list)
 
         if args.model_list_mode == "once":
