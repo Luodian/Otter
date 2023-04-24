@@ -8,7 +8,6 @@ from transformers.modeling_utils import PreTrainedModel
 from transformers.models.auto import AutoModelForCausalLM, AutoTokenizer, AutoModel
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from einops import rearrange, repeat
-
 from transformers import CLIPModel, LlamaForCausalLM, LlamaTokenizer
 
 from flamingo_hf.configuration_flamingo import FlamingoConfig
@@ -70,7 +69,7 @@ def exists(val):
     return val is not None
 
 
-class PerceiverBlock(nn.Module):
+class FlamingoPerceiverBlock(nn.Module):
     def __init__(self, *, dim: int, dim_head: int = 64, heads: int = 8, mult: int = 4):
         super().__init__()
         self.scale = dim_head**-0.5
@@ -126,7 +125,7 @@ class PerceiverBlock(nn.Module):
         return out + latents
 
 
-class PerceiverResampler(nn.Module):
+class FlamingoPerceiverResampler(nn.Module):
     def __init__(
         self,
         *,
@@ -155,7 +154,9 @@ class PerceiverResampler(nn.Module):
         self.layers = nn.ModuleList([])
         for _ in range(depth):
             self.layers.append(
-                PerceiverBlock(dim=dim, dim_head=dim_head, heads=heads, mult=ff_mult)
+                FlamingoPerceiverBlock(
+                    dim=dim, dim_head=dim_head, heads=heads, mult=ff_mult
+                )
             )
 
         self.norm = nn.LayerNorm(dim)
@@ -187,7 +188,7 @@ class PerceiverResampler(nn.Module):
         return self.norm(latents)
 
 
-class MaskedCrossAttention(nn.Module):
+class FlamingoMaskedCrossAttention(nn.Module):
     def __init__(
         self,
         *,
@@ -283,7 +284,7 @@ class MaskedCrossAttention(nn.Module):
         return self.to_out(out)
 
 
-class GatedCrossAttentionBlock(nn.Module):
+class FlamingoGatedCrossAttentionBlock(nn.Module):
     def __init__(
         self,
         *,
@@ -295,7 +296,7 @@ class GatedCrossAttentionBlock(nn.Module):
         only_attend_immediate_media=True,
     ):
         super().__init__()
-        self.attn = MaskedCrossAttention(
+        self.attn = FlamingoMaskedCrossAttention(
             dim=dim,
             dim_visual=dim_visual,
             dim_head=dim_head,
@@ -413,13 +414,13 @@ class FlamingoLMMixin(nn.Module):
         Initialize Flamingo by adding a new gated cross attn to the decoder. Store the media token id for computing the media locations.
         """
 
-        self.gated_cross_attn_layers = nn.ModuleList(
+        gated_cross_attn_layers = nn.ModuleList(
             [
-                GatedCrossAttentionBlock(
+                FlamingoGatedCrossAttentionBlock(
                     dim=self.config.hidden_size, dim_visual=vis_hidden_size
                 )
                 if (layer_idx + 1) % cross_attn_every_n_layers == 0
-                else None
+                else nn.Identity()
                 for layer_idx, _ in enumerate(self._get_decoder_layers())
             ]
         )
@@ -428,7 +429,7 @@ class FlamingoLMMixin(nn.Module):
                 [
                     FlamingoLayer(gated_cross_attn_layer, decoder_layer)
                     for gated_cross_attn_layer, decoder_layer in zip(
-                        self.gated_cross_attn_layers, self._get_decoder_layers()
+                        gated_cross_attn_layers, self._get_decoder_layers()
                     )
                 ]
             )
@@ -478,6 +479,7 @@ class FlamingoPretrainedModel(PreTrainedModel):
     config_class = FlamingoConfig
     base_model_prefix = "flamingo"
     supports_gradient_checkpointing = True
+    _no_split_modules = ["FlamingoPerceiverBlock", "CLIPEncoderLayer", "FlamingoLayer"]
 
     def _init_weights(self, module):
         """Flamingo follows the default initialization"""
@@ -506,6 +508,8 @@ class FlamingoModel(FlamingoPretrainedModel):
         text_tokenizer.add_special_tokens(
             {"additional_special_tokens": ["<|endofchunk|>", "<image>"]}
         )
+        if text_tokenizer.pad_token is None:
+            text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
         self.text_tokenizer = text_tokenizer
         self.eoc_token_id = text_tokenizer.encode("<|endofchunk|>")[-1]
         self.media_token_id = text_tokenizer.encode("<image>")[-1]
@@ -526,7 +530,7 @@ class FlamingoModel(FlamingoPretrainedModel):
         self.vision_encoder = vision_encoder
 
         self.vis_dim = 1024
-        self.perceiver = PerceiverResampler(dim=self.vis_dim)
+        self.perceiver = FlamingoPerceiverResampler(dim=self.vis_dim)
 
         self.lang_encoder.init_flamingo(
             media_token_id=self.media_token_id,
@@ -549,14 +553,14 @@ class FlamingoModel(FlamingoPretrainedModel):
         return self.lang_encoder
 
     def init_weights(self):
-        # Freeze all parameters in vision and lang encoders
+        # Freeze all parameters in vision encoder 
         for param in self.vision_encoder.parameters():
             param.requires_grad = False
-        for param in self.lang_encoder.parameters():
-            param.requires_grad = False
-        # Unfreeze perceiver, gated_cross_attn_layers, and LM input embeddings
-        self.perceiver.requires_grad_(True)
-        self.lang_encoder.gated_cross_attn_layers.requires_grad_(True)
+        # Freeze all parameters in lang encoders except gated_cross_attn_layers
+        for name, param in self.lang_encoder.named_parameters():
+            if "gated_cross_attn_layer" not in name:
+                param.requires_grad = False
+        # Unfreeze LM input embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
 
     def forward(
@@ -858,24 +862,9 @@ class FlamingoForConditionalGeneration(FlamingoPretrainedModel):
 
 
 # if __name__ == "__main__":
-#     config = FlamingoConfig.from_json_file("flamingo_hf/config.json")
-#     model = FlamingoModel(config)
-#     # import accelerate
-
-#     # model = accelerate.load_checkpoint_and_dispatch(
-#     #     model,
-#     #     "./config.json",
-#     #     device_map="auto",
-#     # )
-#     batch_size = 8
-#     images = torch.rand((batch_size, 1, 1, 3, 224, 224), dtype=torch.float32)
-#     attention_mask = torch.ones(batch_size, 98, dtype=torch.int64)
-#     labels = torch.ones(batch_size, 98, dtype=torch.int64)
-#     input_ids = torch.ones(batch_size, 98, dtype=torch.int64)
-#     loss_multi_instruct = model(
-#         vision_x=images,
-#         lang_x=input_ids,
-#         attention_mask=attention_mask,
-#         labels=labels,
-#     )[0]
-#     print(loss_multi_instruct)
+#     model = FlamingoModel.from_pretrained(
+#         "flamingo_hf/flamingo_9b_hf",
+#     )
+#     for name, p in model.named_parameters():
+#         if p.requires_grad:
+#             print(name)
