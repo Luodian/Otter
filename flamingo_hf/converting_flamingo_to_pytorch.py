@@ -1,4 +1,6 @@
 import re
+import argparse
+
 import torch
 
 
@@ -23,10 +25,22 @@ def convert_flamingo_checkpoint(
             new_key = key.replace("ff", "feed_forward")
             new_ckpt.pop(key)
             new_ckpt[new_key] = value
+        elif (
+            key.startswith("lang_encoder.gated_cross_attn_layers.") and "ff_gate" in key
+        ):
+            new_ckpt.pop(key)
     return new_ckpt
 
 
 if __name__ == "__main__":
-    old_ckpt = torch.load("flamingo_hf/checkpoint.pt")
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--old", type=str, required=True, default="flamingo_hf/checkpoint.pt"
+    )
+    parser.add_argument(
+        "--new", type=str, required=True, default="flamingo_hf/hf_checkpoint.pt"
+    )
+    args = parser.parse_args()
+    old_ckpt = torch.load(args.old, map_location="cpu")
     new_ckpt = convert_flamingo_checkpoint(old_ckpt)
-    torch.save(new_ckpt, "flamingo_hf/hf_checkpoint.pt")
+    torch.save(new_ckpt, args.new)
