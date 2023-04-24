@@ -1,6 +1,6 @@
-git+https://github.com/huggingface/transformers
+transformers=4.28.1
 torch==2.0.0
-torchvision
+torchvision==0.15.0
 mlflow
 braceexpand
 bitsandbytes
@@ -12,10 +12,8 @@ wandb
 nltk
 scipy
 inflection
-open_clip_torch
 contexttimer
 decord
-einops>=0.4.1
 fairscale==0.4.4
 ftfy
 iopath
@@ -39,5 +37,4 @@ timm==0.4.12
 tqdm
 wheel
 einops
-einops-exts
 webdataset
