@@ -186,6 +186,8 @@ tools
 checkpoint
 *conv.json
 *.log.*
+data
+azure
 flamingo3B
 flamingo9B
 flamingo9B-lora-vqa_train_gqa_train_balanced
