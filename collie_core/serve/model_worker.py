@@ -59,16 +59,7 @@ class ModelWorker:
         self.controller_addr = controller_addr
         self.worker_addr = worker_addr
         self.worker_id = worker_id
-        if checkpoint_path.endswith("/"):
-            checkpoint_path = checkpoint_path[:-1]
-        if model_name is None:
-            checkpoint_paths = checkpoint_path.split("/")
-            if checkpoint_path[-1].startswith('checkpoint-'):
-                self.model_name = checkpoint_paths[-2] + "_" + checkpoint_paths[-1]
-            else:
-                self.model_name = checkpoint_paths[-1]
-        else:
-            self.model_name = model_name
+        self.model_name = model_name
         logger.info(f"Loading the model {self.model_name} on worker {worker_id} ...")
         self.keep_aspect_ratio = keep_aspect_ratio
         self.tokenizer, self.model, self.image_processor, self.context_len = self.load_model(
@@ -88,10 +79,11 @@ class ModelWorker:
             tokenizer_path=lm_path,
             cross_attn_every_n_layers=4
         )
-        tokenizer.add_special_tokens(
-        {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
-        )
-        model.lang_encoder.resize_token_embeddings(len(tokenizer))
+        if checkpoint_path is not None: # our checkpoint adds special tokens
+            tokenizer.add_special_tokens(
+            {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
+            )
+            model.lang_encoder.resize_token_embeddings(len(tokenizer))
         
         if checkpoint_path is None:
             checkpoint_path = hf_hub_download("openflamingo/OpenFlamingo-9B", "checkpoint.pt")
@@ -194,8 +186,9 @@ class ModelWorker:
                                  lang_x=inputs["input_ids"],
                                  attention_mask=inputs["attention_mask"],
                                  streamer=streamer, 
-                                 max_new_tokens=50
+                                 **params.get("generation_kwargs", {})
                                  )
+        logger.info(f"generation_kwargs: {generation_kwargs}")
         thread = threading.Thread(target=model.generate, kwargs=generation_kwargs)
         thread.start()
         generated_text = ""

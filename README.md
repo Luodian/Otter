@@ -105,10 +105,13 @@ python -m collie_core.serve.controller --host 0.0.0.0 --port 10000
 #### Launch a model worker
 ```Shell
 export AZURE_DIR="/media/ntu/volume1/home/s121md302_06/data/data/azure"
-# GPU
+# Init our model on GPU
 python -m collie_core.serve.model_worker --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model-name open_flamingo --checkpoint-path models/collie_llama9b_multi_instruct_apr23/final_weights.pt --num-gpus 1 
-# CPU
+# Init our model on CPU
 python -m collie_core.serve.model_worker --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model-name open_flamingo --checkpoint-path ${AZURE_DIR}/models/collie_llama9b_multi_instruct_apr23/final_weights.pt --num-gpus 0
+
+# Init original model on CPU
+python -m collie_core.serve.model_worker --controller http://localhost:10000 --port 40001 --worker http://localhost:40001 --model-name open_flamingo_original --num-gpus 0
 ```
 Wait until the process finishes loading the model and you see "Uvicorn running on ...".
 
