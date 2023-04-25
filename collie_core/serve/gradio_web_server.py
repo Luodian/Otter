@@ -8,17 +8,14 @@ import time
 import gradio as gr
 import requests
 
-from collie_core.conversation import (default_conversation, conv_templates,
-                                   SeparatorStyle)
+from collie_core.conversation import default_conversation, conv_templates, SeparatorStyle
 from collie_core.constants import LOGDIR
-from collie_core.utils import (build_logger, server_error_msg,
-    violates_moderation, moderation_msg)
+from collie_core.utils import build_logger, server_error_msg, violates_moderation, moderation_msg
 from collie_core.serve.gradio_patch import Chatbot as grChatbot
 from collie_core.serve.gradio_css import code_highlight_css
 
 DEFAULT_IMAGE_TOKEN = "<image>"
 DEFAULT_DEMO_END_TOKEN = "<|endofchunk|>"
-
 
 
 logger = build_logger("gradio_web_server", "gradio_web_server.log")
@@ -29,7 +26,7 @@ no_change_btn = gr.Button.update()
 enable_btn = gr.Button.update(interactive=True)
 disable_btn = gr.Button.update(interactive=False)
 
-priority = { # TODO: name our models
+priority = {  # TODO: name our models
     "vanilla_open_flamingo": "aaaaaaa",
     "ours_1": "aaaaaab",
 }
@@ -68,31 +65,25 @@ def load_demo(url_params, request: gr.Request):
     if "model" in url_params:
         model = url_params["model"]
         if model in models:
-            dropdown_update = gr.Dropdown.update(
-                value=model, visible=True)
+            dropdown_update = gr.Dropdown.update(value=model, visible=True)
 
     state = default_conversation.copy()
-    return (state,
-            dropdown_update,
-            gr.Chatbot.update(visible=True),
-            gr.Textbox.update(visible=True),
-            gr.Button.update(visible=True),
-            gr.Row.update(visible=True),
-            gr.Accordion.update(visible=True))
+    return (state, dropdown_update, gr.Chatbot.update(visible=True), gr.Textbox.update(visible=True), gr.Button.update(visible=True), gr.Row.update(visible=True), gr.Accordion.update(visible=True))
 
 
 def load_demo_refresh_model_list(request: gr.Request):
     logger.info(f"load_demo. ip: {request.client.host}")
     models = get_model_list()
     state = default_conversation.copy()
-    return (state, gr.Dropdown.update(
-               choices=models,
-               value=models[0] if len(models) > 0 else ""),
-            gr.Chatbot.update(visible=True),
-            gr.Textbox.update(visible=True),
-            gr.Button.update(visible=True),
-            gr.Row.update(visible=True),
-            gr.Accordion.update(visible=True))
+    return (
+        state,
+        gr.Dropdown.update(choices=models, value=models[0] if len(models) > 0 else ""),
+        gr.Chatbot.update(visible=True),
+        gr.Textbox.update(visible=True),
+        gr.Button.update(visible=True),
+        gr.Row.update(visible=True),
+        gr.Accordion.update(visible=True),
+    )
 
 
 def vote_last_response(state, vote_type, model_selector, request: gr.Request):
@@ -129,13 +120,35 @@ def regenerate(state, request: gr.Request):
     logger.info(f"regenerate. ip: {request.client.host}")
     state.messages[-1][-1] = None
     state.skip_next = False
-    return (state, state.to_gradio_chatbot(),) + ("", None,) * 3 + (disable_btn,) * 5
+    return (
+        (
+            state,
+            state.to_gradio_chatbot(),
+        )
+        + (
+            "",
+            None,
+        )
+        * 3
+        + (disable_btn,) * 5
+    )
 
 
 def clear_history(request: gr.Request):
     logger.info(f"clear_history. ip: {request.client.host}")
     state = default_conversation.copy()
-    return (state, state.to_gradio_chatbot(),) + ("", None,) * 3 + (disable_btn,) * 5
+    return (
+        (
+            state,
+            state.to_gradio_chatbot(),
+        )
+        + (
+            "",
+            None,
+        )
+        * 3
+        + (disable_btn,) * 5
+    )
 
 
 def add_text(state, text_demo_1, image_demo_1, text_demo_2, image_demo_2, text_3, image_3, request: gr.Request):
@@ -148,23 +161,42 @@ def add_text(state, text_demo_1, image_demo_1, text_demo_2, image_demo_2, text_3
         flagged = violates_moderation(text)
         if flagged:
             state.skip_next = True
-            return (state, state.to_gradio_chatbot(), moderation_msg, None) + ("", None,) * 2 + (disable_btn,) * 5
+            return (
+                (state, state.to_gradio_chatbot(), moderation_msg, None)
+                + (
+                    "",
+                    None,
+                )
+                * 2
+                + (disable_btn,) * 5
+            )
 
     text = text[:1536]  # Hard cut-off
     if image_3 is not None:
         text = DEFAULT_IMAGE_TOKEN + text
-    if text_demo_2 != '':
+    if text_demo_2 != "":
         assert image_demo_2 is not None
         text = DEFAULT_IMAGE_TOKEN + text_demo_2 + DEFAULT_DEMO_END_TOKEN + text
-    if text_demo_1 != '':
+    if text_demo_1 != "":
         assert image_demo_1 is not None
         text = DEFAULT_IMAGE_TOKEN + text_demo_1 + DEFAULT_DEMO_END_TOKEN + text
-        
+
     input = (text, image_demo_1, image_demo_2, image_3)
     state.append_message(state.roles[0], input)
     state.append_message(state.roles[1], None)
     state.skip_next = False
-    return (state, state.to_gradio_chatbot(),) + ("", None,) * 3 + (disable_btn,) * 5
+    return (
+        (
+            state,
+            state.to_gradio_chatbot(),
+        )
+        + (
+            "",
+            None,
+        )
+        * 3
+        + (disable_btn,) * 5
+    )
 
 
 def post_process_code(code):
@@ -190,7 +222,7 @@ def http_bot(state, model_selector, max_new_tokens, temperature, top_k, top_p, n
 
     if len(state.messages) == state.offset + 2:
         # First round of conversation
-        if True: # Hardcode the condition
+        if True:  # Hardcode the condition
             template_name = "collie"
 
         new_state = conv_templates[template_name].copy()
@@ -200,8 +232,7 @@ def http_bot(state, model_selector, max_new_tokens, temperature, top_k, top_p, n
 
     # Query worker address
     controller_url = args.controller_url
-    ret = requests.post(controller_url + "/get_worker_address",
-            json={"model": model_name})
+    ret = requests.post(controller_url + "/get_worker_address", json={"model": model_name})
     worker_addr = ret.json()["address"]
     logger.info(f"model_name: {model_name}, worker_addr: {worker_addr}")
 
@@ -213,41 +244,43 @@ def http_bot(state, model_selector, max_new_tokens, temperature, top_k, top_p, n
 
     # Construct prompt
     prompt = state.get_prompt()
-    
+
     # Construct generation kwargs
-    generation_kwargs = {"max_new_tokens": max_new_tokens, 
-                         "temperature": temperature, 
-                         "top_k": top_k, 
-                         "top_p": top_p, 
-                         "no_repeat_ngram_size": no_repeat_ngram_size, 
-                         "length_penalty": length_penalty, 
-                         "do_sample": do_sample, 
-                         "early_stopping": early_stopping}
+    generation_kwargs = {
+        "max_new_tokens": max_new_tokens,
+        "temperature": temperature,
+        "top_k": top_k,
+        "top_p": top_p,
+        "no_repeat_ngram_size": no_repeat_ngram_size,
+        "length_penalty": length_penalty,
+        "do_sample": do_sample,
+        "early_stopping": early_stopping,
+    }
 
     # Make requests
+
     pload = {
         "model": model_name,
         "prompt": prompt,
         "stop": state.sep if state.sep_style == SeparatorStyle.SINGLE else state.sep2,
-        "images": f'List of {len(state.get_images())} images',
-        "generation_kwargs": generation_kwargs
+        "images": f"List of {len(state.get_images())} images",
+        "generation_kwargs": generation_kwargs,
     }
     logger.info(f"==== request ====\n{pload}")
 
-    pload['images'] = state.get_images()
+    pload["images"] = state.get_images()
 
     state.messages[-1][-1] = "▌"
     yield (state, state.to_gradio_chatbot()) + (disable_btn,) * 5
 
     try:
         # Stream output
-        response = requests.post(worker_addr + "/worker_generate_stream",
-            headers=headers, json=pload, stream=True, timeout=25)
+        response = requests.post(worker_addr + "/worker_generate_stream", headers=headers, json=pload, stream=True, timeout=25)
         for chunk in response.iter_lines(decode_unicode=False, delimiter=b"\0"):
             if chunk:
                 data = json.loads(chunk.decode())
                 if data["error_code"] == 0:
-                    output = data["text"][len(prompt) + 1:].strip()
+                    output = data["text"][len(prompt) + 1 :].strip()
                     output = post_process_code(output)
                     state.messages[-1][-1] = output + "▌"
                     yield (state, state.to_gradio_chatbot()) + (disable_btn,) * 5
@@ -280,27 +313,35 @@ def http_bot(state, model_selector, max_new_tokens, temperature, top_k, top_p, n
         }
         fout.write(json.dumps(data) + "\n")
 
-title_markdown = ("""
-# 🐾 Collie: Multi-Instruct Multimodal AI Assistant
-[[Project Page]](https://llava-vl.github.io) [[Paper]](https://arxiv.org/abs/2304.08485) [[Code]](https://github.com/haotian-liu/LLaVA) [[Model]](https://huggingface.co/liuhaotian/LLaVA-13b-delta-v0)
-""")
 
-tos_markdown = ("""
+title_markdown = """
+<header>
+<style>
+h1 {text-align: center;}
+</style>
+<h1>🐾 Collie: A Visual Language Model with Efficient Instruction Tuning.</h1>
+</header>
+"""
+
+tos_markdown = """
 ### Terms of use
 By using this service, users are required to agree to the following terms:
 The service is a research preview intended for non-commercial use only. It only provides limited safety measures and may generate offensive content. It must not be used for any illegal, harmful, violent, racist, or sexual purposes. The service may collect user dialogue data for future research.
 Please click the "Flag" button if you get any inappropriate answer! We will collect those to keep improving our moderator.
 For an optimal experience, please use desktop computers for this demo, as mobile devices may compromise its quality.
-""")
+"""
 
 
-learn_more_markdown = ("""
+learn_more_markdown = """
 ### License
-The service is a research preview intended for non-commercial use only, subject to the model [License](https://github.com/facebookresearch/llama/blob/main/MODEL_CARD.md) of LLaMA, [Terms of Use](https://openai.com/policies/terms-of-use) of the data generated by OpenAI, and [Privacy Practices](https://chrome.google.com/webstore/detail/sharegpt-share-your-chatg/daiacboceoaocpibfodeljbdfacokfjb) of ShareGPT. Please contact us if you find any potential violation.
-""")
+The service is a research preview intended for non-commercial use only, subject to the model [License](https://github.com/facebookresearch/
+ma/blob/main/MODEL_CARD.md) of LLaMA, [Terms of Use](https://openai.com/policies/terms-of-use) of the data generated by OpenAI, and [Privacy Practices](https://chrome.google.com/webstore/detail/sharegpt-share-your-chatg/daiacboceoaocpibfodeljbdfacokfjb) of ShareGPT. Please contact us if you find any potential violation.
+"""
 
 
-css = code_highlight_css + """
+css = (
+    code_highlight_css
+    + """
 pre {
     white-space: pre-wrap;       /* Since CSS 2.1 */
     white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
@@ -309,10 +350,11 @@ pre {
     word-wrap: break-word;       /* Internet Explorer 5.5+ */
 }
 """
+)
 
 
 def build_demo(embed_mode):
-    with gr.Blocks(title="LLaVA", theme=gr.themes.Base(), css=css) as demo:
+    with gr.Blocks(title="Collie", theme=gr.themes.Base(), css=css) as demo:
         state = gr.State()
 
         if not embed_mode:
@@ -321,19 +363,13 @@ def build_demo(embed_mode):
         with gr.Row():
             with gr.Column(scale=3):
                 with gr.Row(elem_id="model_selector_row"):
-                    model_selector = gr.Dropdown(
-                        choices=models,
-                        value=models[0] if len(models) > 0 else "",
-                        interactive=True,
-                        show_label=False).style(container=False)
+                    model_selector = gr.Dropdown(choices=models, value=models[0] if len(models) > 0 else "", interactive=True, show_label=False).style(container=False)
 
                 imagebox_3 = gr.Image(label="Image (optional)", type="pil")
                 imagebox_demo_1 = gr.Image(label="Demo Image 1 (optional)", type="pil")
-                textbox_demo_1 = gr.Textbox(label="Demo Text 1 (optional)", show_label=True,
-                            placeholder="Enter text and press ENTER").style(container=True)
+                textbox_demo_1 = gr.Textbox(label="Demo Text 1 (optional)", show_label=True, placeholder="Enter text and press ENTER").style(container=True)
                 imagebox_demo_2 = gr.Image(label="Demo Image 2 (optional)", type="pil")
-                textbox_demo_2 = gr.Textbox(label="Demo Text 2 (optional)",show_label=True,
-                            placeholder="Enter text and press ENTER").style(container=True)
+                textbox_demo_2 = gr.Textbox(label="Demo Text 2 (optional)", show_label=True, placeholder="Enter text and press ENTER").style(container=True)
 
                 with gr.Accordion("Parameters", open=False, visible=False) as parameter_row:
                     max_new_tokens = gr.Slider(minimum=20, maximum=200, value=50, step=10, interactive=True, label="number of tokens to generate")
@@ -344,31 +380,33 @@ def build_demo(embed_mode):
                     length_penalty = gr.Slider(minimum=1, maximum=5, value=1, step=0.1, interactive=True, label="length_penalty")
                     do_sample = gr.Checkbox(interactive=True, label="do_sample")
                     early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
-                gr.Markdown(tos_markdown)
 
             with gr.Column(scale=6):
-                chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=1550)
+                chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=1000)
                 with gr.Row():
                     with gr.Column(scale=8):
-                        textbox_3 = gr.Textbox(show_label=False,
-                            placeholder="Enter text and press ENTER").style(container=False)
+                        textbox_3 = gr.Textbox(show_label=False, placeholder="Enter text and press ENTER").style(container=False)
                     with gr.Column(scale=1, min_width=60):
                         submit_btn = gr.Button(value="Submit", visible=False)
                 with gr.Row(visible=False) as button_row:
                     upvote_btn = gr.Button(value="👍  Upvote", interactive=False)
                     downvote_btn = gr.Button(value="👎  Downvote", interactive=False)
                     flag_btn = gr.Button(value="⚠️  Flag", interactive=False)
-                    #stop_btn = gr.Button(value="⏹️  Stop Generation", interactive=False)
+                    # stop_btn = gr.Button(value="⏹️  Stop Generation", interactive=False)
                     regenerate_btn = gr.Button(value="🔄  Regenerate", interactive=False)
                     clear_btn = gr.Button(value="🗑️  Clear history", interactive=False)
 
         cur_dir = os.path.dirname(os.path.abspath(__file__))
-        gr.Examples(examples=[
-            [f"{cur_dir}/examples/extreme_ironing.jpg", "Output: a man ironing on car", f"{cur_dir}/examples/waterview.jpg", "Output: lake", f"{cur_dir}/examples/dinner.jpg", "Output:"],
-            [f"{cur_dir}/examples/cat.jpg", "An image of two cats.", f"{cur_dir}/examples/bathroom.jpg", "An image of a bathroom sink.", f"{cur_dir}/examples/dinner.jpg", "An image of"],
-        ], inputs=[imagebox_demo_1, textbox_demo_1, imagebox_demo_2, textbox_demo_2, imagebox_3, textbox_3])
+        gr.Examples(
+            examples=[
+                [f"{cur_dir}/examples/extreme_ironing.jpg", "Output: a man ironing on car", f"{cur_dir}/examples/waterview.jpg", "Output: lake", f"{cur_dir}/examples/dinner.jpg", "Output:"],
+                [f"{cur_dir}/examples/cat.jpg", "An image of two cats.", f"{cur_dir}/examples/bathroom.jpg", "An image of a bathroom sink.", f"{cur_dir}/examples/dinner.jpg", "An image of"],
+            ],
+            inputs=[imagebox_demo_1, textbox_demo_1, imagebox_demo_2, textbox_demo_2, imagebox_3, textbox_3],
+        )
 
         if not embed_mode:
+            gr.Markdown(tos_markdown)
             gr.Markdown(learn_more_markdown)
         url_params = gr.JSON(visible=False)
 
@@ -376,32 +414,106 @@ def build_demo(embed_mode):
         btn_list = [upvote_btn, downvote_btn, flag_btn, regenerate_btn, clear_btn]
         demo_list = [textbox_demo_1, imagebox_demo_1, textbox_demo_2, imagebox_demo_2]
         prarameter_list = [max_new_tokens, temperature, top_k, top_p, no_repeat_ngram_size, length_penalty, do_sample, early_stopping]
-        upvote_btn.click(upvote_last_response,
-            [state, model_selector], [textbox_3, upvote_btn, downvote_btn, flag_btn])
-        downvote_btn.click(downvote_last_response,
-            [state, model_selector], [textbox_3, upvote_btn, downvote_btn, flag_btn])
-        flag_btn.click(flag_last_response,
-            [state, model_selector], [textbox_3, upvote_btn, downvote_btn, flag_btn])
-        regenerate_btn.click(regenerate, state,
-            [state, chatbot, textbox_3, imagebox_3, ] + btn_list).then(
-            http_bot, [state, model_selector,] + prarameter_list,
-            [state, chatbot] + btn_list)
-        clear_btn.click(clear_history, None, [state, chatbot,] + demo_list + [textbox_3, imagebox_3, ] + btn_list)
+        upvote_btn.click(upvote_last_response, [state, model_selector], [textbox_3, upvote_btn, downvote_btn, flag_btn])
+        downvote_btn.click(downvote_last_response, [state, model_selector], [textbox_3, upvote_btn, downvote_btn, flag_btn])
+        flag_btn.click(flag_last_response, [state, model_selector], [textbox_3, upvote_btn, downvote_btn, flag_btn])
+        regenerate_btn.click(
+            regenerate,
+            state,
+            [
+                state,
+                chatbot,
+                textbox_3,
+                imagebox_3,
+            ]
+            + btn_list,
+        ).then(
+            http_bot,
+            [
+                state,
+                model_selector,
+            ]
+            + prarameter_list,
+            [state, chatbot] + btn_list,
+        )
+        clear_btn.click(
+            clear_history,
+            None,
+            [
+                state,
+                chatbot,
+            ]
+            + demo_list
+            + [
+                textbox_3,
+                imagebox_3,
+            ]
+            + btn_list,
+        )
 
-        textbox_3.submit(add_text, [state, ] + demo_list + [textbox_3, imagebox_3, ], [state, chatbot,] + demo_list + [textbox_3, imagebox_3, ] + btn_list
-            ).then(http_bot, [state, model_selector,] + prarameter_list,
-                   [state, chatbot] + btn_list)
-        submit_btn.click(add_text, [state, ] + demo_list + [textbox_3, imagebox_3, ], [state, chatbot,] + demo_list + [textbox_3, imagebox_3, ] + btn_list
-            ).then(http_bot, [state, model_selector,] + prarameter_list,
-                   [state, chatbot] + btn_list)
+        textbox_3.submit(
+            add_text,
+            [
+                state,
+            ]
+            + demo_list
+            + [
+                textbox_3,
+                imagebox_3,
+            ],
+            [
+                state,
+                chatbot,
+            ]
+            + demo_list
+            + [
+                textbox_3,
+                imagebox_3,
+            ]
+            + btn_list,
+        ).then(
+            http_bot,
+            [
+                state,
+                model_selector,
+            ]
+            + prarameter_list,
+            [state, chatbot] + btn_list,
+        )
+        submit_btn.click(
+            add_text,
+            [
+                state,
+            ]
+            + demo_list
+            + [
+                textbox_3,
+                imagebox_3,
+            ],
+            [
+                state,
+                chatbot,
+            ]
+            + demo_list
+            + [
+                textbox_3,
+                imagebox_3,
+            ]
+            + btn_list,
+        ).then(
+            http_bot,
+            [
+                state,
+                model_selector,
+            ]
+            + prarameter_list,
+            [state, chatbot] + btn_list,
+        )
 
         if args.model_list_mode == "once":
-            demo.load(load_demo, [url_params], [state, model_selector,
-                chatbot, textbox_3, submit_btn, button_row, parameter_row],
-                _js=get_window_url_params)
+            demo.load(load_demo, [url_params], [state, model_selector, chatbot, textbox_3, submit_btn, button_row, parameter_row], _js=get_window_url_params)
         elif args.model_list_mode == "reload":
-            demo.load(load_demo_refresh_model_list, None, [state, model_selector,
-                chatbot, textbox_3, submit_btn, button_row, parameter_row])
+            demo.load(load_demo_refresh_model_list, None, [state, model_selector, chatbot, textbox_3, submit_btn, button_row, parameter_row])
         else:
             raise ValueError(f"Unknown model list mode: {args.model_list_mode}")
 
@@ -410,22 +522,18 @@ def build_demo(embed_mode):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--host", type=str, default="0.0.0.0")
-    parser.add_argument("--port", type=int)
-    parser.add_argument("--controller-url", type=str, default="http://localhost:21001")
-    parser.add_argument("--concurrency-count", type=int, default=16)
-    parser.add_argument("--model-list-mode", type=str, default="once",
-        choices=["once", "reload"])
+    parser.add_argument("--host", type=str, default="127.0.0.1")
+    parser.add_argument("--port", type=int, default="7861")
+    parser.add_argument("--controller_url", type=str, default="http://localhost:21001")
+    parser.add_argument("--concurrency_count", type=int, default=16)
+    parser.add_argument("--model_list_mode", type=str, default="once", choices=["once", "reload"])
     parser.add_argument("--share", action="store_true")
     parser.add_argument("--moderate", action="store_true")
     parser.add_argument("--embed", action="store_true")
     args = parser.parse_args()
     logger.info(f"args: {args}")
-
     models = get_model_list()
-
     logger.info(args)
     demo = build_demo(args.embed)
-    demo.queue(concurrency_count=args.concurrency_count, status_update_rate=10,
-               api_open=False).launch(
-        server_name=args.host, server_port=args.port, share=args.share)
+    demo.queue(concurrency_count=args.concurrency_count, status_update_rate=10, api_open=False).launch(server_name=args.host, server_port=args.port, share=args.share)
+    gr.close_all()

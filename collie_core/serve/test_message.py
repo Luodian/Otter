@@ -29,7 +29,7 @@ def main():
     conv.append_message(conv.roles[0], args.message)
     prompt = conv.get_prompt()
 
-    headers = {"User-Agent": "LLaVA Client"}
+    headers = {"User-Agent": "Collie Client"}
     pload = {
         "model": args.model_name,
         "prompt": prompt,
@@ -51,10 +51,10 @@ def main():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--controller-address", type=str, default="http://localhost:21001")
-    parser.add_argument("--worker-address", type=str)
-    parser.add_argument("--model-name", type=str, default="facebook/opt-350m")
-    parser.add_argument("--max-new-tokens", type=int, default=32)
+    parser.add_argument("--controller_address", type=str, default="http://localhost:21001")
+    parser.add_argument("--worker_address", type=str)
+    parser.add_argument("--model_name", type=str, default="facebook/opt-350m")
+    parser.add_argument("--max_new_tokens", type=int, default=32)
     parser.add_argument("--message", type=str, default=
         "Tell me a story with more than 1000 words.")
     args = parser.parse_args()
