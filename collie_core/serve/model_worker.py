@@ -77,14 +77,14 @@ class ModelWorker:
     def load_model(self, lm_path, checkpoint_path, num_gpus, load_in_8bit, load_from_hf=True):      
         if load_from_hf:
             device_map = 'auto' if num_gpus > 0 else 'cpu'
-            model = FlamingoModel.from_pretrained(checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit)
+            model = FlamingoForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit)
             tokenizer = model.text_tokenizer
-            _, _, image_processor = open_clip.create_model_and_transforms(
-                "ViT-L-14",
-                pretrained="openai",
-            )
+            # _, _, image_processor = open_clip.create_model_and_transforms(
+            #     "ViT-L-14",
+            #     pretrained="openai",
+            # )
         else:
-            model, image_processor, tokenizer = create_model_and_transforms(
+            model, _, tokenizer = create_model_and_transforms(
             clip_vision_encoder_path="ViT-L-14",
             clip_vision_encoder_pretrained="openai",
             lang_encoder_path=lm_path,
@@ -114,6 +114,7 @@ class ModelWorker:
         self.device = 'cuda' if num_gpus > 0 else 'cpu'        
         logger.info(f"Loading the model to {self.device} ...")
         context_len = 2048
+        image_processor = transformers.CLIPImageProcessor()
         
         return tokenizer, model, image_processor, context_len
 
@@ -180,8 +181,13 @@ class ModelWorker:
                 images = [Image.open(BytesIO(base64.b64decode(image))) for image in images]
                 assert len(images) == prompt.count(DEFAULT_IMAGE_TOKEN), "Number of images does not match number of <image> tokens in prompt"
                     
-                images = [image_processor(image).unsqueeze(0) for image in images]
-                vision_x = torch.cat(images, dim=0).unsqueeze(1).unsqueeze(0).to(self.device)
+                vision_x = (
+                    image_processor.preprocess(
+                        images, return_tensors="pt"
+                    )["pixel_values"]
+                    .unsqueeze(1)
+                    .unsqueeze(0)
+                ).to(self.device)
             else:
                 images = None
         streamer = TextIteratorStreamer(tokenizer)
