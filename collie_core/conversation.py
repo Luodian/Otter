@@ -1,7 +1,8 @@
 import dataclasses
 from enum import auto, Enum
 from typing import List, Tuple
-
+import base64
+from io import BytesIO
 
 class SeparatorStyle(Enum):
     """Different separator style."""
@@ -54,12 +55,10 @@ class Conversation:
         images = []
         for i, (role, msg) in enumerate(self.messages[self.offset:]):
             if i % 2 == 0:
-                if type(msg) is tuple:
-                    import base64
-                    from io import BytesIO
-                    msg = list(msg)
-                    msg, image_list = msg[0], msg[1:]
-                    for image in image_list:
+                msg = list(msg)
+                msg, image_list = msg[0], msg[1:]
+                for image in image_list:
+                    if image is not None:
                         max_hw, min_hw = max(image.size), min(image.size)
                         aspect_ratio = max_hw / min_hw
                         max_len, min_len = 800, 400
@@ -81,12 +80,10 @@ class Conversation:
         ret = []
         for i, (role, msg) in enumerate(self.messages[self.offset:]):
             if i % 2 == 0:
-                if type(msg) is tuple:
-                    import base64
-                    from io import BytesIO
-                    msg = list(msg)
-                    msg, images = msg[0], msg[1:]
-                    for image in images:
+                msg = list(msg)
+                msg, images = msg[0], msg[1:]
+                for image in images:
+                    if image is not None:
                         max_hw, min_hw = max(image.size), min(image.size)
                         aspect_ratio = max_hw / min_hw
                         max_len, min_len = 800, 400
