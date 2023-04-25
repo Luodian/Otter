@@ -221,27 +221,6 @@ class UnifyDataset(OFADataset):
         return_answer = ""
         answers = answer.split('.')
         
-        for _ in answers:
-            if return_answer == "":
-                cur_answer = _
-            else:
-                cur_answer = ".".join([return_answer, _])
-            if len(cur_answer.split(' ')) <= max_ans_words:
-                return_answer = cur_answer
-            else:
-                break
-
-        if return_answer == "":
-            answer_words = answer.split(' ')
-            return_answer = ' '.join(answer_words[:max_ques_words])
-        else:
-            if return_answer[-1] != "." and return_answer != answers:
-                return_answer += "."
-            
-        return return_answer
-
-        
-
     def pre_caption(self, caption, max_words):
         caption = caption.lower().lstrip(",.!?*#:;~").replace('-', ' ').replace('/', ' ').replace('<person>', 'person')
 
