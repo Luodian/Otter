@@ -18,8 +18,6 @@ from transformers import (
 )
 
 from collie_core import create_model_and_transforms
-import sys
-sys.path.append("/mnt/lustre/yhzhang/PET-VLM")
 from open_flamingo.train.train_utils import AverageMeter, get_autocast, get_cast_dtype, get_checkpoint
 from tqdm import tqdm
 import time
@@ -83,8 +81,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         labels[labels == answer_token_id] = -100
         labels[labels == media_token_id] = -100
 
-        labels.to(device_id, dtype=cast_dtype, non_blocking=True)
-
+        labels.to(device_id)
         with autocast():
             loss_multi_instruct = model(
                 vision_x=images,
