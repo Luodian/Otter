@@ -361,9 +361,6 @@ class UnifyDataset(OFADataset):
                 answer = refs.strip().replace("#"," ")
                 answer = self.pre_answer(answer,self.max_tgt_length)
                 conf = torch.tensor([1.0])
-            elif dataset_name == "conversation_58k":
-                self.max_src_length = self.max_tgt_length = 256
-                question = self.pre_question(question, self.max_src_length)
                 # caption = caption.replace("<#>"," ")
                 # question = caption+" "+question.strip("<image>")
                 question = question.strip("<image>")
