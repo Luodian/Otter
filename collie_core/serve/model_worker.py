@@ -76,7 +76,7 @@ class ModelWorker:
     
     def load_model(self, lm_path, checkpoint_path, num_gpus, load_in_8bit, load_from_hf=True):      
         if load_from_hf:
-            device_map = 'auto' if num_gpus > 0 else 'cpu'
+            device_map = 'auto' if num_gpus > 0 else None
             model = FlamingoForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit)
             tokenizer = model.text_tokenizer
             # _, _, image_processor = open_clip.create_model_and_transforms(
@@ -111,7 +111,7 @@ class ModelWorker:
             if num_gpus > 0:
                 model.cuda()
         
-        self.device = 'cuda' if num_gpus > 0 else 'cpu'        
+        self.device = 'cuda' if num_gpus > 0 else 'cpu'
         logger.info(f"Loading the model to {self.device} ...")
         context_len = 2048
         image_processor = transformers.CLIPImageProcessor()
