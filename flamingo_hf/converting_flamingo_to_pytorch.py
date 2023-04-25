@@ -21,14 +21,13 @@ def convert_flamingo_checkpoint(
             new_key = re.sub(r"([0-9])\.1", r"\1.feed_forward", key)
             new_ckpt.pop(key)
             new_ckpt[new_key] = value
+        elif key.startswith("lang_encoder.gated_cross_attn_layers."):
+            new_ckpt.pop(key)
         elif key.startswith("lang_encoder.") and "ff_gate" not in key:
             new_key = key.replace("ff", "feed_forward")
             new_ckpt.pop(key)
             new_ckpt[new_key] = value
-        elif (
-            key.startswith("lang_encoder.gated_cross_attn_layers.") and "ff_gate" in key
-        ):
-            new_ckpt.pop(key)
+        
     return new_ckpt
 
 
