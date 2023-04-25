@@ -97,16 +97,22 @@ class FileDataset(object):
 
     def __getitem__(self, index):
         if self.data_cnt == self.row_count:
-            # print("reach the end of datafile, start a new reader")
+            print("reach the end of datafile, start a new reader")
             self.data_cnt = 0
             self._reader = self._get_reader()
         cur_line = self._reader.readline()
         column_l = cur_line.rstrip("\n").split(self.separator)
+        # with open("test.txt","a") as f:
+        #     for _ in column_l:
+        #         f.write(_+"\n")
+        # print(f"seperater:{self.separator}")
+        # print(len(column_l))
+        # print(column_l[0],column_l[2],column_l[3],column_l[4],column_l[-1],column_l[-2],column_l[-3])
         self.data_cnt += 1
         try:
             column_l = [dtype(column_l[col_id]) for col_id, dtype in zip(self.selected_col_ids, self.dtypes)]
         except:
-            import pdb;pdb.set_trace()           
+            import ipdb;ipdb.sset_trace()           
         return column_l
 
 
@@ -117,12 +123,11 @@ if __name__ == '__main__':
     from tqdm import tqdm
     import json
     ImageFile.LOAD_TRUNCATED_IMAGES = True
-    test_dataset = FileDataset("/mnt/lustre/yhzhang/data/LLaVA-Instruct-150K/complex_reasoning_77k_detail_23k_conversation_58.tsv", "0,1,2,3,4,5,6,7")
+    test_dataset = FileDataset("/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/complex_reasoning_77k_detail_23k.tsv.head8", "0,1,2,3,4,5,6,7")
     
     uniq_id_dict = {}
     for _ in tqdm(range(len(test_dataset))):
         _ = test_dataset.__getitem__(0)
-        uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
         try:
             uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
         except:
