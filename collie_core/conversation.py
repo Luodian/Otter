@@ -41,9 +41,14 @@ class Conversation:
                 if message:
                     if type(message) is tuple:
                          message = message[0]
-                    ret += role + ": " + message + seps[i % 2]
+
+                    if role is None:
+                        ret += message + seps[i % 2]
+                    else:
+                        ret += role + ": " + message + seps[i % 2]
                 else:
-                    ret += role + ":"
+                    if role is not None:
+                        ret += role + ":"
             return ret
         else:
             raise ValueError(f"Invalid style: {self.sep_style}")
@@ -206,7 +211,7 @@ conv_bair_v1 = Conversation(
 
 collie_v1 = Conversation(
     system="BEGINNING OF CONVERSATION:",
-    roles=("User", "Assistant"),
+    roles=("User", "Collie"),
     messages=(),
     offset=0,
     sep_style=SeparatorStyle.TWO,
