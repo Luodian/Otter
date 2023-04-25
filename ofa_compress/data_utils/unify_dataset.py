@@ -209,6 +209,10 @@ class UnifyDataset(OFADataset):
         return question
 
     def pre_answer(self, answer, max_ans_words):
+<<<<<<< HEAD
+=======
+
+>>>>>>> debug data input
         answer = re.sub(
             r"\s{2,}",
             ' ',
@@ -220,6 +224,7 @@ class UnifyDataset(OFADataset):
         # truncate question
         return_answer = ""
         answers = answer.split('.')
+<<<<<<< HEAD
         
         for _ in answers:
             if return_answer == "":
@@ -241,6 +246,18 @@ class UnifyDataset(OFADataset):
         return return_answer
 
         
+=======
+        for _ in answers:
+            if len((return_answer + _).split(' ')) <= max_ans_words:
+                return_answer += _
+            else:
+                break
+        if return_answer == "":
+            answer_words = answer.split(' ')
+            return_answer = ' '.join(answer_words[:max_ques_words])
+
+        return return_answer
+>>>>>>> debug data input
 
     def pre_caption(self, caption, max_words):
         caption = caption.lower().lstrip(",.!?*#:;~").replace('-', ' ').replace('/', ' ').replace('<person>', 'person')
