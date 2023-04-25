@@ -9,8 +9,10 @@ from transformers.models.auto import AutoModelForCausalLM, AutoTokenizer, AutoMo
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from einops import rearrange, repeat
 from transformers import CLIPModel, LlamaForCausalLM, LlamaTokenizer
-
+from transformers.utils import logging
 from flamingo_hf.configuration_flamingo import FlamingoConfig
+
+logger = logging.get_logger(__name__)
 
 __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
     "opt": "model.decoder.layers",
@@ -473,7 +475,7 @@ class FlamingoLMMixin(nn.Module):
             layer.condition_attend_previous(None)
 
 
-class FlamingoPretrainedModel(PreTrainedModel):
+class FlamingoPreTrainedModel(PreTrainedModel):
     """
     An abstract class to handle weights initialization and a simple interface for downloading and loading pretrained
     models.
@@ -489,7 +491,7 @@ class FlamingoPretrainedModel(PreTrainedModel):
         return super()._init_weights(module)
 
 
-class FlamingoModel(FlamingoPretrainedModel):
+class FlamingoModel(FlamingoPreTrainedModel):
     config_class = FlamingoConfig
 
     def __init__(
@@ -653,9 +655,79 @@ class FlamingoModel(FlamingoPretrainedModel):
 
         for layer in self.lang_encoder._get_decoder_layers():
             layer.condition_vis_x(vision_x)
+            
+    @torch.no_grad()
+    def generate(
+        self,
+        vision_x: torch.Tensor,
+        lang_x: torch.Tensor,
+        attention_mask: torch.Tensor = None,
+        num_beams=1,
+        max_new_tokens=None,
+        temperature=1.0,
+        top_k=0,
+        top_p=1.0,
+        no_repeat_ngram_size=0,
+        prefix_allowed_tokens_fn=None,
+        length_penalty=1.0,
+        num_return_sequences=1,
+        do_sample=False,
+        early_stopping=False,
+        **kwargs,
+    ):
+        """
+        Generate text conditioned on vision and language inputs.
+
+        Args:
+            vision_x (torch.Tensor): Vision input
+                shape (B, T_img, F, C, H, W)
+                images in the same chunk are collated along T_img, and frames are collated along F
+                currently only F=1 is supported (single-frame videos)
+            lang_x (torch.Tensor): Language input
+                shape (B, T_txt)
+            max_length (int, optional): Maximum length of the output. Defaults to None.
+            attention_mask (torch.Tensor, optional): Attention mask. Defaults to None.
+            num_beams (int, optional): Number of beams. Defaults to 1.
+            max_new_tokens (int, optional): Maximum new tokens. Defaults to None.
+            temperature (float, optional): Temperature. Defaults to 1.0.
+            top_k (int, optional): Top k. Defaults to 0.
+            top_p (float, optional): Top p. Defaults to 1.0.
+            no_repeat_ngram_size (int, optional): No repeat ngram size. Defaults to 0.
+            length_penalty (float, optional): Length penalty. Defaults to 1.0.
+            num_return_sequences (int, optional): Number of return sequences. Defaults to 1.
+            do_sample (bool, optional): Do sample. Defaults to False.
+            early_stopping (bool, optional): Early stopping. Defaults to False.
+        Returns:
+            torch.Tensor: lang_x with generated tokens appended to it
+        """
+        if num_beams > 1:
+            vision_x = vision_x.repeat_interleave(num_beams, dim=0)
+
+        self._encode_vision_x(vision_x=vision_x)
+
+        output = self.lang_encoder.generate(
+            lang_x,
+            attention_mask=attention_mask,
+            eos_token_id=self.eoc_token_id,
+            num_beams=num_beams,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+            prefix_allowed_tokens_fn=prefix_allowed_tokens_fn,
+            no_repeat_ngram_size=no_repeat_ngram_size,
+            length_penalty=length_penalty,
+            num_return_sequences=num_return_sequences,
+            do_sample=do_sample,
+            early_stopping=early_stopping,
+            **kwargs,
+        )
+
+        self.lang_encoder.clear_conditioned_layers()
+        return output
 
 
-class FlamingoForConditionalGeneration(FlamingoPretrainedModel):
+class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
     config_class = FlamingoConfig
 
     def __init__(
@@ -714,6 +786,12 @@ class FlamingoForConditionalGeneration(FlamingoPretrainedModel):
 
     def set_input_embeddings(self, value: nn.Module):
         self.lang_encoder.set_input_embeddings(value)
+        
+    def set_output_embeddings(self, new_embeddings):
+        self.lang_encoder.set_output_embeddings(new_embeddings)
+
+    def get_output_embeddings(self) -> nn.Module:
+        return self.lang_encoder.get_output_embeddings()
 
     def get_image_encoder(self) -> nn.Module:
         return self.vision_encoder
@@ -731,6 +809,27 @@ class FlamingoForConditionalGeneration(FlamingoPretrainedModel):
                 param.requires_grad = False
         # Unfreeze LM input embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
+        
+    def _preprocess_accelerate(self):
+        r"""
+        Some pre-processing hacks to make the model `accelerate` compatible. Check
+        https://github.com/huggingface/transformers/pull/21707 for more details.
+        """
+        hf_device_map = self.hf_device_map
+
+        if len(hf_device_map) > 1 and "lang_encoder" not in hf_device_map and torch.cuda.device_count() > 1:
+            # warn users about unexpected behavior when using multi-GPU + BLIP-2 + `accelerate`.
+            logger.warning(
+                "The `lang_encoder` is not in the `hf_device_map` dictionary and you are running your script"
+                " in a multi-GPU environment. this may lead to unexpected behavior when using `accelerate`."
+                " Please pass a `device_map` that contains `lang_encoder` to remove this warning."
+                " Please refer to https://github.com/huggingface/blog/blob/main/accelerate-large-models.md for",
+                " more details on creating a `device_map` for large models.",
+            )
+
+        if hasattr(self.lang_encoder, "_hf_hook"):
+            self.lang_encoder._hf_hook.io_same_device = True  # For `generate` compatibility
+
 
     def forward(
         self,
@@ -837,6 +936,7 @@ class FlamingoForConditionalGeneration(FlamingoPretrainedModel):
         num_return_sequences:int=1,
         do_sample:bool=False,
         early_stopping:bool=False,
+        **kwargs
     ):
         """
         Generate text conditioned on vision and language inputs.
@@ -863,6 +963,10 @@ class FlamingoForConditionalGeneration(FlamingoPretrainedModel):
         Returns:
             torch.Tensor: lang_x with generated tokens appended to it
         """
+        if hasattr(self, "hf_device_map"):
+            # preprocess for `accelerate`
+            self._preprocess_accelerate()
+        
         if num_beams > 1:
             vision_x = vision_x.repeat_interleave(num_beams, dim=0)
 
@@ -883,6 +987,7 @@ class FlamingoForConditionalGeneration(FlamingoPretrainedModel):
             num_return_sequences=num_return_sequences,
             do_sample=do_sample,
             early_stopping=early_stopping,
+            **kwargs
         )
 
         self.lang_encoder.clear_conditioned_layers()
@@ -918,14 +1023,7 @@ if __name__ == "__main__":
         .unsqueeze(0)
     )
     config = FlamingoConfig.from_json_file("flamingo_hf/config.json")
-    model = FlamingoForConditionalGeneration(config)
-    model.load_state_dict(
-        torch.load(
-            "/data/jinghao+zhengyu/wjh/PET-VLM/flamingo_hf/hf_checkpoint.pt",
-            map_location="cpu",
-        ),
-        strict=False,
-    )
+    model = FlamingoForConditionalGeneration.from_pretrained("/media/ntu/volume2/s121md302_06/code/mutoo/PET-VLM/checkpoint/collie_llama9b_multi_instruct_apr23_hf", device_map='auto')
     tokenizer = model.text_tokenizer
     tokenizer.padding_side = (
         "left"  # For generation padding tokens should be on the left
@@ -935,9 +1033,9 @@ if __name__ == "__main__":
             "<image>An image of two cats.<|endofchunk|><image>An image of a bathroom sink.<|endofchunk|><image>An image of"
         ],
         return_tensors="pt",
-    )
+    ).to("cuda")
     generated_text = model.generate(
-        vision_x=vision_x,
+        vision_x=vision_x.to("cuda"),
         lang_x=lang_x["input_ids"],
         attention_mask=lang_x["attention_mask"],
         max_new_tokens=20,

@@ -1,6 +1,6 @@
 import re
 import argparse
-
+import os
 import torch
 
 
@@ -42,4 +42,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     old_ckpt = torch.load(args.old, map_location="cpu")
     new_ckpt = convert_flamingo_checkpoint(old_ckpt)
+    if not os.path.exists(os.path.dirname(args.new)):
+        os.makedirs(os.path.dirname(args.new))
     torch.save(new_ckpt, args.new)
