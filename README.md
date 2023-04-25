@@ -56,45 +56,6 @@ unzip pretrain_data_examples.zip ./example_multi_instruct_data
 
 Train on multi_instruct example datasets, use following commands:
 
-``` bash
-python -m torch.distributed.run --nproc_per_node=1 open_flamingo/train/instruction_following.py \
---run_name=flamingo3B \
---lm_path=facebook/opt-1.3b \
---tokenizer_path=facebook/opt-1.3b \
---dataset_resampled \
---multi_instruct_path=./example_multi_instruct_data/vision_language_examples.tsv \
---batch_size=8 --num_epochs=30 \
---report_to_wandb --wandb_project=flamingo3B \
---wandb_entity=drluodian \
---delete_previous_checkpoint \
---run_name=dev/multi_instruct_caption_flamingo3B 
-```
-
-### Hyperparameters
-
-## Experiments Results
-
-We report accuracy on following datasets after instruction following (IF) tuning. 
-
-1. COCO Caption
-2. VQAv2
-3. OKVQA
-4. ImageNet
-5. Flickr30
-
-### VQAv2 (VQA accuracy)
-
-|            | 0-shot | 4-shot | 8-shot | 16-shot | 32-shot |
-|------------|--------|--------|--------|---------|---------|
-| OpenFlamingo-9B (ViT-G + ) | 43.5   | 44.0   | 47.5   | 48.9    | 50.3    |
-| DeepMind Flamingo-9B | 51.8   | 56.3   | 58.0   | 59.4    | 60.41   |
-
-### COCO Caption (CIDEr)
-
-|            | 0-shot | 4-shot | 8-shot | 16-shot | 32-shot |
-|------------|--------|--------|--------|---------|---------|
-| OpenFlamingo-9B | 65.5   | 74.3   | 79.3   | 81.8    | 84.5    |
-| DeepMind Flamingo-9B | 79.4   | 93.1   | 99.0   | 102.2   | 106.3   |
 
 ### Serving Demo
 
