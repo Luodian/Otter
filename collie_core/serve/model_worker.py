@@ -79,10 +79,6 @@ class ModelWorker:
             device_map = 'auto' if num_gpus > 0 else None
             model = FlamingoForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit)
             tokenizer = model.text_tokenizer
-            # _, _, image_processor = open_clip.create_model_and_transforms(
-            #     "ViT-L-14",
-            #     pretrained="openai",
-            # )
         else:
             model, _, tokenizer = create_model_and_transforms(
             clip_vision_encoder_path="ViT-L-14",
