@@ -16,12 +16,16 @@ import re
 import logging
 import contextlib
 
+
 from .ofa_dataset import OFADataset, get_whole_word_mask, continuous_tense, collate_fn
 
 label_map = {'entailment': 0, 'not_entailment': 1}
 
 IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
+
+FLAMINGO_MEAN = [0.481, 0.458, 0.408]
+FLAMINGO_STD = [0.269, 0.261, 0.276]
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 ImageFile.MAX_IMAGE_PIXELS = None
@@ -149,14 +153,14 @@ class UnifyDataset(OFADataset):
         #     ToTensor(),
         #     Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], max_image_size=args.max_image_size)
         # ])
+
         # TODO: check if random augment is correct, especially for some questions related to colors.
         self.patch_resize_transform = transforms.Compose([
             RandomResize(scales),
             transforms.CenterCrop(args.patch_image_size),
-            RandomAugment(2, 7, isPIL=True, augs=['Identity', 'AutoContrast', 'Equalize', 'Brightness', 'Sharpness',
-                                                  'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),
+            transforms.RandomHorizontalFlip(p=0.5),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+            transforms.Normalize(mean=FLAMINGO_MEAN, std=FLAMINGO_STD)
         ])
         # # for pure image
         # self.patch_crop_transform = transforms.Compose([
@@ -183,6 +187,8 @@ class UnifyDataset(OFADataset):
         self.eos_item = torch.LongTensor([args.tokenizer.eos_token_id])
         self.bos_mask = torch.LongTensor([1])
         self.eos_mask = torch.LongTensor([1])
+
+        self.rank =args.rank
 
     def pre_question(self, question, max_ques_words):
         question = question.lower().lstrip(",.!?*#:;~").replace('-', ' ').replace('/', ' ')
@@ -314,23 +320,28 @@ class UnifyDataset(OFADataset):
                 question = self.pre_question(question, self.max_src_length)
                 question = question.strip("<image>")
                 answer = refs.strip().replace("#"," ")
+                answer = answer[:self.max_tgt_length]
                 conf = torch.tensor([1.0])
             elif dataset_name == "detail_23k":
                 self.max_src_length = self.max_tgt_length = 256
                 question = self.pre_question(question, self.max_src_length)
                 question = question.strip("<image>")
                 answer = refs.strip().replace("#"," ")
+                answer = answer[:self.max_tgt_length]
                 conf = torch.tensor([1.0])
             elif dataset_name == "conversation_58k":
                 self.max_src_length = self.max_tgt_length = 256
                 question = self.pre_question(question, self.max_src_length)
-                caption = caption.replace("<#>"," ")
-                question = caption+" "+question.strip("<image>")
+                # caption = caption.replace("<#>"," ")
+                # question = caption+" "+question.strip("<image>")
+                question = question.strip("<image>")
                 answer = refs.strip().replace("#"," ")
+                answer = answer[:self.max_tgt_length]
                 conf = torch.tensor([1.0])
 
             # src_text = self.tokenizer(" {}".format(question), return_tensors="pt", add_special_tokens=False)
-            src_text = self.tokenizer(f"<image>Question:{question} Answer:<answer>{answer}<|endofchunk|>", return_tensors="pt", add_special_tokens=False)
+            # src_text = self.tokenizer(f"<image>Question:{question} Answer:<answer>{answer}<|endofchunk|>", return_tensors="pt", add_special_tokens=False)
+            src_text = self.tokenizer(f"<image>{question}<answer>{answer}<|endofchunk|>", return_tensors="pt", add_special_tokens=False)
             src_item = src_text['input_ids'].squeeze(0)
             src_item_mask = src_text['attention_mask'].squeeze(0)
             conf = torch.tensor([conf])
