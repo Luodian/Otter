@@ -1,11 +1,30 @@
 <p align="center" width="100%">
 <img src="assets/title.png"  width="80%" height="80%">
 </p>
- 
 
-![](https://img.shields.io/badge/code-v0.1%20%7C%20alpha-blue)
-![](https://img.shields.io/badge/demo-otter%20chat-orange?link=http://left&link=https://otter.cliangyu.com)
+
+<div>
+<div align="center">
+    <a href='https://brianboli.com/' target='_blank'>Bo Li*</a>&emsp;
+    <a href='https://zhangyuanhan-ai.github.io/' target='_blank'>Yuanhan Zhang*</a>&emsp;
+    <a href='https://king159.github.io/' target='_blank'>Jinghao Wang*</a>&emsp;
+    <a href='https://cliangyu.com/' target='_blank'>Liangyu Chen*</a>&emsp;
+    </br>
+    <a href='https://jingkang50.github.io/' target='_blank'>Jingkang Yang</a>&emsp;
+    <a href='https://liuziwei7.github.io/' target='_blank'>Ziwei Liu</a>
+</div>
+<div>
+<div align="center">
+    S-Lab, Nanyang Technological University
+</div>
+ 
+ -----------------
+
+![](https://img.shields.io/badge/otter-v0.1-orange)
 ![](https://img.shields.io/github/stars/luodian/otter?style=social)
+
+[Otter Demo](https://otter.cliangyu.com/) | [Otter-9B (Huggingface Models)](https://huggingface.co/luodian/otter-9b-hf) | [Paper]() | [Video](https://otter.cliangyu.com/)
+
 
 ## 🦦 Overview
 
@@ -78,25 +97,21 @@ For details, you may refer to the [model card](docs/model_card.md).
 ## 🪩 Web Demo
 We host our [Otter Demo](https://otter.cliangyu.com/) via dual RTX-3090. Launch your own demo by following [instructions](docs/demo.md).
 
-## 🛠 Incoming Features
+### 🛠 Incoming Support
+
+### Features
 
 We are working on the following features. We are working hard to provide these features. Here are some of the issues we have encountered. If you know the answers, please feel free to submit a pull request with your code. We will be very grateful.
 
-- `xformers` support: for saving GPU memory and training speedup. [[issue](https://github.com/Luodian/PET-VLM/issues/35)]
-- `load_in_8bit` support: for saving GPU memory and training speedup. [[issue]()]
+- [ ]  `xformers` support: for saving GPU memory and training speedup. [[issue]()]
+- [ ]  `load_in_8bit` support: for saving GPU memory and training speedup. [[issue]()]
 
+### Models
 
-## 👨‍💻 Authors
+We are working on the following models with much stronger performance.
 
-Equal contribution, alphabetical order.
-
-[Liangyu Chen](https://cliangyu.com/)
-
-[Bo Li](https://brianboli.com/)
-
-[Jinghao Wang](https://king159.github.io/)
-
-[Yuanhan Zhang](https://zhangyuanhan-ai.github.io/)
+- [ ] Otter-9B for Videos
+- [ ] Otter-15B
 
 ### 👨‍🏫 Acknowledgements 
 
