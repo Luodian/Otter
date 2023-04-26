@@ -576,6 +576,7 @@ class FlamingoModel(FlamingoPreTrainedModel):
         clear_conditioned_layers: bool = True,
         past_key_values: Optional[torch.Tensor] = None,
         use_cache: bool = False,
+        **kwargs,
     ) -> CausalLMOutputWithPast:
         """
         Forward pass of Flamingo.
@@ -621,6 +622,7 @@ class FlamingoModel(FlamingoPreTrainedModel):
             labels=labels,
             past_key_values=past_key_values,
             use_cache=use_cache,
+            **kwargs,
         )
 
         if clear_conditioned_layers:
@@ -749,6 +751,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         clear_conditioned_layers: bool = True,
         past_key_values: Optional[torch.Tensor] = None,
         use_cache: bool = False,
+        **kwargs,
     ) -> CausalLMOutputWithPast:
         """
         Forward pass of Flamingo.
@@ -794,6 +797,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
             labels=labels,
             past_key_values=past_key_values,
             use_cache=use_cache,
+            **kwargs,
         )
 
         if clear_conditioned_layers:
@@ -846,6 +850,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         num_return_sequences: int = 1,
         do_sample: bool = False,
         early_stopping: bool = False,
+        **kwargs,
     ):
         """
         Generate text conditioned on vision and language inputs.
@@ -896,6 +901,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
             num_return_sequences=num_return_sequences,
             do_sample=do_sample,
             early_stopping=early_stopping,
+            **kwargs,
         )
 
         self.lang_encoder.clear_conditioned_layers()
