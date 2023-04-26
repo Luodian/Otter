@@ -7,8 +7,9 @@ import torch.nn as nn
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.auto import AutoModelForCausalLM, AutoTokenizer, AutoModel
 from transformers.modeling_outputs import CausalLMOutputWithPast
-from einops import rearrange, repeat
 from transformers import CLIPModel, LlamaForCausalLM, LlamaTokenizer
+from einops import rearrange, repeat
+from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
 from flamingo_hf.configuration_flamingo import FlamingoConfig
 
@@ -91,7 +92,7 @@ class FlamingoPerceiverBlock(nn.Module):
             ]
         )
 
-    def forward(self, x, latents):
+    def forward(self, x:torch.Tensor, latents:torch.Tensor) -> torch.Tensor:
         """
         Args:
             x (torch.Tensor): image features
@@ -131,14 +132,14 @@ class FlamingoPerceiverResampler(nn.Module):
     def __init__(
         self,
         *,
-        dim,
-        depth=6,
-        dim_head=64,
-        heads=8,
-        num_latents=64,
-        max_num_media=None,
-        max_num_frames=None,
-        ff_mult=4,
+        dim:int,
+        depth:int=6,
+        dim_head:int=64,
+        heads:int=8,
+        num_latents:int=64,
+        max_num_media:Optional[int]=None,
+        max_num_frames:Optional[int]=None,
+        ff_mult:int=4,
     ):
         super().__init__()
         self.latents = nn.Parameter(torch.randn(num_latents, dim))
@@ -163,7 +164,7 @@ class FlamingoPerceiverResampler(nn.Module):
 
         self.norm = nn.LayerNorm(dim)
 
-    def forward(self, x):
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
         """
         Args:
             x (torch.Tensor): image features
@@ -194,11 +195,11 @@ class FlamingoMaskedCrossAttention(nn.Module):
     def __init__(
         self,
         *,
-        dim:int,
-        dim_visual:int,
-        dim_head:int=64,
-        heads:int=8,
-        only_attend_immediate_media:bool=True,
+        dim: int,
+        dim_visual: int,
+        dim_head: int = 64,
+        heads: int = 8,
+        only_attend_immediate_media: bool = True,
     ):
         super().__init__()
         self.scale = dim_head**-0.5
@@ -214,7 +215,7 @@ class FlamingoMaskedCrossAttention(nn.Module):
         # whether for text to only attend to immediate preceding image, or all previous images
         self.only_attend_immediate_media = only_attend_immediate_media
 
-    def forward(self, x, media, media_locations=None, attend_previous=True):
+    def forward(self, x:torch.Tensor, media:torch.Tensor, media_locations:Optional[torch.BoolTensor]=None, attend_previous:bool=True) -> torch.Tensor:
         """
         Args:
             x (torch.Tensor): text features
@@ -290,12 +291,12 @@ class FlamingoGatedCrossAttentionBlock(nn.Module):
     def __init__(
         self,
         *,
-        dim:int,
-        dim_visual:int,
-        dim_head:int=64,
-        heads:int=8,
-        ff_mult:int=4,
-        only_attend_immediate_media:bool=True,
+        dim: int,
+        dim_visual: int,
+        dim_head: int = 64,
+        heads: int = 8,
+        ff_mult: int = 4,
+        only_attend_immediate_media: bool = True,
     ):
         super().__init__()
         self.attn = FlamingoMaskedCrossAttention(
@@ -318,10 +319,10 @@ class FlamingoGatedCrossAttentionBlock(nn.Module):
 
     def forward(
         self,
-        x:torch.Tensor,
-        media:torch.Tensor,
-        media_locations:Optional[torch.BoolTensor]=None,
-        attend_previous:bool=True,
+        x: torch.Tensor,
+        media: torch.Tensor,
+        media_locations: Optional[torch.BoolTensor] = None,
+        attend_previous: bool = True,
     ) -> torch.Tensor:
         x = (
             self.attn(
@@ -342,7 +343,7 @@ class FlamingoGatedCrossAttentionBlock(nn.Module):
 
 
 class FlamingoLayer(nn.Module):
-    def __init__(self, gated_cross_attn_layer, decoder_layer):
+    def __init__(self, gated_cross_attn_layer:nn.Module, decoder_layer:nn.Module):
         super().__init__()
         self.gated_cross_attn_layer = gated_cross_attn_layer
         self.decoder_layer = decoder_layer
@@ -354,19 +355,19 @@ class FlamingoLayer(nn.Module):
         return self.vis_x is not None
 
     # Used this great idea from this implementation of Flamingo (https://github.com/dhansmair/flamingo-mini/)
-    def condition_vis_x(self, vis_x):
+    def condition_vis_x(self, vis_x) -> None:
         self.vis_x = vis_x
 
-    def condition_media_locations(self, media_locations):
+    def condition_media_locations(self, media_locations) -> None:
         self.media_locations = media_locations
 
-    def condition_attend_previous(self, attend_previous):
+    def condition_attend_previous(self, attend_previous) -> None:
         self.attend_previous = attend_previous
 
     def forward(
         self,
-        lang_x,
-        attention_mask=None,
+        lang_x:torch.Tensor,
+        attention_mask:Optional[torch.Tensor]=None,
         **decoder_layer_kwargs,
     ):
         if self.gated_cross_attn_layer is None:
@@ -408,10 +409,10 @@ class FlamingoLMMixin(nn.Module):
 
     def init_flamingo(
         self,
-        media_token_id,
-        vis_hidden_size,
-        cross_attn_every_n_layers,
-        use_media_placement_augmentation,
+        media_token_id:int,
+        vis_hidden_size:int,
+        cross_attn_every_n_layers:int,
+        use_media_placement_augmentation:bool,
     ):
         """
         Initialize Flamingo by adding a new gated cross attn to the decoder. Store the media token id for computing the media locations.
@@ -466,14 +467,14 @@ class FlamingoLMMixin(nn.Module):
         """Check whether all decoder layers are already conditioned."""
         return all(l.is_conditioned() for l in self._get_decoder_layers())
 
-    def clear_conditioned_layers(self):
+    def clear_conditioned_layers(self) -> None:
         for layer in self._get_decoder_layers():
             layer.condition_vis_x(None)
             layer.condition_media_locations(None)
             layer.condition_attend_previous(None)
 
 
-class FlamingoPretrainedModel(PreTrainedModel):
+class FlamingoPreTrainedModel(PreTrainedModel):
     """
     An abstract class to handle weights initialization and a simple interface for downloading and loading pretrained
     models.
@@ -485,11 +486,11 @@ class FlamingoPretrainedModel(PreTrainedModel):
     _no_split_modules = ["FlamingoPerceiverBlock", "CLIPEncoderLayer", "FlamingoLayer"]
 
     def _init_weights(self, module):
-        """Flamingo follows the default initialization"""
+        """Flamingo requires no specific initialization"""
         return super()._init_weights(module)
 
 
-class FlamingoModel(FlamingoPretrainedModel):
+class FlamingoModel(FlamingoPreTrainedModel):
     config_class = FlamingoConfig
 
     def __init__(
@@ -498,6 +499,9 @@ class FlamingoModel(FlamingoPretrainedModel):
     ):
         super().__init__(config)
         # TODO: hardcode right because autoXXX is too slow
+        # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
+        # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
+        # vision_encoder = AutoModel.from_config(config.vision_config).vision_model
         text_tokenizer = LlamaTokenizer.from_pretrained(
             config.text_config._name_or_path
         )
@@ -507,7 +511,7 @@ class FlamingoModel(FlamingoPretrainedModel):
         vision_encoder = CLIPModel.from_pretrained(
             config.vision_config._name_or_path
         ).vision_model
-        # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
+
         text_tokenizer.add_special_tokens(
             {"additional_special_tokens": ["<|endofchunk|>", "<image>"]}
         )
@@ -517,7 +521,6 @@ class FlamingoModel(FlamingoPretrainedModel):
         self.eoc_token_id = text_tokenizer.encode("<|endofchunk|>")[-1]
         self.media_token_id = text_tokenizer.encode("<image>")[-1]
 
-        # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
         extend_instance(lang_encoder, FlamingoLMMixin)
         decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
         lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
@@ -526,8 +529,6 @@ class FlamingoModel(FlamingoPretrainedModel):
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
-
-        # vision_encoder = AutoModel.from_config(config.vision_config).vision_model
 
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder
@@ -655,7 +656,7 @@ class FlamingoModel(FlamingoPretrainedModel):
             layer.condition_vis_x(vision_x)
 
 
-class FlamingoForConditionalGeneration(FlamingoPretrainedModel):
+class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
     config_class = FlamingoConfig
 
     def __init__(
@@ -664,6 +665,10 @@ class FlamingoForConditionalGeneration(FlamingoPretrainedModel):
     ):
         super().__init__(config)
         # TODO: hardcode right because autoXXX is too slow
+        # vision_encoder = AutoModel.from_config(config.vision_config).vision_model
+        # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
+        # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
+
         text_tokenizer = LlamaTokenizer.from_pretrained(
             config.text_config._name_or_path
         )
@@ -673,7 +678,7 @@ class FlamingoForConditionalGeneration(FlamingoPretrainedModel):
         vision_encoder = CLIPModel.from_pretrained(
             config.vision_config._name_or_path
         ).vision_model
-        # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
+
         text_tokenizer.add_special_tokens(
             {"additional_special_tokens": ["<|endofchunk|>", "<image>"]}
         )
@@ -683,7 +688,6 @@ class FlamingoForConditionalGeneration(FlamingoPretrainedModel):
         self.eoc_token_id = text_tokenizer.encode("<|endofchunk|>")[-1]
         self.media_token_id = text_tokenizer.encode("<image>")[-1]
 
-        # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
         extend_instance(lang_encoder, FlamingoLMMixin)
         decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
         lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
@@ -692,8 +696,6 @@ class FlamingoForConditionalGeneration(FlamingoPretrainedModel):
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
-
-        # vision_encoder = AutoModel.from_config(config.vision_config).vision_model
 
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder
@@ -825,18 +827,20 @@ class FlamingoForConditionalGeneration(FlamingoPretrainedModel):
         self,
         vision_x: torch.Tensor,
         lang_x: torch.Tensor,
-        attention_mask: torch.Tensor = None,
-        num_beams:int=1,
-        max_new_tokens:Optional[int]=None,
-        temperature:float=1.0,
-        top_k:int=0,
-        top_p:float=1.0,
-        no_repeat_ngram_size:int=0,
-        prefix_allowed_tokens_fn:Optional[Callable[[int, torch.Tensor], list[int]]]=None,
-        length_penalty:float=1.0,
-        num_return_sequences:int=1,
-        do_sample:bool=False,
-        early_stopping:bool=False,
+        attention_mask: Optional[torch.Tensor] = None,
+        num_beams: int = 1,
+        max_new_tokens: Optional[int] = None,
+        temperature: float = 1.0,
+        top_k: int = 0,
+        top_p: float = 1.0,
+        no_repeat_ngram_size: int = 0,
+        prefix_allowed_tokens_fn: Optional[
+            Callable[[int, torch.Tensor], list[int]]
+        ] = None,
+        length_penalty: float = 1.0,
+        num_return_sequences: int = 1,
+        do_sample: bool = False,
+        early_stopping: bool = False,
     ):
         """
         Generate text conditioned on vision and language inputs.
@@ -863,11 +867,15 @@ class FlamingoForConditionalGeneration(FlamingoPretrainedModel):
         Returns:
             torch.Tensor: lang_x with generated tokens appended to it
         """
+        if hasattr(self, "_hf_hook"):
+            # add a hook to make sure that the output of lang_encoder is mapped to the same device as the lang_x
+            hook = AlignDevicesHook(
+                execution_device=lang_x.device, io_same_device=True, place_submodules=False
+            )
+            add_hook_to_module(self.lang_encoder, hook)
         if num_beams > 1:
             vision_x = vision_x.repeat_interleave(num_beams, dim=0)
-
         self._encode_vision_x(vision_x=vision_x)
-
         output = self.lang_encoder.generate(
             lang_x,
             attention_mask=attention_mask,
@@ -887,61 +895,3 @@ class FlamingoForConditionalGeneration(FlamingoPretrainedModel):
 
         self.lang_encoder.clear_conditioned_layers()
         return output
-
-
-if __name__ == "__main__":
-    from PIL import Image
-    import requests
-    import transformers
-
-    demo_image_one = Image.open(
-        requests.get(
-            "http://images.cocodataset.org/val2017/000000039769.jpg", stream=True
-        ).raw
-    )
-    demo_image_two = Image.open(
-        requests.get(
-            "http://images.cocodataset.org/test-stuff2017/000000028137.jpg", stream=True
-        ).raw
-    )
-    query_image = Image.open(
-        requests.get(
-            "http://images.cocodataset.org/test-stuff2017/000000028352.jpg", stream=True
-        ).raw
-    )
-    image_processor = transformers.CLIPImageProcessor()
-    vision_x = (
-        image_processor.preprocess(
-            [demo_image_one, demo_image_two, query_image], return_tensors="pt"
-        )["pixel_values"]
-        .unsqueeze(1)
-        .unsqueeze(0)
-    )
-    config = FlamingoConfig.from_json_file("flamingo_hf/config.json")
-    model = FlamingoForConditionalGeneration(config)
-    model.load_state_dict(
-        torch.load(
-            "/data/jinghao+zhengyu/wjh/PET-VLM/flamingo_hf/hf_checkpoint.pt",
-            map_location="cpu",
-        ),
-        strict=False,
-    )
-    tokenizer = model.text_tokenizer
-    tokenizer.padding_side = (
-        "left"  # For generation padding tokens should be on the left
-    )
-    lang_x = tokenizer(
-        [
-            "<image>An image of two cats.<|endofchunk|><image>An image of a bathroom sink.<|endofchunk|><image>An image of"
-        ],
-        return_tensors="pt",
-    )
-    generated_text = model.generate(
-        vision_x=vision_x,
-        lang_x=lang_x["input_ids"],
-        attention_mask=lang_x["attention_mask"],
-        max_new_tokens=20,
-        num_beams=3,
-    )
-
-    print("Generated text: ", tokenizer.decode(generated_text[0]))
