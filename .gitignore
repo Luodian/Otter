@@ -182,6 +182,10 @@ open_flamingo_archived/*
 
 #yuanhan
 tools
+
+checkpoint
+*conv.json
+*.log.*
 data
 azure
 flamingo3B
