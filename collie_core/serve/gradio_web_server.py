@@ -280,7 +280,8 @@ def http_bot(state, model_selector, max_new_tokens, temperature, top_k, top_p, n
             if chunk:
                 data = json.loads(chunk.decode())
                 if data["error_code"] == 0:
-                    output = data["text"][len(prompt) + 1 :].strip()
+                    # output = data["text"][len(prompt) + 1 :].strip() # original postprocessing
+                    output = data["text"][len(prompt) + len('<s>') + len(state.roles[1]) + 1 :].strip() # TODO: fix hardcode postprocessing
                     output = post_process_code(output)
                     state.messages[-1][-1] = output + "▌"
                     yield (state, state.to_gradio_chatbot()) + (disable_btn,) * 5

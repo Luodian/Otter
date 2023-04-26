@@ -50,22 +50,22 @@ def heart_beat_worker(controller):
 
 
 class ModelWorker:
-    def __init__(self, controller_addr, worker_addr, worker_id, no_register, lm_path, model_name, checkpoint_path, keep_aspect_ratio, num_gpus, load_8bit):
+    def __init__(self, controller_addr, worker_addr, worker_id, no_register, lm_path, model_name, checkpoint_path, keep_aspect_ratio, num_gpus, load_8bit, load_pt):
         self.controller_addr = controller_addr
         self.worker_addr = worker_addr
         self.worker_id = worker_id
         self.model_name = model_name
         logger.info(f"Loading the model {self.model_name} on worker {worker_id} ...")
         self.keep_aspect_ratio = keep_aspect_ratio
-        self.tokenizer, self.model, self.image_processor, self.context_len = self.load_model(lm_path, checkpoint_path, num_gpus, load_8bit)
+        self.tokenizer, self.model, self.image_processor, self.context_len = self.load_model(lm_path, checkpoint_path, num_gpus, load_8bit, load_pt)
 
         if not no_register:
             self.register_to_controller()
             self.heart_beat_thread = threading.Thread(target=heart_beat_worker, args=(self,))
             self.heart_beat_thread.start()
 
-    def load_model(self, lm_path, checkpoint_path, num_gpus, load_in_8bit, load_from_hf=False):
-        if load_from_hf:
+    def load_model(self, lm_path, checkpoint_path, num_gpus, load_in_8bit, load_pt):
+        if not load_pt:
             device_map = "auto" if num_gpus > 0 else None
             model = FlamingoForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit)
             tokenizer = model.text_tokenizer
@@ -237,6 +237,7 @@ if __name__ == "__main__":
     parser.add_argument("--stream_interval", type=int, default=2)
     parser.add_argument("--no_register", action="store_true")
     parser.add_argument("--load_8bit", action="store_true")
+    parser.add_argument("--load_pt", action="store_true")
     args = parser.parse_args()
 
     worker_id = str(uuid.uuid4())[:6]
@@ -255,5 +256,6 @@ if __name__ == "__main__":
         args.keep_aspect_ratio,
         args.num_gpus,
         args.load_8bit,
+        args.load_pt
     )
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
