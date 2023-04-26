@@ -71,7 +71,7 @@ class ModelWorker:
             tokenizer = model.text_tokenizer
         else:
             model, _, tokenizer = create_model_and_transforms(clip_vision_encoder_path="ViT-L-14", clip_vision_encoder_pretrained="openai", lang_encoder_path=lm_path, tokenizer_path=lm_path, cross_attn_every_n_layers=4)
-            if checkpoint_path is not None:  # our checkpoint adds special tokens
+            if checkpoint_path is not None and "openflamingo" not in checkpoint_path:  # our checkpoint adds special tokens
                 tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
                 model.lang_encoder.resize_token_embeddings(len(tokenizer))
 
