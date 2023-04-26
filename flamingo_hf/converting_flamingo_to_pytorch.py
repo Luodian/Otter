@@ -34,14 +34,19 @@ def convert_flamingo_checkpoint(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--old", type=str, required=True, default="flamingo_hf/checkpoint.pt"
+        "--open_flamingo", type=str, required=True, default="flamingo_hf/checkpoint.pt"
     )
     parser.add_argument(
-        "--new", type=str, required=True, default="flamingo_hf/hf_checkpoint.pt"
+        "--open_flamingo_hf", type=str, required=True, default="flamingo_hf/checkpoint_hf.pt"
     )
     args = parser.parse_args()
-    old_ckpt = torch.load(args.old, map_location="cpu")
+    old_ckpt = torch.load(args.open_flamingo, map_location="cpu")
+    # To load checkpoint from training process
+    # model saved during training contains "model" key, also contains model state_dict and optimizer state_dict
+    # model saved at last only contains model state_dict
+    if old_ckpt.get("model", None) is not None:
+        old_ckpt = old_ckpt["model"]
     new_ckpt = convert_flamingo_checkpoint(old_ckpt)
-    if not os.path.exists(os.path.dirname(args.new)):
-        os.makedirs(os.path.dirname(args.new))
-    torch.save(new_ckpt, args.new)
+    if not os.path.exists(os.path.dirname(args.open_flamingo_hf)):
+        os.makedirs(os.path.dirname(args.open_flamingo_hf))
+    torch.save(new_ckpt, args.open_flamingo_hf)
