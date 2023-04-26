@@ -10,7 +10,6 @@ from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers import CLIPModel, LlamaForCausalLM, LlamaTokenizer
 from einops import rearrange, repeat
 from accelerate.hooks import add_hook_to_module, AlignDevicesHook
-
 from flamingo_hf.configuration_flamingo import FlamingoConfig
 
 __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
@@ -655,7 +654,6 @@ class FlamingoModel(FlamingoPreTrainedModel):
         for layer in self.lang_encoder._get_decoder_layers():
             layer.condition_vis_x(vision_x)
 
-
 class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
     config_class = FlamingoConfig
 
@@ -716,6 +714,12 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
 
     def set_input_embeddings(self, value: nn.Module):
         self.lang_encoder.set_input_embeddings(value)
+        
+    def set_output_embeddings(self, new_embeddings):
+        self.lang_encoder.set_output_embeddings(new_embeddings)
+
+    def get_output_embeddings(self) -> nn.Module:
+        return self.lang_encoder.get_output_embeddings()
 
     def get_image_encoder(self) -> nn.Module:
         return self.vision_encoder
@@ -733,6 +737,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
                 param.requires_grad = False
         # Unfreeze LM input embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
+
 
     def forward(
         self,

@@ -120,6 +120,7 @@ class Flamingo(nn.Module):
         num_return_sequences=1,
         do_sample=False,
         early_stopping=False,
+        **kwargs,
     ):
         """
         Generate text conditioned on vision and language inputs.
@@ -166,6 +167,7 @@ class Flamingo(nn.Module):
             num_return_sequences=num_return_sequences,
             do_sample=do_sample,
             early_stopping=early_stopping,
+            **kwargs,
         )
 
         self.lang_encoder.clear_conditioned_layers()
