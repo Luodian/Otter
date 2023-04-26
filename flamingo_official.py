@@ -3,32 +3,19 @@ from PIL import Image
 import requests
 
 model_kwargs = {"device_map": "auto", "load_in_8bit": True}
-model = FlamingoPreTrainedModel.from_pretrained("/media/ntu/volume2/s121md302_06/code/mutoo/PET-VLM/checkpoint/openflamingo_hf", 
-                                                # **model_kwargs
-                                                )
+model = FlamingoPreTrainedModel.from_pretrained(
+    "/media/ntu/volume2/s121md302_06/code/mutoo/PET-VLM/checkpoint/openflamingo_hf",
+    # **model_kwargs
+)
 
 """
 Step 1: Load images
 """
-demo_image_one = Image.open(
-    requests.get(
-        "http://images.cocodataset.org/val2017/000000039769.jpg", stream=True
-    ).raw
-)
+demo_image_one = Image.open(requests.get("http://images.cocodataset.org/val2017/000000039769.jpg", stream=True).raw)
 
-demo_image_two = Image.open(
-    requests.get(
-        "http://images.cocodataset.org/test-stuff2017/000000028137.jpg",
-        stream=True
-    ).raw
-)
+demo_image_two = Image.open(requests.get("http://images.cocodataset.org/test-stuff2017/000000028137.jpg", stream=True).raw)
 
-query_image = Image.open(
-    requests.get(
-        "http://images.cocodataset.org/test-stuff2017/000000028352.jpg", 
-        stream=True
-    ).raw
-)
+query_image = Image.open(requests.get("http://images.cocodataset.org/test-stuff2017/000000028352.jpg", stream=True).raw)
 
 
 """
@@ -51,7 +38,7 @@ Details: In the text we expect an <image> special token to indicate where an ima
 We also expect an <|endofchunk|> special token to indicate the end of the text 
 portion associated with an image.
 """
-model.text_tokenizer.padding_side = "left" # For generation padding tokens should be on the left
+model.text_tokenizer.padding_side = "left"  # For generation padding tokens should be on the left
 lang_x = model.text_tokenizer(
     ["<image>An image of two cats.<|endofchunk|><image>An image of a bathroom sink.<|endofchunk|><image>An image of"],
     return_tensors="pt",
