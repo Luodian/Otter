@@ -181,6 +181,7 @@ open_flamingo/*
 open_flamingo_archived/*
 flamingo_9b_hf/*
 nginx/*
+logs/*
 
 #yuanhan
 tools
