@@ -10,7 +10,7 @@ import requests
 
 from collie_core.conversation import default_conversation, conv_templates, SeparatorStyle
 from collie_core.constants import LOGDIR
-from collie_core.utils import build_logger, server_error_msg, violates_moderation, moderation_msg
+from collie_core.serving_utils import build_logger, server_error_msg, violates_moderation, moderation_msg
 from collie_core.serve.gradio_patch import Chatbot as grChatbot
 from collie_core.serve.gradio_css import code_highlight_css
 
@@ -321,8 +321,7 @@ title_markdown = """
 h1 {text-align: center;}
 </style>
 <h1>🦦 Otter: A Visual Language Model with Efficient Instruction Tuning.</h1>
-<h3>[[🏠Project Page]](https://bair.berkeley.edu/blog/2023/04/03/koala/) [[<img src = "https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" class="icon" alt="github"/>
-GitHub]](https://github.com/young-geng/EasyLM)
+<h3>[[🏠Project Page]](https://bair.berkeley.edu/blog/2023/04/03/koala/) [[<img src = "https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" style="height: 15px;" class="icon" alt="github"/>GitHub]](https://github.com/young-geng/EasyLM)
 </h3>
 </header>
 """
