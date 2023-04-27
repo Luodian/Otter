@@ -209,7 +209,6 @@ class UnifyDataset(OFADataset):
         return question
 
     def pre_answer(self, answer, max_ans_words):
-
         answer = re.sub(
             r"\s{2,}",
             ' ',
@@ -221,16 +220,27 @@ class UnifyDataset(OFADataset):
         # truncate question
         return_answer = ""
         answers = answer.split('.')
+        
         for _ in answers:
-            if len((return_answer + _).split(' ')) <= max_ans_words:
-                return_answer += _
+            if return_answer == "":
+                cur_answer = _
+            else:
+                cur_answer = ".".join([return_answer, _])
+            if len(cur_answer.split(' ')) <= max_ans_words:
+                return_answer = cur_answer
             else:
                 break
+
         if return_answer == "":
             answer_words = answer.split(' ')
             return_answer = ' '.join(answer_words[:max_ques_words])
-
+        else:
+            if return_answer[-1] != "." and return_answer != answers:
+                return_answer += "."
+            
         return return_answer
+
+        
 
     def pre_caption(self, caption, max_words):
         caption = caption.lower().lstrip(",.!?*#:;~").replace('-', ' ').replace('/', ' ').replace('<person>', 'person')
@@ -344,14 +354,14 @@ class UnifyDataset(OFADataset):
                 question = self.pre_question(question, self.max_src_length)
                 question = question.strip("<image>")
                 answer = refs.strip().replace("#"," ")
-                answer = sef.pre_answer(answer,self.max_tgt_length)
+                answer = self.pre_answer(answer,self.max_tgt_length)
                 conf = torch.tensor([1.0])
             elif dataset_name == "detail_23k":
                 self.max_src_length = self.max_tgt_length = 256
                 question = self.pre_question(question, self.max_src_length)
                 question = question.strip("<image>")
                 answer = refs.strip().replace("#"," ")
-                answer = sef.pre_answer(answer,self.max_tgt_length)
+                answer = self.pre_answer(answer,self.max_tgt_length)
                 conf = torch.tensor([1.0])
             elif dataset_name == "conversation_58k":
                 self.max_src_length = self.max_tgt_length = 256
@@ -360,13 +370,11 @@ class UnifyDataset(OFADataset):
                 # question = caption+" "+question.strip("<image>")
                 question = question.strip("<image>")
                 answer = refs.strip().replace("#"," ")
-                answer = sef.pre_answer(answer,self.max_tgt_length)
+                answer = self.pre_answer(answer,self.max_tgt_length)
                 conf = torch.tensor([1.0])
-            import pdb;pdb.set_trace()
-
             # src_text = self.tokenizer(" {}".format(question), return_tensors="pt", add_special_tokens=False)
             # src_text = self.tokenizer(f"<image>Question:{question} Answer:<answer>{answer}<|endofchunk|>", return_tensors="pt", add_special_tokens=False)
-            src_text = self.tokenizer(f"<image>{question}<answer>{answer}<|endofchunk|>", return_tensors="pt", add_special_tokens=False)
+            src_text = self.tokenizer(f"<image>User: {question} GPT:<answer> {answer}<|endofchunk|>", return_tensors="pt", add_special_tokens=False)
             src_item = src_text['input_ids'].squeeze(0)
             src_item_mask = src_text['attention_mask'].squeeze(0)
             conf = torch.tensor([conf])
