@@ -77,6 +77,7 @@ class FlamingoLMMixin(nn.Module):
         vis_hidden_size,
         cross_attn_every_n_layers,
         use_media_placement_augmentation,
+        only_attend_previous=True,
     ):
         """
         Initialize Flamingo by adding a new gated cross attn to the decoder. Store the media token id for computing the media locations.
@@ -85,7 +86,7 @@ class FlamingoLMMixin(nn.Module):
         self.gated_cross_attn_layers = nn.ModuleList(
             [
                 GatedCrossAttentionBlock(
-                    dim=self.config.hidden_size, dim_visual=vis_hidden_size
+                    dim=self.config.hidden_size, dim_visual=vis_hidden_size, only_attend_previous=only_attend_previous
                 )
                 if (layer_idx + 1) % cross_attn_every_n_layers == 0
                 else None
@@ -104,6 +105,7 @@ class FlamingoLMMixin(nn.Module):
         )
         self.media_token_id = media_token_id
         self.use_media_placement_augmentation = use_media_placement_augmentation
+        self.attend_previous = only_attend_previous
         self.initialized_flamingo = True
 
     def forward(self, *input, **kwargs):
@@ -115,9 +117,11 @@ class FlamingoLMMixin(nn.Module):
 
         input_ids = kwargs["input_ids"] if "input_ids" in kwargs else input[0]
         media_locations = input_ids == self.media_token_id
-        attend_previous = (
-            (random.random() < 0.5) if self.use_media_placement_augmentation else False
-        )
+        # IMPORTANT: Force `attend_previous` to True when we place training data as <image>caption<|endofchunk|>
+        # attend_previous = (
+        #     (random.random() < 0.5) if self.use_media_placement_augmentation else False
+        # )
+        attend_previous = self.attend_previous
 
         for layer in self.get_decoder().layers:
             layer.condition_media_locations(media_locations)
