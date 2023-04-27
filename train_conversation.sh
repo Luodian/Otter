@@ -11,7 +11,7 @@ python -m torch.distributed.run --nproc_per_node=4 --master_port=29501 collie_co
 --num_epochs=3 \
 --report_to_wandb \
 --wandb_entity=ntu-slab \
---run_name=multi_instruct_conversation-58k-nocontext_flamingo9B_warmup_lr1e-5_unmask-answer-token \
+--run_name=multi_instruct_conversation-58k-nocontext_flamingo9B_lr1e-5 \
 --wandb_project=multi_instruct_conversation-58k-nocontext_flamingo9B \
 --workers=0 \
 --cross_attn_every_n_layers=4 \
