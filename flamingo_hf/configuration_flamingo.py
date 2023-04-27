@@ -3,6 +3,7 @@ import copy
 from transformers.configuration_utils import PretrainedConfig
 from transformers.utils import logging
 from transformers.models.auto import CONFIG_MAPPING
+from transformers.models.clip import CLIPVisionConfig
 
 logger = logging.get_logger(__name__)
 
@@ -68,9 +69,7 @@ class FlamingoConfig(PretrainedConfig):
                 "text_config is None. Initializing the text config with default values (`OPTConfig`)."
             )
 
-        self.vision_config = CONFIG_MAPPING[vision_config.pop("model_type")](
-            **vision_config
-        )
+        self.vision_config = CLIPVisionConfig(**vision_config)
         self.text_config = CONFIG_MAPPING[text_config.pop("model_type")](**text_config)
         self.cross_attn_every_n_layers = cross_attn_every_n_layers
         self.use_media_placement_augmentation = use_media_placement_augmentation
@@ -91,7 +90,3 @@ class FlamingoConfig(PretrainedConfig):
             "use_media_placement_augmentation"
         ] = self.use_media_placement_augmentation
         return output
-
-
-if __name__ == "__main__":
-    configuration = FlamingoConfig.from_json_file("flamingo_hf/config.json")
