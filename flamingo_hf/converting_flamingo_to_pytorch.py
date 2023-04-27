@@ -108,10 +108,13 @@ def rename_flamingo_checkpoint(
 @torch.no_grad()
 def dump_hf_model(old_ckpt_path: str, new_folder_path: str) -> None:
     old_ckpt = torch.load(old_ckpt_path, map_location="cpu")
+    if old_ckpt.get("model", None) is not None:
+        old_ckpt = old_ckpt["model"]
     config = FlamingoConfig.from_json_file("flamingo_hf/config.json")
     model = FlamingoModel(config)
     new_ckpt = rename_flamingo_checkpoint(old_ckpt)
     model.load_state_dict(new_ckpt, strict=False)
+    print(f"Saving HF model to {new_folder_path}")
     model.save_pretrained(new_folder_path)
 
 
