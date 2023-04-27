@@ -239,7 +239,7 @@ class UnifyDataset(OFADataset):
                 return_answer += "."
             
         return return_answer
-        
+
     def pre_caption(self, caption, max_words):
         caption = caption.lower().lstrip(",.!?*#:;~").replace('-', ' ').replace('/', ' ').replace('<person>', 'person')
 
@@ -370,7 +370,10 @@ class UnifyDataset(OFADataset):
                 answer = refs.strip().replace("#"," ")
                 answer = self.pre_answer(answer,self.max_tgt_length)
                 conf = torch.tensor([1.0])
+<<<<<<< HEAD
             # import pdb;pdb.set_trace()
+=======
+>>>>>>> debug data input
             # src_text = self.tokenizer(" {}".format(question), return_tensors="pt", add_special_tokens=False)
             # src_text = self.tokenizer(f"<image>Question:{question} Answer:<answer>{answer}<|endofchunk|>", return_tensors="pt", add_special_tokens=False)
             src_text = self.tokenizer(f"<image>User: {question} GPT:<answer> {answer}<|endofchunk|>", return_tensors="pt", add_special_tokens=False)
