@@ -29,7 +29,7 @@ def main():
     conv.append_message(conv.roles[0], args.message)
     prompt = conv.get_prompt()
 
-    headers = {"User-Agent": "Collie Client"}
+    headers = {"User-Agent": "Otter Client"}
     pload = {
         "model": args.model_name,
         "prompt": prompt,
