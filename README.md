@@ -47,18 +47,6 @@ Train on multi_instruct example datasets, use following commands:
 If you want to train your own model, you need to convert the model to a 🤗 huggingface model format.
 Otherwise, you may skip this step and use our 🦦 Otter model directly.
 
-<<<<<<< HEAD
-#### Convert model into HF
-```Shell
-export AZURE_DIR="/media/ntu/volume1/home/s121md302_06/data/data/azure"
-export PYTHONPATH=.
-# Convert our model into HF, add <answer> token
-python flamingo_hf/converting_flamingo_to_pytorch.py --old ${AZURE_DIR}/models/multi_instruct_chunyuan-core_otter9B_lr1e-5_6epochs/checkpoint_0.pt --new checkpoint/multi_instruct_chunyuan-core_otter9B_lr1e-5_6epochs/checkpoint_0.pt
-python flamingo_hf/save_hf.py --checkpoint multi_instruct_chunyuan-core_otter9B_lr1e-5_6epochs/checkpoint_0.pt --save-dir checkpoint/multi_instruct_chunyuan-core_otter9B_lr1e-5_6epochs_0_hf --add-answer-token
-# Convert official flamingo model into HF, don't add <answer> token
-python flamingo_hf/converting_flamingo_to_pytorch.py --old /media/ntu/volume1/home/s121md302_06/.cache/huggingface/hub/models--openflamingo--OpenFlamingo-9B/snapshots/b5cd34cb6c90775b262837b6a80a6a47123b4571/checkpoint.pt --new checkpoint/models--openflamingo--OpenFlamingo-9B/checkpoint.pt
-python flamingo_hf/save_hf.py --checkpoint checkpoint/models--openflamingo--OpenFlamingo-9B/checkpoint.pt --save-dir checkpoint/open_flamingo_9B_hf
-=======
 Firstly, download the 🦩 [OpenFlamingo-9B](https://huggingface.co/openflamingo/OpenFlamingo-9B) checkpoint.
 
 Then convert the model to a 🤗 huggingface model format by running the following command
@@ -131,7 +119,6 @@ generated_text = model.generate(
     num_beams=3,
 )
 print("Generated text: ", tokenizer.decode(generated_text[0]))
->>>>>>> 559d8b960b503222a616f8f78299f5ce6a51b501
 ```
 
 </details>
