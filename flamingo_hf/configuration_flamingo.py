@@ -66,7 +66,7 @@ class FlamingoConfig(PretrainedConfig):
         if text_config is None:
             text_config = {}
             logger.info(
-                "text_config is None. Initializing the text config with default values (`OPTConfig`)."
+                "text_config is None. Initializing the text config with default values."
             )
 
         self.vision_config = CLIPVisionConfig(**vision_config)
