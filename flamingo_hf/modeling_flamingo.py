@@ -11,7 +11,7 @@ from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 from einops import rearrange, repeat
 from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
-from configuration_flamingo import FlamingoConfig
+from .configuration_flamingo import FlamingoConfig
 
 __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
     "opt": "model.decoder.layers",
