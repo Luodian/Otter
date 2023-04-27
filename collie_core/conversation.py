@@ -210,7 +210,7 @@ conv_bair_v1 = Conversation(
 )
 
 otter_v1 = Conversation(
-    system="BEGINNING OF CONVERSATION:",
+    system="",
     roles=("User", "GPT"),
     messages=(),
     offset=0,
