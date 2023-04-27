@@ -144,6 +144,7 @@ class MaskedCrossAttention(nn.Module):
         dim_head=64,
         heads=8,
         only_attend_immediate_media=True,
+        only_attend_previous=True,
     ):
         super().__init__()
         self.scale = dim_head**-0.5
@@ -158,6 +159,7 @@ class MaskedCrossAttention(nn.Module):
 
         # whether for text to only attend to immediate preceding image, or all previous images
         self.only_attend_immediate_media = only_attend_immediate_media
+        self.only_attend_previous = only_attend_previous
 
     def forward(self, x, media, media_locations=None, attend_previous=True):
         """
@@ -239,6 +241,7 @@ class GatedCrossAttentionBlock(nn.Module):
         heads=8,
         ff_mult=4,
         only_attend_immediate_media=True,
+        only_attend_previous=True,
     ):
         super().__init__()
         self.attn = MaskedCrossAttention(
@@ -247,6 +250,7 @@ class GatedCrossAttentionBlock(nn.Module):
             dim_head=dim_head,
             heads=heads,
             only_attend_immediate_media=only_attend_immediate_media,
+            only_attend_previous=only_attend_previous,
         )
         self.attn_gate = nn.Parameter(torch.tensor([0.0]))
 
