@@ -210,8 +210,11 @@ class UnifyDataset(OFADataset):
 
     def pre_answer(self, answer, max_ans_words):
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
+>>>>>>> debug data input
+=======
 >>>>>>> debug data input
         answer = re.sub(
             r"\s{2,}",
@@ -224,6 +227,7 @@ class UnifyDataset(OFADataset):
         # truncate question
         return_answer = ""
         answers = answer.split('.')
+<<<<<<< HEAD
 <<<<<<< HEAD
         
         for _ in answers:
@@ -247,17 +251,30 @@ class UnifyDataset(OFADataset):
 
         
 =======
+=======
+        
+>>>>>>> debug data input
         for _ in answers:
-            if len((return_answer + _).split(' ')) <= max_ans_words:
-                return_answer += _
+            if return_answer == "":
+                cur_answer = _
+            else:
+                cur_answer = ".".join([return_answer, _])
+            if len(cur_answer.split(' ')) <= max_ans_words:
+                return_answer = cur_answer
             else:
                 break
+
         if return_answer == "":
             answer_words = answer.split(' ')
             return_answer = ' '.join(answer_words[:max_ques_words])
-
+        else:
+            if return_answer[-1] != "." and return_answer != answers:
+                return_answer += "."
+            
         return return_answer
 >>>>>>> debug data input
+
+        
 
     def pre_caption(self, caption, max_words):
         caption = caption.lower().lstrip(",.!?*#:;~").replace('-', ' ').replace('/', ' ').replace('<person>', 'person')
@@ -386,7 +403,10 @@ class UnifyDataset(OFADataset):
                 answer = refs.strip().replace("#"," ")
                 answer = self.pre_answer(answer,self.max_tgt_length)
                 conf = torch.tensor([1.0])
+<<<<<<< HEAD
             # import pdb;pdb.set_trace()
+=======
+>>>>>>> debug data input
             # src_text = self.tokenizer(" {}".format(question), return_tensors="pt", add_special_tokens=False)
             # src_text = self.tokenizer(f"<image>Question:{question} Answer:<answer>{answer}<|endofchunk|>", return_tensors="pt", add_special_tokens=False)
             src_text = self.tokenizer(f"<image>User: {question} GPT:<answer> {answer}<|endofchunk|>", return_tensors="pt", add_special_tokens=False)
