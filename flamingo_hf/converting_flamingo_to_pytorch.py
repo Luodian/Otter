@@ -1,5 +1,3 @@
-from configuration_flamingo import FlamingoConfig
-
 import re
 import argparse
 import os
@@ -17,6 +15,7 @@ from modeling_flamingo import (
     FlamingoPerceiverResampler,
 )
 
+from configuration_flamingo import FlamingoConfig
 
 class FlamingoModel(FlamingoPreTrainedModel):
     config_class = FlamingoConfig
