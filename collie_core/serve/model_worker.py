@@ -153,7 +153,7 @@ class ModelWorker:
                 vision_x = (image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)).to(self.device)
             else:
                 images = None
-        streamer = TextIteratorStreamer(tokenizer)
+        streamer = TextIteratorStreamer(tokenizer, skip_prompt=True)
         inputs = tokenizer(
             prompt,
             return_tensors="pt",
@@ -163,9 +163,10 @@ class ModelWorker:
         thread = threading.Thread(target=model.generate, kwargs=generation_kwargs)
         thread.start()
         generated_text = ""
-        for output in streamer:
+        for i, output in enumerate(streamer):
             generated_text += output
-            logger.info(f"generated_text: {generated_text}")
+            if i % 10 == 0:
+                logger.info(f"generated_text: {generated_text}")
             ret = {
                 "text": generated_text,
                 "error_code": 0,

@@ -16,6 +16,8 @@ from collie_core.serve.gradio_css import code_highlight_css
 
 DEFAULT_IMAGE_TOKEN = "<image>"
 DEFAULT_DEMO_END_TOKEN = "<|endofchunk|>"
+template_name = "otter"
+TEMPLATE = conv_templates[template_name].copy()
 
 
 logger = build_logger("gradio_web_server", "gradio_web_server.log")
@@ -173,13 +175,13 @@ def add_text(state, text_demo_1, image_demo_1, text_demo_2, image_demo_2, text_3
 
     text = text[:1536]  # Hard cut-off
     if image_3 is not None:
-        text = DEFAULT_IMAGE_TOKEN + text
+        text = DEFAULT_IMAGE_TOKEN + TEMPLATE.roles[0] + ': ' + text
     if text_demo_2 != "":
         assert image_demo_2 is not None
-        text = DEFAULT_IMAGE_TOKEN + text_demo_2 + DEFAULT_DEMO_END_TOKEN + text
+        text = DEFAULT_IMAGE_TOKEN + TEMPLATE.roles[0] + ': ' + text_demo_2 + DEFAULT_DEMO_END_TOKEN + text
     if text_demo_1 != "":
         assert image_demo_1 is not None
-        text = DEFAULT_IMAGE_TOKEN + text_demo_1 + DEFAULT_DEMO_END_TOKEN + text
+        text = DEFAULT_IMAGE_TOKEN + TEMPLATE.roles[0] + ': ' + text_demo_1 + DEFAULT_DEMO_END_TOKEN + text
 
     input = (text, image_demo_1, image_demo_2, image_3)
     state.append_message(state.roles[0], input)
@@ -222,10 +224,7 @@ def http_bot(state, model_selector, max_new_tokens, temperature, top_k, top_p, n
 
     if len(state.messages) == state.offset + 2:
         # First round of conversation
-        if True:  # Hardcode the condition
-            template_name = "collie"
-
-        new_state = conv_templates[template_name].copy()
+        new_state = TEMPLATE
         new_state.append_message(new_state.roles[0], state.messages[-2][1])
         new_state.append_message(new_state.roles[1], None)
         state = new_state
@@ -281,7 +280,8 @@ def http_bot(state, model_selector, max_new_tokens, temperature, top_k, top_p, n
                 data = json.loads(chunk.decode())
                 if data["error_code"] == 0:
                     # output = data["text"][len(prompt) + 1 :].strip() # original postprocessing
-                    output = data["text"][len(prompt) + len('<s>') + len(state.roles[1]) + 1 :].strip() # TODO: fix hardcode postprocessing
+                    output = data["text"].strip() # TODO: fix hardcode postprocessing
+                    # output = data["text"][len(prompt) + len(state.roles[1]) + 1 :].strip() # TODO: fix hardcode postprocessing
                     output = post_process_code(output)
                     state.messages[-1][-1] = output + "▌"
                     yield (state, state.to_gradio_chatbot()) + (disable_btn,) * 5
@@ -522,6 +522,7 @@ def build_demo(embed_mode):
 
 
 if __name__ == "__main__":
+    gr.close_all()
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", type=str, default="127.0.0.1")
     parser.add_argument("--port", type=int, default="7861")
