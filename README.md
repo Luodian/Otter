@@ -1,5 +1,5 @@
-# 🦦 Otter: Multimodal In-Context Instruction Tuning Model
-TD;LD: an in-context instruction tuning Flamingo model.
+# 🦦 Otter: Multi-Modal In-Context Learning Model with Instruction Tuning
+ 
 ## Talk to 🦦 Otter, Give it instruction, and Explore its in-context learning ability!
 
 [Otter Demo](https://otter.cliangyu.com/)
