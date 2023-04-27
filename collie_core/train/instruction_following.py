@@ -293,6 +293,7 @@ def main():
         cross_attn_every_n_layers=args.cross_attn_every_n_layers,
         use_local_files=args.offline,
         use_media_placement_augmentation=args.use_media_placement_augmentation,
+        only_attend_previous=True
     )
 
     random_seed(args.seed, args.rank)
