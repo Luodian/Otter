@@ -11,7 +11,6 @@ _import_structure = {
     "configuration_flamingo": [
         "FlamingoConfig",
     ],
-    # "processing_flamingo": ["FlamingoProcessor"],
 }
 
 try:
@@ -21,7 +20,6 @@ except OptionalDependencyNotAvailable:
     pass
 else:
     _import_structure["modeling_flamingo"] = [
-        # "BLIP_2_PRETRAINED_MODEL_ARCHIVE_LIST",
         "FlamingoModel",
         "FlamingoPreTrainedModel",
         "FlamingoForConditionalGeneration",
@@ -29,7 +27,6 @@ else:
 
 if TYPE_CHECKING:
     from .configuration_flamingo import (
-        # BLIP_2_PRETRAINED_CONFIG_ARCHIVE_MAP,
         FlamingoConfig,
     )
 
@@ -42,7 +39,6 @@ if TYPE_CHECKING:
         pass
     else:
         from .modeling_flamingo import (
-            # BLIP_2_PRETRAINED_MODEL_ARCHIVE_LIST,
             FlamingoForConditionalGeneration,
             FlamingoModel,
             FlamingoPreTrainedModel,
