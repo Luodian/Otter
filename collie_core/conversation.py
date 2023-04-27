@@ -209,7 +209,7 @@ conv_bair_v1 = Conversation(
     sep2="</s>",
 )
 
-collie_v1 = Conversation(
+otter_v1 = Conversation(
     system="BEGINNING OF CONVERSATION:",
     roles=("User", "GPT"),
     messages=(),
@@ -224,7 +224,7 @@ default_conversation = conv_v1_2
 conv_templates = {
     "v1": conv_v1_2,
     "bair_v1": conv_bair_v1,
-    "otter": collie_v1,
+    "otter": otter_v1,
 }
 
 
