@@ -15,6 +15,7 @@ class Flamingo(nn.Module):
         vis_dim: int,
         cross_attn_every_n_layers: int = 1,
         use_media_placement_augmentation: bool = False,
+        only_attend_previous: bool = True,
     ):
         """
         Args:
@@ -31,6 +32,7 @@ class Flamingo(nn.Module):
         self.eoc_token_id = eoc_token_id
         self.media_token_id = media_token_id
         self.use_media_placement_augmentation = use_media_placement_augmentation
+        self.only_attend_previous = only_attend_previous
         self.vis_dim = vis_dim
         self.vision_encoder = vision_encoder
         self.perceiver = PerceiverResampler(dim=self.vis_dim)
@@ -40,6 +42,7 @@ class Flamingo(nn.Module):
             vis_hidden_size=self.vis_dim,
             cross_attn_every_n_layers=cross_attn_every_n_layers,
             use_media_placement_augmentation=self.use_media_placement_augmentation,
+            only_attend_previous=self.only_attend_previous,
         )
 
     def forward(
