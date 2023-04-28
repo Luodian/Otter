@@ -21,6 +21,30 @@ from .modeling_otter import (
 from .configuration_otter import OtterConfig
 
 
+def rename_old_checkpoint(old_ckpt: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+    """Rename some keys in the old checkpoint"""
+    perceiver_pattern1 = re.compile(r"perceiver\.layers\.[0-9]\.0")
+    perceiver_pattern2 = re.compile(r"perceiver\.layers\.[0-9]\.1")
+    new_ckpt = old_ckpt.copy()
+    for key, value in old_ckpt.items():
+        if re.match(perceiver_pattern1, key):
+            new_key = re.sub(r"([0-9])\.0", r"\1", key)
+            new_ckpt.pop(key)
+            new_ckpt[new_key] = value
+        elif re.match(perceiver_pattern2, key):
+            new_key = re.sub(r"([0-9])\.1", r"\1.feed_forward", key)
+            new_ckpt.pop(key)
+            new_ckpt[new_key] = value
+        elif key.startswith("lang_encoder.gated_cross_attn_layers."):
+            new_ckpt.pop(key)
+        elif key.startswith("lang_encoder.") and "ff_gate" not in key:
+            new_key = key.replace("ff", "feed_forward")
+            new_ckpt.pop(key)
+            new_ckpt[new_key] = value
+
+    return new_ckpt
+
+
 class OtterModel(OtterPreTrainedModel):
     config_class = OtterConfig
 
@@ -49,7 +73,6 @@ class OtterModel(OtterPreTrainedModel):
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
         self.only_attend_previous = config.only_attend_previous
-
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder
 
@@ -84,9 +107,10 @@ def dump_hf_model(old_ckpt_path: str, new_folder_path: str) -> None:
     old_ckpt = torch.load(old_ckpt_path, map_location="cpu")
     if old_ckpt.get("model", None) is not None:
         old_ckpt = old_ckpt["model"]
+    new_ckpt = rename_old_checkpoint(old_ckpt)
     config = OtterConfig.from_json_file("otter_hf/config.json")
     model = OtterModel(config)
-    model.load_state_dict(old_ckpt, strict=False)
+    model.load_state_dict(new_ckpt, strict=False)
     print(f"Saving HF model to {new_folder_path}")
     model.save_pretrained(new_folder_path)
 

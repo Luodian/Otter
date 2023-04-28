@@ -670,7 +670,7 @@ class OtterModel(OtterPreTrainedModel):
                 Images in the same chunk are collated along T_img, and frames are collated along F
                 Currently only F=1 is supported (single-frame videos)
 
-        rearrange code based on https://github.com/dhansmair/otter-mini
+        rearrange code based on https://github.com/dhansmair/flamingo-mini
         """
 
         assert vision_x.ndim == 6, "vision_x should be of shape (b, T_img, F, C, H, W)"
@@ -838,7 +838,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
                 Images in the same chunk are collated along T_img, and frames are collated along F
                 Currently only F=1 is supported (single-frame videos)
 
-        rearrange code based on https://github.com/dhansmair/otter-mini
+        rearrange code based on https://github.com/dhansmair/flamingo-mini
         """
 
         assert vision_x.ndim == 6, "vision_x should be of shape (b, T_img, F, C, H, W)"
@@ -908,66 +908,3 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
         self.lang_encoder.clear_conditioned_layers()
         return output
-
-
-if __name__ == "__main__":
-    import requests
-    import torch
-    import transformers
-    from PIL import Image
-
-    model = OtterForConditionalGeneration.from_pretrained(
-        "/home/v-boli7/azure_storage/models/original_flamingo_9b_hf", device_map="auto"
-    )
-    tokenizer = model.text_tokenizer
-    image_processor = transformers.CLIPImageProcessor()
-    demo_image_one = Image.open(
-        requests.get(
-            "http://images.cocodataset.org/val2017/000000039769.jpg", stream=True
-        ).raw
-    )
-    demo_image_two = Image.open(
-        requests.get(
-            "http://images.cocodataset.org/test-stuff2017/000000028137.jpg", stream=True
-        ).raw
-    )
-    query_image = Image.open(
-        requests.get(
-            "http://images.cocodataset.org/test-stuff2017/000000028352.jpg", stream=True
-        ).raw
-    )
-    vision_x = (
-        image_processor.preprocess(
-            [demo_image_one, demo_image_two, query_image], return_tensors="pt"
-        )["pixel_values"]
-        .unsqueeze(1)
-        .unsqueeze(0)
-    )
-    model.text_tokenizer.padding_side = (
-        "left"  # For generation padding tokens should be on the left
-    )
-    lang_x = model.text_tokenizer(
-        [
-            # """<image>User: what does the image describe? GPT: <answer> two cats sleeping.<|endofchunk|><image>User: what does the image describe? GPT: <answer> a bathroom sink.<|endofchunk|><image>User: what does the image describe? GPT: <answer>"""
-            """<image>what does the image describe? two cats sleeping.<|endofchunk|><image>what does the image describe? a bathroom sink.<|endofchunk|><image>what does the image describe? """
-        ],
-        return_tensors="pt",
-    )
-    generated_text = model.generate(
-        vision_x=vision_x.to(model.device),
-        lang_x=lang_x["input_ids"].to(model.device),
-        attention_mask=lang_x["attention_mask"].to(model.device),
-        num_beams=1,
-        max_new_tokens=200,
-        temperature=1.0,
-        top_k=0,
-        top_p=1.0,
-        no_repeat_ngram_size=3,
-        prefix_allowed_tokens_fn=None,
-        length_penalty=1.0,
-        num_return_sequences=1,
-        do_sample=False,
-        early_stopping=False,
-    )
-
-    print("Generated text: ", model.text_tokenizer.decode(generated_text[0]))
