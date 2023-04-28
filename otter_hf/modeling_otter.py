@@ -948,7 +948,8 @@ if __name__ == "__main__":
     )
     lang_x = model.text_tokenizer(
         [
-            """<image>User: what does the image describe? GPT: <answer> two cats sleeping.<|endofchunk|><image>User: what does the image describe? GPT: <answer> a bathroom sink.<|endofchunk|><image>User: what does the image describe? GPT: <answer>"""
+            # """<image>User: what does the image describe? GPT: <answer> two cats sleeping.<|endofchunk|><image>User: what does the image describe? GPT: <answer> a bathroom sink.<|endofchunk|><image>User: what does the image describe? GPT: <answer>"""
+            """<image>what does the image describe? two cats sleeping.<|endofchunk|><image>what does the image describe? a bathroom sink.<|endofchunk|><image>what does the image describe? """
         ],
         return_tensors="pt",
     )
