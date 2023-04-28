@@ -45,7 +45,7 @@ sh get_stanford_models.sh
 
 For details of our training data,  check our [dataset card](/docs/dataset_card.md).
 
-###  Preparation
+### Preparation
 
 Download a subset of the pretraining `multi_instruct` dataset
 
@@ -68,7 +68,7 @@ The trained checkpoints will come soon.
 
 ### 🤗 Flamingo Hugging Face Model
 
-For future research, we rewrite the Flamingo model to hugging face format. Right now, you can use the 🦩 Flamingo model as a huggingface model with only two lines!
+For future research, we rewrite the 🦩 Flamingo model to hugging face format. Right now, you can use the 🦩 Flamingo model as a hugging face model with only two lines!
 
 ``` python
 from flamingo_hf import FlamingoModel
@@ -83,7 +83,7 @@ For hosting the 🦦 Otter on your own computer, follow the [demo instructions](
 
 Equal contribution, alphabetical order.
 
-[Liangyu Chen]()
+[Liangyu Chen](https://cliangyu.com/)
 
 [Bo Li](https://brianboli.com/)
 
@@ -91,6 +91,6 @@ Equal contribution, alphabetical order.
 
 [Yuanhan Zhang](https://zhangyuanhan-ai.github.io/)
 
-### Acknowledgements
+## Acknowledgements
 
 We would like to extend our gratitude to Jingkang Yang and Ziwei Liu for their invaluable assistance and unwavering support. Additionally, we would like to express our appreciation to the Open Flamingo team for their exceptional contributions to the open source community.
