@@ -10,12 +10,14 @@ import requests
 
 from collie_core.conversation import default_conversation, conv_templates, SeparatorStyle
 from collie_core.constants import LOGDIR
-from collie_core.utils import build_logger, server_error_msg, violates_moderation, moderation_msg
+from collie_core.serving_utils import build_logger, server_error_msg, violates_moderation, moderation_msg
 from collie_core.serve.gradio_patch import Chatbot as grChatbot
 from collie_core.serve.gradio_css import code_highlight_css
 
 DEFAULT_IMAGE_TOKEN = "<image>"
 DEFAULT_DEMO_END_TOKEN = "<|endofchunk|>"
+template_name = "otter"
+TEMPLATE = conv_templates[template_name].copy()
 
 
 logger = build_logger("gradio_web_server", "gradio_web_server.log")
@@ -173,13 +175,13 @@ def add_text(state, text_demo_1, image_demo_1, text_demo_2, image_demo_2, text_3
 
     text = text[:1536]  # Hard cut-off
     if image_3 is not None:
-        text = DEFAULT_IMAGE_TOKEN + text
+        text = DEFAULT_IMAGE_TOKEN + TEMPLATE.roles[0] + ': ' + text
     if text_demo_2 != "":
         assert image_demo_2 is not None
-        text = DEFAULT_IMAGE_TOKEN + text_demo_2 + DEFAULT_DEMO_END_TOKEN + text
+        text = DEFAULT_IMAGE_TOKEN + TEMPLATE.roles[0] + ': ' + text_demo_2 + DEFAULT_DEMO_END_TOKEN + text
     if text_demo_1 != "":
         assert image_demo_1 is not None
-        text = DEFAULT_IMAGE_TOKEN + text_demo_1 + DEFAULT_DEMO_END_TOKEN + text
+        text = DEFAULT_IMAGE_TOKEN + TEMPLATE.roles[0] + ': ' + text_demo_1 + DEFAULT_DEMO_END_TOKEN + text
 
     input = (text, image_demo_1, image_demo_2, image_3)
     state.append_message(state.roles[0], input)
@@ -222,10 +224,7 @@ def http_bot(state, model_selector, max_new_tokens, temperature, top_k, top_p, n
 
     if len(state.messages) == state.offset + 2:
         # First round of conversation
-        if True:  # Hardcode the condition
-            template_name = "collie"
-
-        new_state = conv_templates[template_name].copy()
+        new_state = TEMPLATE
         new_state.append_message(new_state.roles[0], state.messages[-2][1])
         new_state.append_message(new_state.roles[1], None)
         state = new_state
@@ -281,7 +280,8 @@ def http_bot(state, model_selector, max_new_tokens, temperature, top_k, top_p, n
                 data = json.loads(chunk.decode())
                 if data["error_code"] == 0:
                     # output = data["text"][len(prompt) + 1 :].strip() # original postprocessing
-                    output = data["text"][len(prompt) + len('<s>') + len(state.roles[1]) + 1 :].strip() # TODO: fix hardcode postprocessing
+                    output = data["text"].strip() # TODO: fix hardcode postprocessing
+                    # output = data["text"][len(prompt) + len(state.roles[1]) + 1 :].strip() # TODO: fix hardcode postprocessing
                     output = post_process_code(output)
                     state.messages[-1][-1] = output + "▌"
                     yield (state, state.to_gradio_chatbot()) + (disable_btn,) * 5
@@ -320,23 +320,22 @@ title_markdown = """
 <style>
 h1 {text-align: center;}
 </style>
-<h1>🐾 Collie: A Visual Language Model with Efficient Instruction Tuning.</h1>
+<h1>🦦 Otter: A Visual Language Model with Efficient Instruction Tuning.</h1>
+<h3>[[🏠Project Page]](https://bair.berkeley.edu/blog/2023/04/03/koala/) [[<img src = "https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" style="height: 15px;" class="icon" alt="github"/>GitHub]](https://github.com/young-geng/EasyLM)
+</h3>
 </header>
 """
 
 tos_markdown = """
 ### Terms of use
-By using this service, users are required to agree to the following terms:
-The service is a research preview intended for non-commercial use only. It only provides limited safety measures and may generate offensive content. It must not be used for any illegal, harmful, violent, racist, or sexual purposes. The service may collect user dialogue data for future research.
-Please click the "Flag" button if you get any inappropriate answer! We will collect those to keep improving our moderator.
-For an optimal experience, please use desktop computers for this demo, as mobile devices may compromise its quality.
+By using this service, users are required to agree to the following terms: The service is a research preview intended for non-commercial use only. It only provides limited safety measures and may generate offensive content. It must not be used for any illegal, harmful, violent, racist, or sexual purposes. The service may collect user dialogue data for future research.
+Please click the "Flag" button if you get any inappropriate answer! We will collect those to keep improving our moderator. For an optimal experience, please use desktop computers for this demo, as mobile devices may compromise its quality.
 """
 
 
 learn_more_markdown = """
 ### License
-The service is a research preview intended for non-commercial use only, subject to the model [License](https://github.com/facebookresearch/
-ma/blob/main/MODEL_CARD.md) of LLaMA, [Terms of Use](https://openai.com/policies/terms-of-use) of the data generated by OpenAI, and [Privacy Practices](https://chrome.google.com/webstore/detail/sharegpt-share-your-chatg/daiacboceoaocpibfodeljbdfacokfjb) of ShareGPT. Please contact us if you find any potential violation.
+The service is a research preview intended for non-commercial use only, subject to the model [License](https://github.com/facebookresearch/llama/blob/main/MODEL_CARD.md) of LLaMA, [Terms of Use](https://openai.com/policies/terms-of-use) of the data generated by OpenAI, and [Privacy Practices](https://chrome.google.com/webstore/detail/sharegpt-share-your-chatg/daiacboceoaocpibfodeljbdfacokfjb) of ShareGPT. Please contact us if you find any potential violation.
 """
 
 
@@ -355,7 +354,7 @@ pre {
 
 
 def build_demo(embed_mode):
-    with gr.Blocks(title="Collie", theme=gr.themes.Base(), css=css) as demo:
+    with gr.Blocks(title="Otter Chat", theme=gr.themes.Base(), css=css) as demo:
         state = gr.State()
 
         if not embed_mode:
@@ -522,6 +521,7 @@ def build_demo(embed_mode):
 
 
 if __name__ == "__main__":
+    gr.close_all()
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", type=str, default="127.0.0.1")
     parser.add_argument("--port", type=int, default="7861")

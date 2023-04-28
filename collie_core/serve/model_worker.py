@@ -21,7 +21,7 @@ import uvicorn
 from functools import partial
 
 from collie_core.constants import WORKER_HEART_BEAT_INTERVAL
-from collie_core.utils import build_logger, server_error_msg, pretty_print_semaphore
+from collie_core.serving_utils import build_logger, server_error_msg, pretty_print_semaphore
 from collie_core import create_model_and_transforms
 from huggingface_hub import hf_hub_download
 import transformers
@@ -139,6 +139,7 @@ class ModelWorker:
         logger.info(f"Generate stream...")
         tokenizer, model, image_processor = self.tokenizer, self.model, self.image_processor
         prompt = params["prompt"]
+        logger.info(f"Prompt: {prompt}")
         images = params.get("images", None)
         if images is not None:
             from PIL import Image
@@ -153,19 +154,21 @@ class ModelWorker:
                 vision_x = (image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)).to(self.device)
             else:
                 images = None
-        streamer = TextIteratorStreamer(tokenizer)
+        streamer = TextIteratorStreamer(tokenizer, skip_prompt=True)
         inputs = tokenizer(
             prompt,
             return_tensors="pt",
         ).to(self.device)
-        generation_kwargs = dict(vision_x=vision_x, lang_x=inputs["input_ids"], attention_mask=inputs["attention_mask"], streamer=streamer, **params.get("generation_kwargs", {}))
+        generation_kwargs = params.get("generation_kwargs", {})
         logger.info(f"generation_kwargs: {generation_kwargs}")
-        thread = threading.Thread(target=model.generate, kwargs=generation_kwargs)
+        generation_input = dict(vision_x=vision_x, lang_x=inputs["input_ids"], attention_mask=inputs["attention_mask"], streamer=streamer, **generation_kwargs)
+        thread = threading.Thread(target=model.generate, kwargs=generation_input)
         thread.start()
         generated_text = ""
-        for output in streamer:
+        for i, output in enumerate(streamer):
             generated_text += output
-            logger.info(f"generated_text: {generated_text}")
+            if i % 10 == 0:
+                logger.info(f"Generated text: {generated_text}")
             ret = {
                 "text": generated_text,
                 "error_code": 0,
