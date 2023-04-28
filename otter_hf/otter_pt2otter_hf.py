@@ -1,3 +1,6 @@
+"""convert from otter pt to otter hf. Will remove after we use otter hf model to train.
+"""
+
 import re
 import argparse
 import os
