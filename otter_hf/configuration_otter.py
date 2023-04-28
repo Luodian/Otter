@@ -38,7 +38,7 @@ class OtterConfig(PretrainedConfig):
     ...     OtterForConditionalGeneration,
     ... )
 
-    >>> # Initializing a OtterConfig with Salesforce/Otter-opt-2.7b style configuration
+    >>> # Initializing a OtterConfig with luodian/otter-9b-hf style configuration
     >>> configuration = OtterConfig()
 
     >>> # Initializing a OtterForConditionalGeneration (with random weights) from the Salesforce/Otter-opt-2.7b style configuration
