@@ -17,6 +17,7 @@ from modeling_otter import (
 
 from configuration_otter import OtterConfig
 
+
 class OtterModel(OtterPreTrainedModel):
     config_class = OtterConfig
 
@@ -86,7 +87,7 @@ def dump_hf_model(old_ckpt_path: str, new_folder_path: str) -> None:
         old_ckpt = old_ckpt["model"]
     config = OtterConfig.from_json_file("otter_hf/config.json")
     model = OtterModel(config)
-    model.load_state_dict(new_ckpt, strict=False)
+    model.load_state_dict(old_ckpt, strict=False)
     print(f"Saving HF model to {new_folder_path}")
     model.save_pretrained(new_folder_path)
 
