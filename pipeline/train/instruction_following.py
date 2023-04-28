@@ -15,15 +15,19 @@ from transformers import (
     get_constant_schedule_with_warmup,
     get_cosine_schedule_with_warmup,
     get_linear_schedule_with_warmup,
+    CLIPImageProcessor
 )
 
 from pipeline import create_model_and_transforms
 from pipeline.train.train_utils import AverageMeter, get_autocast, get_cast_dtype, get_checkpoint
+from otter.modeling_otter import OtterForConditionalGeneration
+from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from tqdm import tqdm
 import time
 
 from ofa_compress.arguments import add_data_args
 from accelerate import Accelerator
+from flamingo.configuration_flamingo import FlamingoConfig
 
 def random_seed(seed=42, rank=0):
     torch.manual_seed(seed + rank)
@@ -57,6 +61,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         total=total_training_steps,
         initial=(epoch * num_batches_per_epoch),
     ):
+        
         data_time_m.update(time.time() - end)
 
         global_step = num_steps + epoch * num_batches_per_epoch
@@ -187,6 +192,12 @@ def main():
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
     parser.add_argument(
+        "--pretrained_model_name_or_path",
+        type=str,
+        help="path to huggingface model or model identifier from local path or huggingface.co",
+        default=None,
+    )
+    parser.add_argument(
         "--resume_from_checkpoint",
         type=str,
         help="path to checkpoint to resume from, this should contain model, optimizer, and lr_scheduler states",
@@ -247,6 +258,8 @@ def main():
         action="store_true",
         help="Don't set device index from local rank (when CUDA_VISIBLE_DEVICES restricted to one per proc).",
     )
+    # this could potentially save 33GB of all model parameters for otter-9b, including the language and vision model.
+    parser.add_argument("--save_hf_model", default=False, action="store_true")
     # wandb args
     parser.add_argument("--report_to_wandb", default=False, action="store_true")
     parser.add_argument(
@@ -283,16 +296,16 @@ def main():
 
     random_seed(args.seed)
 
-    model, image_processor, tokenizer = create_model_and_transforms(
-        args.vision_encoder_path,
-        args.vision_encoder_pretrained,
-        args.lm_path,
-        args.tokenizer_path if args.tokenizer_path else args.lm_path,
-        cross_attn_every_n_layers=args.cross_attn_every_n_layers,
-        use_local_files=args.offline,
-        use_media_placement_augmentation=args.use_media_placement_augmentation,
-        only_attend_previous=True
-    )
+    if args.pretrained_model_name_or_path is not None:
+        model = FlamingoForConditionalGeneration.from_pretrained(
+            args.pretrained_model_name_or_path, device_map="auto", local_files_only=args.offline
+        )
+    else:
+        config = FlamingoConfig.from_json_file("./flamingo_hf/config.json")
+        model = FlamingoForConditionalGeneration(config=config)
+        
+    tokenizer = model.text_tokenizer
+    image_processor = CLIPImageProcessor()
 
     random_seed(args.seed, args.rank)
 
@@ -331,9 +344,10 @@ def main():
     args.train_num_samples = multi_instruct_dataset.dataloader.num_samples if args.train_num_samples is None else args.train_num_samples
     total_training_steps = ((args.train_num_samples) // (args.batch_size * args.world_size)) * args.num_epochs
 
+    resume_from_epoch = 0
     # check if a checkpoint exists for this run
     args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
-    if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is None and args.overwrite_checkpoint is False:
+    if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is None:
         checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
         if len(checkpoint_list) == 0:
             print(f"Found no checkpoints for run {args.external_save_dir}.")
@@ -341,13 +355,18 @@ def main():
             args.resume_from_checkpoint = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
             print(f"Found checkpoint {args.resume_from_checkpoint} for run {args.external_save_dir}.")
 
-    resume_from_epoch = 0
-    if args.resume_from_checkpoint is not None:
         if args.rank == 0:
             print(f"Loading checkpoint from {args.resume_from_checkpoint}")
         checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
-        model.load_state_dict(checkpoint, False)
-
+        model.load_state_dict(checkpoint["model_state_dict"], False)
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
+        resume_from_epoch = checkpoint["epoch"] + 1
+        
+    elif args.resume_from_checkpoint is not None:
+        print(f"Loading checkpoint from {args.resume_from_checkpoint}")
+        model.load_state_dict(torch.load(args.resume_from_checkpoint, map_location="cpu"), False)
+        
     # add <answer> token to tokenizer
     tokenizer.add_special_tokens(
         {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
@@ -360,6 +379,7 @@ def main():
     multi_instruct_loader = multi_instruct_dataset.dataloader
     model, optimizer, multi_instruct_loader = accelerator.prepare(model, optimizer, multi_instruct_loader)
     model.train()
+    # model.gradient_checkpointing_enable()
 
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
@@ -392,9 +412,10 @@ def main():
             unwrapped_model = accelerator.unwrap_model(model)
             accelerator.save(
                 {
-                    "model": get_checkpoint(model=unwrapped_model),
-                    "optimizer": optimizer.optimizer.state_dict(),  # optimizer is an AcceleratedOptimizer object
-                    "lr_scheduler": lr_scheduler.state_dict(),
+                    "epoch": epoch,
+                    "model_state_dict": get_checkpoint(model=unwrapped_model),
+                    "optimizer_state_dict": optimizer.optimizer.state_dict(),  # optimizer is an AcceleratedOptimizer object
+                    "lr_scheduler_state_dict": lr_scheduler.state_dict(),
                 },
                 f"{args.external_save_dir}/checkpoint_{epoch}.pt",
             )
@@ -414,6 +435,8 @@ def main():
         accelerator.save(get_checkpoint(model=unwrapped_model), f"{args.external_save_dir}/final_weights.pt")
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
+        if args.save_hf_model:
+            model.save_pretrained(f"{args.external_save_dir}/hf_model")
 
 
 if __name__ == "__main__":
