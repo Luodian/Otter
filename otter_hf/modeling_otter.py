@@ -13,11 +13,15 @@ from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
 from configuration_otter import OtterConfig
 
+XFORMERS_AVAIL = True
 try:
     import xformers
     import xformers.ops as xops
 except ImportError:
     XFORMERS_AVAIL = False
+    print(
+        "You are recommended to install xformers via `pip install xformers` or `conda install -c xformers xformers`"
+    )
 
 __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
     "opt": "model.decoder.layers",
@@ -251,7 +255,7 @@ class OtterMaskedCrossAttention(nn.Module):
         q = rearrange(q, "b n (h d) -> b h n d", h=h)
         k = rearrange(k, "b n (h d) -> b h n d", h=h)
         v = rearrange(v, "b n (h d) -> b h n d", h=h)
-        if not XFORMER_AVAIL:
+        if not XFORMERS_AVAIL:
             q = q * self.scale
 
             sim = torch.einsum("... i d, ... j d -> ... i j", q, k)
@@ -298,7 +302,7 @@ class OtterMaskedCrossAttention(nn.Module):
             out = rearrange(out, "b h n d -> b n (h d)")
         else:
             attn_mask = None
-
+            out = xops.memory_efficient_attention(q, k, v, attn_bias=attn_mask)
         return self.to_out(out)
 
 
@@ -891,3 +895,65 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
         self.lang_encoder.clear_conditioned_layers()
         return output
+
+
+if __name__ == "__main__":
+    import requests
+    import torch
+    import transformers
+    from PIL import Image
+
+    model = OtterForConditionalGeneration.from_pretrained(
+        "/data/jinghao+zhengyu/wjh/otter_hf", device_map="auto"
+    )
+    tokenizer = model.text_tokenizer
+    image_processor = transformers.CLIPImageProcessor()
+    demo_image_one = Image.open(
+        requests.get(
+            "http://images.cocodataset.org/val2017/000000039769.jpg", stream=True
+        ).raw
+    )
+    demo_image_two = Image.open(
+        requests.get(
+            "http://images.cocodataset.org/test-stuff2017/000000028137.jpg", stream=True
+        ).raw
+    )
+    query_image = Image.open(
+        requests.get(
+            "http://images.cocodataset.org/test-stuff2017/000000028352.jpg", stream=True
+        ).raw
+    )
+    vision_x = (
+        image_processor.preprocess(
+            [demo_image_one, demo_image_two, query_image], return_tensors="pt"
+        )["pixel_values"]
+        .unsqueeze(1)
+        .unsqueeze(0)
+    )
+    model.text_tokenizer.padding_side = (
+        "left"  # For generation padding tokens should be on the left
+    )
+    lang_x = model.text_tokenizer(
+        [
+            """<image>User: what does the image describe? GPT: <answer> two cats sleeping.<|endofchunk|><image>User: what does the image describe? GPT: <answer> a bathroom sink.<|endofchunk|><image>User: what does the image describe? GPT: <answer>"""
+        ],
+        return_tensors="pt",
+    )
+    generated_text = model.generate(
+        vision_x=vision_x.to(model.device),
+        lang_x=lang_x["input_ids"].to(model.device),
+        attention_mask=lang_x["attention_mask"].to(model.device),
+        num_beams=1,
+        max_new_tokens=200,
+        temperature=1.0,
+        top_k=0,
+        top_p=1.0,
+        no_repeat_ngram_size=3,
+        prefix_allowed_tokens_fn=None,
+        length_penalty=1.0,
+        num_return_sequences=1,
+        do_sample=False,
+        early_stopping=False,
+    )
+
+    print("Generated text: ", model.text_tokenizer.decode(generated_text[0]))
