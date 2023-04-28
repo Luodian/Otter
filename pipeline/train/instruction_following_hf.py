@@ -380,6 +380,7 @@ def main():
     multi_instruct_loader = multi_instruct_dataset.dataloader
     model, optimizer, multi_instruct_loader = accelerator.prepare(model, optimizer, multi_instruct_loader)
     model.train()
+    # model.gradient_checkpointing_enable()
 
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
