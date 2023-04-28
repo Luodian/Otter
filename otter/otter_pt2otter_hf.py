@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 
-from modeling_otter import (
+from .modeling_otter import (
     OtterConfig,
     OtterPreTrainedModel,
     OtterLMMixin,
@@ -18,7 +18,7 @@ from modeling_otter import (
     OtterPerceiverResampler,
 )
 
-from configuration_otter import OtterConfig
+from .configuration_otter import OtterConfig
 
 
 def rename_old_checkpoint(old_ckpt: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
@@ -53,19 +53,11 @@ class OtterModel(OtterPreTrainedModel):
         config: OtterConfig,
     ):
         super().__init__(config)
-        text_tokenizer = LlamaTokenizer.from_pretrained(
-            config.text_config._name_or_path
-        )
-        lang_encoder = LlamaForCausalLM.from_pretrained(
-            config.text_config._name_or_path
-        )
-        vision_encoder = CLIPVisionModel.from_pretrained(
-            config.vision_config._name_or_path
-        )
+        text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+        lang_encoder = LlamaForCausalLM.from_pretrained(config.text_config._name_or_path)
+        vision_encoder = CLIPVisionModel.from_pretrained(config.vision_config._name_or_path)
 
-        text_tokenizer.add_special_tokens(
-            {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
-        )
+        text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
         if text_tokenizer.pad_token is None:
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
         self.text_tokenizer = text_tokenizer
@@ -86,6 +78,8 @@ class OtterModel(OtterPreTrainedModel):
 
         self.vis_dim = 1024
         self.perceiver = OtterPerceiverResampler(dim=self.vis_dim)
+
+        print(self.only_attend_previous)
 
         self.lang_encoder.init_otter(
             media_token_id=self.media_token_id,
