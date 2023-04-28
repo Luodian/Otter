@@ -349,13 +349,13 @@ def main():
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
     args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
-    if os.path.exists(f"{args.run_name}") and args.resume_from_checkpoint is None:
-        checkpoint_list = glob.glob(f"{args.run_name}/checkpoint_*.pt")
+    if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is None:
+        checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
         if len(checkpoint_list) == 0:
-            print(f"Found no checkpoints for run {args.run_name}.")
+            print(f"Found no checkpoints for run {args.external_save_dir}.")
         else:
             args.resume_from_checkpoint = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
-            print(f"Found checkpoint {args.resume_from_checkpoint} for run {args.run_name}.")
+            print(f"Found checkpoint {args.resume_from_checkpoint} for run {args.external_save_dir}.")
 
         if args.rank == 0:
             print(f"Loading checkpoint from {args.resume_from_checkpoint}")
@@ -364,6 +364,7 @@ def main():
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
         resume_from_epoch = checkpoint["epoch"] + 1
+        
     elif args.resume_from_checkpoint is not None:
         print(f"Loading checkpoint from {args.resume_from_checkpoint}")
         model.load_state_dict(torch.load(args.resume_from_checkpoint, map_location="cpu"), False)
