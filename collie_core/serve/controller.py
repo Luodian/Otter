@@ -19,7 +19,7 @@ import requests
 import uvicorn
 
 from collie_core.constants import CONTROLLER_HEART_BEAT_EXPIRATION
-from collie_core.utils import build_logger, server_error_msg
+from collie_core.serving_utils import build_logger, server_error_msg
 
 
 logger = build_logger("controller", "controller.log")
