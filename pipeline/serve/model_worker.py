@@ -20,9 +20,9 @@ import torch
 import uvicorn
 from functools import partial
 
-from collie_core.constants import WORKER_HEART_BEAT_INTERVAL
-from collie_core.serving_utils import build_logger, server_error_msg, pretty_print_semaphore
-from collie_core import create_model_and_transforms
+from pipeline.constants import WORKER_HEART_BEAT_INTERVAL
+from pipeline.serve.serving_utils import build_logger, server_error_msg, pretty_print_semaphore
+from pipeline import create_model_and_transforms
 from huggingface_hub import hf_hub_download
 import transformers
 from transformers import LlamaForCausalLM, AutoModelForCausalLM
