@@ -11,12 +11,12 @@ from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 from einops import rearrange, repeat
 from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
-from .configuration_otter import OtterConfig
+from configuration_otter import OtterConfig
 
 try:
     import xformers
     import xformers.ops as xops
-expect:
+except ImportError:
     XFORMERS_AVAIL = False
 
 __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
@@ -251,51 +251,54 @@ class OtterMaskedCrossAttention(nn.Module):
         q = rearrange(q, "b n (h d) -> b h n d", h=h)
         k = rearrange(k, "b n (h d) -> b h n d", h=h)
         v = rearrange(v, "b n (h d) -> b h n d", h=h)
+        if not XFORMER_AVAIL:
+            q = q * self.scale
 
-        q = q * self.scale
+            sim = torch.einsum("... i d, ... j d -> ... i j", q, k)
 
-        sim = torch.einsum("... i d, ... j d -> ... i j", q, k)
+            if exists(media_locations):
+                # at each boolean of True, increment the time counter (relative to media time)
+                text_time = media_locations.cumsum(dim=-1)
+                media_time = torch.arange(T_img, device=x.device) + 1
 
-        if exists(media_locations):
-            # at each boolean of True, increment the time counter (relative to media time)
-            text_time = media_locations.cumsum(dim=-1)
-            media_time = torch.arange(T_img, device=x.device) + 1
+                if not attend_previous:
+                    text_time[~media_locations] += 1
+                    # make sure max is still the number of images in the sequence
+                    text_time[
+                        text_time
+                        > repeat(
+                            torch.count_nonzero(media_locations, dim=1),
+                            "b -> b i",
+                            i=text_time.shape[1],
+                        )
+                    ] = 0
 
-            if not attend_previous:
-                text_time[~media_locations] += 1
-                # make sure max is still the number of images in the sequence
-                text_time[
-                    text_time
-                    > repeat(
-                        torch.count_nonzero(media_locations, dim=1),
-                        "b -> b i",
-                        i=text_time.shape[1],
-                    )
-                ] = 0
+                # text time must equal media time if only attending to most immediate image
+                # otherwise, as long as text time is greater than media time (if attending to all previous images / media)
+                mask_op = torch.eq if self.only_attend_immediate_media else torch.ge
 
-            # text time must equal media time if only attending to most immediate image
-            # otherwise, as long as text time is greater than media time (if attending to all previous images / media)
-            mask_op = torch.eq if self.only_attend_immediate_media else torch.ge
+                text_to_media_mask = mask_op(
+                    rearrange(text_time, "b i -> b 1 i 1"),
+                    repeat(media_time, "j -> 1 1 1 (j n)", n=n),
+                )
+                sim = sim.masked_fill(~text_to_media_mask, -torch.finfo(sim.dtype).max)
 
-            text_to_media_mask = mask_op(
-                rearrange(text_time, "b i -> b 1 i 1"),
-                repeat(media_time, "j -> 1 1 1 (j n)", n=n),
-            )
-            sim = sim.masked_fill(~text_to_media_mask, -torch.finfo(sim.dtype).max)
+            sim = sim - sim.amax(dim=-1, keepdim=True).detach()
+            attn = sim.softmax(dim=-1)
 
-        sim = sim - sim.amax(dim=-1, keepdim=True).detach()
-        attn = sim.softmax(dim=-1)
+            if exists(media_locations) and self.only_attend_immediate_media:
+                # any text without a preceding media needs to have attention zeroed out
+                text_without_media_mask = text_time == 0
+                text_without_media_mask = rearrange(
+                    text_without_media_mask, "b i -> b 1 i 1"
+                )
+                attn = attn.masked_fill(text_without_media_mask, 0.0)
 
-        if exists(media_locations) and self.only_attend_immediate_media:
-            # any text without a preceding media needs to have attention zeroed out
-            text_without_media_mask = text_time == 0
-            text_without_media_mask = rearrange(
-                text_without_media_mask, "b i -> b 1 i 1"
-            )
-            attn = attn.masked_fill(text_without_media_mask, 0.0)
+            out = torch.einsum("... i j, ... j d -> ... i d", attn, v)
+            out = rearrange(out, "b h n d -> b n (h d)")
+        else:
+            attn_mask = None
 
-        out = torch.einsum("... i j, ... j d -> ... i d", attn, v)
-        out = rearrange(out, "b h n d -> b n (h d)")
         return self.to_out(out)
 
 
@@ -510,10 +513,6 @@ class OtterModel(OtterPreTrainedModel):
         config: OtterConfig,
     ):
         super().__init__(config)
-        # TODO: hardcode right because autoXXX is too slow
-        # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
-        # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
-        # vision_encoder = AutoModel.from_config(config.vision_config).vision_model
         text_tokenizer = LlamaTokenizer.from_pretrained(
             config.text_config._name_or_path
         )
@@ -662,7 +661,6 @@ class OtterModel(OtterPreTrainedModel):
 
         assert vision_x.ndim == 6, "vision_x should be of shape (b, T_img, F, C, H, W)"
         b, T, F = vision_x.shape[:3]
-        assert F == 1, "Only single frame supported"
 
         vision_x = rearrange(vision_x, "b T F c h w -> (b T F) c h w")
         with torch.no_grad():
@@ -683,11 +681,6 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         config: OtterConfig,
     ):
         super().__init__(config)
-        # TODO: hardcode right because autoXXX is too slow
-        # vision_encoder = AutoModel.from_config(config.vision_config).vision_model
-        # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
-        # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
-
         text_tokenizer = LlamaTokenizer.from_pretrained(
             config.text_config._name_or_path
         )
@@ -833,7 +826,6 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
         assert vision_x.ndim == 6, "vision_x should be of shape (b, T_img, F, C, H, W)"
         b, T, F = vision_x.shape[:3]
-        assert F == 1, "Only single frame supported"
 
         vision_x = rearrange(vision_x, "b T F c h w -> (b T F) c h w")
         with torch.no_grad():
@@ -851,20 +843,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         vision_x: torch.Tensor,
         lang_x: torch.Tensor,
         attention_mask: Optional[torch.Tensor] = None,
-        num_beams: int = 1,
-        max_new_tokens: Optional[int] = None,
-        temperature: float = 1.0,
-        top_k: int = 0,
-        top_p: float = 1.0,
-        no_repeat_ngram_size: int = 0,
-        prefix_allowed_tokens_fn: Optional[
-            Callable[[int, torch.Tensor], list[int]]
-        ] = None,
-        length_penalty: float = 1.0,
-        num_return_sequences: int = 1,
-        do_sample: bool = False,
-        early_stopping: bool = False,
-        **kwargs,
+        **generate_kwargs,
     ):
         """
         Generate text conditioned on vision and language inputs.
@@ -899,6 +878,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
                 place_submodules=False,
             )
             add_hook_to_module(self.lang_encoder, hook)
+        num_beams = generate_kwargs.get("num_beams", 1)
         if num_beams > 1:
             vision_x = vision_x.repeat_interleave(num_beams, dim=0)
         self._encode_vision_x(vision_x=vision_x)
@@ -906,18 +886,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             lang_x,
             attention_mask=attention_mask,
             eos_token_id=self.eoc_token_id,
-            num_beams=num_beams,
-            max_new_tokens=max_new_tokens,
-            temperature=temperature,
-            top_k=top_k,
-            top_p=top_p,
-            prefix_allowed_tokens_fn=prefix_allowed_tokens_fn,
-            no_repeat_ngram_size=no_repeat_ngram_size,
-            length_penalty=length_penalty,
-            num_return_sequences=num_return_sequences,
-            do_sample=do_sample,
-            early_stopping=early_stopping,
-            **kwargs,
+            **generate_kwargs,
         )
 
         self.lang_encoder.clear_conditioned_layers()
