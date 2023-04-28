@@ -136,7 +136,7 @@ python -m collie_core.serve.controller --host 0.0.0.0 --port 10000
 ```Shell
 export AZURE_DIR="/media/ntu/volume1/home/s121md302_06/data/data/azure"
 # Init our model on GPU
-CUDA_VISIBLE_DEVICES=0,1 python -m collie_core.serve.model_worker --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model_name collie_llama9b_multi_instruct_apr23 --checkpoint_path checkpoint/collie_llama9b_multi_instruct_apr23_hf --num_gpus 2
+CUDA_VISIBLE_DEVICES=0,1 python -m collie_core.serve.model_worker --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model_name otter --checkpoint_path checkpoint/multi_instruct_chunyuan-core_otter9B_lr1e-5_6epochs_hf --num_gpus 2
 
 # Init original model on GPU
 CUDA_VISIBLE_DEVICES=2,3 python -m collie_core.serve.model_worker --controller http://localhost:10000 --port 40001 --worker http://localhost:40001 --model_name open_flamingo_original --checkpoint_path checkpoint/open_flamingo_9B_hf --num_gpus 2
