@@ -11,17 +11,7 @@ from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 from einops import rearrange, repeat
 from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
-from configuration_otter import OtterConfig
-
-XFORMERS_AVAIL = True
-try:
-    import xformers
-    import xformers.ops as xops
-except ImportError:
-    XFORMERS_AVAIL = False
-    print(
-        "You are recommended to install xformers via `pip install xformers` or `conda install -c xformers xformers`"
-    )
+from .configuration_flamingo import FlamingoConfig
 
 __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
     "opt": "model.decoder.layers",
@@ -80,7 +70,7 @@ def exists(val):
     return val is not None
 
 
-class OtterPerceiverBlock(nn.Module):
+class FlamingoPerceiverBlock(nn.Module):
     def __init__(self, *, dim: int, dim_head: int = 64, heads: int = 8, mult: int = 4):
         super().__init__()
         self.scale = dim_head**-0.5
@@ -138,7 +128,7 @@ class OtterPerceiverBlock(nn.Module):
         return out + residual_out
 
 
-class OtterPerceiverResampler(nn.Module):
+class FlamingoPerceiverResampler(nn.Module):
     def __init__(
         self,
         *,
@@ -167,7 +157,7 @@ class OtterPerceiverResampler(nn.Module):
         self.layers = nn.ModuleList([])
         for _ in range(depth):
             self.layers.append(
-                OtterPerceiverBlock(
+                FlamingoPerceiverBlock(
                     dim=dim, dim_head=dim_head, heads=heads, mult=ff_mult
                 )
             )
@@ -201,7 +191,7 @@ class OtterPerceiverResampler(nn.Module):
         return self.norm(latents)
 
 
-class OtterMaskedCrossAttention(nn.Module):
+class FlamingoMaskedCrossAttention(nn.Module):
     def __init__(
         self,
         *,
@@ -257,58 +247,55 @@ class OtterMaskedCrossAttention(nn.Module):
         q = rearrange(q, "b n (h d) -> b h n d", h=h)
         k = rearrange(k, "b n (h d) -> b h n d", h=h)
         v = rearrange(v, "b n (h d) -> b h n d", h=h)
-        if not XFORMERS_AVAIL:
-            q = q * self.scale
 
-            sim = torch.einsum("... i d, ... j d -> ... i j", q, k)
+        q = q * self.scale
 
-            if exists(media_locations):
-                # at each boolean of True, increment the time counter (relative to media time)
-                text_time = media_locations.cumsum(dim=-1)
-                media_time = torch.arange(T_img, device=x.device) + 1
+        sim = torch.einsum("... i d, ... j d -> ... i j", q, k)
 
-                if not attend_previous:
-                    text_time[~media_locations] += 1
-                    # make sure max is still the number of images in the sequence
-                    text_time[
-                        text_time
-                        > repeat(
-                            torch.count_nonzero(media_locations, dim=1),
-                            "b -> b i",
-                            i=text_time.shape[1],
-                        )
-                    ] = 0
+        if exists(media_locations):
+            # at each boolean of True, increment the time counter (relative to media time)
+            text_time = media_locations.cumsum(dim=-1)
+            media_time = torch.arange(T_img, device=x.device) + 1
 
-                # text time must equal media time if only attending to most immediate image
-                # otherwise, as long as text time is greater than media time (if attending to all previous images / media)
-                mask_op = torch.eq if self.only_attend_immediate_media else torch.ge
+            if not attend_previous:
+                text_time[~media_locations] += 1
+                # make sure max is still the number of images in the sequence
+                text_time[
+                    text_time
+                    > repeat(
+                        torch.count_nonzero(media_locations, dim=1),
+                        "b -> b i",
+                        i=text_time.shape[1],
+                    )
+                ] = 0
 
-                text_to_media_mask = mask_op(
-                    rearrange(text_time, "b i -> b 1 i 1"),
-                    repeat(media_time, "j -> 1 1 1 (j n)", n=n),
-                )
-                sim = sim.masked_fill(~text_to_media_mask, -torch.finfo(sim.dtype).max)
+            # text time must equal media time if only attending to most immediate image
+            # otherwise, as long as text time is greater than media time (if attending to all previous images / media)
+            mask_op = torch.eq if self.only_attend_immediate_media else torch.ge
 
-            sim = sim - sim.amax(dim=-1, keepdim=True).detach()
-            attn = sim.softmax(dim=-1)
+            text_to_media_mask = mask_op(
+                rearrange(text_time, "b i -> b 1 i 1"),
+                repeat(media_time, "j -> 1 1 1 (j n)", n=n),
+            )
+            sim = sim.masked_fill(~text_to_media_mask, -torch.finfo(sim.dtype).max)
 
-            if exists(media_locations) and self.only_attend_immediate_media:
-                # any text without a preceding media needs to have attention zeroed out
-                text_without_media_mask = text_time == 0
-                text_without_media_mask = rearrange(
-                    text_without_media_mask, "b i -> b 1 i 1"
-                )
-                attn = attn.masked_fill(text_without_media_mask, 0.0)
+        sim = sim - sim.amax(dim=-1, keepdim=True).detach()
+        attn = sim.softmax(dim=-1)
 
-            out = torch.einsum("... i j, ... j d -> ... i d", attn, v)
-            out = rearrange(out, "b h n d -> b n (h d)")
-        else:
-            attn_mask = None
-            out = xops.memory_efficient_attention(q, k, v, attn_bias=attn_mask)
+        if exists(media_locations) and self.only_attend_immediate_media:
+            # any text without a preceding media needs to have attention zeroed out
+            text_without_media_mask = text_time == 0
+            text_without_media_mask = rearrange(
+                text_without_media_mask, "b i -> b 1 i 1"
+            )
+            attn = attn.masked_fill(text_without_media_mask, 0.0)
+
+        out = torch.einsum("... i j, ... j d -> ... i d", attn, v)
+        out = rearrange(out, "b h n d -> b n (h d)")
         return self.to_out(out)
 
 
-class OtterGatedCrossAttentionBlock(nn.Module):
+class FlamingoGatedCrossAttentionBlock(nn.Module):
     def __init__(
         self,
         *,
@@ -321,7 +308,7 @@ class OtterGatedCrossAttentionBlock(nn.Module):
         only_attend_previous: bool = True
     ):
         super().__init__()
-        self.attn = OtterMaskedCrossAttention(
+        self.attn = FlamingoMaskedCrossAttention(
             dim=dim,
             dim_visual=dim_visual,
             dim_head=dim_head,
@@ -365,7 +352,7 @@ class OtterGatedCrossAttentionBlock(nn.Module):
         return x
 
 
-class OtterLayer(nn.Module):
+class FlamingoLayer(nn.Module):
     def __init__(self, gated_cross_attn_layer: nn.Module, decoder_layer: nn.Module):
         super().__init__()
         self.gated_cross_attn_layer = gated_cross_attn_layer
@@ -377,7 +364,7 @@ class OtterLayer(nn.Module):
         """Check whether the layer is conditioned."""
         return self.vis_x is not None
 
-    # Used this great idea from this implementation of Otter (https://github.com/dhansmair/otter-mini/)
+    # Used this great idea from this implementation of Flamingo (https://github.com/dhansmair/flamingo-mini/)
     def condition_vis_x(self, vis_x) -> None:
         self.vis_x = vis_x
 
@@ -416,7 +403,7 @@ class OtterLayer(nn.Module):
         return lang_x
 
 
-class OtterLMMixin(nn.Module):
+class FlamingoLMMixin(nn.Module):
     """
     Mixin to add cross-attention layers to a language model.
     """
@@ -430,7 +417,7 @@ class OtterLMMixin(nn.Module):
     def _set_decoder_layers(self, value):
         setattr_recursive(self, self.decoder_layers_attr_name, value)
 
-    def init_otter(
+    def init_flamingo(
         self,
         media_token_id: int,
         vis_hidden_size: int,
@@ -439,12 +426,12 @@ class OtterLMMixin(nn.Module):
         only_attend_previous: bool,
     ):
         """
-        Initialize Otter by adding a new gated cross attn to the decoder. Store the media token id for computing the media locations.
+        Initialize Flamingo by adding a new gated cross attn to the decoder. Store the media token id for computing the media locations.
         """
 
         gated_cross_attn_layers = nn.ModuleList(
             [
-                OtterGatedCrossAttentionBlock(
+                FlamingoGatedCrossAttentionBlock(
                     dim=self.config.hidden_size, dim_visual=vis_hidden_size, only_attend_previous=only_attend_previous
                 )
                 if (layer_idx + 1) % cross_attn_every_n_layers == 0
@@ -455,7 +442,7 @@ class OtterLMMixin(nn.Module):
         self._set_decoder_layers(
             nn.ModuleList(
                 [
-                    OtterLayer(gated_cross_attn_layer, decoder_layer)
+                    FlamingoLayer(gated_cross_attn_layer, decoder_layer)
                     for gated_cross_attn_layer, decoder_layer in zip(
                         gated_cross_attn_layers, self._get_decoder_layers()
                     )
@@ -465,13 +452,13 @@ class OtterLMMixin(nn.Module):
         self.media_token_id = media_token_id
         self.use_media_placement_augmentation = use_media_placement_augmentation
         self.only_attend_previous = only_attend_previous
-        self.initialized_otter = True
+        self.initialized_flamingo = True
 
     def forward(self, *input, **kwargs):
-        """Condition the Otter layers on the media locations before forward()"""
-        if not self.initialized_otter:
+        """Condition the Flamingo layers on the media locations before forward()"""
+        if not self.initialized_flamingo:
             raise ValueError(
-                "Otter layers are not initialized. Please call `init_otter` first."
+                "Flamingo layers are not initialized. Please call `init_flamingo` first."
             )
 
         input_ids = kwargs["input_ids"] if "input_ids" in kwargs else input[0]
@@ -501,30 +488,34 @@ class OtterLMMixin(nn.Module):
             layer.condition_attend_previous(None)
 
 
-class OtterPreTrainedModel(PreTrainedModel):
+class FlamingoPreTrainedModel(PreTrainedModel):
     """
     An abstract class to handle weights initialization and a simple interface for downloading and loading pretrained
     models.
     """
 
-    config_class = OtterConfig
-    base_model_prefix = "otter"
+    config_class = FlamingoConfig
+    base_model_prefix = "flamingo"
     supports_gradient_checkpointing = True
-    _no_split_modules = ["OtterPerceiverBlock", "CLIPEncoderLayer", "OtterLayer"]
+    _no_split_modules = ["FlamingoPerceiverBlock", "CLIPEncoderLayer", "FlamingoLayer"]
 
     def _init_weights(self, module):
-        """Otter requires no specific initialization"""
+        """Flamingo requires no specific initialization"""
         return super()._init_weights(module)
 
 
-class OtterModel(OtterPreTrainedModel):
-    config_class = OtterConfig
+class FlamingoModel(FlamingoPreTrainedModel):
+    config_class = FlamingoConfig
 
     def __init__(
         self,
-        config: OtterConfig,
+        config: FlamingoConfig,
     ):
         super().__init__(config)
+        # TODO: hardcode right because autoXXX is too slow
+        # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
+        # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
+        # vision_encoder = AutoModel.from_config(config.vision_config).vision_model
         text_tokenizer = LlamaTokenizer.from_pretrained(
             config.text_config._name_or_path
         )
@@ -532,7 +523,7 @@ class OtterModel(OtterPreTrainedModel):
         vision_encoder = CLIPVisionModel(config=config.vision_config)
 
         text_tokenizer.add_special_tokens(
-            {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
+            {"additional_special_tokens": ["<|endofchunk|>", "<image>"]}
         )
         if text_tokenizer.pad_token is None:
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
@@ -540,7 +531,7 @@ class OtterModel(OtterPreTrainedModel):
         self.eoc_token_id = text_tokenizer.encode("<|endofchunk|>")[-1]
         self.media_token_id = text_tokenizer.encode("<image>")[-1]
 
-        extend_instance(lang_encoder, OtterLMMixin)
+        extend_instance(lang_encoder, FlamingoLMMixin)
         decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
         lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
         lang_encoder.resize_token_embeddings(len(text_tokenizer))
@@ -548,15 +539,15 @@ class OtterModel(OtterPreTrainedModel):
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
-        self.only_attend_previous = config.only_attend_previous
+        self.only_attend_previous = config.only_attend_previous        
 
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder
 
         self.vis_dim = 1024
-        self.perceiver = OtterPerceiverResampler(dim=self.vis_dim)
+        self.perceiver = FlamingoPerceiverResampler(dim=self.vis_dim)
 
-        self.lang_encoder.init_otter(
+        self.lang_encoder.init_flamingo(
             media_token_id=self.media_token_id,
             vis_hidden_size=self.vis_dim,
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
@@ -610,7 +601,7 @@ class OtterModel(OtterPreTrainedModel):
         **kwargs,
     ) -> CausalLMOutputWithPast:
         """
-        Forward pass of Otter.
+        Forward pass of Flamingo.
 
         Args:
             vision_x (torch.Tensor): Vision input
@@ -670,11 +661,12 @@ class OtterModel(OtterPreTrainedModel):
                 Images in the same chunk are collated along T_img, and frames are collated along F
                 Currently only F=1 is supported (single-frame videos)
 
-        rearrange code based on https://github.com/dhansmair/otter-mini
+        rearrange code based on https://github.com/dhansmair/flamingo-mini
         """
 
         assert vision_x.ndim == 6, "vision_x should be of shape (b, T_img, F, C, H, W)"
         b, T, F = vision_x.shape[:3]
+        assert F == 1, "Only single frame supported"
 
         vision_x = rearrange(vision_x, "b T F c h w -> (b T F) c h w")
         with torch.no_grad():
@@ -687,14 +679,19 @@ class OtterModel(OtterPreTrainedModel):
             layer.condition_vis_x(vision_x)
 
 
-class OtterForConditionalGeneration(OtterPreTrainedModel):
-    config_class = OtterConfig
+class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
+    config_class = FlamingoConfig
 
     def __init__(
         self,
-        config: OtterConfig,
+        config: FlamingoConfig,
     ):
         super().__init__(config)
+        # TODO: hardcode right because autoXXX is too slow
+        # vision_encoder = AutoModel.from_config(config.vision_config).vision_model
+        # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
+        # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
+
         text_tokenizer = LlamaTokenizer.from_pretrained(
             config.text_config._name_or_path
         )
@@ -702,7 +699,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         vision_encoder = CLIPVisionModel(config=config.vision_config)
 
         text_tokenizer.add_special_tokens(
-            {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
+            {"additional_special_tokens": ["<|endofchunk|>", "<image>"]}
         )
         if text_tokenizer.pad_token is None:
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
@@ -710,7 +707,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         self.eoc_token_id = text_tokenizer.encode("<|endofchunk|>")[-1]
         self.media_token_id = text_tokenizer.encode("<image>")[-1]
 
-        extend_instance(lang_encoder, OtterLMMixin)
+        extend_instance(lang_encoder, FlamingoLMMixin)
         decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
         lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
         lang_encoder.resize_token_embeddings(len(text_tokenizer))
@@ -718,16 +715,15 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
+        self.only_attend_previous = config.only_attend_previous        
 
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder
 
         self.vis_dim = 1024
-        self.perceiver = OtterPerceiverResampler(dim=self.vis_dim)
+        self.perceiver = FlamingoPerceiverResampler(dim=self.vis_dim)
 
-        self.only_attend_previous = config.only_attend_previous
-
-        self.lang_encoder.init_otter(
+        self.lang_encoder.init_flamingo(
             media_token_id=self.media_token_id,
             vis_hidden_size=self.vis_dim,
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
@@ -778,7 +774,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         **kwargs,
     ) -> CausalLMOutputWithPast:
         """
-        Forward pass of Otter.
+        Forward pass of Flamingo.
 
         Args:
             vision_x (torch.Tensor): Vision input
@@ -838,11 +834,12 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
                 Images in the same chunk are collated along T_img, and frames are collated along F
                 Currently only F=1 is supported (single-frame videos)
 
-        rearrange code based on https://github.com/dhansmair/otter-mini
+        rearrange code based on https://github.com/dhansmair/flamingo-mini
         """
 
         assert vision_x.ndim == 6, "vision_x should be of shape (b, T_img, F, C, H, W)"
         b, T, F = vision_x.shape[:3]
+        assert F == 1, "Only single frame supported"
 
         vision_x = rearrange(vision_x, "b T F c h w -> (b T F) c h w")
         with torch.no_grad():
@@ -860,7 +857,20 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         vision_x: torch.Tensor,
         lang_x: torch.Tensor,
         attention_mask: Optional[torch.Tensor] = None,
-        **generate_kwargs,
+        num_beams: int = 1,
+        max_new_tokens: Optional[int] = None,
+        temperature: float = 1.0,
+        top_k: int = 0,
+        top_p: float = 1.0,
+        no_repeat_ngram_size: int = 0,
+        prefix_allowed_tokens_fn: Optional[
+            Callable[[int, torch.Tensor], list[int]]
+        ] = None,
+        length_penalty: float = 1.0,
+        num_return_sequences: int = 1,
+        do_sample: bool = False,
+        early_stopping: bool = False,
+        **kwargs,
     ):
         """
         Generate text conditioned on vision and language inputs.
@@ -895,7 +905,6 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
                 place_submodules=False,
             )
             add_hook_to_module(self.lang_encoder, hook)
-        num_beams = generate_kwargs.get("num_beams", 1)
         if num_beams > 1:
             vision_x = vision_x.repeat_interleave(num_beams, dim=0)
         self._encode_vision_x(vision_x=vision_x)
@@ -903,71 +912,19 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             lang_x,
             attention_mask=attention_mask,
             eos_token_id=self.eoc_token_id,
-            **generate_kwargs,
+            num_beams=num_beams,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+            prefix_allowed_tokens_fn=prefix_allowed_tokens_fn,
+            no_repeat_ngram_size=no_repeat_ngram_size,
+            length_penalty=length_penalty,
+            num_return_sequences=num_return_sequences,
+            do_sample=do_sample,
+            early_stopping=early_stopping,
+            **kwargs,
         )
 
         self.lang_encoder.clear_conditioned_layers()
         return output
-
-
-if __name__ == "__main__":
-    import requests
-    import torch
-    import transformers
-    from PIL import Image
-
-    model = OtterForConditionalGeneration.from_pretrained(
-        "/home/v-boli7/azure_storage/models/original_flamingo_9b_hf", device_map="auto"
-    )
-    tokenizer = model.text_tokenizer
-    image_processor = transformers.CLIPImageProcessor()
-    demo_image_one = Image.open(
-        requests.get(
-            "http://images.cocodataset.org/val2017/000000039769.jpg", stream=True
-        ).raw
-    )
-    demo_image_two = Image.open(
-        requests.get(
-            "http://images.cocodataset.org/test-stuff2017/000000028137.jpg", stream=True
-        ).raw
-    )
-    query_image = Image.open(
-        requests.get(
-            "http://images.cocodataset.org/test-stuff2017/000000028352.jpg", stream=True
-        ).raw
-    )
-    vision_x = (
-        image_processor.preprocess(
-            [demo_image_one, demo_image_two, query_image], return_tensors="pt"
-        )["pixel_values"]
-        .unsqueeze(1)
-        .unsqueeze(0)
-    )
-    model.text_tokenizer.padding_side = (
-        "left"  # For generation padding tokens should be on the left
-    )
-    lang_x = model.text_tokenizer(
-        [
-            # """<image>User: what does the image describe? GPT: <answer> two cats sleeping.<|endofchunk|><image>User: what does the image describe? GPT: <answer> a bathroom sink.<|endofchunk|><image>User: what does the image describe? GPT: <answer>"""
-            """<image>what does the image describe? two cats sleeping.<|endofchunk|><image>what does the image describe? a bathroom sink.<|endofchunk|><image>what does the image describe? """
-        ],
-        return_tensors="pt",
-    )
-    generated_text = model.generate(
-        vision_x=vision_x.to(model.device),
-        lang_x=lang_x["input_ids"].to(model.device),
-        attention_mask=lang_x["attention_mask"].to(model.device),
-        num_beams=1,
-        max_new_tokens=200,
-        temperature=1.0,
-        top_k=0,
-        top_p=1.0,
-        no_repeat_ngram_size=3,
-        prefix_allowed_tokens_fn=None,
-        length_penalty=1.0,
-        num_return_sequences=1,
-        do_sample=False,
-        early_stopping=False,
-    )
-
-    print("Generated text: ", model.text_tokenizer.decode(generated_text[0]))

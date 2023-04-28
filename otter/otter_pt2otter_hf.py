@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 
-from modeling_otter import (
+from .modeling_otter import (
     OtterConfig,
     OtterPreTrainedModel,
     OtterLMMixin,
@@ -18,7 +18,7 @@ from modeling_otter import (
     OtterPerceiverResampler,
 )
 
-from configuration_otter import OtterConfig
+from .configuration_otter import OtterConfig
 
 
 class OtterModel(OtterPreTrainedModel):
@@ -29,19 +29,11 @@ class OtterModel(OtterPreTrainedModel):
         config: OtterConfig,
     ):
         super().__init__(config)
-        text_tokenizer = LlamaTokenizer.from_pretrained(
-            config.text_config._name_or_path
-        )
-        lang_encoder = LlamaForCausalLM.from_pretrained(
-            config.text_config._name_or_path
-        )
-        vision_encoder = CLIPVisionModel.from_pretrained(
-            config.vision_config._name_or_path
-        )
+        text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+        lang_encoder = LlamaForCausalLM.from_pretrained(config.text_config._name_or_path)
+        vision_encoder = CLIPVisionModel.from_pretrained(config.vision_config._name_or_path)
 
-        text_tokenizer.add_special_tokens(
-            {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
-        )
+        text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
         if text_tokenizer.pad_token is None:
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
         self.text_tokenizer = text_tokenizer
@@ -56,6 +48,7 @@ class OtterModel(OtterPreTrainedModel):
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
+        self.only_attend_previous = config.only_attend_previous
 
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder
@@ -63,11 +56,14 @@ class OtterModel(OtterPreTrainedModel):
         self.vis_dim = 1024
         self.perceiver = OtterPerceiverResampler(dim=self.vis_dim)
 
+        print(self.only_attend_previous)
+
         self.lang_encoder.init_otter(
             media_token_id=self.media_token_id,
             vis_hidden_size=self.vis_dim,
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
             use_media_placement_augmentation=self.use_media_placement_augmentation,
+            only_attend_previous=self.only_attend_previous,
         )
 
     def get_input_embeddings(self) -> nn.Module:
