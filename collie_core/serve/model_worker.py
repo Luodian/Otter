@@ -10,7 +10,7 @@ import time
 from typing import List, Union
 import threading
 import uuid
-
+import os
 from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.responses import StreamingResponse
 import requests
@@ -20,7 +20,7 @@ import torch
 import uvicorn
 from functools import partial
 
-from collie_core.constants import WORKER_HEART_BEAT_INTERVAL
+from collie_core.constants import WORKER_HEART_BEAT_INTERVAL, LOGDIR
 from collie_core.serving_utils import build_logger, server_error_msg, pretty_print_semaphore
 from collie_core import create_model_and_transforms
 from huggingface_hub import hf_hub_download
@@ -244,7 +244,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     worker_id = str(uuid.uuid4())[:6]
-    logger = build_logger("model_worker", f"model_worker_{args.model_name}_{worker_id}.log")
+    logger = build_logger("model_worker", os.path.join(LOGDIR, f"model_worker_{args.model_name}_{worker_id}.log"))
     
     logger.info(f"args: {args}")
 
