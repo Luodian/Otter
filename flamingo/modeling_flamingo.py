@@ -200,6 +200,7 @@ class FlamingoMaskedCrossAttention(nn.Module):
         dim_head: int = 64,
         heads: int = 8,
         only_attend_immediate_media: bool = True,
+        only_attend_previous: bool = True,
     ):
         super().__init__()
         self.scale = dim_head**-0.5
@@ -214,6 +215,7 @@ class FlamingoMaskedCrossAttention(nn.Module):
 
         # whether for text to only attend to immediate preceding image, or all previous images
         self.only_attend_immediate_media = only_attend_immediate_media
+        self.only_attend_previous = only_attend_previous
 
     def forward(
         self,
@@ -303,6 +305,7 @@ class FlamingoGatedCrossAttentionBlock(nn.Module):
         heads: int = 8,
         ff_mult: int = 4,
         only_attend_immediate_media: bool = True,
+        only_attend_previous: bool = True
     ):
         super().__init__()
         self.attn = FlamingoMaskedCrossAttention(
@@ -311,6 +314,7 @@ class FlamingoGatedCrossAttentionBlock(nn.Module):
             dim_head=dim_head,
             heads=heads,
             only_attend_immediate_media=only_attend_immediate_media,
+            only_attend_previous=only_attend_previous
         )
         self.attn_gate = nn.Parameter(torch.tensor([0.0]))
         self.feed_forward = nn.ModuleList(
@@ -419,6 +423,7 @@ class FlamingoLMMixin(nn.Module):
         vis_hidden_size: int,
         cross_attn_every_n_layers: int,
         use_media_placement_augmentation: bool,
+        only_attend_previous: bool,
     ):
         """
         Initialize Flamingo by adding a new gated cross attn to the decoder. Store the media token id for computing the media locations.
@@ -427,7 +432,7 @@ class FlamingoLMMixin(nn.Module):
         gated_cross_attn_layers = nn.ModuleList(
             [
                 FlamingoGatedCrossAttentionBlock(
-                    dim=self.config.hidden_size, dim_visual=vis_hidden_size
+                    dim=self.config.hidden_size, dim_visual=vis_hidden_size, only_attend_previous=only_attend_previous
                 )
                 if (layer_idx + 1) % cross_attn_every_n_layers == 0
                 else None
@@ -446,6 +451,7 @@ class FlamingoLMMixin(nn.Module):
         )
         self.media_token_id = media_token_id
         self.use_media_placement_augmentation = use_media_placement_augmentation
+        self.only_attend_previous = only_attend_previous
         self.initialized_flamingo = True
 
     def forward(self, *input, **kwargs):
@@ -457,9 +463,11 @@ class FlamingoLMMixin(nn.Module):
 
         input_ids = kwargs["input_ids"] if "input_ids" in kwargs else input[0]
         media_locations = input_ids == self.media_token_id
-        attend_previous = (
-            (random.random() < 0.5) if self.use_media_placement_augmentation else False
-        )
+        # IMPORTANT: Force `attend_previous` to True when we place training data as <image>caption<|endofchunk|>
+        # attend_previous = (
+        #     (random.random() < 0.5) if self.use_media_placement_augmentation else False
+        # )
+        attend_previous = self.only_attend_previous
 
         for layer in self.get_decoder().layers:
             layer.condition_media_locations(media_locations)
@@ -531,6 +539,7 @@ class FlamingoModel(FlamingoPreTrainedModel):
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
+        self.only_attend_previous = config.only_attend_previous        
 
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder
@@ -543,6 +552,7 @@ class FlamingoModel(FlamingoPreTrainedModel):
             vis_hidden_size=self.vis_dim,
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
             use_media_placement_augmentation=self.use_media_placement_augmentation,
+            only_attend_previous=self.only_attend_previous,
         )
         self.post_init()
 
@@ -705,6 +715,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
+        self.only_attend_previous = config.only_attend_previous        
 
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder
@@ -717,6 +728,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
             vis_hidden_size=self.vis_dim,
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
             use_media_placement_augmentation=self.use_media_placement_augmentation,
+            only_attend_previous=self.only_attend_previous,
         )
         self.post_init()
 
