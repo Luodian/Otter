@@ -220,7 +220,7 @@ otter_v1 = Conversation(
 )
 
 
-default_conversation = conv_v1_2
+default_conversation = otter_v1
 conv_templates = {
     "v1": conv_v1_2,
     "bair_v1": conv_bair_v1,

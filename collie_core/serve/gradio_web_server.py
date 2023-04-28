@@ -20,7 +20,7 @@ template_name = "otter"
 TEMPLATE = conv_templates[template_name].copy()
 
 
-logger = build_logger("gradio_web_server", "gradio_web_server.log")
+logger = build_logger("gradio_web_server", os.path.join(LOGDIR, "gradio_web_server.log"))
 
 headers = {"User-Agent": "Open Flamingo Client"}
 
