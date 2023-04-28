@@ -11,6 +11,7 @@ import logging
 import time
 from typing import List, Union
 import threading
+import os
 
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
@@ -18,11 +19,11 @@ import numpy as np
 import requests
 import uvicorn
 
-from collie_core.constants import CONTROLLER_HEART_BEAT_EXPIRATION
+from collie_core.constants import CONTROLLER_HEART_BEAT_EXPIRATION, LOGDIR
 from collie_core.serving_utils import build_logger, server_error_msg
 
 
-logger = build_logger("controller", "controller.log")
+logger = build_logger("controller", os.path.join(LOGDIR, "controller.log"))
 
 
 class DispatchMethod(Enum):
