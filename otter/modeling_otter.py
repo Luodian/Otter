@@ -11,7 +11,7 @@ from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 from einops import rearrange, repeat
 from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
-from configuration_otter import OtterConfig
+from .configuration_otter import OtterConfig
 
 XFORMERS_AVAIL = True
 try:
