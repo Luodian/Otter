@@ -107,6 +107,9 @@ class Conversation:
                         img_b64_str = base64.b64encode(buffered.getvalue()).decode()
                         img_str = f'<img src="data:image/png;base64,{img_b64_str}" alt="user upload image" />'
                         msg = msg.replace('<image>', img_str, 1)
+                # hard-coded post processing
+                msg = msg.replace("GPT:", "\nOtter:")
+                msg = msg.replace("<|endofchunk|>", "")
                 ret.append([msg, None])
             else:
                 ret[-1][-1] = msg
