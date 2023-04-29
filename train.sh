@@ -11,8 +11,8 @@ python pipeline/train/instruction_following.py \
 --num_epochs=6 \
 --report_to_wandb \
 --wandb_entity=ntu-slab \
---run_name=multi_instruct_chunyuan-core_otter9B_lr1e-5_6epochs \
---wandb_project=multi_instruct_chunyuan-core_otter9B \
+--run_name=multi_instruct_chunyuan-core-conversation-gqa-vqa_otter9B_lr1e-5_6epochs \
+--wandb_project=multi_instruct_chunyuan-core-conversation-gqa-vqa_otter9B \
 --workers=0 \
 --cross_attn_every_n_layers=4 \
 --lr_scheduler=cosine \
