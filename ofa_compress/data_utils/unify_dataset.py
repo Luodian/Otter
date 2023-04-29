@@ -241,10 +241,6 @@ class UnifyDataset(OFADataset):
         return return_answer
 
         
-=======
-=======
-        
->>>>>>> debug data input
         for _ in answers:
             if return_answer == "":
                 cur_answer = _
@@ -263,9 +259,7 @@ class UnifyDataset(OFADataset):
                 return_answer += "."
             
         return return_answer
->>>>>>> debug data input
 
-        
 
     def pre_caption(self, caption, max_words):
         caption = caption.lower().lstrip(",.!?*#:;~").replace('-', ' ').replace('/', ' ').replace('<person>', 'person')
