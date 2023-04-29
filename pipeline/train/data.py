@@ -19,7 +19,7 @@ import webdataset as wds
 from PIL import Image
 from torch.utils.data import DataLoader, IterableDataset, get_worker_info
 from torch.utils.data.distributed import DistributedSampler
-from torch.utils.data import Sampler 
+from torch.utils.data import RandomSampler 
 from webdataset.filters import _shuffle
 from webdataset.tariterators import (
     base_plus_ext,
@@ -698,7 +698,10 @@ def get_multi_instruction_dataset(args, image_processor, tokenizer, epoch=0, flo
     #     num_workers=args.workers,
     #     persistent_workers=True,
     # )
-    sampler = DistributedSampler(unified_dataset)
+    if args.world_size > 1:
+        sampler = DistributedSampler(unified_dataset)
+    else:
+        sampler = RandomSampler(unified_dataset)
 
     dataloader = torch.utils.data.DataLoader(unified_dataset, sampler=sampler, batch_size=args.batch_size, num_workers=0, pin_memory=True, drop_last=True, collate_fn=unified_dataset.collate)
 
