@@ -10,7 +10,7 @@ import time
 from typing import List, Union
 import threading
 import uuid
-
+import os
 from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.responses import StreamingResponse
 import requests
@@ -20,7 +20,7 @@ import torch
 import uvicorn
 from functools import partial
 
-from collie_core.constants import WORKER_HEART_BEAT_INTERVAL
+from collie_core.constants import WORKER_HEART_BEAT_INTERVAL, LOGDIR
 from collie_core.serving_utils import build_logger, server_error_msg, pretty_print_semaphore
 from collie_core import create_model_and_transforms
 from huggingface_hub import hf_hub_download
@@ -154,6 +154,7 @@ class ModelWorker:
                 vision_x = (image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)).to(self.device)
             else:
                 images = None
+                vision_x = None
         streamer = TextIteratorStreamer(tokenizer, skip_prompt=True)
         inputs = tokenizer(
             prompt,
