@@ -11,12 +11,7 @@ import torch.nn
 import wandb
 from pipeline.train.data import get_data
 from pipeline.train.distributed import init_distributed_device, world_info_from_env
-from transformers import (
-    get_constant_schedule_with_warmup,
-    get_cosine_schedule_with_warmup,
-    get_linear_schedule_with_warmup,
-    CLIPImageProcessor
-)
+from transformers import get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup, get_linear_schedule_with_warmup, CLIPImageProcessor
 
 from pipeline.train.train_utils import AverageMeter, get_autocast, get_cast_dtype, get_checkpoint
 from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
@@ -33,6 +28,7 @@ torch.backends.cuda.matmul.allow_tf32 = True
 
 # The flag below controls whether to allow TF32 on cuDNN. This flag defaults to True.
 torch.backends.cudnn.allow_tf32 = True
+
 
 def random_seed(seed=42, rank=0):
     torch.manual_seed(seed + rank)
@@ -66,7 +62,6 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         total=total_training_steps,
         initial=(epoch * num_batches_per_epoch),
     ):
-        
         data_time_m.update(time.time() - end)
 
         global_step = num_steps + epoch * num_batches_per_epoch
@@ -99,7 +94,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
                 attention_mask=attention_mask,
                 labels=labels,
             )[0]
-        
+
         divided_loss_multi_instruct = loss_multi_instruct / args.gradient_accumulation_steps
 
         #### BACKWARD PASS ####
@@ -302,13 +297,11 @@ def main():
     random_seed(args.seed)
 
     if args.pretrained_model_name_or_path is not None:
-        model = FlamingoForConditionalGeneration.from_pretrained(
-            args.pretrained_model_name_or_path, device_map="auto", local_files_only=args.offline
-        )
+        model = FlamingoForConditionalGeneration.from_pretrained(args.pretrained_model_name_or_path, device_map="auto", local_files_only=args.offline)
     else:
         config = FlamingoConfig.from_json_file("./flamingo_hf/config.json")
         model = FlamingoForConditionalGeneration(config=config)
-        
+
     tokenizer = model.text_tokenizer
     image_processor = CLIPImageProcessor()
 
@@ -367,18 +360,16 @@ def main():
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
         resume_from_epoch = checkpoint["epoch"] + 1
-        
+
     elif args.resume_from_checkpoint is not None:
         print(f"Loading checkpoint from {args.resume_from_checkpoint}")
         model.load_state_dict(torch.load(args.resume_from_checkpoint, map_location="cpu"), False)
-        
+
     # add <answer> token to tokenizer
-    tokenizer.add_special_tokens(
-        {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
-    )
+    tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
 
     model.lang_encoder.resize_token_embeddings(len(tokenizer))
-        
+
     optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
     accelerator = Accelerator()
     multi_instruct_loader = multi_instruct_dataset.dataloader
@@ -413,7 +404,8 @@ def main():
         if args.rank == 0:
             if not os.path.exists(args.external_save_dir):
                 os.makedirs(args.external_save_dir)
-
+                
+            accelerator.wait_for_everyone()
             unwrapped_model = accelerator.unwrap_model(model)
             accelerator.save(
                 {
@@ -436,6 +428,7 @@ def main():
         if not os.path.exists(args.external_save_dir):
             os.makedirs(args.external_save_dir)
 
+        accelerator.wait_for_everyone()
         unwrapped_model = accelerator.unwrap_model(model)
         accelerator.save(get_checkpoint(model=unwrapped_model), f"{args.external_save_dir}/final_weights.pt")
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
