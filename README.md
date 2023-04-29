@@ -18,6 +18,7 @@
     S-Lab, Nanyang Technological University
 </div>
  
+ -----------------
 
 ![](https://img.shields.io/badge/code-v0.1%20%7C%20alpha-blue)
 ![](https://img.shields.io/badge/demo-otter%20chat-orange?link=http://left&link=https://otter.cliangyu.com)
