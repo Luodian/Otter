@@ -182,6 +182,7 @@ open_flamingo_archived/*
 flamingo_9b_hf/*
 nginx/*
 logs/*
+ofa_compress/*
 
 #yuanhan
 tools
