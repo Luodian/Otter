@@ -1,12 +1,16 @@
-# 🦦 Otter: Multi-Modal In-Context Learning Model with Instruction Tuning
- 
-## Talk to 🦦 Otter, Give it instruction, and Explore its in-context learning ability!
+<p align="center" width="100%"><img src="assets/logo.png" alt="ntu-otter" style="width: 100%; min-width: 300px; display: block; margin: auto;"></a>
+</p>
+
+#
+## Talk to 🦦 Otter, Give it instructions, and Explore its in-context learning ability!
 
 [Otter Demo](https://otter.cliangyu.com/)
 
 ## Overview
 
-Recent research emphasizes the importance of instruction tuning in empowering Large Language Models (LLMs), such as boosting GPT-3 to Chat-GPT, to adhere to natural language instruction and effectively accomplish real-world tasks. Flamingo is considered a GPT-3 moment in the multimodal domain. In our project, we propose 🦦 Otter, an in-context instruction-tunning model built upon Flamingo. We enhance its abilities by utilizing a carefully constructed multimodal instruction tuning dataset. Each data sample includes an image-specific instruction along with multiple multimodal instructions, also referred to as multimodal in-context learning examples.
+Recent research has highlighted the significance of instruction tuning in enabling Large Language Models (LLMs) to effectively carry out real-world tasks and adhere to natural language instructions. For example, GPT-3 can be improved to become Chat-GPT through instruction tuning. The Flamingo project is considered to be a milestone for GPT-3 in the multimodal domain.
+
+In our project, we introduce 🦦 Otter, an in-context instruction-tuning model that builds on Flamingo. To enhance its capabilities, we leverage a multimodal instruction tuning dataset. Each data sample comprises an image-specific instruction as well as multiple multimodal instructions, also known as multimodal in-context learning examples.
 
 ## Environment
 
@@ -35,7 +39,13 @@ sh get_stanford_models.sh
 
 </details>
 
-## Dataset Preparation
+## Dataset
+
+### Details
+
+For details of our training data,  check our [dataset card](/docs/dataset_card.md).
+
+### Preparation
 
 Download a subset of the pretraining `multi_instruct` dataset
 
@@ -48,9 +58,17 @@ unzip pretrain_data_examples.zip ./example_multi_instruct_data
 
 Train on `multi_instruct` example datasets, use following commands:
 
-## 🤗 Hugging Face Model
+## Model
 
-Right now, you can use the 🦩 Flamingo model as a huggingface model with only two lines!
+### Model Details
+
+For details of 🦦 Otter, you may check our [model card](/docs/model_card.md).
+
+The trained checkpoints will come soon.
+
+### 🤗 Flamingo Hugging Face Model
+
+For future research, we rewrite the 🦩 Flamingo model to hugging face format. Right now, you can use the 🦩 Flamingo model as a hugging face model with only two lines!
 
 ``` python
 from flamingo_hf import FlamingoModel
@@ -59,44 +77,13 @@ model = FlamingoModel.from_pretrained("luodian/openflamingo-9b-hf")
 
 ## Serving Demo
 
-### Launch a controller
-
-```Shell
-python -m collie_core.serve.controller --host 0.0.0.0 --port 10000
-```
-
-### Launch a model worker
-
-```Shell
-export AZURE_DIR="/media/ntu/volume1/home/s121md302_06/data/data/azure"
-# Init our model on GPU
-CUDA_VISIBLE_DEVICES=0,1 python -m collie_core.serve.model_worker --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model_name otter --checkpoint_path checkpoint/multi_instruct_chunyuan-core_otter9B_lr1e-5_6epochs_hf --num_gpus 2
-
-# Init original model on GPU
-CUDA_VISIBLE_DEVICES=2,3 python -m collie_core.serve.model_worker --controller http://localhost:10000 --port 40001 --worker http://localhost:40001 --model_name open_flamingo_original --checkpoint_path checkpoint/open_flamingo_9B_hf --num_gpus 2
-```
-
-Wait until the process finishes loading the model and you see "Uvicorn running on ...".
-
-### Send a test message
-
-```Shell
-python -m collie_core.serve.test_message --model_name LLaVA-13B-v0 --controller http://localhost:10000
-```
-
-### Launch a gradio web server
-
-```Shell
-python -m collie_core.serve.gradio_web_server --controller http://localhost:10000
-```
-
-#### You can open your browser and chat with a model now
+For hosting the 🦦 Otter on your own computer, follow the [demo instructions](/docs/dataset_card.md).
 
 ## Authors
 
 Equal contribution, alphabetical order.
 
-[Liangyu Chen]()
+[Liangyu Chen](https://cliangyu.com/)
 
 [Bo Li](https://brianboli.com/)
 
@@ -104,6 +91,6 @@ Equal contribution, alphabetical order.
 
 [Yuanhan Zhang](https://zhangyuanhan-ai.github.io/)
 
-### Acknowledgements
+## Acknowledgements
 
-We thank Jingkang Yang and Ziwei Liu for supporting. We thank the Open Flamingo team for their great contribution to the open source community.
+We would like to extend our gratitude to Jingkang Yang and Ziwei Liu for their invaluable assistance and unwavering support. Additionally, we would like to express our appreciation to the Open Flamingo team for their exceptional contributions to the open source community.
