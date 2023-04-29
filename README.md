@@ -43,7 +43,7 @@ from otter import OtterModel
 otter_model = OtterModel.from_pretrained("luodian/otter-9b-hf")
 ```
 
-## Dataset Preparation
+## 🗄 Dataset Preparation
 
 Download a subset of the pretraining `multi_instruct_data` dataset
 
@@ -58,6 +58,14 @@ Train on `multi_instruct` example datasets, use following commands:
 
 ## 🪩 Web Demo
 We host our demo on [Otter Demo](https://otter.cliangyu.com/). Launch your own demo by following [instructions](docs/demo.md).
+
+## 🛠 Incoming Features
+
+We are working on the following features. We are working hard to provide these features. Here are some of the issues we have encountered. If you know the answers, please feel free to submit a pull request with your code. We will be very grateful.
+
+- `xformers` support: for saving GPU memory and training speedup. [[issue]()]
+- `load_in_8bit` support: for saving GPU memory and training speedup. [[issue]()]
+
 
 ## 👨‍💻 Authors
 
