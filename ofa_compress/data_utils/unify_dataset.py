@@ -220,6 +220,32 @@ class UnifyDataset(OFADataset):
         # truncate question
         return_answer = ""
         answers = answer.split('.')
+<<<<<<< HEAD
+=======
+        
+        for _ in answers:
+            if return_answer == "":
+                cur_answer = _
+            else:
+                cur_answer = ".".join([return_answer, _])
+            if len(cur_answer.split(' ')) <= max_ans_words:
+                return_answer = cur_answer
+            else:
+                break
+
+        if return_answer == "":
+            answer_words = answer.split(' ')
+            return_answer = ' '.join(answer_words[:max_ques_words])
+        else:
+            if return_answer[-1] != "." and return_answer != answers:
+                return_answer += "."
+            
+        return return_answer
+
+        
+=======
+=======
+>>>>>>> solve confict
         
         for _ in answers:
             if return_answer == "":
@@ -370,14 +396,6 @@ class UnifyDataset(OFADataset):
                 answer = refs.strip().replace("#"," ")
                 answer = self.pre_answer(answer,self.max_tgt_length)
                 conf = torch.tensor([1.0])
-<<<<<<< HEAD
-<<<<<<< HEAD
-            # import pdb;pdb.set_trace()
-=======
->>>>>>> debug data input
-=======
-            # import pdb;pdb.set_trace()
->>>>>>> add dataset readme
             # src_text = self.tokenizer(" {}".format(question), return_tensors="pt", add_special_tokens=False)
             # src_text = self.tokenizer(f"<image>Question:{question} Answer:<answer>{answer}<|endofchunk|>", return_tensors="pt", add_special_tokens=False)
             src_text = self.tokenizer(f"<image>User: {question} GPT:<answer> {answer}<|endofchunk|>", return_tensors="pt", add_special_tokens=False)
