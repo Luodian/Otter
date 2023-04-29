@@ -111,8 +111,15 @@ We host our [Otter Demo](https://otter.cliangyu.com/) via dual RTX-3090. Launch 
 
 We are working on the following features. We are working hard to provide these features. Here are some of the issues we have encountered. If you know the answers, please feel free to submit a pull request with your code. We will be very grateful.
 
-- `xformers` support: for saving GPU memory and training speedup. [[issue](https://github.com/Luodian/PET-VLM/issues/35)]
-- `load_in_8bit` support: for saving GPU memory and training speedup. [[issue]()]
+- [ ]  `xformers` support: for saving GPU memory and training speedup. [[issue]()]
+- [ ]  `load_in_8bit` support: for saving GPU memory and training speedup. [[issue]()]
+
+### Models
+
+We are working on the following models with much stronger performance.
+
+- [ ] Otter-9B for Videos
+- [ ] Otter-15B
 
 ### 👨‍🏫 Acknowledgements 
 
