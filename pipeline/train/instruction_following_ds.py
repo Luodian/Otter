@@ -23,7 +23,7 @@ from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from tqdm import tqdm
 import time
 
-from ofa_compress.arguments import add_data_args
+from pipeline.multi_instruct_data_utils.arguments import add_data_args
 from accelerate import Accelerator
 from flamingo.configuration_flamingo import FlamingoConfig
 
@@ -420,6 +420,7 @@ def main():
             if not os.path.exists(args.external_save_dir):
                 os.makedirs(args.external_save_dir)
 
+            accelerator.wait_for_everyone()
             unwrapped_model = accelerator.unwrap_model(model)
             accelerator.save(
                 {
@@ -441,7 +442,8 @@ def main():
     if args.rank == 0:
         if not os.path.exists(args.external_save_dir):
             os.makedirs(args.external_save_dir)
-
+            
+        accelerator.wait_for_everyone()
         unwrapped_model = accelerator.unwrap_model(model)
         accelerator.save(get_checkpoint(model=unwrapped_model), f"{args.external_save_dir}/final_weights.pt")
         if args.report_to_wandb and args.save_checkpoints_to_wandb:

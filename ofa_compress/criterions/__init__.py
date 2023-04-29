@@ -1,1 +1,0 @@
-from .label_smoothed_cross_entropy import AdjustLabelSmoothedCrossEntropyCriterion
