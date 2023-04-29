@@ -154,6 +154,7 @@ class ModelWorker:
                 vision_x = (image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)).to(self.device)
             else:
                 images = None
+                vision_x = None
         streamer = TextIteratorStreamer(tokenizer, skip_prompt=True)
         inputs = tokenizer(
             prompt,
@@ -244,7 +245,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     worker_id = str(uuid.uuid4())[:6]
-    logger = build_logger("model_worker", os.path.join(LOGDIR, f"model_worker_{args.model_name}_{worker_id}.log"))
+    logger = build_logger("model_worker", f"model_worker_{args.model_name}_{worker_id}.log")
     
     logger.info(f"args: {args}")
 
