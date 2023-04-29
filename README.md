@@ -42,7 +42,10 @@ flamingo_model = FlamingoModel.from_pretrained("luodian/openflamingo-9b-hf")
 cd LAVIS/coco-caption;
 sh get_stanford_models.sh
 ```
+<!-- # Highlight
+Recent studies emphasize the importance of instructions for Large Language Models (LLMs), like GPT-3, in completing real-world tasks. Flamingo, a GPT-3 moment in the multimodal domain, excels in multimodal in-context learning, showcasing its ability to follow multimodal instructions, a.k.a. multimodal in-context examples. We aims to enhance Flamingo's multimodal capabilities using a carefully curated instruction following dataset. We present Otter, which can tackle diverse multimodal tasks, ranging from detailed descriptions to complex reasoning, by being guided through (1) an image, (2) an image-specific instruction, and (3) multiple multimodal instructions (multimodal in-context learning examples.)
 
+<<<<<<< HEAD
 <!-- # Highlight
 Recent studies emphasize the importance of instructions for Large Language Models (LLMs), like GPT-3, in completing real-world tasks. Flamingo, a GPT-3 moment in the multimodal domain, excels in multimodal in-context learning, showcasing its ability to follow multimodal instructions, a.k.a. multimodal in-context examples. We aims to enhance Flamingo's multimodal capabilities using a carefully curated instruction following dataset. We present Otter, which can tackle diverse multimodal tasks, ranging from detailed descriptions to complex reasoning, by being guided through (1) an image, (2) an image-specific instruction, and (3) multiple multimodal instructions (multimodal in-context learning examples.)
 
@@ -67,16 +70,6 @@ The pre-training process for the Open-Flamingo model employs the MMC4 interleave
 ### Examples
 <img src="./images/image_example_4.png" alt="Description" width="1200" height="200"> 
 
-### Preparation
-
-We unify different instructing data into dataset [class](pipeline/multi_instruct_data_utils/unify_dataset.py). Full dataset is comming soon! 
-
-<!-- Download a subset of the pretraining `multi_instruct_data` dataset
-
-```bash
-wget https://ofa-beijing.oss-cn-beijing.aliyuncs.com/datasets/pretrain_data/pretrain_data_examples.zip;
-unzip pretrain_data_examples.zip ./example_multi_instruct_data
-``` -->
 
 ## ☄️ Training
 
