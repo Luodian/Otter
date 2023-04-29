@@ -18,7 +18,6 @@ from transformers import (
     CLIPImageProcessor
 )
 
-from pipeline import create_model_and_transforms
 from pipeline.train.train_utils import AverageMeter, get_autocast, get_cast_dtype, get_checkpoint
 from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from tqdm import tqdm
