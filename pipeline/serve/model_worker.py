@@ -133,7 +133,7 @@ class ModelWorker:
         logger.info(f"Generate stream...")
         tokenizer, model, image_processor = self.tokenizer, self.model, self.image_processor
         prompt = params["prompt"]
-        logger.info(f"Prompt: {prompt}")
+        logger.info(f"Prompt:::{prompt}")
         images = params.get("images", None)
         if images is not None:
             from PIL import Image
@@ -149,7 +149,7 @@ class ModelWorker:
             else:
                 images = None
                 vision_x = None
-        streamer = TextIteratorStreamer(tokenizer, skip_prompt=True)
+        streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
         inputs = tokenizer(
             prompt,
             return_tensors="pt",
