@@ -54,32 +54,55 @@ Now, you can open your browser and chat with the model!
 
 ## Small Demo
 
-Here is an example of generating text conditioned on interleaved images/text, in this case we will do few-shot image captioning.
+Here is an example of multi-model ICL (in-context learning) with 🦦 Otter. We provide two demo images with corresponding instructions and answers, and we ask the model to generate an answer given our instruct. You may change your instruction and see how the model responds. 
 
 ``` python
 import requests
 import torch
 import transformers
 from PIL import Image
-from otter_hf import OtterForConditionalGeneration
-model = OtterForConditionalGeneration.from_pretrained("path/to/the/otter/checkpoint")
+
+model = OtterForConditionalGeneration.from_pretrained(
+    "/data/jinghao+zhengyu/wjh/otter_hf", device_map="auto"
+)
 tokenizer = model.text_tokenizer
 image_processor = transformers.CLIPImageProcessor()
-demo_image_one = Image.open(requests.get("http://images.cocodataset.org/val2017/000000039769.jpg", stream=True).raw)
-demo_image_two = Image.open(requests.get("http://images.cocodataset.org/test-stuff2017/000000028137.jpg", stream=True).raw)
-query_image = Image.open(requests.get("http://images.cocodataset.org/test-stuff2017/000000028352.jpg", stream=True).raw)
-vision_x = image_processor.preprocess([demo_image_one, demo_image_two, query_image], return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)
+demo_image_one = Image.open(
+    requests.get(
+        "http://images.cocodataset.org/val2017/000000039769.jpg", stream=True
+    ).raw
+)
+demo_image_two = Image.open(
+    requests.get(
+        "http://images.cocodataset.org/test-stuff2017/000000028137.jpg", stream=True
+    ).raw
+)
+query_image = Image.open(
+    requests.get(
+        "http://images.cocodataset.org/test-stuff2017/000000028352.jpg", stream=True
+    ).raw
+)
+vision_x = (
+    image_processor.preprocess(
+        [demo_image_one, demo_image_two, query_image], return_tensors="pt"
+    )["pixel_values"]
+    .unsqueeze(1)
+    .unsqueeze(0)
+)
 model.text_tokenizer.padding_side = "left"
 lang_x = model.text_tokenizer(
-    ["<image>An image of two cats.<|endofchunk|><image>An image of a bathroom sink.<|endofchunk|><image>An image of"],
+    [
+        "<image> User: what does the image describe? GPT: <answer> two cats sleeping. <|endofchunk|> <image> User: what does the image describe? GPT: <answer> a bathroom sink. <|endofchunk|> <image> User: what does the image describe? GPT: <answer>"
+    ],
     return_tensors="pt",
 )
 generated_text = model.generate(
     vision_x=vision_x.to(model.device),
     lang_x=lang_x["input_ids"].to(model.device),
     attention_mask=lang_x["attention_mask"].to(model.device),
-    max_new_tokens=20,
-    num_beams=3,
+    max_new_tokens=256,
+    num_beams=1,
+    no_repeat_ngram_size=3,
 )
 
 print("Generated text: ", model.text_tokenizer.decode(generated_text[0]))
