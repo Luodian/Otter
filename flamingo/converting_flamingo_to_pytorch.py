@@ -23,6 +23,7 @@ class FlamingoModel(FlamingoPreTrainedModel):
     def __init__(
         self,
         config: FlamingoConfig,
+        args,
     ):
         super().__init__(config)
         text_tokenizer = LlamaTokenizer.from_pretrained(
@@ -36,7 +37,7 @@ class FlamingoModel(FlamingoPreTrainedModel):
         )
 
         text_tokenizer.add_special_tokens(
-            {"additional_special_tokens": ["<|endofchunk|>", "<image>"]}
+            {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"] if args.add_answer_token else ["<|endofchunk|>", "<image>"]}
         )
         if text_tokenizer.pad_token is None:
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
@@ -106,12 +107,12 @@ def rename_flamingo_checkpoint(
 
 
 @torch.no_grad()
-def dump_hf_model(old_ckpt_path: str, new_folder_path: str) -> None:
+def dump_hf_model(old_ckpt_path: str, new_folder_path: str, args) -> None:
     old_ckpt = torch.load(old_ckpt_path, map_location="cpu")
     if old_ckpt.get("model", None) is not None:
         old_ckpt = old_ckpt["model"]
     config = FlamingoConfig.from_json_file("flamingo_hf/config.json")
-    model = FlamingoModel(config)
+    model = FlamingoModel(config, args)
     new_ckpt = rename_flamingo_checkpoint(old_ckpt)
     model.load_state_dict(new_ckpt, strict=False)
     print(f"Saving HF model to {new_folder_path}")
@@ -127,6 +128,7 @@ if __name__ == "__main__":
         required=True,
         help="Path to the OpenFlamingo checkpoint",
     )
+    parser.add_argument("--add-answer-token", action="store_true")
     parser.add_argument(
         "--new_hf_path",
         "-new",
@@ -137,4 +139,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if not os.path.exists(os.path.dirname(args.new_hf_path)):
         os.makedirs(os.path.dirname(args.new_hf_path))
-    dump_hf_model(args.old_ckpt_path, args.new_hf_path)
+    dump_hf_model(args.old_ckpt_path, args.new_hf_path, args)
