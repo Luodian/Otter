@@ -26,9 +26,9 @@ no_change_btn = gr.Button.update()
 enable_btn = gr.Button.update(interactive=True)
 disable_btn = gr.Button.update(interactive=False)
 
-priority = {  # TODO: name our models
-    "vanilla_open_flamingo": "aaaaaaa",
-    "ours_1": "aaaaaab",
+priority = {
+    "otter": "aaaaaaa",
+    "open_flamingo": "aaaaaab",
 }
 
 
