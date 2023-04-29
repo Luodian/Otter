@@ -68,7 +68,7 @@ This can help researchers who do not have access to A100-80G GPUs to achieve the
 
 Our Otter model is also developed in this way and it's deployed on the 🤗 Hugging Face model hub. Our model can be hosted on two RTX-3090-24G GPUs and achieve a similar speed to one A100-80G machine.
 
-``` python
+
 
 ## 🗄 Dataset Preparation
 
