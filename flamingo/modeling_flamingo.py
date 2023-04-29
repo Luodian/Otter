@@ -503,6 +503,10 @@ class FlamingoPreTrainedModel(PreTrainedModel):
         """Flamingo requires no specific initialization"""
         return super()._init_weights(module)
 
+    def _set_gradient_checkpointing(self, module, value=False):
+        if isinstance(module, FlamingoModel):
+            module.gradient_checkpointing = value
+
 
 class FlamingoModel(FlamingoPreTrainedModel):
     config_class = FlamingoConfig
