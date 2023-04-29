@@ -4,14 +4,12 @@
 <img src="assets/title.png"  width="80%" height="80%">
 </p>
  
-## Explore 🦦 Otter, Give it instruction, and see its in-context learning ability!
+<!-- ## Explore 🦦 Otter, Give it instruction, and see its in-context learning ability! -->
 
 <!-- [Otter Demo](https://otter.cliangyu.com/) -->
 
-![](https://img.shields.io/badge/otter-v0.1%20%7C%20alpha-blue)
-
-![](https://img.shields.io/badge/otter-chat%20demo-orange?link=http://left&link=https://otter.cliangyu.com)
-
+![](https://img.shields.io/badge/code-v0.1%20%7C%20alpha-blue)
+![](https://img.shields.io/badge/demo-otter%20chat-orange?link=http://left&link=https://otter.cliangyu.com)
 ![](https://img.shields.io/github/stars/luodian/otter?style=social)
 
 ## 🦦 Overview
@@ -21,8 +19,6 @@ Recent research emphasizes the importance of instruction tuning in empowering La
 ## 🗂️ Environment
 
 You may install via `conda env create -f environment.yml`  or manually install the following packages. Especially to make sure the `transformers>=4.28.0`, `accelerate==0.19.0.dev0`.
-
-</details>
 
 ## 🤗 Hugging Face Model
 
@@ -65,46 +61,14 @@ unzip pretrain_data_examples.zip ./example_multi_instruct_data
 
 Train on `multi_instruct` example datasets, use following commands:
 
-## 🪩 Serving Demo
-
-### Launch a controller
-
-```Shell
-python -m collie_core.serve.controller --host 0.0.0.0 --port 10000
-```
-
-### Launch a model worker
-
-```Shell
-export AZURE_DIR="/media/ntu/volume1/home/s121md302_06/data/data/azure"
-# Init our model on GPU
-CUDA_VISIBLE_DEVICES=0,1 python -m collie_core.serve.model_worker --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model_name otter --checkpoint_path checkpoint/multi_instruct_chunyuan-core_otter9B_lr1e-5_6epochs_hf --num_gpus 2
-
-# Init original model on GPU
-CUDA_VISIBLE_DEVICES=2,3 python -m collie_core.serve.model_worker --controller http://localhost:10000 --port 40001 --worker http://localhost:40001 --model_name open_flamingo_original --checkpoint_path checkpoint/open_flamingo_9B_hf --num_gpus 2
-```
-
-Wait until the process finishes loading the model and you see "Uvicorn running on ...".
-
-### Send a test message
-
-```Shell
-python -m collie_core.serve.test_message --model_name LLaVA-13B-v0 --controller http://localhost:10000
-```
-
-### Launch a gradio web server
-
-```Shell
-python -m collie_core.serve.gradio_web_server --controller http://localhost:10000
-```
-
-#### You can open your browser and chat with a model now
+## 🪩 Web Demo
+We launch our demo on [Otter Demo](https://otter.cliangyu.com/). You can launch your own demo by following [instructions](docs/demo.md).
 
 ## 👨‍💻 Authors
 
 Equal contribution, alphabetical order.
 
-[Liangyu Chen]()
+[Liangyu Chen](https://cliangyu.com/)
 
 [Bo Li](https://brianboli.com/)
 
