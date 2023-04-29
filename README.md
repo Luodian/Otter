@@ -18,13 +18,13 @@ Recent research emphasizes the importance of instruction tuning in empowering La
 
 ## 🗂️ Environment
 
-You may install via `conda env create -f environment.yml`  or manually install the following packages. Especially to make sure the `transformers>=4.28.0`, `accelerate==0.19.0.dev0`.
+You may install via `conda env create -f environment.yml`. Especially to make sure the `transformers>=4.28.0`, `accelerate==0.19.0.dev0`.
 
 ## 🤗 Hugging Face Model
 
 Previous OpenFlamingo was developed with DDP and it's not easy to implement a fully sharded mechanism. Loading Openflaming-9B to GPU memory requires >33G GPU memory.
 
-To accelerate and demoncratize it, we wrap the Open Flamingo model into a huggingface model. We use `accelerator` to speed up our training and implement in a fully sharded mechanism across multiple GPUs. 
+To accelerate and demoncratize it, we wrap the Open Flamingo model into a 🤗 huggingface model. We use `accelerator` to speed up our training and implement in a fully sharded mechanism across multiple GPUs. 
 
 This can help researchers who do not have access to A100-80G GPUs to achieve the same throughput in training, testing on 4x3090-24G GPUs and model deployment on 2x3090-24G GPUs. Specific details are in below.
 
@@ -62,6 +62,7 @@ unzip pretrain_data_examples.zip ./example_multi_instruct_data
 Train on `multi_instruct` example datasets, use following commands:
 
 ## 🪩 Web Demo
+
 We launch our demo on [Otter Demo](https://otter.cliangyu.com/). You can launch your own demo by following [instructions](docs/demo.md).
 
 ## 👨‍💻 Authors
