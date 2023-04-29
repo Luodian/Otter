@@ -60,6 +60,14 @@ The pre-training process for the Open-Flamingo model employs the MMC4 interleave
 
 We unify different instructing data into a single dataset [class](pipeline/multi_instruct_data_utils/unify_dataset.py). Full dataset is comming soon! 
 
+<!-- Download a subset of the pretraining `multi_instruct_data` dataset
+
+```bash
+wget https://ofa-beijing.oss-cn-beijing.aliyuncs.com/datasets/pretrain_data/pretrain_data_examples.zip;
+unzip pretrain_data_examples.zip ./example_multi_instruct_data
+``` -->
+
+
 ## ☄️ Training
 
 Train on `multi_instruct` example datasets, use following commands:
