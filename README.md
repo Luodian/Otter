@@ -32,49 +32,33 @@ Recent research emphasizes the importance of instruction tuning in empowering La
 
 ## 🗂️ Environment
 
-You may install via `conda env create -f environment.yml`. Especially to make sure the `transformers>=4.28.0`, `accelerate==0.19.0.dev0`.
-
-## 🤗 Hugging Face Model
-
-Previous OpenFlamingo was developed with DDP and it's not easy to implement a fully sharded mechanism. Loading OpenFlamingo-9B to GPU memory requires >33G GPU memory.
-
-To accelerate and demoncratize it, we wrap the Open Flamingo model into a 🤗 huggingface model (and submit a [PR](https://github.com/huggingface/transformers/pull/23063) to the /huggingface/transformers!). We use `accelerator` to speed up our training and implement it in a fully sharded mechanism across multiple GPUs. 
+# install standford-corenlp-full
+cd LAVIS/coco-caption;
+sh get_stanford_models.sh
+```
+</details>
 <!-- # Highlight
 Recent studies emphasize the importance of instructions for Large Language Models (LLMs), like GPT-3, in completing real-world tasks. Flamingo, a GPT-3 moment in the multimodal domain, excels in multimodal in-context learning, showcasing its ability to follow multimodal instructions, a.k.a. multimodal in-context examples. We aims to enhance Flamingo's multimodal capabilities using a carefully curated instruction following dataset. We present Otter, which can tackle diverse multimodal tasks, ranging from detailed descriptions to complex reasoning, by being guided through (1) an image, (2) an image-specific instruction, and (3) multiple multimodal instructions (multimodal in-context learning examples.)
 
-# Why we need instruction tuning, and why we choose Flamingo?
+<!-- # Why we need instruction tuning, and why we choose Flamingo?
 - Recent research emphasizes the importance of instruction tuning in empowering Large Language Models (LLMs), such as GPT-3, to adhere to natural language instruction and effectively accomplish real-world tasks. This procedure is essential for improving the zero-and few-shot generalization abilities of LLMs, which are trained using noisy web data.
 
 - Flamingo is considered a GPT-3 moment in the multimodal domain, due to its remarkable performance in visual in-context learning. As visual in-context examples provide multimodal instructions for visual-language models, Flamingo's proficiency in visual in-context learning indicates its capability to follow multimodal instructions.
 
-- In our project, we aim to enhance Flamingo's multimodal instruction-following abilities by utilizing a carefully constructed multimodal instruction tuning dataset. Each data sample includes an image-specific instruction along with multiple multimodal instructions, also referred to as multimodal in-context learning examples. -->
+- In our project, we aim to enhance Flamingo's multimodal instruction-following abilities by utilizing a carefully constructed multimodal instruction tuning dataset. Each data sample includes an image-specific instruction along with multiple multimodal instructions, also referred to as multimodal in-context learning examples. --> 
 
-# Multi-model instruction tuning dataset with in-context examples
+## Multi-model instruction tuning dataset with in-context examples
 The pre-training process for the Open-Flamingo model employs the MMC4 interleaved multimodality dataset to endow the model with in-context few-shot learning capabilities. The development of our instruction-following dataset adheres to the guiding principles of MMC4, which dictate that the instruction and image examples incorporated into the context should exhibit semantic pertinence to the query instruction and image.
 
 1. To augment the LLAVA dataset, we retrieve in-context examples for each query data.
 2. We curate high-quality video data from the Video PSG repository (https://github.com/Jingkang50/OpenPSG). For each video, we select 4-8 frames to be annotated for instruction-following, using the LLAVA dataset as a reference. During the training phase, given a frame, we opt for additional frames, along with their corresponding instructions and answers, to serve as in-context examples.
 
-## Examples
-<img src="./images/image_example_4.png" alt="Description" width="1200" height="200"> 
-
-
-
-## Dataset
-
 ### Details
+<img src="./images/image_example_4.png" alt="Description" width="1200" height="200"> 
+For details of our training data,  check our [dataset card](/docs/dataset_card.md).
 
-This can help researchers who do not have access to A100-80G GPUs to achieve the same throughput in training, testing on 4x3090-24G GPUs, and model deployment on 2x3090-24G GPUs. Specific details are below.
 
-<div style="text-align:center">
-<img src="assets/table.png"  width="100%" height="100%">
-</div>
-
-<div style="text-align:center">
-<img src="assets/efficiency.png"  width="100%" height="100%">
-</div>
-
-Our Otter model is also developed in this way and it's deployed on the 🤗 Hugging Face model hub.
+### Preparation
 
 You can use the 🦩 Flamingo model / 🦦 Otter model as a huggingface model with only a few lines! One-click and then model configs/weights are downloaded automatically.
 
