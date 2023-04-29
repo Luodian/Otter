@@ -65,7 +65,7 @@ unzip pretrain_data_examples.zip ./example_multi_instruct_data
 
 Train on `multi_instruct` example datasets, use following commands:
 
-## Serving Demo
+## 🪩 Serving Demo
 
 ### Launch a controller
 
@@ -100,7 +100,7 @@ python -m collie_core.serve.gradio_web_server --controller http://localhost:1000
 
 #### You can open your browser and chat with a model now
 
-## Authors
+## 👨‍💻 Authors
 
 Equal contribution, alphabetical order.
 
@@ -112,6 +112,6 @@ Equal contribution, alphabetical order.
 
 [Yuanhan Zhang](https://zhangyuanhan-ai.github.io/)
 
-### Acknowledgements
+### 👨‍🏫 Acknowledgements 
 
-We thank Jingkang Yang and Ziwei Liu for supporting. We thank the Open Flamingo team for their great contribution to the open source community.
+We thank Jingkang Yang and Ziwei Liu for advising and supporting, as well as the Open Flamingo team for their great contribution to the open source community.
