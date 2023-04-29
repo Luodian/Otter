@@ -664,8 +664,8 @@ def get_coco_vqa_dataset(args, image_processor, tokenizer, epoch=0, floor=False)
 
 from PIL import Image, ImageFile
 import json
-from pipeline.multi_instruct_data.input_dataset import FileDataset
-from pipeline.multi_instruct_data.unify_dataset import UnifyDataset
+from pipeline.multi_instruct_data_utils.input_dataset import FileDataset
+from pipeline.multi_instruct_data_utils.unify_dataset import UnifyDataset
 
 def get_multi_instruction_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     multi_instruct_path = args.multi_instruct_path
