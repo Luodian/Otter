@@ -108,6 +108,7 @@ class Conversation:
                         img_str = f'<img src="data:image/png;base64,{img_b64_str}" alt="user upload image" />'
                         msg = msg.replace('<image>', img_str, 1)
                 # hard-coded post processing
+                msg = msg[:msg.rfind("GPT:")]
                 msg = msg.replace("GPT:", "\nOtter:")
                 msg = msg.replace("<|endofchunk|>", "")
                 ret.append([msg, None])
