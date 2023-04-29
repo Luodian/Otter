@@ -18,6 +18,8 @@ from transformers import (
 )
 
 from collie_core import create_model_and_transforms
+import sys
+sys.path.append("/mnt/lustre/yhzhang/PET-VLM")
 from open_flamingo.train.train_utils import AverageMeter, get_autocast, get_cast_dtype, get_checkpoint
 from tqdm import tqdm
 import time
