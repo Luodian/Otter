@@ -33,11 +33,11 @@ To accelerate and demoncratize it, we wrap the Open Flamingo model into a huggin
 This can help researchers who do not have access to A100-80G GPUs to achieve the same throughput in training, testing on 4x3090-24G GPUs and model deployment on 2x3090-24G GPUs. Specific details are in below.
 
 <div style="text-align:center">
-<img src="assets/table.png"  width="80%" height="80%">
+<img src="assets/table.png"  width="100%" height="100%">
 </div>
 
 <div style="text-align:center">
-<img src="assets/efficiency.png"  width="80%" height="80%">
+<img src="assets/efficiency.png"  width="100%" height="100%">
 </div>
 
 Our Otter model is also developed in this way and it's deployed on the 🤗 Hugging Face model hub.
