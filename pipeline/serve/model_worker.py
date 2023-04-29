@@ -3,19 +3,15 @@ A model worker executes the model.
 """
 import argparse
 import asyncio
-import dataclasses
-import logging
 import json
 import time
-from typing import List, Union
 import threading
 import uuid
 
 from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.responses import StreamingResponse
 import requests
-from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer
-from threading import current_thread
+from transformers import TextIteratorStreamer
 import torch
 import uvicorn
 from functools import partial
@@ -25,9 +21,7 @@ from pipeline.serve.serving_utils import build_logger, server_error_msg, pretty_
 from pipeline import create_model_and_transforms
 from huggingface_hub import hf_hub_download
 import transformers
-from transformers import LlamaForCausalLM, AutoModelForCausalLM
-from flamingo import FlamingoModel, FlamingoForConditionalGeneration
-import open_clip
+from flamingo import FlamingoForConditionalGeneration
 
 GB = 1 << 30
 
