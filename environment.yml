@@ -1,4 +1,4 @@
-name: openflamingo
+name: otter
 channels:
   - defaults
 dependencies:
