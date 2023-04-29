@@ -18,13 +18,12 @@ from transformers import (
 )
 
 from collie_core import create_model_and_transforms
-import sys
-sys.path.append("/mnt/lustre/yhzhang/PET-VLM")
 from open_flamingo.train.train_utils import AverageMeter, get_autocast, get_cast_dtype, get_checkpoint
 from tqdm import tqdm
 import time
 
 from ofa_compress.arguments import add_data_args
+from accelerate import Accelerator
 from accelerate import Accelerator
 
 
@@ -38,7 +37,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
     # num_batches_per_epoch = multi_instruct_loader.num_batches
     num_batches_per_epoch = len(multi_instruct_loader)
     total_training_steps = num_batches_per_epoch * args.num_epochs
-    # print(args.rank, num_batches_per_epoch, args.num_epochs, total_training_steps)
+
     autocast = get_autocast(args.precision)
     cast_dtype = get_cast_dtype(args.precision)
 
@@ -64,7 +63,7 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
         global_step = num_steps + epoch * num_batches_per_epoch
         #### MULTI_INSTRUCT FORWARD PASS ####
-        # print(device_id, )
+
         images = batch_multi_instruct["net_input"]["patch_images"].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(1).unsqueeze(1)
         input_ids = batch_multi_instruct["net_input"]["input_ids"].to(device_id, dtype=cast_dtype, non_blocking=True)
         attention_mask = batch_multi_instruct["net_input"]["attention_masks"].to(device_id, dtype=cast_dtype, non_blocking=True)
@@ -218,8 +217,7 @@ def main():
         help="constant, linear, or cosine",
     )
     parser.add_argument("--loss_multiplier_multi_instruct", type=float, default=1.0)
-    parser.add_argument("--warmup_steps_ratio", default=0.01, type=float)
-    parser.add_argument("--warmup_steps",default=None,type=int)
+    parser.add_argument("--warmup_steps", default=1000, type=int)
     parser.add_argument("--weight_decay", default=0.1, type=float)
     parser.add_argument(
         "--precision",
@@ -229,7 +227,7 @@ def main():
     )
     # data args
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--train_num_samples", type=int, default=None)
+    parser.add_argument("--train_num_samples", type=int)
     parser.add_argument("--dataset_resampled", action="store_true")
     # distributed training args
     parser.add_argument(
@@ -280,11 +278,10 @@ def main():
 
     args.local_rank, args.rank, args.world_size = world_info_from_env()
 
-    # if args.world_size > 1:
-    #     device_id = init_distributed_device(args)
-    # else:
-    #     device_id = 0
-    device_id = init_distributed_device(args)
+    if args.world_size > 1:
+        device_id = init_distributed_device(args)
+    else:
+        device_id = 0
 
     random_seed(args.seed)
 
@@ -311,7 +308,7 @@ def main():
             config=vars(args),
         )
 
-    # device_id = args.rank % torch.cuda.device_count()
+    device_id = args.rank % torch.cuda.device_count()
 
     multi_instruct_dataset = get_data(args, image_processor, tokenizer, "multi_instruct")
 
@@ -335,8 +332,6 @@ def main():
 
     args.train_num_samples = multi_instruct_dataset.dataloader.num_samples if args.train_num_samples is None else args.train_num_samples
     total_training_steps = ((args.train_num_samples) // (args.batch_size * args.world_size)) * args.num_epochs
-
-    args.warmup_steps = int(total_training_steps*args.warmup_steps_ratio) if args.warmup_steps is None else args.warmup_steps
 
     # check if a checkpoint exists for this run
     args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
@@ -365,14 +360,7 @@ def main():
     optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
     accelerator = Accelerator()
     multi_instruct_loader = multi_instruct_dataset.dataloader
-    
-    # print(device_id, len(multi_instruct_loader), "XXXXXXXX")
-
-    # model, optimizer, multi_instruct_loader = accelerator.prepare(model, optimizer, multi_instruct_loader)
-    model, optimizer = accelerator.prepare(model, optimizer)
-
-    # print(device_id, len(multi_instruct_loader), "UUUUUU")
-
+    model, optimizer, multi_instruct_loader = accelerator.prepare(model, optimizer, multi_instruct_loader)
     model.train()
 
     if args.rank == 0:
@@ -399,14 +387,9 @@ def main():
         train_one_epoch(
             args=args, model=model, epoch=epoch, tokenizer=tokenizer, optimizer=optimizer, lr_scheduler=lr_scheduler, multi_instruct_loader=multi_instruct_loader, accelerator=accelerator, device_id=device_id, wandb=wandb
         )
-
         if args.rank == 0:
             if not os.path.exists(args.external_save_dir):
                 os.makedirs(args.external_save_dir)
-    
-            if args.delete_previous_checkpoint:
-                if epoch > 0:
-                    os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
 
             unwrapped_model = accelerator.unwrap_model(model)
             accelerator.save(
@@ -421,6 +404,9 @@ def main():
             if args.report_to_wandb and args.save_checkpoints_to_wandb:
                 wandb.save(f"{args.external_save_dir}/checkpoint_{epoch}.pt")
 
+            if args.delete_previous_checkpoint:
+                if epoch > 0:
+                    os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
 
     if args.rank == 0:
         if not os.path.exists(args.external_save_dir):
