@@ -52,7 +52,7 @@ from otter import OtterModel
 otter_model = OtterModel.from_pretrained("luodian/otter-9b-hf")
 ```
 
-## Dataset Preparation
+## 🗄 Dataset Preparation
 
 Download a subset of the pretraining `multi_instruct_data` dataset
 
@@ -99,6 +99,14 @@ python -m collie_core.serve.gradio_web_server --controller http://localhost:1000
 ```
 
 #### You can open your browser and chat with a model now
+
+## 🛠 Incoming Features
+
+We are working on the following features. We are working hard to provide these features. Here are some of the issues we have encountered. If you know the answers, please feel free to submit a pull request with your code. We will be very grateful.
+
+- `xformers` support: for saving GPU memory and training speedup. [[issue]()]
+- `load_in_8bit` support: for saving GPU memory and training speedup. [[issue]()]
+
 
 ## 👨‍💻 Authors
 
