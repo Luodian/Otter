@@ -70,7 +70,7 @@ The pre-training process for the Open-Flamingo model employs the MMC4 interleave
 
 
 ### Details
-<img src="./images/image_example_4.png" alt="Description" width="1200" height="200"> 
+<img src="./images/image_example_4.png" alt="Description" width="1400" height="200"> 
 For details of our training data,  check our [dataset card](/docs/dataset_card.md).
 
 

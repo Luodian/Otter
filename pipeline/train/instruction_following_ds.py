@@ -23,7 +23,7 @@ from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from tqdm import tqdm
 import time
 
-from ofa_compress.arguments import add_data_args
+from multi_instruct_data.arguments import add_data_args
 from accelerate import Accelerator
 from flamingo.configuration_flamingo import FlamingoConfig
 
