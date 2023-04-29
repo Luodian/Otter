@@ -373,7 +373,8 @@ def main():
     optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
     accelerator = Accelerator()
     multi_instruct_loader = multi_instruct_dataset.dataloader
-    model, optimizer, multi_instruct_loader = accelerator.prepare(model, optimizer, multi_instruct_loader)
+    # model, optimizer, multi_instruct_loader = accelerator.prepare(model, optimizer, multi_instruct_loader)
+    model, optimizer = accelerator.prepare(model, optimizer)
     model.train()
     # model.gradient_checkpointing_enable()
 
