@@ -17,8 +17,6 @@ from pipeline.serve.gradio_css import code_highlight_css
 DEFAULT_IMAGE_TOKEN = "<image>"
 DEFAULT_DEMO_END_TOKEN = "<|endofchunk|>"
 template_name = "otter"
-TEMPLATE = conv_templates[template_name].copy()
-
 
 logger = build_logger("gradio_web_server", "gradio_web_server.log")
 
@@ -69,8 +67,14 @@ def load_demo(url_params, request: gr.Request):
         if model in models:
             dropdown_update = gr.Dropdown.update(value=model, visible=True)
 
-    state = default_conversation.copy()
-    return (state, dropdown_update, gr.Chatbot.update(visible=True), gr.Textbox.update(visible=True), gr.Button.update(visible=True), gr.Row.update(visible=True), gr.Accordion.update(visible=True))
+    state = None
+    return (state, dropdown_update, 
+            gr.Chatbot.update(visible=True), 
+            gr.Textbox.update(visible=True), 
+            gr.Button.update(visible=True), 
+            gr.Row.update(visible=True), 
+            gr.Accordion.update(visible=True)
+            )
 
 
 def load_demo_refresh_model_list(request: gr.Request):
@@ -138,11 +142,11 @@ def regenerate(state, request: gr.Request):
 
 def clear_history(request: gr.Request):
     logger.info(f"clear_history. ip: {request.client.host}")
-    state = default_conversation.copy()
+    state = None
     return (
         (
             state,
-            state.to_gradio_chatbot(),
+            [],
         )
         + (
             "",
@@ -156,12 +160,16 @@ def clear_history(request: gr.Request):
 def add_text(state, text_demo_1, image_demo_1, text_demo_2, image_demo_2, text_3, image_3, request: gr.Request):
     text = text_3
     logger.info(f"add_text. ip: {request.client.host}. len: {len(text)}")
+    if state is None:
+        state = conv_templates[template_name].copy()
+        logger.info(f"TEMPLATE. {state}")
     if len(text) <= 0 and image_3 is None:
         state.skip_next = True
         return (state, state.to_gradio_chatbot(), "", None) + (no_change_btn,) * 5
     if args.moderate:
         flagged = violates_moderation(text)
         if flagged:
+            logger.info(f"violate moderation. ip: {request.client.host}. text: {text}")
             state.skip_next = True
             return (
                 (state, state.to_gradio_chatbot(), moderation_msg, None)
@@ -175,13 +183,13 @@ def add_text(state, text_demo_1, image_demo_1, text_demo_2, image_demo_2, text_3
 
     text = text[:1536]  # Hard cut-off
     if image_3 is not None:
-        text = DEFAULT_IMAGE_TOKEN + TEMPLATE.roles[0] + ': ' + text
+        text = DEFAULT_IMAGE_TOKEN + conv_templates[template_name].copy().roles[0] + ': ' + text
     if text_demo_2 != "":
         assert image_demo_2 is not None
-        text = DEFAULT_IMAGE_TOKEN + TEMPLATE.roles[0] + ': ' + text_demo_2 + DEFAULT_DEMO_END_TOKEN + text
+        text = DEFAULT_IMAGE_TOKEN + conv_templates[template_name].copy().roles[0] + ': ' + text_demo_2 + DEFAULT_DEMO_END_TOKEN + text
     if text_demo_1 != "":
         assert image_demo_1 is not None
-        text = DEFAULT_IMAGE_TOKEN + TEMPLATE.roles[0] + ': ' + text_demo_1 + DEFAULT_DEMO_END_TOKEN + text
+        text = DEFAULT_IMAGE_TOKEN + conv_templates[template_name].copy().roles[0] + ': ' + text_demo_1 + DEFAULT_DEMO_END_TOKEN + text
 
     input = (text, image_demo_1, image_demo_2, image_3)
     state.append_message(state.roles[0], input)
@@ -224,7 +232,8 @@ def http_bot(state, model_selector, max_new_tokens, temperature, top_k, top_p, n
 
     if len(state.messages) == state.offset + 2:
         # First round of conversation
-        new_state = TEMPLATE
+        new_state = conv_templates[template_name].copy()
+        new_state.conv_id = uuid.uuid4().hex
         new_state.append_message(new_state.roles[0], state.messages[-2][1])
         new_state.append_message(new_state.roles[1], None)
         state = new_state
@@ -319,9 +328,13 @@ title_markdown = """
 <header>
 <style>
 h1 {text-align: center;}
+h3 {text-align: center;}
+a:link {
+  text-decoration: none;
+}
 </style>
 <h1>🦦 Otter: A Visual Language Model with Efficient Instruction Tuning.</h1>
-<h3>[[🏠Project Page]](https://bair.berkeley.edu/blog/2023/04/03/koala/) [[<img src = "https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" style="height: 15px;" class="icon" alt="github"/>GitHub]](https://github.com/young-geng/EasyLM)
+<h3><a href="https://bair.berkeley.edu/blog/2023/04/03/koala/">🏠Project Page</a> <a href="https://github.com/young-geng/EasyLM"><img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" style="height: 15px; display:inline;" class="icon" alt="github">GitHub</a>
 </h3>
 </header>
 """
@@ -335,7 +348,7 @@ Please click the "Flag" button if you get any inappropriate answer! We will coll
 
 learn_more_markdown = """
 ### License
-The service is a research preview intended for non-commercial use only, subject to the model [License](https://github.com/facebookresearch/llama/blob/main/MODEL_CARD.md) of LLaMA, [Terms of Use](https://openai.com/policies/terms-of-use) of the data generated by OpenAI, and [Privacy Practices](https://chrome.google.com/webstore/detail/sharegpt-share-your-chatg/daiacboceoaocpibfodeljbdfacokfjb) of ShareGPT. Please contact us if you find any potential violation.
+The service is a research preview intended for non-commercial use only, subject to the model [License](https://github.com/facebookresearch/llama/blob/main/MODEL_CARD.md) of LLaMA. Please contact us if you find any potential violation.
 """
 
 
@@ -426,6 +439,7 @@ def build_demo(embed_mode):
                 textbox_3,
                 imagebox_3,
             ]
+            + demo_list
             + btn_list,
         ).then(
             http_bot,

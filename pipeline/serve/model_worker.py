@@ -154,6 +154,7 @@ class ModelWorker:
                 vision_x = (image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)).to(self.device)
             else:
                 images = None
+                vision_x = None
         streamer = TextIteratorStreamer(tokenizer, skip_prompt=True)
         inputs = tokenizer(
             prompt,
