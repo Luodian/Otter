@@ -18,7 +18,7 @@ from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from tqdm import tqdm
 import time
 
-from ofa_compress.arguments import add_data_args
+from pipeline.multi_instruct_data_utils.arguments import add_data_args
 from accelerate import Accelerator
 from flamingo.configuration_flamingo import FlamingoConfig
 
@@ -105,8 +105,8 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         def mask_embedding(m):
             if isinstance(m, torch.nn.Embedding) and m.weight.requires_grad:
                 zero_mask = torch.zeros_like(m.weight.grad)
-                zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
-                zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
+                # zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
+                # zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
                 zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
                 m.weight.grad = m.weight.grad * zero_mask
 
