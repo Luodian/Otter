@@ -1,7 +1,7 @@
 
 export PYTHONPATH=. 
 
-python -m torch.distributed.run --nproc_per_node=4 pipeline/train/instruction_following.py \
+python pipeline/train/instruction_following.py \
 --pretrained_model_name_or_path=/mnt/lustre/yhzhang/weights/openflamingo_9b_hf \
 --lm_path=/mnt/lustre/yhzhang/weights/llama-7b-hf \
 --tokenizer_path=/mnt/lustre/yhzhang/weights/llama-7b-hf \
