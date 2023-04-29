@@ -7,8 +7,8 @@
 <div align="center">
     <a href='https://brianboli.com/' target='_blank'>Bo Li*</a>&emsp;
     <a href='https://zhangyuanhan-ai.github.io/' target='_blank'>Yuanhan Zhang*</a>&emsp;
-    <a href='https://king159.github.io/' target='_blank'>Jinghao Wang*</a>&emsp;
     <a href='https://cliangyu.com/' target='_blank'>Liangyu Chen*</a>&emsp;
+    <a href='https://king159.github.io/' target='_blank'>Jinghao Wang*</a>&emsp;
     </br>
     <a href='https://jingkang50.github.io/' target='_blank'>Jingkang Yang</a>&emsp;
     <a href='https://liuziwei7.github.io/' target='_blank'>Ziwei Liu</a>
@@ -28,11 +28,11 @@
 
 ## 🦦 Overview
 
-Recent research emphasizes the importance of instruction tuning in empowering Large Language Models (LLMs), such as boosting GPT-3 to Chat-GPT, to adhere to natural language instruction and effectively accomplish real-world tasks. Flamingo is considered a GPT-3 moment in the multimodal domain. 
+Recent research highlights the importance of fine-tuning instruction for empowering large language models (LLMs), such as enhancing GPT-3 to Chat-GPT, to follow natural language instructions and effectively accomplish real-world tasks. Flamingo is considered a GPT-3 moment in the multimodal domain. 
 
-In our project, we propose 🦦 Otter, an in-context instruction-tuned model built upon Flamingo. We enhance its chat abilities by utilizing a carefully constructed multimodal instruction tuning dataset. Each data sample includes an image-specific instruction along with multiple multimodal instructions, also referred to as multimodal in-context learning examples.
+In our project, we propose 🦦 Otter, an instruction-tuned model built upon Flamingo that has been customized for a context. We improve its conversational skills by using a carefully crafted multimodal instruction tuning dataset. Each data sample includes an image-specific instruction along with multiple examples of multimodal instructions for that context, also known as multimodal in-context learning examples.
 
-By leveraging these high-quality data, we train Otter with limited resources in our lab, and it achieves better performance than Flamingo. Although Otter may not be the smartest and sometimes gets confused, we are committed to continuously improving it. In this era of booming large-scale foundation models, we believe that everyone should have the opportunity to train their own models, even with limited data and resources, and nurture the models to develop their own intelligence.
+By leveraging these high-quality data, we train Otter with limited resources in our lab, and it achieves better performance than Flamingo. Although Otter may not be the most sophisticated and can sometimes get confused, we are committed to continuously improving it. In this era of booming large-scale foundational models, we believe that everyone should have the opportunity to train their own models, even with limited data and resources, and nurture the models to develop their own intelligence. 
 
 ## 🦦 Examples
 
@@ -76,8 +76,8 @@ Our Otter model is also developed in this way and it's deployed on the 🤗 Hugg
 ### Multi-model instruction tuning dataset with in-context examples
 The pre-training process for the OpenFlamingo model employs the MMC4 interleaved multimodality dataset to endow the model with in-context few-shot learning capabilities. The development of our instruction-following dataset adheres to the guiding principles of MMC4, which dictate that the instruction and image examples incorporated into the context should exhibit semantic pertinence to the query instruction and image.
 
-1. To augment the LLAVA dataset, we retrieve in-context examples for each query data.
-2. We curate high-quality video data from the Video PSG repository (https://github.com/Jingkang50/OpenPSG). For each video, we select 4-8 frames to be annotated for instruction-following, using the LLAVA dataset as a reference. During the training phase, given a frame, we opt for additional frames, along with their corresponding instructions and answers, to serve as in-context examples.
+1. To augment the LLaVa dataset, we retrieve in-context examples for each query data.
+2. We curate high-quality video data from the Video PSG repository (https://github.com/Jingkang50/OpenPSG). For each video, we select 4-8 frames to be annotated for instruction-following, using the LLaVa dataset as a reference. During the training phase, given a frame, we opt for additional frames, along with their corresponding instructions and answers, to serve as in-context examples.
 
 
 ### Example
