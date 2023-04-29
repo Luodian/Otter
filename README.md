@@ -30,9 +30,9 @@
 
 Recent research highlights the importance of fine-tuning instruction for empowering large language models (LLMs), such as enhancing GPT-3 to Chat-GPT, to follow natural language instructions and effectively accomplish real-world tasks. Flamingo is considered a GPT-3 moment in the multimodal domain. 
 
-In our project, we propose 🦦 Otter, an instruction-tuned model built upon Flamingo that has been customized for a context. We improve its conversational skills by using a carefully crafted multimodal instruction tuning dataset. Each data sample includes an image-specific instruction along with multiple examples of multimodal instructions for that context, also known as multimodal in-context learning examples.
+In our project, we propose 🦦 Otter, an instruction-tuned model built upon OpenFlamingo that has been customized for a context. We improve its conversational skills by using a carefully crafted multimodal instruction tuning dataset. Each data sample includes an image-specific instruction along with multiple examples of multimodal instructions for that context, also known as multimodal in-context learning examples.
 
-By leveraging these high-quality data, we train Otter with limited resources in our lab, and it achieves better performance than Flamingo. Although Otter may not be the most sophisticated and can sometimes get confused, we are committed to continuously improving it. In this era of booming large-scale foundational models, we believe that everyone should have the opportunity to train their own models, even with limited data and resources, and nurture the models to develop their own intelligence. 
+By leveraging these high-quality data, we train 🦦 Otter with limited resources (4x RTX-3090-24G GPUs) in our lab, and it achieves better performance than OpenFlamingo. Although Otter may not be the most sophisticated and can sometimes get confused, we are committed to continuously improving it. In this era of booming large-scale foundational models, we believe that everyone should have the opportunity to train their own models, even with limited data and resources, and nurture the models to develop their own intelligence. 
 
 ## 🦦 Examples
 
