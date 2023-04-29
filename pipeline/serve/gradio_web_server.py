@@ -350,8 +350,14 @@ h3 {text-align: center;}
 a:link {
   text-decoration: none;
 }
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
 </style>
-<h1><img src="https://raw.githubusercontent.com/Luodian/otter/main/assets/title.png" alt="Otter"></h1>
+<h1><img src="https://cliangyu.com/images/li2023otter.png" alt="Otter: Multi-Modal In-Context Learning Model with Instruction Tuning" width="500px" class="center"></h1>
 <h3><a href="https://github.com/Luodian/otter"><img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" style="height: 15px; display:inline;" class="icon" alt="github">GitHub</a>
 </h3>
 <p> <b>Note:</b> Following OpenFlamingo, you need to input at least one image in the first round of conversation. </p>
