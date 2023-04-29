@@ -1,6 +1,6 @@
 import dataclasses
 from enum import auto, Enum
-from typing import List, Tuple
+from typing import List, Tuple, Any
 import base64
 from io import BytesIO
 
@@ -22,6 +22,7 @@ class Conversation:
     sep2: str = None
 
     skip_next: bool = False
+    conv_id: Any = None
 
     def get_prompt(self):
         if self.sep_style == SeparatorStyle.SINGLE:
@@ -119,7 +120,9 @@ class Conversation:
             offset=self.offset,
             sep_style=self.sep_style,
             sep=self.sep,
-            sep2=self.sep2)
+            sep2=self.sep2,
+            conv_id=self.conv_id,
+        )
 
     def dict(self):
         if len(self.get_images()) > 0:
