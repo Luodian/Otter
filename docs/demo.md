@@ -14,6 +14,8 @@ We assume that you have downloaded the 🦦 Otter checkpoint and the 🦩 Open F
 pip install fastapi
 ```
 
+## Start Demo 
+
 ### Launch a controller
 
 ```Shell
