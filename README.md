@@ -2,7 +2,13 @@
  
 ## Talk to 🦦 Otter, Give it instruction, and Explore its in-context learning ability!
 
-[Otter Demo](https://otter.cliangyu.com/)
+<!-- [Otter Demo](https://otter.cliangyu.com/) -->
+
+![](https://img.shields.io/badge/otter-chat%20demo-orange?link=http://left&link=https://otter.cliangyu.com)
+
+![](https://img.shields.io/badge/otter-v0.1%20%7C%20alpha-blue)
+
+![](https://img.shields.io/github/stars/luodian/otter?style=social)
 
 ## Overview
 
@@ -10,28 +16,9 @@ Recent research emphasizes the importance of instruction tuning in empowering La
 
 ## Environment
 
-You may install via `pip install -r requirements.txt`  or manually install the following packages.
-<details>
-<summary>Manually Install</summary>
+You may install via `conda env create -f environment.yml`  or manually install the following packages.
 
-``` bash
-conda install pytorch=2.0.0 torchvision=0.15.0 pytorch-cuda=11.8 -c pytorch -c nvidia -y
-conda install -c conda-forge transformers=4.28.1 -y
-conda install -c conda-forge datasets=2.11.0 -y
-conda install -c conda-forge wandb=0.14.0 -y
-conda install -c conda-forge braceexpand=0.1.5 -y
-conda install -c conda-forge webdataset=0.2.48 -y
-conda install -c conda-forge scipy=1.10.1 -y
-conda install -c conda-forge sentencepiece=0.1.97 -y
-conda install -c conda-forge einops=0.6.0 -y
-pip install bitsandbytes==0.37.2
-conda install -c conda-forge tensorboard=2.12.0 -y
-conda install -c conda-forge more-itertools=9.1.0 -y
-
-# install standford-corenlp-full
-cd LAVIS/coco-caption;
-sh get_stanford_models.sh
-```
+Especially to make sure the `transformers>=4.28.0`, `accelerate==0.19.0.dev0`.
 
 </details>
 
