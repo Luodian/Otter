@@ -169,7 +169,7 @@ def clear_history(request: gr.Request):
 
 
 def add_text(state, text_demo_question_1, text_demo_answer_1, image_demo_1, text_demo_question_2, text_demo_answer_2, image_demo_2, text_3, image_3, request: gr.Request):
-    text = text_3 + ' ' + conv_templates[template_name].copy().roles[1] + ': ' + DEFAULT_ANSWER_TOKEN
+    text = text_3 + ' ' + conv_templates[template_name].copy().roles[1] + ':' + DEFAULT_ANSWER_TOKEN
     logger.info(f"add_text. ip: {request.client.host}. len: {len(text)}")
     if state is None:
         state = conv_templates[template_name].copy()
@@ -198,10 +198,10 @@ def add_text(state, text_demo_question_1, text_demo_answer_1, image_demo_1, text
         text = DEFAULT_IMAGE_TOKEN + conv_templates[template_name].copy().roles[0] + ': ' + text
     if text_demo_answer_2 != "":
         assert image_demo_2 is not None
-        text = DEFAULT_IMAGE_TOKEN + conv_templates[template_name].copy().roles[0] + ': ' + text_demo_question_2  + ' ' + conv_templates[template_name].copy().roles[1] + ': ' + DEFAULT_ANSWER_TOKEN + text_demo_answer_2 + DEFAULT_DEMO_END_TOKEN + text
+        text = DEFAULT_IMAGE_TOKEN + conv_templates[template_name].copy().roles[0] + ': ' + text_demo_question_2  + ' ' + conv_templates[template_name].copy().roles[1] + ':' + DEFAULT_ANSWER_TOKEN + text_demo_answer_2 + DEFAULT_DEMO_END_TOKEN + text
     if text_demo_answer_1 != "":
         assert image_demo_1 is not None
-        text = DEFAULT_IMAGE_TOKEN + conv_templates[template_name].copy().roles[0] + ': ' + text_demo_question_1  + ' ' + conv_templates[template_name].copy().roles[1] + ': ' + DEFAULT_ANSWER_TOKEN + text_demo_answer_1 + DEFAULT_DEMO_END_TOKEN + text
+        text = DEFAULT_IMAGE_TOKEN + conv_templates[template_name].copy().roles[0] + ': ' + text_demo_question_1  + ' ' + conv_templates[template_name].copy().roles[1] + ':' + DEFAULT_ANSWER_TOKEN + text_demo_answer_1 + DEFAULT_DEMO_END_TOKEN + text
 
     input = (text, image_demo_1, image_demo_2, image_3)
     state.append_message(state.roles[0], input)
@@ -268,8 +268,8 @@ def http_bot(state, model_selector, max_new_tokens, temperature, top_k, top_p, n
         return
 
     # Construct prompt
-    role_label = state.roles[1] + ':'
-    # FIX: remove the last role label
+    role_label = state.roles[1] + ': '
+    # hard code preprocessing: remove the last role label
     prompt = state.get_prompt()[:-len(role_label)]
 
     # Construct generation kwargs
@@ -309,7 +309,6 @@ def http_bot(state, model_selector, max_new_tokens, temperature, top_k, top_p, n
                 if data["error_code"] == 0:
                     # output = data["text"][len(prompt) + 1 :].strip() # original postprocessing
                     output = data["text"].strip() # TODO: fix hardcode postprocessing
-                    # output = data["text"][len(prompt) + len(state.roles[1]) + 1 :].strip() # TODO: fix hardcode postprocessing
                     output = post_process_code(output)
                     state.messages[-1][-1] = output + "▌"
                     yield (state, state.to_gradio_chatbot()) + (disable_btn,) * 5
@@ -407,7 +406,7 @@ def build_demo(embed_mode):
                 textbox_demo_answer_2 = gr.Textbox(label="Demo Text Answer 2 (optional)", show_label=True, placeholder="Enter text and press ENTER").style(container=True)
 
                 with gr.Accordion("Parameters", open=False, visible=False) as parameter_row:
-                    max_new_tokens = gr.Slider(minimum=20, maximum=200, value=50, step=10, interactive=True, label="number of tokens to generate")
+                    max_new_tokens = gr.Slider(minimum=20, maximum=500, value=200, step=10, interactive=True, label="number of tokens to generate")
                     temperature = gr.Slider(minimum=0, maximum=1, value=1, step=0.1, interactive=True, label="temperature")
                     top_k = gr.Slider(minimum=0, maximum=10, value=0, step=1, interactive=True, label="top_k")
                     top_p = gr.Slider(minimum=0, maximum=1, value=1.0, step=0.1, interactive=True, label="top_p")
