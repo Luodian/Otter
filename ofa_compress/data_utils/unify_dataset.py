@@ -220,32 +220,6 @@ class UnifyDataset(OFADataset):
         # truncate question
         return_answer = ""
         answers = answer.split('.')
-<<<<<<< HEAD
-=======
-        
-        for _ in answers:
-            if return_answer == "":
-                cur_answer = _
-            else:
-                cur_answer = ".".join([return_answer, _])
-            if len(cur_answer.split(' ')) <= max_ans_words:
-                return_answer = cur_answer
-            else:
-                break
-
-        if return_answer == "":
-            answer_words = answer.split(' ')
-            return_answer = ' '.join(answer_words[:max_ques_words])
-        else:
-            if return_answer[-1] != "." and return_answer != answers:
-                return_answer += "."
-            
-        return return_answer
-
-        
-=======
-=======
->>>>>>> solve confict
         
         for _ in answers:
             if return_answer == "":
