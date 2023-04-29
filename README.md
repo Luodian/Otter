@@ -50,14 +50,12 @@ Recent studies emphasize the importance of instructions for Large Language Model
 Recent studies emphasize the importance of instructions for Large Language Models (LLMs), like GPT-3, in completing real-world tasks. Flamingo, a GPT-3 moment in the multimodal domain, excels in multimodal in-context learning, showcasing its ability to follow multimodal instructions, a.k.a. multimodal in-context examples. We aims to enhance Flamingo's multimodal capabilities using a carefully curated instruction following dataset. We present Otter, which can tackle diverse multimodal tasks, ranging from detailed descriptions to complex reasoning, by being guided through (1) an image, (2) an image-specific instruction, and (3) multiple multimodal instructions (multimodal in-context learning examples.)
 
 ### Multi-model instruction tuning dataset with in-context examples
-=======
 <!-- # Why we need instruction tuning, and why we choose Flamingo?
 - Recent research emphasizes the importance of instruction tuning in empowering Large Language Models (LLMs), such as GPT-3, to adhere to natural language instruction and effectively accomplish real-world tasks. This procedure is essential for improving the zero-and few-shot generalization abilities of LLMs, which are trained using noisy web data.
 
 For details, you may refer to the [dataset card](docs/dataset_card.md).
 
 ## ☄️ Training
-
 
 ## 🗄 Dataset Preparation
 
@@ -71,6 +69,7 @@ The pre-training process for the Open-Flamingo model employs the MMC4 interleave
 ### Details
 <img src="./images/image_example_4.png" alt="Description" width="1200" height="200"> 
 For details of our training data,  check our [dataset card](/docs/dataset_card.md).
+>>>>>>> solve confict
 
 
 
