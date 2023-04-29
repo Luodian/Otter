@@ -16,6 +16,7 @@ from pipeline.serve.gradio_css import code_highlight_css
 
 DEFAULT_IMAGE_TOKEN = "<image>"
 DEFAULT_DEMO_END_TOKEN = "<|endofchunk|>"
+DEFAULT_ANSWER_TOKEN = "<answer>"
 template_name = "otter"
 
 logger = build_logger("gradio_web_server", "gradio_web_server.log")
@@ -132,10 +133,15 @@ def regenerate(state, request: gr.Request):
             state.to_gradio_chatbot(),
         )
         + (
+            "", "",
+            None,
+        )
+        * 2
+        + (
             "",
             None,
         )
-        * 3
+        * 1
         + (disable_btn,) * 5
     )
 
@@ -149,16 +155,21 @@ def clear_history(request: gr.Request):
             [],
         )
         + (
+            "", "",
+            None,
+        )
+        * 2
+        + (
             "",
             None,
         )
-        * 3
+        * 1
         + (disable_btn,) * 5
     )
 
 
-def add_text(state, text_demo_1, image_demo_1, text_demo_2, image_demo_2, text_3, image_3, request: gr.Request):
-    text = text_3
+def add_text(state, text_demo_question_1, text_demo_answer_1, image_demo_1, text_demo_question_2, text_demo_answer_2, image_demo_2, text_3, image_3, request: gr.Request):
+    text = text_3 + ' ' + conv_templates[template_name].copy().roles[1] + ': ' + DEFAULT_ANSWER_TOKEN
     logger.info(f"add_text. ip: {request.client.host}. len: {len(text)}")
     if state is None:
         state = conv_templates[template_name].copy()
@@ -172,24 +183,25 @@ def add_text(state, text_demo_1, image_demo_1, text_demo_2, image_demo_2, text_3
             logger.info(f"violate moderation. ip: {request.client.host}. text: {text}")
             state.skip_next = True
             return (
-                (state, state.to_gradio_chatbot(), moderation_msg, None)
+                (state, state.to_gradio_chatbot())
                 + (
-                    "",
+                    "", "",
                     None,
                 )
                 * 2
+                + (moderation_msg, None)
                 + (disable_btn,) * 5
             )
 
     text = text[:1536]  # Hard cut-off
     if image_3 is not None:
         text = DEFAULT_IMAGE_TOKEN + conv_templates[template_name].copy().roles[0] + ': ' + text
-    if text_demo_2 != "":
+    if text_demo_answer_2 != "":
         assert image_demo_2 is not None
-        text = DEFAULT_IMAGE_TOKEN + conv_templates[template_name].copy().roles[0] + ': ' + text_demo_2 + DEFAULT_DEMO_END_TOKEN + text
-    if text_demo_1 != "":
+        text = DEFAULT_IMAGE_TOKEN + conv_templates[template_name].copy().roles[0] + ': ' + text_demo_question_2  + ' ' + conv_templates[template_name].copy().roles[1] + ': ' + DEFAULT_ANSWER_TOKEN + text_demo_answer_2 + DEFAULT_DEMO_END_TOKEN + text
+    if text_demo_answer_1 != "":
         assert image_demo_1 is not None
-        text = DEFAULT_IMAGE_TOKEN + conv_templates[template_name].copy().roles[0] + ': ' + text_demo_1 + DEFAULT_DEMO_END_TOKEN + text
+        text = DEFAULT_IMAGE_TOKEN + conv_templates[template_name].copy().roles[0] + ': ' + text_demo_question_1  + ' ' + conv_templates[template_name].copy().roles[1] + ': ' + DEFAULT_ANSWER_TOKEN + text_demo_answer_1 + DEFAULT_DEMO_END_TOKEN + text
 
     input = (text, image_demo_1, image_demo_2, image_3)
     state.append_message(state.roles[0], input)
@@ -201,10 +213,15 @@ def add_text(state, text_demo_1, image_demo_1, text_demo_2, image_demo_2, text_3
             state.to_gradio_chatbot(),
         )
         + (
+            "", "",
+            None,
+        )
+        * 2
+        + (
             "",
             None,
         )
-        * 3
+        * 1
         + (disable_btn,) * 5
     )
 
@@ -251,7 +268,9 @@ def http_bot(state, model_selector, max_new_tokens, temperature, top_k, top_p, n
         return
 
     # Construct prompt
-    prompt = state.get_prompt()
+    role_label = state.roles[1] + ':'
+    # FIX: remove the last role label
+    prompt = state.get_prompt()[:-len(role_label)]
 
     # Construct generation kwargs
     generation_kwargs = {
@@ -333,9 +352,10 @@ a:link {
   text-decoration: none;
 }
 </style>
-<h1><img src="examples/title.png" alt="Otter"></h1>
-<h3><a href="https://github.com/Luodian/PET-VLM"><img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" style="height: 15px; display:inline;" class="icon" alt="github">GitHub</a>
+<h1><img src="https://raw.githubusercontent.com/Luodian/otter/main/assets/title.png" alt="Otter"></h1>
+<h3><a href="https://github.com/Luodian/otter"><img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" style="height: 15px; display:inline;" class="icon" alt="github">GitHub</a>
 </h3>
+<p> <b>Note:</b> Following OpenFlamingo, you need to input at least one image in the first round of conversation. </p>
 </header>
 """
 
@@ -378,11 +398,13 @@ def build_demo(embed_mode):
                 with gr.Row(elem_id="model_selector_row"):
                     model_selector = gr.Dropdown(choices=models, value=models[0] if len(models) > 0 else "", interactive=True, show_label=False).style(container=False)
 
-                imagebox_3 = gr.Image(label="Image (optional)", type="pil")
+                imagebox_3 = gr.Image(label="Image", type="pil")
                 imagebox_demo_1 = gr.Image(label="Demo Image 1 (optional)", type="pil")
-                textbox_demo_1 = gr.Textbox(label="Demo Text 1 (optional)", show_label=True, placeholder="Enter text and press ENTER").style(container=True)
+                textbox_demo_question_1 = gr.Textbox(label="Demo Text Query 1 (optional)", show_label=True, placeholder="Enter text and press ENTER").style(container=True)
+                textbox_demo_answer_1 = gr.Textbox(label="Demo Text Answer 1 (optional)", show_label=True, placeholder="Enter text and press ENTER").style(container=True)
                 imagebox_demo_2 = gr.Image(label="Demo Image 2 (optional)", type="pil")
-                textbox_demo_2 = gr.Textbox(label="Demo Text 2 (optional)", show_label=True, placeholder="Enter text and press ENTER").style(container=True)
+                textbox_demo_question_2 = gr.Textbox(label="Demo Text Query 2 (optional)", show_label=True, placeholder="Enter text and press ENTER").style(container=True)
+                textbox_demo_answer_2 = gr.Textbox(label="Demo Text Answer 2 (optional)", show_label=True, placeholder="Enter text and press ENTER").style(container=True)
 
                 with gr.Accordion("Parameters", open=False, visible=False) as parameter_row:
                     max_new_tokens = gr.Slider(minimum=20, maximum=200, value=50, step=10, interactive=True, label="number of tokens to generate")
@@ -412,10 +434,10 @@ def build_demo(embed_mode):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         gr.Examples(
             examples=[
-                [f"{cur_dir}/examples/extreme_ironing.jpg", "Output: a man ironing on car", f"{cur_dir}/examples/waterview.jpg", "Output: lake", f"{cur_dir}/examples/dinner.jpg", "Output:"],
-                [f"{cur_dir}/examples/cat.jpg", "An image of two cats.", f"{cur_dir}/examples/bathroom.jpg", "An image of a bathroom sink.", f"{cur_dir}/examples/dinner.jpg", "An image of"],
+                [f"{cur_dir}/examples/extreme_ironing.jpg", "What is in the image?", "a man ironing on car", f"{cur_dir}/examples/waterview.jpg", "What is in the image?", "lake", f"{cur_dir}/examples/dinner.jpg", "What is in the image?"],
+                [f"{cur_dir}/examples/cat.jpg", "An image of", "two cats.", f"{cur_dir}/examples/bathroom.jpg", "An image of", "a bathroom sink.", f"{cur_dir}/examples/dinner.jpg", "An image of"],
             ],
-            inputs=[imagebox_demo_1, textbox_demo_1, imagebox_demo_2, textbox_demo_2, imagebox_3, textbox_3],
+            inputs=[imagebox_demo_1, textbox_demo_question_1, textbox_demo_answer_1, imagebox_demo_2, textbox_demo_question_2, textbox_demo_answer_2, imagebox_3, textbox_3],
         )
 
         if not embed_mode:
@@ -425,7 +447,7 @@ def build_demo(embed_mode):
 
         # Register listeners
         btn_list = [upvote_btn, downvote_btn, flag_btn, regenerate_btn, clear_btn]
-        demo_list = [textbox_demo_1, imagebox_demo_1, textbox_demo_2, imagebox_demo_2]
+        demo_list = [textbox_demo_question_1, textbox_demo_answer_1, imagebox_demo_1, textbox_demo_question_2, textbox_demo_answer_2, imagebox_demo_2]
         prarameter_list = [max_new_tokens, temperature, top_k, top_p, no_repeat_ngram_size, length_penalty, do_sample, early_stopping]
         upvote_btn.click(upvote_last_response, [state, model_selector], [textbox_3, upvote_btn, downvote_btn, flag_btn])
         downvote_btn.click(downvote_last_response, [state, model_selector], [textbox_3, upvote_btn, downvote_btn, flag_btn])
@@ -436,10 +458,12 @@ def build_demo(embed_mode):
             [
                 state,
                 chatbot,
+            ]
+            + demo_list
+            + [
                 textbox_3,
                 imagebox_3,
             ]
-            + demo_list
             + btn_list,
         ).then(
             http_bot,
