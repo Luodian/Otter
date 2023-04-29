@@ -1,19 +1,36 @@
 <p align="center" width="100%">
 <img src="assets/title.png"  width="80%" height="80%">
 </p>
+
+
+<div>
+<div align="center">
+    <a href='https://brianboli.com/' target='_blank'>Bo Li*</a>&emsp;
+    <a href='https://zhangyuanhan-ai.github.io/' target='_blank'>Yuanhan Zhang*</a>&emsp;
+    <a href='https://cliangyu.com/' target='_blank'>Liangyu Chen*</a>&emsp;
+    <a href='https://king159.github.io/' target='_blank'>Jinghao Wang*</a>&emsp;
+    </br>
+    <a href='https://jingkang50.github.io/' target='_blank'>Jingkang Yang</a>&emsp;
+    <a href='https://liuziwei7.github.io/' target='_blank'>Ziwei Liu</a>
+</div>
+<div>
+<div align="center">
+    S-Lab, Nanyang Technological University
+</div>
  
 
 ![](https://img.shields.io/badge/code-v0.1%20%7C%20alpha-blue)
 ![](https://img.shields.io/badge/demo-otter%20chat-orange?link=http://left&link=https://otter.cliangyu.com)
 ![](https://img.shields.io/github/stars/luodian/otter?style=social)
 
+
 ## 🦦 Overview
 
 Recent research emphasizes the importance of instruction tuning in empowering Large Language Models (LLMs), such as boosting GPT-3 to Chat-GPT, to adhere to natural language instruction and effectively accomplish real-world tasks. Flamingo is considered a GPT-3 moment in the multimodal domain. In our project, we propose 🦦 Otter, an in-context instruction-tuned model built upon Flamingo. We enhance its chat abilities by utilizing a carefully constructed multimodal instruction tuning dataset. Each data sample includes an image-specific instruction along with multiple multimodal instructions, also referred to as multimodal in-context learning examples.
 
-## 🗂️ Environment
+## 🗂️ Environments
 
-You may install via `conda env create -f environment.yml`. Especially to make sure the `transformers>=4.28.0`, `accelerate==0.19.0.dev0`.
+You may install via `conda env create -f environment.yml`. Especially to make sure the `transformers>=4.28.0`, `accelerate>=0.18.0`.
 
 ## 🤗 Hugging Face Model
 
@@ -54,7 +71,21 @@ unzip pretrain_data_examples.zip ./example_multi_instruct_data
 
 ## ☄️ Training
 
-Train on `multi_instruct` example datasets, use following commands:
+Train on `multi_instruct` datasets, use following commands:
+
+First run, and answer the questions asked. This will generate a config file and save to cache folder. The config will be used automatically to properly set the default options when doing `accelerate launch`.
+
+```bash
+accelerate config
+```
+
+Then run the training script.
+
+```bash
+accelerate launch
+```
+
+## 💎 Checkpoints
 
 ## 🪩 Web Demo
 We host our demo on [Otter Demo](https://otter.cliangyu.com/). Launch your own demo by following [instructions](docs/demo.md).
@@ -67,7 +98,7 @@ We are working on the following features. We are working hard to provide these f
 - `load_in_8bit` support: for saving GPU memory and training speedup. [[issue]()]
 
 
-## 👨‍💻 Authors
+<!-- ## 👨‍💻 Authors
 
 Equal contribution, alphabetical order.
 
@@ -77,8 +108,8 @@ Equal contribution, alphabetical order.
 
 [Jinghao Wang](https://king159.github.io/)
 
-[Yuanhan Zhang](https://zhangyuanhan-ai.github.io/)
+[Yuanhan Zhang](https://zhangyuanhan-ai.github.io/) -->
 
 ### 👨‍🏫 Acknowledgements 
 
-We thank [Jingkang Yang](https://jingkang50.github.io/) and [Ziwei Liu](https://liuziwei7.github.io/) for advising and supporting, as well as the Open Flamingo team for their great contribution to the open source community.
+We thank [Chunyuan Li](https://chunyuan.li/) and [Jack Hessel](https://jmhessel.com/) for their advising and supporting, as well as the Open Flamingo team for their great contribution to the open source community.
