@@ -4,7 +4,7 @@ import datetime
 import json
 import os
 import time
-
+import uuid
 import gradio as gr
 import requests
 
@@ -333,8 +333,8 @@ a:link {
   text-decoration: none;
 }
 </style>
-<h1>🦦 Otter: A Visual Language Model with Efficient Instruction Tuning.</h1>
-<h3><a href="https://bair.berkeley.edu/blog/2023/04/03/koala/">🏠Project Page</a> <a href="https://github.com/young-geng/EasyLM"><img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" style="height: 15px; display:inline;" class="icon" alt="github">GitHub</a>
+<h1><img src="examples/title.png" alt="Otter"></h1>
+<h3><a href="https://github.com/Luodian/PET-VLM"><img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" style="height: 15px; display:inline;" class="icon" alt="github">GitHub</a>
 </h3>
 </header>
 """
