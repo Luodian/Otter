@@ -108,18 +108,6 @@ We are working on the following models with much stronger performance.
 - [ ] Otter-9B for Videos
 - [ ] Otter-15B
 
-<!-- ## 👨‍💻 Authors
-
-Equal contribution, alphabetical order.
-
-[Liangyu Chen](https://cliangyu.com/)
-
-[Bo Li](https://brianboli.com/)
-
-[Jinghao Wang](https://king159.github.io/)
-
-[Yuanhan Zhang](https://zhangyuanhan-ai.github.io/) -->
-
 ### 👨‍🏫 Acknowledgements 
 
 We thank [Chunyuan Li](https://chunyuan.li/) and [Jack Hessel](https://jmhessel.com/) for their advising and supporting, as well as the Open Flamingo team for their great contribution to the open source community.
