@@ -398,25 +398,29 @@ def build_demo(embed_mode):
                     model_selector = gr.Dropdown(choices=models, value=models[0] if len(models) > 0 else "", interactive=True, show_label=False).style(container=False)
 
                 imagebox_3 = gr.Image(label="Image", type="pil")
-                imagebox_demo_1 = gr.Image(label="Demo Image 1 (optional)", type="pil")
-                textbox_demo_question_1 = gr.Textbox(label="Demo Text Query 1 (optional)", show_label=True, placeholder="Enter text and press ENTER").style(container=True)
-                textbox_demo_answer_1 = gr.Textbox(label="Demo Text Answer 1 (optional)", show_label=True, placeholder="Enter text and press ENTER").style(container=True)
-                imagebox_demo_2 = gr.Image(label="Demo Image 2 (optional)", type="pil")
-                textbox_demo_question_2 = gr.Textbox(label="Demo Text Query 2 (optional)", show_label=True, placeholder="Enter text and press ENTER").style(container=True)
-                textbox_demo_answer_2 = gr.Textbox(label="Demo Text Answer 2 (optional)", show_label=True, placeholder="Enter text and press ENTER").style(container=True)
+                
+                with gr.Row():
+                    imagebox_demo_1 = gr.Image(label="Demo Image 1 (optional)", type="pil")
+                    textbox_demo_question_1 = gr.Textbox(label="Demo Text Query 1 (optional)", show_label=True, placeholder="Example: What is in the image?").style(container=True)
+                    textbox_demo_answer_1 = gr.Textbox(label="Demo Text Answer 1 (optional)", show_label=True, placeholder="<Describe Demo Image 1>").style(container=True)
+                with gr.Row():
+                    imagebox_demo_2 = gr.Image(label="Demo Image 2 (optional)", type="pil")
+                    textbox_demo_question_2 = gr.Textbox(label="Demo Text Query 2 (optional)", show_label=True, placeholder="Example: What is in the image?").style(container=True)
+                    textbox_demo_answer_2 = gr.Textbox(label="Demo Text Answer 2 (optional)", show_label=True, placeholder="<Describe Demo Image 2>").style(container=True)
 
                 with gr.Accordion("Parameters", open=False, visible=False) as parameter_row:
-                    max_new_tokens = gr.Slider(minimum=20, maximum=500, value=200, step=10, interactive=True, label="number of tokens to generate")
-                    temperature = gr.Slider(minimum=0, maximum=1, value=1, step=0.1, interactive=True, label="temperature")
-                    top_k = gr.Slider(minimum=0, maximum=10, value=0, step=1, interactive=True, label="top_k")
-                    top_p = gr.Slider(minimum=0, maximum=1, value=1.0, step=0.1, interactive=True, label="top_p")
-                    no_repeat_ngram_size = gr.Slider(minimum=1, maximum=10, value=3, step=1, interactive=True, label="no_repeat_ngram_size")
-                    length_penalty = gr.Slider(minimum=1, maximum=5, value=1, step=0.1, interactive=True, label="length_penalty")
-                    do_sample = gr.Checkbox(interactive=True, label="do_sample")
-                    early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
+                    with gr.Row():
+                        max_new_tokens = gr.Slider(minimum=20, maximum=500, value=200, step=10, interactive=True, label="# generation tokens")
+                        temperature = gr.Slider(minimum=0, maximum=1, value=1, step=0.1, interactive=True, label="temperature")
+                        top_k = gr.Slider(minimum=0, maximum=10, value=0, step=1, interactive=True, label="top_k")
+                        top_p = gr.Slider(minimum=0, maximum=1, value=1.0, step=0.1, interactive=True, label="top_p")
+                        no_repeat_ngram_size = gr.Slider(minimum=1, maximum=10, value=3, step=1, interactive=True, label="no_repeat_ngram_size")
+                        length_penalty = gr.Slider(minimum=1, maximum=5, value=1, step=0.1, interactive=True, label="length_penalty")
+                        do_sample = gr.Checkbox(interactive=True, label="do_sample")
+                        early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
 
             with gr.Column(scale=6):
-                chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=1000)
+                chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=720)
                 with gr.Row():
                     with gr.Column(scale=8):
                         textbox_3 = gr.Textbox(show_label=False, placeholder="Enter text and press ENTER").style(container=False)

@@ -186,9 +186,9 @@ logs/*
 #yuanhan
 tools
 
+#liangyu
 checkpoint
-*conv.json
-*.log.*
+
 data
 azure
 flamingo3B
