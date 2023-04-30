@@ -432,7 +432,7 @@ def build_demo(embed_mode):
                 chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=720)
                 with gr.Row():
                     with gr.Column(scale=8):
-                        textbox_3 = gr.Textbox(show_label=False, placeholder="Enter text and press ENTER").style(container=False)
+                        textbox_3 = gr.Textbox(label="Text Query",show_label=False, placeholder="Enter text and press ENTER").style(container=False)
                     with gr.Column(scale=1, min_width=60):
                         submit_btn = gr.Button(value="Submit", visible=False)
                 with gr.Row(visible=False) as button_row:
