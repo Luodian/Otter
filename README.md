@@ -45,13 +45,19 @@ By utilizing high-quality data, we were able to train 🦦 Otter using limited r
 ## 🦦 Examples
 
 <div style="text-align:center">
-<img src="https://i.postimg.cc/cHtCdGCh/example-understanding.png"  width="100%" height="100%">
+<img src="https://i.postimg.cc/KYqmWG7j/example-description2.png"  width="100%" height="100%">
 </div>
 
 ---
 
 <div style="text-align:center">
-<img src="https://i.postimg.cc/Nf6yyt4P/example-description.png"  width="100%" height="100%">
+<img src="https://i.postimg.cc/FRYh5MGZ/example-description.png"  width="100%" height="100%">
+</div>
+
+---
+
+<div style="text-align:center">
+<img src="https://i.postimg.cc/YSqp8GWT/example-understanding.png"  width="100%" height="100%">
 </div>
 
 ---
@@ -101,7 +107,7 @@ Our Otter model is also developed in this way and it's deployed on the 🤗 Hugg
 
 ## 🗄 Dataset Preparation
 
-### Multi-model instruction tuning dataset with in-context examples (ICI)
+### Multi-modal instruction tuning dataset with in-context examples (ICI)
 
 The pre-training process for the OpenFlamingo model employs the MMC4 interleaved multimodality dataset to endow the model with in-context few-shot learning capabilities. The development of our instruction-following dataset adheres to the guiding principles of MMC4, which dictate that the instruction and image examples incorporated into the context should exhibit semantic pertinence to the query instruction and image.
 
