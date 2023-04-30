@@ -346,7 +346,6 @@ title_markdown = """
 <header>
 <style>
 h1 {text-align: center;}
-h3 {text-align: center;}
 a:link {
   text-decoration: none;
 }
@@ -357,11 +356,15 @@ a:link {
   width: 50%;
 }
 </style>
-<h1><img src="https://cliangyu.com/images/li2023otter.png" alt="Otter: Multi-Modal In-Context Learning Model with Instruction Tuning" width="500px" class="center"></h1>
-<h3><a href="https://github.com/Luodian/otter"><img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" style="height: 15px; display:inline;" class="icon" alt="github">GitHub</a>
-</h3>
-<p> <b>Note:</b> Following OpenFlamingo, you need to input at least one image in the first round of conversation. </p>
+<h1><a href="https://github.com/Luodian/otter"><img src="https://cliangyu.com/images/li2023otter.png" alt="Otter: Multi-Modal In-Context Learning Model with Instruction Tuning" width="500px" class="center"></a></h1>
 </header>
+
+| Choose a model to chat with | |
+| --- | --- |
+| [Otter](https://github.com/Luodian/otter): a chat assistant fine-tuned from OpenFlamingo and in-context instructions. | [OpenFlamingo](https://github.com/mlfoundations/open_flamingo): a multimodal foundation model for in-context learning. |
+
+### Note: 
+Following OpenFlamingo, you need to input at least one image in the first round of conversation with both Otter and OpenFlamingo.
 """
 
 tos_markdown = """
