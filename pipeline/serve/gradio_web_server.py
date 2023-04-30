@@ -456,12 +456,18 @@ a:link {
 <h1><a href="https://github.com/Luodian/otter"><img src="https://cliangyu.com/images/li2023otter.png" alt="Otter: Multi-Modal In-Context Learning Model with Instruction Tuning" width="500px" class="center"></a></h1>
 </header>
 
+<h3><a href="https://github.com/Luodian/otter"><img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" style="height: 15px; display:inline;" class="icon" alt="github">GitHub</a>
+&nbsp;&nbsp;&nbsp;
+<a href="https://youtu.be/PYHEhHSZFg8"><img src="https://www.svgrepo.com/show/13671/youtube.svg" style="height: 15px; display:inline;" class="icon" alt="video demo">Video Demo</a>
+</h3>
+
 | Choose a model to chat with | |
 | --- | --- |
 | [Otter](https://github.com/Luodian/otter): a chat assistant fine-tuned from OpenFlamingo and in-context instructions. | [OpenFlamingo](https://github.com/mlfoundations/open_flamingo): a multimodal foundation model for in-context learning. |
 
 ### Note: 
 Following OpenFlamingo, you need to input at least one image in the first round of conversation with both Otter and OpenFlamingo.
+Current Otter model (ver. Apr 25) is under development. A model supporting better conversations will be released soon. 
 """
 
 tos_markdown = """
@@ -618,26 +624,8 @@ def build_demo(embed_mode):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         gr.Examples(
             examples=[
-                [
-                    f"{cur_dir}/examples/extreme_ironing.jpg",
-                    "What is in the image?",
-                    "a man ironing on car",
-                    f"{cur_dir}/examples/waterview.jpg",
-                    "What is in the image?",
-                    "lake",
-                    f"{cur_dir}/examples/dinner.jpg",
-                    "What is in the image?",
-                ],
-                [
-                    f"{cur_dir}/examples/cat.jpg",
-                    "An image of",
-                    "two cats.",
-                    f"{cur_dir}/examples/bathroom.jpg",
-                    "An image of",
-                    "a bathroom sink.",
-                    f"{cur_dir}/examples/dinner.jpg",
-                    "An image of",
-                ],
+                [f"{cur_dir}/examples/cat.jpg", "An image of", "two cats.", f"{cur_dir}/examples/bathroom.jpg", "An image of", "a bathroom sink.", f"{cur_dir}/examples/dinner.jpg", "An image of"],
+                [f"{cur_dir}/examples/baseball.jpg", "What is the potential danger of this sport?", "bumped into others while chasing ball.", f"{cur_dir}/examples/tennis.jpg", "What is the potential danger of this sport?", "hitted by the tennis ball.", f"{cur_dir}/examples/soccer.png", "What is the potential danger of this sport?"],
             ],
             inputs=[
                 imagebox_demo_1,
