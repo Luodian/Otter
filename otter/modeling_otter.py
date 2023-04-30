@@ -1,11 +1,9 @@
 import random
-from dataclasses import dataclass
-from typing import Optional, Callable
+from typing import Optional
 
 import torch
 import torch.nn as nn
 from transformers.modeling_utils import PreTrainedModel
-from transformers.models.auto import AutoModelForCausalLM, AutoTokenizer, AutoModel
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 from einops import rearrange, repeat
@@ -13,7 +11,7 @@ from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
 from .configuration_otter import OtterConfig
 
-XFORMERS_AVAIL = True
+XFORMERS_AVAIL = False
 try:
     import xformers
     import xformers.ops as xops
@@ -254,10 +252,10 @@ class OtterMaskedCrossAttention(nn.Module):
         media = rearrange(media, "b t n d -> b (t n) d")
 
         k, v = self.to_kv(media).chunk(2, dim=-1)
-        q = rearrange(q, "b n (h d) -> b h n d", h=h)
-        k = rearrange(k, "b n (h d) -> b h n d", h=h)
-        v = rearrange(v, "b n (h d) -> b h n d", h=h)
         if not XFORMERS_AVAIL:
+            q = rearrange(q, "b n (h d) -> b h n d", h=h)
+            k = rearrange(k, "b n (h d) -> b h n d", h=h)
+            v = rearrange(v, "b n (h d) -> b h n d", h=h)
             q = q * self.scale
 
             sim = torch.einsum("... i d, ... j d -> ... i j", q, k)
@@ -303,8 +301,11 @@ class OtterMaskedCrossAttention(nn.Module):
             out = torch.einsum("... i j, ... j d -> ... i d", attn, v)
             out = rearrange(out, "b h n d -> b n (h d)")
         else:
+            q = rearrange(q, "b n (h d) -> b n h d", h=h)
+            k = rearrange(k, "b n (h d) -> b n h d", h=h)
+            v = rearrange(v, "b n (h d) -> b n h d", h=h)
             attn_mask = None
-            out = xops.memory_efficient_attention(q, k, v, attn_bias=attn_mask)
+            out = xops.memory_efficient_attention(q, k, v, attn_bias=attn_mask, scale=self.scale)
         return self.to_out(out)
 
 
@@ -874,16 +875,6 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
                 shape (B, T_txt)
             max_length (int, optional): Maximum length of the output. Defaults to None.
             attention_mask (torch.Tensor, optional): Attention mask. Defaults to None.
-            num_beams (int, optional): Number of beams. Defaults to 1.
-            max_new_tokens (int, optional): Maximum new tokens. Defaults to None.
-            temperature (float, optional): Temperature. Defaults to 1.0.
-            top_k (int, optional): Top k. Defaults to 0.
-            top_p (float, optional): Top p. Defaults to 1.0.
-            no_repeat_ngram_size (int, optional): No repeat ngram size. Defaults to 0.
-            length_penalty (float, optional): Length penalty. Defaults to 1.0.
-            num_return_sequences (int, optional): Number of return sequences. Defaults to 1.
-            do_sample (bool, optional): Do sample. Defaults to False.
-            early_stopping (bool, optional): Early stopping. Defaults to False.
         Returns:
             torch.Tensor: lang_x with generated tokens appended to it
         """
