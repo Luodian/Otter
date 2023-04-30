@@ -14,18 +14,16 @@ from coco_metric import compute_cider, postprocess_captioning_generation
 from eval_datasets import COCOFlickrDataset, VQADataset, ImageNetDataset
 from tqdm import tqdm
 
-from open_flamingo.eval.ok_vqa_utils import postprocess_ok_vqa_generation
+from .ok_vqa_utils import postprocess_ok_vqa_generation
 from vqa_metric import compute_vqa_accuracy, postprocess_vqa_generation
-from open_flamingo.eval.classification import (
+from .classification import (
     compute_per_sample_probs,
     compute_per_sample_loss,
 )
-from open_flamingo.eval.imagenet_utils import (
+from .imagenet_utils import (
     openai_imagenet_classnames,
     IMAGENET_1K_CLASS_ID_TO_LABEL,
 )
-
-from open_flamingo.src.factory import create_model_and_transforms
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--lm_path", type=str, default="facebook/opt-1.3b")
@@ -170,14 +168,10 @@ parser.add_argument("--imagenet_root", type=str, default="/tmp")
 def main():
     args = parser.parse_args()
 
-    # load model
-    flamingo, image_processor, tokenizer = create_model_and_transforms(
-        args.vision_encoder_path,
-        args.vision_encoder_pretrained,
-        args.lm_path,
-        args.lm_tokenizer_path,
-        cross_attn_every_n_layers=args.cross_attn_every_n_layers,
-    )
+    # TODO: load hf model
+    flamingo = None
+    tokenizer = None
+    image_processor = None
 
     checkpoint = torch.load(args.checkpoint_path, map_location="cpu")
     flamingo.load_state_dict(checkpoint, strict=False)
