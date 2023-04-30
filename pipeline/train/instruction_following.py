@@ -11,9 +11,19 @@ import torch.nn
 import wandb
 from pipeline.train.data import get_data
 from pipeline.train.distributed import init_distributed_device, world_info_from_env
-from transformers import get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup, get_linear_schedule_with_warmup, CLIPImageProcessor
+from transformers import (
+    get_constant_schedule_with_warmup,
+    get_cosine_schedule_with_warmup,
+    get_linear_schedule_with_warmup,
+    CLIPImageProcessor,
+)
 
-from pipeline.train.train_utils import AverageMeter, get_autocast, get_cast_dtype, get_checkpoint
+from pipeline.train.train_utils import (
+    AverageMeter,
+    get_autocast,
+    get_cast_dtype,
+    get_checkpoint,
+)
 from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from tqdm import tqdm
 import time
@@ -36,7 +46,18 @@ def random_seed(seed=42, rank=0):
     random.seed(seed + rank)
 
 
-def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
+def train_one_epoch(
+    args,
+    model,
+    epoch,
+    multi_instruct_loader,
+    tokenizer,
+    optimizer,
+    lr_scheduler,
+    device_id,
+    accelerator,
+    wandb,
+):
     # num_batches_per_epoch = multi_instruct_loader.num_batches
     num_batches_per_epoch = len(multi_instruct_loader)
     total_training_steps = num_batches_per_epoch * args.num_epochs
@@ -45,14 +66,20 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
     cast_dtype = get_cast_dtype(args.precision)
 
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
-    endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)["input_ids"][-1]
+    endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)[
+        "input_ids"
+    ][-1]
     answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
 
     model.train()
 
     # setup logging
-    step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
-    data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
+    step_time_m = (
+        AverageMeter()
+    )  # time for one optimizer step (> 1 batch if using gradient accum)
+    data_time_m = (
+        AverageMeter()
+    )  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
 
     # loop through dataloader
@@ -67,9 +94,18 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         global_step = num_steps + epoch * num_batches_per_epoch
         #### MULTI_INSTRUCT FORWARD PASS ####
 
-        images = batch_multi_instruct["net_input"]["patch_images"].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(1).unsqueeze(1)
-        input_ids = batch_multi_instruct["net_input"]["input_ids"].to(device_id, dtype=cast_dtype, non_blocking=True)
-        attention_mask = batch_multi_instruct["net_input"]["attention_masks"].to(device_id, dtype=cast_dtype, non_blocking=True)
+        images = (
+            batch_multi_instruct["net_input"]["patch_images"]
+            .to(device_id, dtype=cast_dtype, non_blocking=True)
+            .unsqueeze(1)
+            .unsqueeze(1)
+        )
+        input_ids = batch_multi_instruct["net_input"]["input_ids"].to(
+            device_id, dtype=cast_dtype, non_blocking=True
+        )
+        attention_mask = batch_multi_instruct["net_input"]["attention_masks"].to(
+            device_id, dtype=cast_dtype, non_blocking=True
+        )
 
         labels = input_ids.clone()
         labels[labels == tokenizer.pad_token_id] = -100
@@ -78,7 +114,9 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         for i in range(labels.shape[0]):
             # remove loss for any token before <answer> token
             label_idx = 0
-            while label_idx < labels.shape[1] and labels[i][label_idx] != answer_token_id:
+            while (
+                label_idx < labels.shape[1] and labels[i][label_idx] != answer_token_id
+            ):
                 labels[i][label_idx] = -100
                 label_idx += 1
 
@@ -95,7 +133,9 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
                 labels=labels,
             )[0]
 
-        divided_loss_multi_instruct = loss_multi_instruct / args.gradient_accumulation_steps
+        divided_loss_multi_instruct = (
+            loss_multi_instruct / args.gradient_accumulation_steps
+        )
 
         #### BACKWARD PASS ####
         accelerator.backward(divided_loss_multi_instruct)
@@ -115,7 +155,9 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
         # step optimizer and log
-        if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (num_steps == num_batches_per_epoch - 1):
+        if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (
+            num_steps == num_batches_per_epoch - 1
+        ):
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()
@@ -126,8 +168,15 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
             if args.rank == 0 and args.report_to_wandb:
                 # compute within rank 0
-                multi_instruct_samples_per_second = args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.val
-                multi_instruct_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size / step_time_m.val
+                multi_instruct_samples_per_second = (
+                    args.gradient_accumulation_steps
+                    * args.batch_size
+                    * args.world_size
+                    / step_time_m.val
+                )
+                multi_instruct_samples_per_second_per_gpu = (
+                    args.gradient_accumulation_steps * args.batch_size / step_time_m.val
+                )
 
                 wandb.log(
                     {
@@ -152,7 +201,9 @@ def train_one_epoch(args, model, epoch, multi_instruct_loader, tokenizer, optimi
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
-            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {loss_multi_instruct.item():.3f}")
+            print(
+                f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {loss_multi_instruct.item():.3f}"
+            )
 
 
 def main():
@@ -187,7 +238,9 @@ def main():
     parser.add_argument("--use_media_placement_augmentation", action="store_true")
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--num_epochs", type=int, default=1)
-    parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
+    parser.add_argument(
+        "--logging_steps", type=int, default=100, help="log loss every n steps"
+    )
     # Sum of gradient optimization batch size
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
@@ -245,7 +298,9 @@ def main():
         type=str,
         help="url used to set up distributed training",
     )
-    parser.add_argument("--dist-backend", default="nccl", type=str, help="distributed backend")
+    parser.add_argument(
+        "--dist-backend", default="nccl", type=str, help="distributed backend"
+    )
     parser.add_argument(
         "--horovod",
         default=False,
@@ -297,7 +352,11 @@ def main():
     random_seed(args.seed)
 
     if args.pretrained_model_name_or_path is not None:
-        model = FlamingoForConditionalGeneration.from_pretrained(args.pretrained_model_name_or_path, device_map="auto", local_files_only=args.offline)
+        model = FlamingoForConditionalGeneration.from_pretrained(
+            args.pretrained_model_name_or_path,
+            device_map="auto",
+            local_files_only=args.offline,
+        )
     else:
         config = FlamingoConfig.from_json_file("./flamingo_hf/config.json")
         model = FlamingoForConditionalGeneration(config=config)
@@ -319,13 +378,21 @@ def main():
 
     device_id = args.rank % torch.cuda.device_count()
 
-    multi_instruct_dataset = get_data(args, image_processor, tokenizer, "multi_instruct")
+    multi_instruct_dataset = get_data(
+        args, image_processor, tokenizer, "multi_instruct"
+    )
 
     def get_grouped_params(model):
         params_with_wd, params_without_wd = [], []
 
         def apply_decay(x):
-            return "gated_cross_attn_layer" in x and "ff_gate" not in x and "attn_gate" not in x and "norm" not in x and "bias" not in x
+            return (
+                "gated_cross_attn_layer" in x
+                and "ff_gate" not in x
+                and "attn_gate" not in x
+                and "norm" not in x
+                and "bias" not in x
+            )
 
         for n, p in model.named_parameters():
             # if p.requires_grad:
@@ -339,19 +406,36 @@ def main():
             {"params": params_without_wd, "weight_decay": 0.0},
         ]
 
-    args.train_num_samples = multi_instruct_dataset.dataloader.num_samples if args.train_num_samples is None else args.train_num_samples
-    total_training_steps = ((args.train_num_samples) // (args.batch_size * args.world_size)) * args.num_epochs
+    args.train_num_samples = (
+        multi_instruct_dataset.dataloader.num_samples
+        if args.train_num_samples is None
+        else args.train_num_samples
+    )
+    total_training_steps = (
+        (args.train_num_samples) // (args.batch_size * args.world_size)
+    ) * args.num_epochs
 
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
-    args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
-    if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is None:
+    args.external_save_dir = (
+        os.path.join(args.external_save_dir, args.run_name)
+        if args.external_save_dir
+        else args.run_name
+    )
+    if (
+        os.path.exists(f"{args.external_save_dir}")
+        and args.resume_from_checkpoint is None
+    ):
         checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
         if len(checkpoint_list) == 0:
             print(f"Found no checkpoints for run {args.external_save_dir}.")
         else:
-            args.resume_from_checkpoint = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
-            print(f"Found checkpoint {args.resume_from_checkpoint} for run {args.external_save_dir}.")
+            args.resume_from_checkpoint = sorted(
+                checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0])
+            )[-1]
+            print(
+                f"Found checkpoint {args.resume_from_checkpoint} for run {args.external_save_dir}."
+            )
 
         if args.rank == 0:
             print(f"Loading checkpoint from {args.resume_from_checkpoint}")
@@ -363,10 +447,14 @@ def main():
 
     elif args.resume_from_checkpoint is not None:
         print(f"Loading checkpoint from {args.resume_from_checkpoint}")
-        model.load_state_dict(torch.load(args.resume_from_checkpoint, map_location="cpu"), False)
+        model.load_state_dict(
+            torch.load(args.resume_from_checkpoint, map_location="cpu"), False
+        )
 
     # add <answer> token to tokenizer
-    tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+    tokenizer.add_special_tokens(
+        {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
+    )
 
     model.lang_encoder.resize_token_embeddings(len(tokenizer))
 
@@ -394,18 +482,29 @@ def main():
             num_training_steps=total_training_steps,
         )
     else:
-        lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps)
+        lr_scheduler = get_constant_schedule_with_warmup(
+            optimizer, num_warmup_steps=args.warmup_steps
+        )
 
     for epoch in range(resume_from_epoch, args.num_epochs):
         multi_instruct_dataset.set_epoch(epoch)
 
         train_one_epoch(
-            args=args, model=model, epoch=epoch, tokenizer=tokenizer, optimizer=optimizer, lr_scheduler=lr_scheduler, multi_instruct_loader=multi_instruct_loader, accelerator=accelerator, device_id=device_id, wandb=wandb
+            args=args,
+            model=model,
+            epoch=epoch,
+            tokenizer=tokenizer,
+            optimizer=optimizer,
+            lr_scheduler=lr_scheduler,
+            multi_instruct_loader=multi_instruct_loader,
+            accelerator=accelerator,
+            device_id=device_id,
+            wandb=wandb,
         )
         if args.rank == 0:
             if not os.path.exists(args.external_save_dir):
                 os.makedirs(args.external_save_dir)
-                
+
             accelerator.wait_for_everyone()
             unwrapped_model = accelerator.unwrap_model(model)
             accelerator.save(
@@ -431,7 +530,10 @@ def main():
 
         accelerator.wait_for_everyone()
         unwrapped_model = accelerator.unwrap_model(model)
-        accelerator.save(get_checkpoint(model=unwrapped_model), f"{args.external_save_dir}/final_weights.pt")
+        accelerator.save(
+            get_checkpoint(model=unwrapped_model),
+            f"{args.external_save_dir}/final_weights.pt",
+        )
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
         if args.save_hf_model:
