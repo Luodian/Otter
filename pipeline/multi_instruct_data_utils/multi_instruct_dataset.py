@@ -2,15 +2,15 @@
 # All rights reserved.
 # This source code is licensed under the Apache 2.0 license
 # found in the LICENSE file in the root directory.
-
+import contextlib
 
 from torch.utils.data import Dataset
 from PIL import Image, ImageFile
 
 from .transforms import *
-import contextlib
 
-label_map = {'entailment': 0, 'not_entailment': 1}
+
+label_map = {"entailment": 0, "not_entailment": 1}
 
 IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
@@ -18,6 +18,7 @@ IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 ImageFile.MAX_IMAGE_PIXELS = None
 Image.MAX_IMAGE_PIXELS = None
+
 
 @contextlib.contextmanager
 def numpy_seed(seed, *addl_seeds):
@@ -35,11 +36,9 @@ def numpy_seed(seed, *addl_seeds):
     finally:
         np.random.set_state(state)
 
+
 class MultiInstructDataset(Dataset):
-    def __init__(self,
-                 args,
-                 dataset,
-                 is_test=False):
+    def __init__(self, args, dataset, is_test=False):
         # Input parameters.
         self.args = args
         self.task_name = args.task
@@ -47,10 +46,8 @@ class MultiInstructDataset(Dataset):
         self.is_test = is_test
         self.tokenizer = args.tokenizer
 
-
     def __str__(self):
         return f"type: {type(self)}, length: {len(self)}"
-
 
     def __len__(self):
         return len(self.dataset)
@@ -62,37 +59,44 @@ class MultiInstructDataset(Dataset):
         Returns:
             dict: a mini-batch containing the data required for the task
         """
-        return collate_fn(samples, pad_idx=self.tokenizer.pad_token_id, eos_idx=self.tokenizer.eos_token_id)
-
+        return collate_fn(
+            samples,
+            pad_idx=self.tokenizer.pad_token_id,
+            eos_idx=self.tokenizer.eos_token_id,
+        )
 
 
 def continuous_tense(word):
-    if word in {'stand', 'walk', 'jump', 'sing', 'talk', 'cry'}:
-        return word + 'ing'
-    elif word in {'run', 'sit'}:
-        return word + word[-1] + 'ing'
-    elif word == 'lay':
-        return 'lying'
-    elif word == 'smile':
-        return 'smiling'
+    if word in {"stand", "walk", "jump", "sing", "talk", "cry"}:
+        return word + "ing"
+    elif word in {"run", "sit"}:
+        return word + word[-1] + "ing"
+    elif word == "lay":
+        return "lying"
+    elif word == "smile":
+        return "smiling"
     else:
         raise NotImplementedError
+
 
 def collate_fn(samples, pad_idx, eos_idx):
     if len(samples) == 0:
         return {}
 
     def merge(key, pad_idx, pading_size=None):
-        res = collate_tokens([s[key] for s in samples], pad_idx, eos_idx=eos_idx, pad_to_length=pading_size)
+        res = collate_tokens(
+            [s[key] for s in samples],
+            pad_idx,
+            eos_idx=eos_idx,
+            pad_to_length=pading_size,
+        )
         return res
-
 
     larger_size = max([s["source"].size(0) for s in samples])
 
     id = np.array([s["id"] for s in samples])
     src_tokens = merge("source", pad_idx=pad_idx, pading_size=larger_size)
-    src_tokens_masks = merge('text_mask', pad_idx=0, pading_size=larger_size)
-
+    src_tokens_masks = merge("text_mask", pad_idx=0, pading_size=larger_size)
 
     batch = {
         "id": id,
@@ -103,32 +107,47 @@ def collate_fn(samples, pad_idx, eos_idx):
         },
     }
     if samples[0].get("patch_image", None) is not None:
-        batch["net_input"]["patch_images"] = torch.stack([sample['patch_image'] for sample in samples], dim=0)
+        batch["net_input"]["patch_images"] = torch.stack(
+            [sample["patch_image"] for sample in samples], dim=0
+        )
     if samples[0].get("patch_mask", None) is not None:
-        batch["net_input"]["patch_masks"] = torch.cat([sample['patch_mask'] for sample in samples])
+        batch["net_input"]["patch_masks"] = torch.cat(
+            [sample["patch_mask"] for sample in samples]
+        )
     # image generation
     if samples[0].get("code_mask", None) is not None:
-        batch["net_input"]["code_masks"] = torch.cat([sample['code_mask'] for sample in samples])
+        batch["net_input"]["code_masks"] = torch.cat(
+            [sample["code_mask"] for sample in samples]
+        )
     if samples[0].get("code_image", None) is not None:
-        batch["code_images"] = torch.cat([sample['code_image'] for sample in samples])
+        batch["code_images"] = torch.cat([sample["code_image"] for sample in samples])
     # For classification tasks (i.e., VQA, SNLI-VE, GLUE)
     if samples[0].get("conf", None) is not None:
-        batch["conf"] = torch.cat([s['conf'] for s in samples], dim=0)
+        batch["conf"] = torch.cat([s["conf"] for s in samples], dim=0)
     if samples[0].get("ref_dict", None) is not None:
-        batch["ref_dict"] = np.array([s['ref_dict'] for s in samples])
+        batch["ref_dict"] = np.array([s["ref_dict"] for s in samples])
     if samples[0].get("constraint_mask", None) is not None:
         batch["constraint_masks"] = merge("constraint_mask")
     if samples[0].get("decoder_prompt", None) is not None:
-        batch["decoder_prompts"] = np.array([s['decoder_prompt'].tolist() for s in samples])
+        batch["decoder_prompts"] = np.array(
+            [s["decoder_prompt"].tolist() for s in samples]
+        )
     # For detection and visual grounding
     if samples[0].get("w_resize_ratio", None) is not None:
-        batch["w_resize_ratios"] = torch.stack([s["w_resize_ratio"] for s in samples], dim=0)
+        batch["w_resize_ratios"] = torch.stack(
+            [s["w_resize_ratio"] for s in samples], dim=0
+        )
     if samples[0].get("h_resize_ratio", None) is not None:
-        batch["h_resize_ratios"] = torch.stack([s["h_resize_ratio"] for s in samples], dim=0)
+        batch["h_resize_ratios"] = torch.stack(
+            [s["h_resize_ratio"] for s in samples], dim=0
+        )
     if samples[0].get("region_coord", None) is not None:
-        batch["region_coords"] = torch.stack([s['region_coord'] for s in samples], dim=0)
+        batch["region_coords"] = torch.stack(
+            [s["region_coord"] for s in samples], dim=0
+        )
 
     return batch
+
 
 def collate_tokens(
     values,
@@ -171,10 +190,9 @@ def collate_tokens(
     return res
 
 
-
-
 def get_whole_word_mask(bpe, dictionary):
     if bpe is not None:
+
         def is_beginning_of_word(i):
             # if i < dictionary.nspecial:
             if i < 4:
@@ -187,7 +205,3 @@ def get_whole_word_mask(bpe, dictionary):
                 return bpe.convert_tokens_to_string(tok).startswith(" ")
             except ValueError:
                 return True
-
-
-
-

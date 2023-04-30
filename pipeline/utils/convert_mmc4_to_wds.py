@@ -58,7 +58,9 @@ def main():
                                 )
                                 # convert to base64
                                 image_bytes = image.read()
-                                image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+                                image_base64 = base64.b64encode(image_bytes).decode(
+                                    "utf-8"
+                                )
                                 sample_data["image_info"][img_idx][
                                     "image_base64"
                                 ] = image_base64
