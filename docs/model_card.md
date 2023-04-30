@@ -8,7 +8,7 @@ datasets:
 
 [Code](https://github.com/Luodian/PET-VLM) | [Demo](https://otter.cliangyu.com/)
 
-Otter is an instruction-following large multi-model model built upon Open-Flamingo-9B. Through in-context instruction following, Otter is able to perform tasks more aligned with human preferences and more accurate.
+Otter is an instruction-following large multi-modal model built upon Open-Flamingo-9B. Through in-context instruction following, Otter is able to perform tasks more aligned with human preferences and more accurate.
 
 ## Model Details
 
