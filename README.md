@@ -26,9 +26,9 @@
 ![](https://black.readthedocs.io/en/stable/_static/license.svg)
 ![](https://img.shields.io/badge/code%20style-black-000000.svg)
 
- [Otter-9B (Huggingface Models)](https://huggingface.co/luodian/otter-9b-hf) | [Youtube Video](https://youtu.be/ys4Hwh86vM0) | [Bilibili Video](https://www.bilibili.com/video/BV1iL411h7HZ/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)
+ [Otter-9B (Huggingface Models)](https://huggingface.co/luodian/otter-9b-hf) | [Youtube Video](https://youtu.be/r-YM4DGGAdE) | [Bilibili Video](https://www.bilibili.com/video/BV1iL411h7HZ/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)
  
-[Live Demo](https://otter.cliangyu.com/) | [Paper (soon)]()
+[Live Demo (soon)](https://otter.cliangyu.com/) | [Paper (soon)]()
 
 ## 🦦 Overview
 
@@ -58,6 +58,12 @@ By utilizing high-quality data, we were able to train 🦦 Otter using limited r
 
 <div style="text-align:center">
 <img src="https://i.postimg.cc/FzjKJbjJ/examples-ict.png"  width="100%" height="100%">
+</div>
+
+---
+
+<div style="text-align:center">
+<img src="https://i.postimg.cc/JnBrfwzL/examples-ict2.png"  width="100%" height="100%">
 </div>
 
 ## 🗂️ Environments
