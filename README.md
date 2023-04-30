@@ -27,6 +27,7 @@
 ![](https://img.shields.io/badge/code%20style-black-000000.svg)
 
  [Otter-9B (Huggingface Models)](https://huggingface.co/luodian/otter-9b-hf) | [Youtube Video](https://youtu.be/ys4Hwh86vM0) | [Bilibili Video](https://www.bilibili.com/video/BV1iL411h7HZ/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)
+ 
 [Otter Demo (soon)](https://otter.cliangyu.com/) | [Paper (soon)]()
 
 ## 🦦 Overview
