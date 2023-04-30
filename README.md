@@ -29,14 +29,14 @@
 ## 🦦 Overview
 
 <div style="text-align:center">
-<img src="assets/overview.png"  width="100%" height="100%">
+<img src="assets/teasor.png"  width="100%" height="100%">
 </div>
 
 Recent research highlights the importance of fine-tuning instruction for empowering large language models (LLMs), such as enhancing GPT-3 to Chat-GPT, to follow natural language instructions and effectively accomplish real-world tasks. Flamingo is considered a GPT-3 moment in the multimodal domain. 
 
 In our project, we propose 🦦 Otter, an instruction-tuned model built upon OpenFlamingo that has been customized for a context. We improve its conversational skills by using a carefully crafted multimodal instruction tuning dataset. Each data sample includes an image-specific instruction along with multiple examples of multimodal instructions for that context, also known as multimodal in-context learning examples.
 
-By utilizing high-quality data, we were able to train 🦦 Otter using limited resources (4x RTX-3090-24G GPUs) in our lab. Remarkably, it surpassed the performance of OpenFlamingo. While Otter may not be the most advanced and may occasionally experience confusion, we are committed to consistently enhancing its capabilities through including more types of training data and a larger model. In the current era of expansive foundational models, we firmly believe that anyone should have the opportunity to train their own models, even with scarce data and resources, and cultivate the models to develop their intelligence.
+By utilizing high-quality data, we were able to train 🦦 Otter using limited resources (4x RTX-3090-24G GPUs) in our lab. Remarkably, it surpassed the performance of OpenFlamingo. While Otter may not be the most advanced and may occasionally experience confusion, we are committed to consistently enhancing its capabilities by including more types of training data and a larger model. In the current era of expansive foundational models, we firmly believe that anyone should have the opportunity to train their own models, even with scarce data and resources, and cultivate the models to develop their intelligence.
 
 ## 🦦 Examples
 
@@ -56,11 +56,9 @@ from otter import OtterModel
 otter_model = OtterModel.from_pretrained("luodian/otter-9b-hf", device_map=auto)
 ```
 
-Previous [OpenFlamingo](https://github.com/mlfoundations/open_flamingo) was developed with [DistributedDataParallel](https://pytorch.org/docs/stable/nn.html#torch.nn.parallel.DistributedDataParallel) (DDP). Loading OpenFlamingo-9B to GPU requires **at least 33G GPU memory**, which is only available on A100 GPUs.
+Previous [OpenFlamingo](https://github.com/mlfoundations/open_flamingo) was developed with [DistributedDataParallel](https://pytorch.org/docs/stable/nn.html#torch.nn.parallel.DistributedDataParallel) (DDP) on A100 cluster. Loading OpenFlamingo-9B to GPU requires **at least 33G GPU memory**, which is only available on A100 GPUs.
 
-In order to allow more researchers without access to A100 machines to try training OpenFlamingo, we wrap the OpenFlamingo model into a 🤗 huggingface model ([Jinghao](https://king159.github.io/) has submitted a [PR](https://github.com/huggingface/transformers/pull/23063) to the /huggingface/transformers!). We use `accelerator` to speed up our training and implement it in a fully sharded mechanism (via `device_map=auto`) across multiple GPUs.
-
-This can help researchers who do not have access to A100-80G GPUs to achieve the similar throughput in training, testing on 4x RTX-3090-24G GPUs, and model deployment on 2x RTX-3090-24G GPUs. Specific details are below (may vary depending on the CPU and disk performance, as we conducted training on different machines).
+In order to allow more researchers without access to A100 machines to try training OpenFlamingo, we wrap the OpenFlamingo model into a 🤗 huggingface model ([Jinghao](https://king159.github.io/) has submitted a [PR](https://github.com/huggingface/transformers/pull/23063) to the /huggingface/transformers!). Via `device_map=auto`, the large model is sharded across multiple GPUs when loading and training. This can help researchers who do not have access to A100-80G GPUs to achieve similar throughput in training, testing on 4x RTX-3090-24G GPUs, and model deployment on 2x RTX-3090-24G GPUs. Specific details are below (may vary depending on the CPU and disk performance, as we conducted training on different machines).
 
 <div style="text-align:center">
 <img src="assets/table.png"  width="100%" height="100%">
@@ -82,7 +80,7 @@ Our Otter model is also developed in this way and it's deployed on the 🤗 Hugg
 The pre-training process for the OpenFlamingo model employs the MMC4 interleaved multimodality dataset to endow the model with in-context few-shot learning capabilities. The development of our instruction-following dataset adheres to the guiding principles of MMC4, which dictate that the instruction and image examples incorporated into the context should exhibit semantic pertinence to the query instruction and image.
 
 1. To augment the LLaVA dataset, we retrieve in-context examples for each query data.
-2. We curate high-quality video data from the Video PSG repository (https://github.com/Jingkang50/OpenPSG). For each video, we select 4-8 frames to be annotated for instruction-following, using the LLaVa dataset as a reference. During the training phase, given a frame, we opt for additional frames, along with their corresponding instructions and answers, to serve as in-context examples.
+2. We curate high-quality video data from the [Video PSG repository](https://github.com/Jingkang50/OpenPSG). For each video, we select 4-8 frames to be annotated for instruction-following, using the LLaVa dataset as a reference. During the training phase, given a frame, we opt for additional frames, along with their corresponding instructions and answers, to serve as in-context examples.
 
 ### Example
 
@@ -90,7 +88,7 @@ The pre-training process for the OpenFlamingo model employs the MMC4 interleaved
 
 ### Preparation
 
-We unify different instructing data into a single dataset [class](pipeline/multi_instruct_data_utils/unify_dataset.py). Full dataset is coming soon! 
+We unify different instructing data into a single dataset [class](pipeline/multi_instruct_data_utils/unify_dataset.py). The full dataset is coming soon! 
 
 <!-- Download a subset of the pretraining `multi_instruct_data` dataset
 
@@ -133,7 +131,7 @@ For details, you may refer to the [model card](docs/model_card.md).
 
 ## 🪩 Web Demo
 
-We host our [Otter-9B Demo](https://otter.cliangyu.com/) via dual RTX-3090. Launch your own demo by following the [demo instructions](docs/demo.md).
+We host our [Otter-9B Demo](https://otter.cliangyu.com/) via dual RTX-3090-24G GPUs. Launch your own demo by following the [demo instructions](docs/demo.md).
 
 ## 🛠 Incoming Features
 
