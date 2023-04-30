@@ -23,6 +23,8 @@
 ![](https://img.shields.io/badge/otter-v0.1-darkcyan)
 ![](https://img.shields.io/github/stars/luodian/otter?style=social)
 [![](https://img.shields.io/badge/demo-online-orange)](https://otter.cliangyu.com)
+![](https://black.readthedocs.io/en/stable/_static/license.svg)
+![](https://img.shields.io/badge/code%20style-black-000000.svg)
 
  [Otter Demo](https://otter.cliangyu.com/) | [Otter-9B (Huggingface Models)](https://huggingface.co/luodian/otter-9b-hf) | [Paper]() | [Video](https://otter.cliangyu.com/)
 
