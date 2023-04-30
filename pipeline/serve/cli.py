@@ -3,7 +3,6 @@ Usage:
 python3 -m fastchat.serve.cli --model ~/model_weights/llama-7b
 """
 import argparse
-import time
 
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -12,8 +11,9 @@ from pipeline.conversation import conv_templates, SeparatorStyle
 
 
 @torch.inference_mode()
-def generate_stream(tokenizer, model, params, device,
-                    context_len=2048, stream_interval=2):
+def generate_stream(
+    tokenizer, model, params, device, context_len=2048, stream_interval=2
+):
     """Adapted from fastchat/serve/model_worker.py::generate_stream"""
 
     prompt = params["prompt"]
@@ -30,17 +30,19 @@ def generate_stream(tokenizer, model, params, device,
 
     for i in range(max_new_tokens):
         if i == 0:
-            out = model(
-                torch.as_tensor([input_ids], device=device), use_cache=True)
+            out = model(torch.as_tensor([input_ids], device=device), use_cache=True)
             logits = out.logits
             past_key_values = out.past_key_values
         else:
             attention_mask = torch.ones(
-                1, past_key_values[0][0].shape[-2] + 1, device=device)
-            out = model(input_ids=torch.as_tensor([[token]], device=device),
-                        use_cache=True,
-                        attention_mask=attention_mask,
-                        past_key_values=past_key_values)
+                1, past_key_values[0][0].shape[-2] + 1, device=device
+            )
+            out = model(
+                input_ids=torch.as_tensor([[token]], device=device),
+                use_cache=True,
+                attention_mask=attention_mask,
+                past_key_values=past_key_values,
+            )
             logits = out.logits
             past_key_values = out.past_key_values
 
@@ -84,18 +86,21 @@ def main(args):
         else:
             num_gpus = int(num_gpus)
             if num_gpus != 1:
-                kwargs.update({
-                    "device_map": "auto",
-                    "max_memory": {i: "13GiB" for i in range(num_gpus)},
-                })
+                kwargs.update(
+                    {
+                        "device_map": "auto",
+                        "max_memory": {i: "13GiB" for i in range(num_gpus)},
+                    }
+                )
     elif args.device == "cpu":
         kwargs = {}
     else:
         raise ValueError(f"Invalid device: {args.device}")
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name,
-        low_cpu_mem_usage=True, **kwargs)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name, low_cpu_mem_usage=True, **kwargs
+    )
 
     if args.device == "cuda" and num_gpus == 1:
         model.cuda()
@@ -126,11 +131,11 @@ def main(args):
         print(f"{conv.roles[1]}: ", end="", flush=True)
         pre = 0
         for outputs in generate_stream(tokenizer, model, params, args.device):
-            outputs = outputs[len(prompt) + 1:].strip()
+            outputs = outputs[len(prompt) + 1 :].strip()
             outputs = outputs.split(" ")
             now = len(outputs)
             if now - 1 > pre:
-                print(" ".join(outputs[pre:now-1]), end=" ", flush=True)
+                print(" ".join(outputs[pre : now - 1]), end=" ", flush=True)
                 pre = now - 1
         print(" ".join(outputs[pre:]), flush=True)
 

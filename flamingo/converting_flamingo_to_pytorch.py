@@ -17,6 +17,7 @@ from modeling_flamingo import (
 
 from configuration_flamingo import FlamingoConfig
 
+
 class FlamingoModel(FlamingoPreTrainedModel):
     config_class = FlamingoConfig
 
@@ -37,7 +38,11 @@ class FlamingoModel(FlamingoPreTrainedModel):
         )
 
         text_tokenizer.add_special_tokens(
-            {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"] if args.add_answer_token else ["<|endofchunk|>", "<image>"]}
+            {
+                "additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]
+                if args.add_answer_token
+                else ["<|endofchunk|>", "<image>"]
+            }
         )
         if text_tokenizer.pad_token is None:
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
