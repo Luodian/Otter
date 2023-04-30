@@ -1,4 +1,4 @@
-""" convert from open flamingo pt to otter hf, as the starting point for training
+""" convert from open flamingo pt to otter hf, as the starting point for ICI training
 """
 
 import re
@@ -9,8 +9,7 @@ import torch
 import torch.nn as nn
 from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 
-from modeling_otter import (
-    OtterConfig,
+from .modeling_otter import (
     OtterPreTrainedModel,
     OtterLMMixin,
     extend_instance,
@@ -18,10 +17,11 @@ from modeling_otter import (
     OtterPerceiverResampler,
 )
 
-from configuration_otter import OtterConfig
+from .configuration_otter import OtterConfig
 
 
 class OtterModel(OtterPreTrainedModel):
+    # We need to download the llaMA and CLIP here, and the model does not have the <answer> when init
     config_class = OtterConfig
 
     def __init__(
@@ -56,6 +56,7 @@ class OtterModel(OtterPreTrainedModel):
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
+        self.only_attend_previous = config.only_attend_previous
 
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder
@@ -68,6 +69,7 @@ class OtterModel(OtterPreTrainedModel):
             vis_hidden_size=self.vis_dim,
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
             use_media_placement_augmentation=self.use_media_placement_augmentation,
+            only_attend_previous=self.only_attend_previous,
         )
 
     def get_input_embeddings(self) -> nn.Module:
@@ -111,19 +113,20 @@ def rename_flamingo_checkpoint(
 
 @torch.no_grad()
 def dump_hf_model(old_ckpt_path: str, new_folder_path: str) -> None:
+    os.makedirs(new_folder_path, exist_ok=True)
     old_ckpt = torch.load(old_ckpt_path, map_location="cpu")
     if old_ckpt.get("model", None) is not None:
         old_ckpt = old_ckpt["model"]
-    config = OtterConfig.from_json_file("otter_hf/config.json")
+    config = OtterConfig.from_json_file("otter/config.json")
     model = OtterModel(config)
     new_ckpt = rename_flamingo_checkpoint(old_ckpt)
     model.load_state_dict(new_ckpt, strict=False)
-    print(f"Saving HF model to {new_folder_path}")
     text_tokenizer = model.text_tokenizer
     text_tokenizer.add_special_tokens(
         {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
     )
     model.lang_encoder.resize_token_embeddings(len(text_tokenizer))
+    print(f"Saving HF model to {new_folder_path}")
     model.save_pretrained(new_folder_path)
 
 
@@ -144,6 +147,4 @@ if __name__ == "__main__":
         help="Path to the HF folder",
     )
     args = parser.parse_args()
-    if not os.path.exists(os.path.dirname(args.new_hf_path)):
-        os.makedirs(os.path.dirname(args.new_hf_path))
     dump_hf_model(args.old_ckpt_path, args.new_hf_path)

@@ -17,7 +17,11 @@ import uvicorn
 from functools import partial
 
 from pipeline.constants import WORKER_HEART_BEAT_INTERVAL
-from pipeline.serve.serving_utils import build_logger, server_error_msg, pretty_print_semaphore
+from pipeline.serve.serving_utils import (
+    build_logger,
+    server_error_msg,
+    pretty_print_semaphore,
+)
 from pipeline import create_model_and_transforms
 from huggingface_hub import hf_hub_download
 import transformers
@@ -44,33 +48,73 @@ def heart_beat_worker(controller):
 
 
 class ModelWorker:
-    def __init__(self, controller_addr, worker_addr, worker_id, no_register, lm_path, model_name, checkpoint_path, keep_aspect_ratio, num_gpus, load_8bit, load_pt):
+    def __init__(
+        self,
+        controller_addr,
+        worker_addr,
+        worker_id,
+        no_register,
+        lm_path,
+        model_name,
+        checkpoint_path,
+        keep_aspect_ratio,
+        num_gpus,
+        load_8bit,
+        load_pt,
+    ):
         self.controller_addr = controller_addr
         self.worker_addr = worker_addr
         self.worker_id = worker_id
         self.model_name = model_name
         logger.info(f"Loading the model {self.model_name} on worker {worker_id} ...")
         self.keep_aspect_ratio = keep_aspect_ratio
-        self.tokenizer, self.model, self.image_processor, self.context_len = self.load_model(lm_path, checkpoint_path, num_gpus, load_8bit, load_pt)
+        (
+            self.tokenizer,
+            self.model,
+            self.image_processor,
+            self.context_len,
+        ) = self.load_model(lm_path, checkpoint_path, num_gpus, load_8bit, load_pt)
 
         if not no_register:
             self.register_to_controller()
-            self.heart_beat_thread = threading.Thread(target=heart_beat_worker, args=(self,))
+            self.heart_beat_thread = threading.Thread(
+                target=heart_beat_worker, args=(self,)
+            )
             self.heart_beat_thread.start()
 
     def load_model(self, lm_path, checkpoint_path, num_gpus, load_in_8bit, load_pt):
         if not load_pt:
             device_map = "auto" if num_gpus > 0 else None
-            model = FlamingoForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit)
+            model = FlamingoForConditionalGeneration.from_pretrained(
+                checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit
+            )
             tokenizer = model.text_tokenizer
         else:
-            model, _, tokenizer = create_model_and_transforms(clip_vision_encoder_path="ViT-L-14", clip_vision_encoder_pretrained="openai", lang_encoder_path=lm_path, tokenizer_path=lm_path, cross_attn_every_n_layers=4)
-            if checkpoint_path is not None and "openflamingo" not in checkpoint_path:  # our checkpoint adds special tokens
-                tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+            model, _, tokenizer = create_model_and_transforms(
+                clip_vision_encoder_path="ViT-L-14",
+                clip_vision_encoder_pretrained="openai",
+                lang_encoder_path=lm_path,
+                tokenizer_path=lm_path,
+                cross_attn_every_n_layers=4,
+            )
+            if (
+                checkpoint_path is not None and "openflamingo" not in checkpoint_path
+            ):  # our checkpoint adds special tokens
+                tokenizer.add_special_tokens(
+                    {
+                        "additional_special_tokens": [
+                            "<|endofchunk|>",
+                            "<image>",
+                            "<answer>",
+                        ]
+                    }
+                )
                 model.lang_encoder.resize_token_embeddings(len(tokenizer))
 
             if checkpoint_path is None:
-                checkpoint_path = hf_hub_download("openflamingo/OpenFlamingo-9B", "checkpoint.pt")
+                checkpoint_path = hf_hub_download(
+                    "openflamingo/OpenFlamingo-9B", "checkpoint.pt"
+                )
                 msg = model.load_state_dict(torch.load(checkpoint_path), strict=False)
             else:
                 model_dict = torch.load(checkpoint_path)
@@ -94,18 +138,33 @@ class ModelWorker:
         logger.info("Register to controller")
 
         url = self.controller_addr + "/register_worker"
-        data = {"worker_name": self.worker_addr, "check_heart_beat": True, "worker_status": self.get_status()}
+        data = {
+            "worker_name": self.worker_addr,
+            "check_heart_beat": True,
+            "worker_status": self.get_status(),
+        }
         r = requests.post(url, json=data)
         assert r.status_code == 200
 
     def send_heart_beat(self):
-        logger.info(f"Send heart beat. Models: {[self.model_name]}. " f"Semaphore: {pretty_print_semaphore(model_semaphore)}. " f"global_counter: {global_counter}")
+        logger.info(
+            f"Send heart beat. Models: {[self.model_name]}. "
+            f"Semaphore: {pretty_print_semaphore(model_semaphore)}. "
+            f"global_counter: {global_counter}"
+        )
 
         url = self.controller_addr + "/receive_heart_beat"
 
         while True:
             try:
-                ret = requests.post(url, json={"worker_name": self.worker_addr, "queue_length": self.get_queue_length()}, timeout=25)
+                ret = requests.post(
+                    url,
+                    json={
+                        "worker_name": self.worker_addr,
+                        "queue_length": self.get_queue_length(),
+                    },
+                    timeout=25,
+                )
                 exist = ret.json()["exist"]
                 break
             except requests.exceptions.RequestException as e:
@@ -119,7 +178,15 @@ class ModelWorker:
         if model_semaphore is None:
             return 0
         else:
-            return args.limit_model_concurrency - model_semaphore._value + (len(model_semaphore._waiters) if model_semaphore._waiters is not None else 0)
+            return (
+                args.limit_model_concurrency
+                - model_semaphore._value
+                + (
+                    len(model_semaphore._waiters)
+                    if model_semaphore._waiters is not None
+                    else 0
+                )
+            )
 
     def get_status(self):
         return {
@@ -131,7 +198,11 @@ class ModelWorker:
     @torch.inference_mode()
     def generate_stream(self, params):
         logger.info(f"Generate stream...")
-        tokenizer, model, image_processor = self.tokenizer, self.model, self.image_processor
+        tokenizer, model, image_processor = (
+            self.tokenizer,
+            self.model,
+            self.image_processor,
+        )
         prompt = params["prompt"]
         logger.info(f"Prompt:::{prompt}")
         images = params.get("images", None)
@@ -142,21 +213,39 @@ class ModelWorker:
 
             assert type(images) is list
             if len(images) > 0:
-                images = [Image.open(BytesIO(base64.b64decode(image))) for image in images]
-                assert len(images) == prompt.count(DEFAULT_IMAGE_TOKEN), "Number of images does not match number of <image> tokens in prompt"
+                images = [
+                    Image.open(BytesIO(base64.b64decode(image))) for image in images
+                ]
+                assert len(images) == prompt.count(
+                    DEFAULT_IMAGE_TOKEN
+                ), "Number of images does not match number of <image> tokens in prompt"
 
-                vision_x = (image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)).to(self.device)
+                vision_x = (
+                    image_processor.preprocess(images, return_tensors="pt")[
+                        "pixel_values"
+                    ]
+                    .unsqueeze(1)
+                    .unsqueeze(0)
+                ).to(self.device)
             else:
                 images = None
                 vision_x = None
-        streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
+        streamer = TextIteratorStreamer(
+            tokenizer, skip_prompt=True, skip_special_tokens=True
+        )
         inputs = tokenizer(
             prompt,
             return_tensors="pt",
         ).to(self.device)
         generation_kwargs = params.get("generation_kwargs", {})
         logger.info(f"generation_kwargs: {generation_kwargs}")
-        generation_input = dict(vision_x=vision_x, lang_x=inputs["input_ids"], attention_mask=inputs["attention_mask"], streamer=streamer, **generation_kwargs)
+        generation_input = dict(
+            vision_x=vision_x,
+            lang_x=inputs["input_ids"],
+            attention_mask=inputs["attention_mask"],
+            streamer=streamer,
+            **generation_kwargs,
+        )
         thread = threading.Thread(target=model.generate, kwargs=generation_input)
         thread.start()
         generated_text = ""
@@ -211,7 +300,9 @@ async def generate_stream(request: Request):
     worker.send_heart_beat()
     generator = worker.generate_stream_gate(params)
     background_tasks = BackgroundTasks()
-    background_tasks.add_task(partial(release_model_semaphore, fn=worker.send_heart_beat))
+    background_tasks.add_task(
+        partial(release_model_semaphore, fn=worker.send_heart_beat)
+    )
     return StreamingResponse(generator, background=background_tasks)
 
 
@@ -225,7 +316,9 @@ if __name__ == "__main__":
     parser.add_argument("--host", type=str, default="localhost")
     parser.add_argument("--port", type=int, default=21002)
     parser.add_argument("--worker_address", type=str, default="http://localhost:21002")
-    parser.add_argument("--controller_address", type=str, default="http://localhost:21001")
+    parser.add_argument(
+        "--controller_address", type=str, default="http://localhost:21001"
+    )
     parser.add_argument("--lm_path", type=str, default="luodian/llama-7b-hf")
     parser.add_argument("--model_name", type=str)
     parser.add_argument("--checkpoint_path", type=str)
@@ -239,8 +332,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     worker_id = str(uuid.uuid4())[:6]
-    logger = build_logger("model_worker", f"model_worker_{args.model_name}_{worker_id}.log")
-    
+    logger = build_logger(
+        "model_worker", f"model_worker_{args.model_name}_{worker_id}.log"
+    )
+
     logger.info(f"args: {args}")
 
     worker = ModelWorker(
@@ -254,6 +349,6 @@ if __name__ == "__main__":
         args.keep_aspect_ratio,
         args.num_gpus,
         args.load_8bit,
-        args.load_pt
+        args.load_pt,
     )
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
