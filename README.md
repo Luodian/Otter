@@ -29,7 +29,7 @@
 ## 🦦 Overview
 
 <div style="text-align:center">
-<img src="assets/teasor.png"  width="100%" height="100%">
+<img src="assets/teaser.png"  width="100%" height="100%">
 </div>
 
 Recent research highlights the importance of fine-tuning instruction for empowering large language models (LLMs), such as enhancing GPT-3 to Chat-GPT, to follow natural language instructions and effectively accomplish real-world tasks. Flamingo is considered a GPT-3 moment in the multimodal domain. 
