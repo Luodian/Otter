@@ -40,6 +40,7 @@ In our project, we propose 🦦 Otter, an instruction-tuned model built upon Ope
 
 By utilizing high-quality data, we were able to train 🦦 Otter using limited resources (4x RTX-3090-24G GPUs) in our lab. Remarkably, it surpassed the performance of OpenFlamingo. While Otter may not be the most advanced and may occasionally experience confusion, we are committed to consistently enhancing its capabilities by including more types of training data and a larger model. In the current era of expansive foundational models, we firmly believe that anyone should have the opportunity to train their own models, even with scarce data and resources, and cultivate the models to develop their intelligence.
 
+
 ## 🦦 Examples
 
 ## 🗂️ Environments
@@ -148,6 +149,23 @@ We are working on the following models with much stronger performance.
 
 - [ ] Otter-9B for Videos
 - [ ] Otter-15B
+
+
+## 📑 Citation
+
+If you found this repository useful, please consider citing:
+```
+@software{li_bo_2023_7879884,
+  author       = {Li, Bo and Zhang, Yuanhan and Chen, Liangyu and Wang, Jinghao and Yang, Jingkang and Liu, Ziwei},
+  title        = {{Otter: Multi-Modal In-Context Learning Model with Instruction Tuning}},
+  month        = apr,
+  year         = 2023,
+  publisher    = {Zenodo},
+  version      = {0.1},
+  doi          = {10.5281/zenodo.7879884},
+  url          = {https://doi.org/10.5281/zenodo.7879884}
+}
+```
 
 ### 👨‍🏫 Acknowledgements
 

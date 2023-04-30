@@ -1,11 +1,13 @@
 import dataclasses
 from enum import auto, Enum
-from typing import List, Tuple, Any
+from typing import List, Any
 import base64
 from io import BytesIO
 
+
 class SeparatorStyle(Enum):
     """Different separator style."""
+
     SINGLE = auto()
     TWO = auto()
 
@@ -13,6 +15,7 @@ class SeparatorStyle(Enum):
 @dataclasses.dataclass
 class Conversation:
     """A class that keeps all conversation history."""
+
     system: str
     roles: List[str]
     messages: List[List[str]]
@@ -41,7 +44,7 @@ class Conversation:
             for i, (role, message) in enumerate(self.messages):
                 if message:
                     if type(message) is tuple:
-                         message = message[0]
+                        message = message[0]
 
                     if role is None:
                         ret += message + seps[i % 2]
@@ -59,7 +62,7 @@ class Conversation:
 
     def get_images(self):
         images = []
-        for i, (role, msg) in enumerate(self.messages[self.offset:]):
+        for i, (role, msg) in enumerate(self.messages[self.offset :]):
             if i % 2 == 0:
                 msg = list(msg)
                 msg, image_list = msg[0], msg[1:]
@@ -68,7 +71,9 @@ class Conversation:
                         max_hw, min_hw = max(image.size), min(image.size)
                         aspect_ratio = max_hw / min_hw
                         max_len, min_len = 800, 400
-                        shortest_edge = int(min(max_len / aspect_ratio, min_len, min_hw))
+                        shortest_edge = int(
+                            min(max_len / aspect_ratio, min_len, min_hw)
+                        )
                         longest_edge = int(shortest_edge * aspect_ratio)
                         H, W = image.size
                         if H > W:
@@ -84,7 +89,7 @@ class Conversation:
 
     def to_gradio_chatbot(self):
         ret = []
-        for i, (role, msg) in enumerate(self.messages[self.offset:]):
+        for i, (role, msg) in enumerate(self.messages[self.offset :]):
             if i % 2 == 0:
                 msg = list(msg)
                 msg, images = msg[0], msg[1:]
@@ -93,7 +98,9 @@ class Conversation:
                         max_hw, min_hw = max(image.size), min(image.size)
                         aspect_ratio = max_hw / min_hw
                         max_len, min_len = 800, 400
-                        shortest_edge = int(min(max_len / aspect_ratio, min_len, min_hw))
+                        shortest_edge = int(
+                            min(max_len / aspect_ratio, min_len, min_hw)
+                        )
                         longest_edge = int(shortest_edge * aspect_ratio)
                         H, W = image.size
                         if H > W:
@@ -106,9 +113,9 @@ class Conversation:
                         image.save(buffered, format="JPEG")
                         img_b64_str = base64.b64encode(buffered.getvalue()).decode()
                         img_str = f'<img src="data:image/png;base64,{img_b64_str}" alt="user upload image" />'
-                        msg = msg.replace('<image>', img_str, 1)
+                        msg = msg.replace("<image>", img_str, 1)
                 # hard-coded post processing
-                msg = msg[:msg.rfind("GPT:")]
+                msg = msg[: msg.rfind("GPT:")]
                 msg = msg.replace("GPT:", "\nOtter:")
                 msg = msg.replace("<|endofchunk|>", "")
                 ret.append([msg, None])
@@ -133,7 +140,9 @@ class Conversation:
             return {
                 "system": self.system,
                 "roles": self.roles,
-                "messages": [[x, y[0] if type(y) is tuple else y] for x, y in self.messages],
+                "messages": [
+                    [x, y[0] if type(y) is tuple else y] for x, y in self.messages
+                ],
                 "offset": self.offset,
                 "sep": self.sep,
                 "sep2": self.sep2,
@@ -150,11 +159,12 @@ class Conversation:
 
 conv_v1 = Conversation(
     system="A chat between a curious human and an artificial intelligence assistant. "
-           "The assistant gives helpful, detailed, and polite answers to the human's questions.",
+    "The assistant gives helpful, detailed, and polite answers to the human's questions.",
     roles=("Human", "Assistant"),
     messages=(
         ("Human", "Give three tips for staying healthy."),
-        ("Assistant",
+        (
+            "Assistant",
             "Sure, here are three tips for staying healthy:\n"
             "1. Exercise regularly: Regular physical activity can help improve your overall health and wellbeing. "
             "It can also help reduce your risk of chronic conditions such as obesity, diabetes, heart disease, "
@@ -168,7 +178,8 @@ conv_v1 = Conversation(
             "3. Get enough sleep: Getting enough quality sleep is essential for your physical "
             "and mental health. Adults should aim for seven to nine hours of sleep per night. "
             "Establish a regular sleep schedule and try to create a relaxing bedtime routine to "
-            "help improve the quality of your sleep.")
+            "help improve the quality of your sleep.",
+        ),
     ),
     offset=2,
     sep_style=SeparatorStyle.SINGLE,
@@ -177,11 +188,15 @@ conv_v1 = Conversation(
 
 conv_v1_2 = Conversation(
     system="A chat between a curious human and an artificial intelligence assistant. "
-           "The assistant gives helpful, detailed, and polite answers to the human's questions.",
+    "The assistant gives helpful, detailed, and polite answers to the human's questions.",
     roles=("Human", "Assistant"),
     messages=(
-        ("Human", "What are the key differences between renewable and non-renewable energy sources?"),
-        ("Assistant",
+        (
+            "Human",
+            "What are the key differences between renewable and non-renewable energy sources?",
+        ),
+        (
+            "Assistant",
             "Renewable energy sources are those that can be replenished naturally in a relatively "
             "short amount of time, such as solar, wind, hydro, geothermal, and biomass. "
             "Non-renewable energy sources, on the other hand, are finite and will eventually be "
@@ -199,7 +214,8 @@ conv_v1_2 = Conversation(
             "5. Flexibility: Renewable energy sources are often more flexible and can be adapted to different "
             "situations and needs, while non-renewable sources are more rigid and inflexible.\n"
             "6. Sustainability: Renewable energy sources are more sustainable over the long term, while "
-            "non-renewable sources are not, and their depletion can lead to economic and social instability.\n")
+            "non-renewable sources are not, and their depletion can lead to economic and social instability.\n",
+        ),
     ),
     offset=2,
     sep_style=SeparatorStyle.SINGLE,
