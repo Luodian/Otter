@@ -22,11 +22,12 @@
 
 ![](https://img.shields.io/badge/otter-v0.1-darkcyan)
 ![](https://img.shields.io/github/stars/luodian/otter?style=social)
-[![](https://img.shields.io/badge/demo-online-orange)](https://otter.cliangyu.com)
+<!-- [![](https://img.shields.io/badge/demo-online-orange)](https://otter.cliangyu.com) -->
 ![](https://black.readthedocs.io/en/stable/_static/license.svg)
 ![](https://img.shields.io/badge/code%20style-black-000000.svg)
 
- [Otter Demo](https://otter.cliangyu.com/) | [Otter-9B (Huggingface Models)](https://huggingface.co/luodian/otter-9b-hf) | [Paper]() | [Video](https://youtu.be/PYHEhHSZFg8)
+ [Otter-9B (Huggingface Models)](https://huggingface.co/luodian/otter-9b-hf) | [Youtube Video](https://youtu.be/ys4Hwh86vM0) | [Bilibili Video](https://www.bilibili.com/video/BV1iL411h7HZ/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)
+[Otter Demo (soon)](https://otter.cliangyu.com/) | [Paper (soon)]()
 
 ## 🦦 Overview
 
@@ -41,6 +42,22 @@ In our project, we propose 🦦 Otter, an instruction-tuned model built upon Ope
 By utilizing high-quality data, we were able to train 🦦 Otter using limited resources (4x RTX-3090-24G GPUs) in our lab. Remarkably, it surpassed the performance of OpenFlamingo. While Otter may not be the most advanced and may occasionally experience confusion, we are committed to consistently enhancing its capabilities by including more types of training data and a larger model. In the current era of expansive foundational models, we firmly believe that anyone should have the opportunity to train their own models, even with scarce data and resources, and cultivate the models to develop their intelligence.
 
 ## 🦦 Examples
+
+<div style="text-align:center">
+<img src="https://i.postimg.cc/cHtCdGCh/example-understanding.png"  width="100%" height="100%">
+</div>
+
+---
+
+<div style="text-align:center">
+<img src="https://i.postimg.cc/Nf6yyt4P/example-description.png"  width="100%" height="100%">
+</div>
+
+---
+
+<div style="text-align:center">
+<img src="https://i.postimg.cc/FzjKJbjJ/examples-ict.png"  width="100%" height="100%">
+</div>
 
 ## 🗂️ Environments
 
