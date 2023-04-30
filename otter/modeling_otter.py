@@ -1,4 +1,3 @@
-import random
 from typing import Optional
 
 import torch
@@ -305,7 +304,9 @@ class OtterMaskedCrossAttention(nn.Module):
             k = rearrange(k, "b n (h d) -> b n h d", h=h)
             v = rearrange(v, "b n (h d) -> b n h d", h=h)
             attn_mask = None
-            out = xops.memory_efficient_attention(q, k, v, attn_bias=attn_mask, scale=self.scale)
+            out = xops.memory_efficient_attention(
+                q, k, v, attn_bias=attn_mask, scale=self.scale
+            )
         return self.to_out(out)
 
 
@@ -319,7 +320,7 @@ class OtterGatedCrossAttentionBlock(nn.Module):
         heads: int = 8,
         ff_mult: int = 4,
         only_attend_immediate_media: bool = True,
-        only_attend_previous: bool = True
+        only_attend_previous: bool = True,
     ):
         super().__init__()
         self.attn = OtterMaskedCrossAttention(
@@ -328,7 +329,7 @@ class OtterGatedCrossAttentionBlock(nn.Module):
             dim_head=dim_head,
             heads=heads,
             only_attend_immediate_media=only_attend_immediate_media,
-            only_attend_previous=only_attend_previous
+            only_attend_previous=only_attend_previous,
         )
         self.attn_gate = nn.Parameter(torch.tensor([0.0]))
         self.feed_forward = nn.ModuleList(
@@ -446,7 +447,9 @@ class OtterLMMixin(nn.Module):
         gated_cross_attn_layers = nn.ModuleList(
             [
                 OtterGatedCrossAttentionBlock(
-                    dim=self.config.hidden_size, dim_visual=vis_hidden_size, only_attend_previous=only_attend_previous
+                    dim=self.config.hidden_size,
+                    dim_visual=vis_hidden_size,
+                    only_attend_previous=only_attend_previous,
                 )
                 if (layer_idx + 1) % cross_attn_every_n_layers == 0
                 else None

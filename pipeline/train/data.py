@@ -19,7 +19,7 @@ import webdataset as wds
 from PIL import Image
 from torch.utils.data import DataLoader, IterableDataset, get_worker_info
 from torch.utils.data.distributed import DistributedSampler
-from torch.utils.data import RandomSampler 
+from torch.utils.data import RandomSampler
 from webdataset.filters import _shuffle
 from webdataset.tariterators import (
     base_plus_ext,
@@ -663,31 +663,37 @@ def get_coco_vqa_dataset(args, image_processor, tokenizer, epoch=0, floor=False)
 
     return DataInfo(dataloader=dataloader, shared_epoch=shared_epoch)
 
+
 from PIL import Image, ImageFile
 import json
 from pipeline.multi_instruct_data_utils.input_dataset import FileDataset
 from pipeline.multi_instruct_data_utils.unify_dataset import UnifyDataset
 
-def get_multi_instruction_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
+
+def get_multi_instruction_dataset(
+    args, image_processor, tokenizer, epoch=0, floor=False
+):
     multi_instruct_path = args.multi_instruct_path
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     dataset = FileDataset(multi_instruct_path, args.selected_cols)
-    args.task = 'pretrain'
+    args.task = "pretrain"
     args.tokenizer = tokenizer
     unified_dataset = UnifyDataset(args, dataset)
 
     # create a shared epoch store to sync epoch to dataloader worker proc
     shared_epoch = SharedEpoch(epoch=epoch)
-    
+
     round_fn = math.floor if floor else math.ceil
     global_batch_size = args.batch_size * args.world_size
 
-    num_samples = len(unified_dataset) #8
-    num_batches = round_fn(num_samples / global_batch_size) #2
-    args.workers = max(1, args.workers) # 1
-    num_worker_batches = round_fn(num_batches / args.workers)  # per dataloader worker #2
-    num_batches = num_worker_batches * args.workers #2
-    num_samples = num_batches * global_batch_size # 8
+    num_samples = len(unified_dataset)  # 8
+    num_batches = round_fn(num_samples / global_batch_size)  # 2
+    args.workers = max(1, args.workers)  # 1
+    num_worker_batches = round_fn(
+        num_batches / args.workers
+    )  # per dataloader worker #2
+    num_batches = num_worker_batches * args.workers  # 2
+    num_samples = num_batches * global_batch_size  # 8
     # each worker is iterating over this
     # dataset = dataset.with_epoch(num_worker_batches)
 
@@ -703,13 +709,22 @@ def get_multi_instruction_dataset(args, image_processor, tokenizer, epoch=0, flo
     else:
         sampler = RandomSampler(unified_dataset)
 
-    dataloader = torch.utils.data.DataLoader(unified_dataset, sampler=sampler, batch_size=args.batch_size, num_workers=0, pin_memory=True, drop_last=True, collate_fn=unified_dataset.collate)
+    dataloader = torch.utils.data.DataLoader(
+        unified_dataset,
+        sampler=sampler,
+        batch_size=args.batch_size,
+        num_workers=0,
+        pin_memory=True,
+        drop_last=True,
+        collate_fn=unified_dataset.collate,
+    )
 
     # add meta-data to dataloader instance for convenience
     dataloader.num_batches = num_batches
     dataloader.num_samples = num_samples
 
     return DataInfo(dataloader=dataloader, sampler=sampler, shared_epoch=shared_epoch)
+
 
 def get_dataset_fn(dataset_type):
     if dataset_type == "image_text":
@@ -722,6 +737,7 @@ def get_dataset_fn(dataset_type):
         return get_multi_instruction_dataset
     else:
         raise ValueError(f"Unsupported dataset type: {dataset_type}")
+
 
 def get_data(args, image_processor, tokenizer, dataset_type, epoch=0):
     return get_dataset_fn(dataset_type)(
