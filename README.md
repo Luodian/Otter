@@ -45,13 +45,19 @@ By utilizing high-quality data, we were able to train 🦦 Otter using limited r
 ## 🦦 Examples
 
 <div style="text-align:center">
-<img src="https://i.postimg.cc/cHtCdGCh/example-understanding.png"  width="100%" height="100%">
+<img src="https://i.postimg.cc/KYqmWG7j/example-description2.png"  width="100%" height="100%">
 </div>
 
 ---
 
 <div style="text-align:center">
-<img src="https://i.postimg.cc/Nf6yyt4P/example-description.png"  width="100%" height="100%">
+<img src="https://i.postimg.cc/FRYh5MGZ/example-description.png"  width="100%" height="100%">
+</div>
+
+---
+
+<div style="text-align:center">
+<img src="https://i.postimg.cc/YSqp8GWT/example-understanding.png"  width="100%" height="100%">
 </div>
 
 ---
