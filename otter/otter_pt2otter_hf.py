@@ -53,11 +53,19 @@ class OtterModel(OtterPreTrainedModel):
         config: OtterConfig,
     ):
         super().__init__(config)
-        text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
-        lang_encoder = LlamaForCausalLM.from_pretrained(config.text_config._name_or_path)
-        vision_encoder = CLIPVisionModel.from_pretrained(config.vision_config._name_or_path)
+        text_tokenizer = LlamaTokenizer.from_pretrained(
+            config.text_config._name_or_path
+        )
+        lang_encoder = LlamaForCausalLM.from_pretrained(
+            config.text_config._name_or_path
+        )
+        vision_encoder = CLIPVisionModel.from_pretrained(
+            config.vision_config._name_or_path
+        )
 
-        text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+        text_tokenizer.add_special_tokens(
+            {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
+        )
         if text_tokenizer.pad_token is None:
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
         self.text_tokenizer = text_tokenizer

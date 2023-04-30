@@ -10,7 +10,12 @@ import requests
 
 from pipeline.conversation import default_conversation, conv_templates, SeparatorStyle
 from pipeline.constants import LOGDIR
-from pipeline.serve.serving_utils import build_logger, server_error_msg, violates_moderation, moderation_msg
+from pipeline.serve.serving_utils import (
+    build_logger,
+    server_error_msg,
+    violates_moderation,
+    moderation_msg,
+)
 from pipeline.serve.gradio_patch import Chatbot as grChatbot
 from pipeline.serve.gradio_css import code_highlight_css
 
@@ -69,13 +74,15 @@ def load_demo(url_params, request: gr.Request):
             dropdown_update = gr.Dropdown.update(value=model, visible=True)
 
     state = None
-    return (state, dropdown_update, 
-            gr.Chatbot.update(visible=True), 
-            gr.Textbox.update(visible=True), 
-            gr.Button.update(visible=True), 
-            gr.Row.update(visible=True), 
-            gr.Accordion.update(visible=True)
-            )
+    return (
+        state,
+        dropdown_update,
+        gr.Chatbot.update(visible=True),
+        gr.Textbox.update(visible=True),
+        gr.Button.update(visible=True),
+        gr.Row.update(visible=True),
+        gr.Accordion.update(visible=True),
+    )
 
 
 def load_demo_refresh_model_list(request: gr.Request):
@@ -133,7 +140,8 @@ def regenerate(state, request: gr.Request):
             state.to_gradio_chatbot(),
         )
         + (
-            "", "",
+            "",
+            "",
             None,
         )
         * 2
@@ -155,7 +163,8 @@ def clear_history(request: gr.Request):
             [],
         )
         + (
-            "", "",
+            "",
+            "",
             None,
         )
         * 2
@@ -168,8 +177,25 @@ def clear_history(request: gr.Request):
     )
 
 
-def add_text(state, text_demo_question_1, text_demo_answer_1, image_demo_1, text_demo_question_2, text_demo_answer_2, image_demo_2, text_3, image_3, request: gr.Request):
-    text = text_3 + ' ' + conv_templates[template_name].copy().roles[1] + ':' + DEFAULT_ANSWER_TOKEN
+def add_text(
+    state,
+    text_demo_question_1,
+    text_demo_answer_1,
+    image_demo_1,
+    text_demo_question_2,
+    text_demo_answer_2,
+    image_demo_2,
+    text_3,
+    image_3,
+    request: gr.Request,
+):
+    text = (
+        text_3
+        + " "
+        + conv_templates[template_name].copy().roles[1]
+        + ":"
+        + DEFAULT_ANSWER_TOKEN
+    )
     logger.info(f"add_text. ip: {request.client.host}. len: {len(text)}")
     if state is None:
         state = conv_templates[template_name].copy()
@@ -185,7 +211,8 @@ def add_text(state, text_demo_question_1, text_demo_answer_1, image_demo_1, text
             return (
                 (state, state.to_gradio_chatbot())
                 + (
-                    "", "",
+                    "",
+                    "",
                     None,
                 )
                 * 2
@@ -195,13 +222,42 @@ def add_text(state, text_demo_question_1, text_demo_answer_1, image_demo_1, text
 
     text = text[:1536]  # Hard cut-off
     if image_3 is not None:
-        text = DEFAULT_IMAGE_TOKEN + conv_templates[template_name].copy().roles[0] + ': ' + text
+        text = (
+            DEFAULT_IMAGE_TOKEN
+            + conv_templates[template_name].copy().roles[0]
+            + ": "
+            + text
+        )
     if text_demo_answer_2 != "":
         assert image_demo_2 is not None
-        text = DEFAULT_IMAGE_TOKEN + conv_templates[template_name].copy().roles[0] + ': ' + text_demo_question_2  + ' ' + conv_templates[template_name].copy().roles[1] + ':' + DEFAULT_ANSWER_TOKEN + text_demo_answer_2 + DEFAULT_DEMO_END_TOKEN + text
+        text = (
+            DEFAULT_IMAGE_TOKEN
+            + conv_templates[template_name].copy().roles[0]
+            + ": "
+            + text_demo_question_2
+            + " "
+            + conv_templates[template_name].copy().roles[1]
+            + ":"
+            + DEFAULT_ANSWER_TOKEN
+            + text_demo_answer_2
+            + DEFAULT_DEMO_END_TOKEN
+            + text
+        )
     if text_demo_answer_1 != "":
         assert image_demo_1 is not None
-        text = DEFAULT_IMAGE_TOKEN + conv_templates[template_name].copy().roles[0] + ': ' + text_demo_question_1  + ' ' + conv_templates[template_name].copy().roles[1] + ':' + DEFAULT_ANSWER_TOKEN + text_demo_answer_1 + DEFAULT_DEMO_END_TOKEN + text
+        text = (
+            DEFAULT_IMAGE_TOKEN
+            + conv_templates[template_name].copy().roles[0]
+            + ": "
+            + text_demo_question_1
+            + " "
+            + conv_templates[template_name].copy().roles[1]
+            + ":"
+            + DEFAULT_ANSWER_TOKEN
+            + text_demo_answer_1
+            + DEFAULT_DEMO_END_TOKEN
+            + text
+        )
 
     input = (text, image_demo_1, image_demo_2, image_3)
     state.append_message(state.roles[0], input)
@@ -213,7 +269,8 @@ def add_text(state, text_demo_question_1, text_demo_answer_1, image_demo_1, text
             state.to_gradio_chatbot(),
         )
         + (
-            "", "",
+            "",
+            "",
             None,
         )
         * 2
@@ -237,7 +294,19 @@ def post_process_code(code):
     return code
 
 
-def http_bot(state, model_selector, max_new_tokens, temperature, top_k, top_p, no_repeat_ngram_size, length_penalty, do_sample, early_stopping, request: gr.Request):
+def http_bot(
+    state,
+    model_selector,
+    max_new_tokens,
+    temperature,
+    top_k,
+    top_p,
+    no_repeat_ngram_size,
+    length_penalty,
+    do_sample,
+    early_stopping,
+    request: gr.Request,
+):
     logger.info(f"http_bot. ip: {request.client.host}")
     start_tstamp = time.time()
     model_name = model_selector
@@ -257,20 +326,30 @@ def http_bot(state, model_selector, max_new_tokens, temperature, top_k, top_p, n
 
     # Query worker address
     controller_url = args.controller_url
-    ret = requests.post(controller_url + "/get_worker_address", json={"model": model_name})
+    ret = requests.post(
+        controller_url + "/get_worker_address", json={"model": model_name}
+    )
     worker_addr = ret.json()["address"]
     logger.info(f"model_name: {model_name}, worker_addr: {worker_addr}")
 
     # No available worker
     if worker_addr == "":
         state.messages[-1][-1] = server_error_msg
-        yield (state, state.to_gradio_chatbot(), disable_btn, disable_btn, disable_btn, enable_btn, enable_btn)
+        yield (
+            state,
+            state.to_gradio_chatbot(),
+            disable_btn,
+            disable_btn,
+            disable_btn,
+            enable_btn,
+            enable_btn,
+        )
         return
 
     # Construct prompt
-    role_label = state.roles[1] + ': '
+    role_label = state.roles[1] + ": "
     # hard code preprocessing: remove the last role label
-    prompt = state.get_prompt()[:-len(role_label)]
+    prompt = state.get_prompt()[: -len(role_label)]
 
     # Construct generation kwargs
     generation_kwargs = {
@@ -302,25 +381,43 @@ def http_bot(state, model_selector, max_new_tokens, temperature, top_k, top_p, n
 
     try:
         # Stream output
-        response = requests.post(worker_addr + "/worker_generate_stream", headers=headers, json=pload, stream=True, timeout=25)
+        response = requests.post(
+            worker_addr + "/worker_generate_stream",
+            headers=headers,
+            json=pload,
+            stream=True,
+            timeout=25,
+        )
         for chunk in response.iter_lines(decode_unicode=False, delimiter=b"\0"):
             if chunk:
                 data = json.loads(chunk.decode())
                 if data["error_code"] == 0:
                     # output = data["text"][len(prompt) + 1 :].strip() # original postprocessing
-                    output = data["text"].strip() # TODO: fix hardcode postprocessing
+                    output = data["text"].strip()  # TODO: fix hardcode postprocessing
                     output = post_process_code(output)
                     state.messages[-1][-1] = output + "▌"
                     yield (state, state.to_gradio_chatbot()) + (disable_btn,) * 5
                 else:
                     output = data["text"] + f" (error_code: {data['error_code']})"
                     state.messages[-1][-1] = output
-                    yield (state, state.to_gradio_chatbot()) + (disable_btn, disable_btn, disable_btn, enable_btn, enable_btn)
+                    yield (state, state.to_gradio_chatbot()) + (
+                        disable_btn,
+                        disable_btn,
+                        disable_btn,
+                        enable_btn,
+                        enable_btn,
+                    )
                     return
                 time.sleep(0.03)
     except requests.exceptions.RequestException as e:
         state.messages[-1][-1] = server_error_msg
-        yield (state, state.to_gradio_chatbot()) + (disable_btn, disable_btn, disable_btn, enable_btn, enable_btn)
+        yield (state, state.to_gradio_chatbot()) + (
+            disable_btn,
+            disable_btn,
+            disable_btn,
+            enable_btn,
+            enable_btn,
+        )
         return
 
     state.messages[-1][-1] = state.messages[-1][-1][:-1]
@@ -404,35 +501,110 @@ def build_demo(embed_mode):
         with gr.Row():
             with gr.Column(scale=3):
                 with gr.Row(elem_id="model_selector_row"):
-                    model_selector = gr.Dropdown(choices=models, value=models[0] if len(models) > 0 else "", interactive=True, show_label=False).style(container=False)
+                    model_selector = gr.Dropdown(
+                        choices=models,
+                        value=models[0] if len(models) > 0 else "",
+                        interactive=True,
+                        show_label=False,
+                    ).style(container=False)
 
                 imagebox_3 = gr.Image(label="Image", type="pil")
-                
-                with gr.Row():
-                    imagebox_demo_1 = gr.Image(label="Demo Image 1 (optional)", type="pil")
-                    textbox_demo_question_1 = gr.Textbox(label="Demo Text Query 1 (optional)", show_label=True, placeholder="Example: What is in the image?").style(container=True)
-                    textbox_demo_answer_1 = gr.Textbox(label="Demo Text Answer 1 (optional)", show_label=True, placeholder="<Describe Demo Image 1>").style(container=True)
-                with gr.Row():
-                    imagebox_demo_2 = gr.Image(label="Demo Image 2 (optional)", type="pil")
-                    textbox_demo_question_2 = gr.Textbox(label="Demo Text Query 2 (optional)", show_label=True, placeholder="Example: What is in the image?").style(container=True)
-                    textbox_demo_answer_2 = gr.Textbox(label="Demo Text Answer 2 (optional)", show_label=True, placeholder="<Describe Demo Image 2>").style(container=True)
 
-                with gr.Accordion("Parameters", open=False, visible=False) as parameter_row:
+                with gr.Row():
+                    imagebox_demo_1 = gr.Image(
+                        label="Demo Image 1 (optional)", type="pil"
+                    )
+                    textbox_demo_question_1 = gr.Textbox(
+                        label="Demo Text Query 1 (optional)",
+                        show_label=True,
+                        placeholder="Example: What is in the image?",
+                    ).style(container=True)
+                    textbox_demo_answer_1 = gr.Textbox(
+                        label="Demo Text Answer 1 (optional)",
+                        show_label=True,
+                        placeholder="<Describe Demo Image 1>",
+                    ).style(container=True)
+                with gr.Row():
+                    imagebox_demo_2 = gr.Image(
+                        label="Demo Image 2 (optional)", type="pil"
+                    )
+                    textbox_demo_question_2 = gr.Textbox(
+                        label="Demo Text Query 2 (optional)",
+                        show_label=True,
+                        placeholder="Example: What is in the image?",
+                    ).style(container=True)
+                    textbox_demo_answer_2 = gr.Textbox(
+                        label="Demo Text Answer 2 (optional)",
+                        show_label=True,
+                        placeholder="<Describe Demo Image 2>",
+                    ).style(container=True)
+
+                with gr.Accordion(
+                    "Parameters", open=False, visible=False
+                ) as parameter_row:
                     with gr.Row():
-                        max_new_tokens = gr.Slider(minimum=20, maximum=500, value=200, step=10, interactive=True, label="# generation tokens")
-                        temperature = gr.Slider(minimum=0, maximum=1, value=1, step=0.1, interactive=True, label="temperature")
-                        top_k = gr.Slider(minimum=0, maximum=10, value=0, step=1, interactive=True, label="top_k")
-                        top_p = gr.Slider(minimum=0, maximum=1, value=1.0, step=0.1, interactive=True, label="top_p")
-                        no_repeat_ngram_size = gr.Slider(minimum=1, maximum=10, value=3, step=1, interactive=True, label="no_repeat_ngram_size")
-                        length_penalty = gr.Slider(minimum=1, maximum=5, value=1, step=0.1, interactive=True, label="length_penalty")
+                        max_new_tokens = gr.Slider(
+                            minimum=20,
+                            maximum=500,
+                            value=200,
+                            step=10,
+                            interactive=True,
+                            label="# generation tokens",
+                        )
+                        temperature = gr.Slider(
+                            minimum=0,
+                            maximum=1,
+                            value=1,
+                            step=0.1,
+                            interactive=True,
+                            label="temperature",
+                        )
+                        top_k = gr.Slider(
+                            minimum=0,
+                            maximum=10,
+                            value=0,
+                            step=1,
+                            interactive=True,
+                            label="top_k",
+                        )
+                        top_p = gr.Slider(
+                            minimum=0,
+                            maximum=1,
+                            value=1.0,
+                            step=0.1,
+                            interactive=True,
+                            label="top_p",
+                        )
+                        no_repeat_ngram_size = gr.Slider(
+                            minimum=1,
+                            maximum=10,
+                            value=3,
+                            step=1,
+                            interactive=True,
+                            label="no_repeat_ngram_size",
+                        )
+                        length_penalty = gr.Slider(
+                            minimum=1,
+                            maximum=5,
+                            value=1,
+                            step=0.1,
+                            interactive=True,
+                            label="length_penalty",
+                        )
                         do_sample = gr.Checkbox(interactive=True, label="do_sample")
-                        early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
+                        early_stopping = gr.Checkbox(
+                            interactive=True, label="early_stopping"
+                        )
 
             with gr.Column(scale=6):
                 chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=720)
                 with gr.Row():
                     with gr.Column(scale=8):
-                        textbox_3 = gr.Textbox(label="Text Query",show_label=False, placeholder="Enter text and press ENTER").style(container=False)
+                        textbox_3 = gr.Textbox(
+                            label="Text Query",
+                            show_label=False,
+                            placeholder="Enter text and press ENTER",
+                        ).style(container=False)
                     with gr.Column(scale=1, min_width=60):
                         submit_btn = gr.Button(value="Submit", visible=False)
                 with gr.Row(visible=False) as button_row:
@@ -446,10 +618,37 @@ def build_demo(embed_mode):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         gr.Examples(
             examples=[
-                [f"{cur_dir}/examples/extreme_ironing.jpg", "What is in the image?", "a man ironing on car", f"{cur_dir}/examples/waterview.jpg", "What is in the image?", "lake", f"{cur_dir}/examples/dinner.jpg", "What is in the image?"],
-                [f"{cur_dir}/examples/cat.jpg", "An image of", "two cats.", f"{cur_dir}/examples/bathroom.jpg", "An image of", "a bathroom sink.", f"{cur_dir}/examples/dinner.jpg", "An image of"],
+                [
+                    f"{cur_dir}/examples/extreme_ironing.jpg",
+                    "What is in the image?",
+                    "a man ironing on car",
+                    f"{cur_dir}/examples/waterview.jpg",
+                    "What is in the image?",
+                    "lake",
+                    f"{cur_dir}/examples/dinner.jpg",
+                    "What is in the image?",
+                ],
+                [
+                    f"{cur_dir}/examples/cat.jpg",
+                    "An image of",
+                    "two cats.",
+                    f"{cur_dir}/examples/bathroom.jpg",
+                    "An image of",
+                    "a bathroom sink.",
+                    f"{cur_dir}/examples/dinner.jpg",
+                    "An image of",
+                ],
             ],
-            inputs=[imagebox_demo_1, textbox_demo_question_1, textbox_demo_answer_1, imagebox_demo_2, textbox_demo_question_2, textbox_demo_answer_2, imagebox_3, textbox_3],
+            inputs=[
+                imagebox_demo_1,
+                textbox_demo_question_1,
+                textbox_demo_answer_1,
+                imagebox_demo_2,
+                textbox_demo_question_2,
+                textbox_demo_answer_2,
+                imagebox_3,
+                textbox_3,
+            ],
         )
 
         if not embed_mode:
@@ -459,11 +658,39 @@ def build_demo(embed_mode):
 
         # Register listeners
         btn_list = [upvote_btn, downvote_btn, flag_btn, regenerate_btn, clear_btn]
-        demo_list = [textbox_demo_question_1, textbox_demo_answer_1, imagebox_demo_1, textbox_demo_question_2, textbox_demo_answer_2, imagebox_demo_2]
-        prarameter_list = [max_new_tokens, temperature, top_k, top_p, no_repeat_ngram_size, length_penalty, do_sample, early_stopping]
-        upvote_btn.click(upvote_last_response, [state, model_selector], [textbox_3, upvote_btn, downvote_btn, flag_btn])
-        downvote_btn.click(downvote_last_response, [state, model_selector], [textbox_3, upvote_btn, downvote_btn, flag_btn])
-        flag_btn.click(flag_last_response, [state, model_selector], [textbox_3, upvote_btn, downvote_btn, flag_btn])
+        demo_list = [
+            textbox_demo_question_1,
+            textbox_demo_answer_1,
+            imagebox_demo_1,
+            textbox_demo_question_2,
+            textbox_demo_answer_2,
+            imagebox_demo_2,
+        ]
+        prarameter_list = [
+            max_new_tokens,
+            temperature,
+            top_k,
+            top_p,
+            no_repeat_ngram_size,
+            length_penalty,
+            do_sample,
+            early_stopping,
+        ]
+        upvote_btn.click(
+            upvote_last_response,
+            [state, model_selector],
+            [textbox_3, upvote_btn, downvote_btn, flag_btn],
+        )
+        downvote_btn.click(
+            downvote_last_response,
+            [state, model_selector],
+            [textbox_3, upvote_btn, downvote_btn, flag_btn],
+        )
+        flag_btn.click(
+            flag_last_response,
+            [state, model_selector],
+            [textbox_3, upvote_btn, downvote_btn, flag_btn],
+        )
         regenerate_btn.click(
             regenerate,
             state,
@@ -561,9 +788,34 @@ def build_demo(embed_mode):
         )
 
         if args.model_list_mode == "once":
-            demo.load(load_demo, [url_params], [state, model_selector, chatbot, textbox_3, submit_btn, button_row, parameter_row], _js=get_window_url_params)
+            demo.load(
+                load_demo,
+                [url_params],
+                [
+                    state,
+                    model_selector,
+                    chatbot,
+                    textbox_3,
+                    submit_btn,
+                    button_row,
+                    parameter_row,
+                ],
+                _js=get_window_url_params,
+            )
         elif args.model_list_mode == "reload":
-            demo.load(load_demo_refresh_model_list, None, [state, model_selector, chatbot, textbox_3, submit_btn, button_row, parameter_row])
+            demo.load(
+                load_demo_refresh_model_list,
+                None,
+                [
+                    state,
+                    model_selector,
+                    chatbot,
+                    textbox_3,
+                    submit_btn,
+                    button_row,
+                    parameter_row,
+                ],
+            )
         else:
             raise ValueError(f"Unknown model list mode: {args.model_list_mode}")
 
@@ -577,7 +829,9 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default="7861")
     parser.add_argument("--controller_url", type=str, default="http://localhost:21001")
     parser.add_argument("--concurrency_count", type=int, default=16)
-    parser.add_argument("--model_list_mode", type=str, default="once", choices=["once", "reload"])
+    parser.add_argument(
+        "--model_list_mode", type=str, default="once", choices=["once", "reload"]
+    )
     parser.add_argument("--share", action="store_true")
     parser.add_argument("--moderate", action="store_true")
     parser.add_argument("--embed", action="store_true")
@@ -586,5 +840,7 @@ if __name__ == "__main__":
     models = get_model_list()
     logger.info(args)
     demo = build_demo(args.embed)
-    demo.queue(concurrency_count=args.concurrency_count, status_update_rate=10, api_open=False).launch(server_name=args.host, server_port=args.port, share=args.share)
+    demo.queue(
+        concurrency_count=args.concurrency_count, status_update_rate=10, api_open=False
+    ).launch(server_name=args.host, server_port=args.port, share=args.share)
     gr.close_all()
