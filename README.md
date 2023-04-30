@@ -40,7 +40,6 @@ In our project, we propose 🦦 Otter, an instruction-tuned model built upon Ope
 
 By utilizing high-quality data, we were able to train 🦦 Otter using limited resources (4x RTX-3090-24G GPUs) in our lab. Remarkably, it surpassed the performance of OpenFlamingo. While Otter may not be the most advanced and may occasionally experience confusion, we are committed to consistently enhancing its capabilities by including more types of training data and a larger model. In the current era of expansive foundational models, we firmly believe that anyone should have the opportunity to train their own models, even with scarce data and resources, and cultivate the models to develop their intelligence.
 
-
 ## 🦦 Examples
 
 ## 🗂️ Environments
