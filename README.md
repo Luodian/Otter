@@ -104,7 +104,7 @@ The pre-training process for the OpenFlamingo model employs the MMC4 interleaved
 
 ### Example
 
-<p align="center" width="100%"><img src="assets/image_example_3.png" alt="otter-example" style="width: 100%; min-width: 300px; display: block; margin: auto;"></a></p>
+<p align="center" width="100%"><img src="https://i.postimg.cc/vmmP0bH0/image-example-3.png" alt="otter-example" style="width: 100%; min-width: 300px; display: block; margin: auto;"></a></p>
 
 ### Preparation
 
