@@ -150,7 +150,8 @@ We are working on the following models with much stronger performance.
 - [ ] Otter-15B
 
 
-### 📑 Citation
+## 📑 Citation
+
 If you found this repository useful, please consider citing:
 ```
 @software{li_bo_2023_7879884,
