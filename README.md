@@ -28,6 +28,10 @@
 
 ## 🦦 Overview
 
+<div style="text-align:center">
+<img src="assets/overview.png"  width="100%" height="100%">
+</div>
+
 Recent research highlights the importance of fine-tuning instruction for empowering large language models (LLMs), such as enhancing GPT-3 to Chat-GPT, to follow natural language instructions and effectively accomplish real-world tasks. Flamingo is considered a GPT-3 moment in the multimodal domain. 
 
 In our project, we propose 🦦 Otter, an instruction-tuned model built upon OpenFlamingo that has been customized for a context. We improve its conversational skills by using a carefully crafted multimodal instruction tuning dataset. Each data sample includes an image-specific instruction along with multiple examples of multimodal instructions for that context, also known as multimodal in-context learning examples.
