@@ -625,7 +625,7 @@ def build_demo(embed_mode):
         gr.Examples(
             examples=[
                 [f"{cur_dir}/examples/cat.jpg", "An image of", "two cats.", f"{cur_dir}/examples/bathroom.jpg", "An image of", "a bathroom sink.", f"{cur_dir}/examples/dinner.jpg", "An image of"],
-                [f"{cur_dir}/examples/baseball.jpg", "What is the potential danger of this sport?", "bumped into others while chasing ball.", f"{cur_dir}/examples/tennis.jpg", "What is the potential danger of this sport?", "hitted by the tennis ball.", f"{cur_dir}/examples/soccer.png", "What is the potential danger of this sport?"],
+                [f"{cur_dir}/examples/tennis.jpg", "What is the danger of this sport?", "The player may get hitted by the tennis ball.", f"{cur_dir}/examples/baseball.jpg", "What is the danger of this sport?", "While chasing the baseball, the player may inadvertently collide with other players.",  f"{cur_dir}/examples/soccer.png", "What is the danger of this sport?"],
             ],
             inputs=[
                 imagebox_demo_1,
