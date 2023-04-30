@@ -149,6 +149,22 @@ We are working on the following models with much stronger performance.
 - [ ] Otter-9B for Videos
 - [ ] Otter-15B
 
+
+### 📑 Citation
+If you found this repository useful, please consider citing:
+```
+@software{li_bo_2023_7879884,
+  author       = {Li, Bo and Zhang, Yuanhan and Chen, Liangyu and Wang, Jinghao and Yang, Jingkang and Liu, Ziwei},
+  title        = {{Otter: Multi-Modal In-Context Learning Model with Instruction Tuning}},
+  month        = apr,
+  year         = 2023,
+  publisher    = {Zenodo},
+  version      = {0.1},
+  doi          = {10.5281/zenodo.7879884},
+  url          = {https://doi.org/10.5281/zenodo.7879884}
+}
+```
+
 ### 👨‍🏫 Acknowledgements
 
 We thank [Chunyuan Li](https://chunyuan.li/) and [Jack Hessel](https://jmhessel.com/) for their advise and support, as well as the [OpenFlamingo](https://github.com/mlfoundations/open_flamingo) team for their great contribution to the open source community.
