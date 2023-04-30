@@ -458,7 +458,7 @@ a:link {
 
 <h3><a href="https://github.com/Luodian/otter"><img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" style="height: 15px; display:inline;" class="icon" alt="github">GitHub</a>
 &nbsp;&nbsp;&nbsp;
-<a href="https://youtu.be/PYHEhHSZFg8"><img src="https://www.svgrepo.com/show/13671/youtube.svg" style="height: 15px; display:inline;" class="icon" alt="video demo">Video Demo</a>
+<a href="https://youtu.be/ys4Hwh86vM0"><img src="https://www.svgrepo.com/show/13671/youtube.svg" style="height: 15px; display:inline;" class="icon" alt="video demo">Video Demo</a>
 </h3>
 
 | Choose a model to chat with | |
