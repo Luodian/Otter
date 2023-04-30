@@ -80,7 +80,7 @@ Our Otter model is also developed in this way and it's deployed on the 🤗 Hugg
 The pre-training process for the OpenFlamingo model employs the MMC4 interleaved multimodality dataset to endow the model with in-context few-shot learning capabilities. The development of our instruction-following dataset adheres to the guiding principles of MMC4, which dictate that the instruction and image examples incorporated into the context should exhibit semantic pertinence to the query instruction and image.
 
 1. To augment the LLaVA dataset, we retrieve in-context examples for each query data.
-2. We curate high-quality video data from the [Video PSG repository](https://github.com/Jingkang50/OpenPSG). For each video, we select 4-8 frames to be annotated for instruction-following, using the LLaVa dataset as a reference. During the training phase, given a frame, we opt for additional frames, along with their corresponding instructions and answers, to serve as in-context examples.
+2. We curate high-quality, in-progress panoptic video scene graph data from the PVSG repository. For each video, we select 4-8 frames to be annotated for instruction-following, using the LLaVa dataset as a reference. During the training phase, given a frame, we opt for additional frames, along with their corresponding instructions and answers, to serve as in-context examples.
 
 ### Example
 
