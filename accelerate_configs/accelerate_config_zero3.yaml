@@ -1,0 +1,21 @@
+compute_environment: LOCAL_MACHINE
+deepspeed_config:
+  deepspeed_config_file: accelerate_configs/ds_config.json
+distributed_type: DEEPSPEED
+downcast_bf16: 'no'
+dynamo_config:
+  dynamo_backend: INDUCTOR
+  dynamo_mode: default
+  dynamo_use_dynamic: false
+  dynamo_use_fullgraph: true
+machine_rank: 0
+main_training_function: main
+main_process_port: 20688
+num_machines: 1
+num_processes: 1
+rdzv_backend: static
+same_network: true
+tpu_env: []
+tpu_use_cluster: false
+tpu_use_sudo: false
+use_cpu: false
