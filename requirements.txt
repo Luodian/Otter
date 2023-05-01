@@ -1,3 +1,35 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:2ef11836b5e9aadf4cf373143db3a0574bf3134310e49fe7893a37a53121231f
-size 444
+accelerate==0.19.0.dev0
+apex==0.9.10dev
+braceexpand==0.1.7
+deepspeed==0.9.0
+einops==0.6.1
+einops_exts==0.0.4
+fairseq==0.12.2
+fastapi==0.95.1
+gradio==3.28.0
+horovod==0.27.0
+huggingface_hub==0.13.3
+inflection==0.5.1
+markdown2==2.4.8
+more_itertools==9.1.0
+nltk==3.8.1
+numpy==1.23.5
+open_clip_torch==2.16.0
+opencv_python_headless==4.5.5.64
+Pillow==9.5.0
+Pillow==9.5.0
+pycocoevalcap==1.2
+pycocotools==2.0.6
+Requests==2.29.0
+scikit_learn==1.2.2
+setuptools==67.6.1
+six==1.16.0
+tensorboardX==2.6
+torch==2.0.0
+torch_xla==1.0
+torchvision==0.15.1
+tqdm==4.65.0
+transformers==4.29.0.dev0
+uvicorn==0.22.0
+webdataset==0.2.48
+xformers==0.0.19

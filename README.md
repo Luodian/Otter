@@ -1,103 +1,202 @@
-# PET-VLM
+<p align="center" width="100%">
+<img src="assets/title.png"  width="80%" height="80%">
+</p>
 
-## Original LAVIS
 
-if something goes wrong, please checkout to `original_lavis` branch to conduct test. Some errors actually exist in original lavis repo.
+<div>
+<div align="center">
+    <a href='https://brianboli.com/' target='_blank'>Bo Li*</a>&emsp;
+    <a href='https://zhangyuanhan-ai.github.io/' target='_blank'>Yuanhan Zhang*</a>&emsp;
+    <a href='https://cliangyu.com/' target='_blank'>Liangyu Chen*</a>&emsp;
+    <a href='https://king159.github.io/' target='_blank'>Jinghao Wang*</a>&emsp;
+    </br>
+    <a href='https://jingkang50.github.io/' target='_blank'>Jingkang Yang</a>&emsp;
+    <a href='https://liuziwei7.github.io/' target='_blank'>Ziwei Liu</a>
+</div>
+<div>
+<div align="center">
+    S-Lab, Nanyang Technological University
+</div>
+ 
+ -----------------
 
-## Overview
+![](https://img.shields.io/badge/otter-v0.1-darkcyan)
+![](https://img.shields.io/github/stars/luodian/otter?style=social)
+[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FLuodian%2Fotter&count_bg=%23FFA500&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false)](https://hits.seeyoufarm.com)
+<!-- [![](https://img.shields.io/badge/demo-online-orange)](https://otter.cliangyu.com) -->
+![](https://black.readthedocs.io/en/stable/_static/license.svg)
+![](https://img.shields.io/badge/code%20style-black-000000.svg)
 
-PET-VLM project aims to finetune a Large Visual Language Model (VLM) on downstream tasks. We use the OpenFlamingo-9B using a CLIP ViT-Large vision encoder and a LLaMA-7B language model. We finetune the VLM on VQA and COCO dataset.
+ [Otter-9B (Huggingface Models)](https://huggingface.co/luodian/otter-9b-hf) | [Youtube Video](https://youtu.be/r-YM4DGGAdE) | [Bilibili Video](https://www.bilibili.com/video/BV1iL411h7HZ/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)
+ 
+[Live Demo (soon)](https://otter.cliangyu.com/) | [Paper (soon)]()
 
-## Fine-tuning
+## 🦦 Overview
 
-### Environment
+<div style="text-align:center">
+<img src="assets/teaser.png"  width="100%" height="100%">
+</div>
 
-You may install via `conda create -f environment.yaml` or manually install the following packages.
-<details>
-<summary>Manually Install</summary>
+Recent research highlights the importance of fine-tuning instruction for empowering large language models (LLMs), such as enhancing GPT-3 to Chat-GPT, to follow natural language instructions and effectively accomplish real-world tasks. Flamingo is considered a GPT-3 moment in the multimodal domain. 
 
-``` bash
-conda install pytorch=2.0.0 torchvision=0.15.0 pytorch-cuda=11.8 -c pytorch -c nvidia -y
-conda install -c conda-forge datasets=2.11.0 -y
-conda install -c conda-forge wandb=0.14.0 -y
-conda install -c conda-forge braceexpand=0.1.5 -y
-conda install -c conda-forge webdataset=0.2.48 -y
-conda install -c conda-forge scipy=1.10.1 -y
-conda install -c conda-forge sentencepiece=0.1.97 -y
-conda install -c conda-forge einops=0.6.0 -y
-pip install bitsandbytes==0.37.2
-pip install open_clip_torch==2.16.0
-pip install einops-exts==0.0.4
-conda install -c conda-forge tensorboard=2.12.0 -y
-conda install -c conda-forge more-itertools=9.1.0 -y
-pip install git+https://github.com/huggingface/transformers
-conda install -c conda-forge black=23.3.0 -y
-pip install gpustat
+In our project, we propose 🦦 Otter, an instruction-tuned model built upon OpenFlamingo that has been customized for a context. We improve its conversational skills by using a carefully crafted multimodal instruction tuning dataset. Each data sample includes an image-specific instruction along with multiple examples of multimodal instructions for that context, also known as multimodal in-context learning examples.
 
-# install standford-corenlp-full
-cd LAVIS/coco-caption;
-sh get_stanford_models.sh
+By utilizing high-quality data, we were able to train 🦦 Otter using limited resources (4x RTX-3090-24G GPUs) in our lab. Remarkably, it surpassed the performance of OpenFlamingo. While Otter may not be the most advanced and may occasionally experience confusion, we are committed to consistently enhancing its capabilities by including more types of training data and a larger model. In the current era of expansive foundational models, we firmly believe that anyone should have the opportunity to train their own models, even with scarce data and resources, and cultivate the models to develop their intelligence.
+
+## 🦦 Examples
+
+<div style="text-align:center">
+<img src="https://i.postimg.cc/KYqmWG7j/example-description2.png"  width="100%" height="100%">
+</div>
+
+---
+
+<div style="text-align:center">
+<img src="https://i.postimg.cc/FRYh5MGZ/example-description.png"  width="100%" height="100%">
+</div>
+
+---
+
+<div style="text-align:center">
+<img src="https://i.postimg.cc/YSqp8GWT/example-understanding.png"  width="100%" height="100%">
+</div>
+
+---
+
+<div style="text-align:center">
+<img src="https://i.postimg.cc/FzjKJbjJ/examples-ict.png"  width="100%" height="100%">
+</div>
+
+---
+
+<div style="text-align:center">
+<img src="https://i.postimg.cc/JnBrfwzL/examples-ict2.png"  width="100%" height="100%">
+</div>
+
+## 🗂️ Environments
+
+You may install via `conda env create -f environment.yml`. Especially to make sure the `transformers>=4.28.0`, `accelerate>=0.18.0`.
+
+## 🤗 Hugging Face Model
+
+You can use the 🦩 Flamingo model / 🦦 Otter model as a 🤗 huggingface model with only a few lines! One-click and then model configs/weights are downloaded automatically.
+
+``` python
+from flamingo import FlamingoModel
+flamingo_model = FlamingoModel.from_pretrained("luodian/openflamingo-9b-hf", device_map=auto)
+
+from otter import OtterModel
+otter_model = OtterModel.from_pretrained("luodian/otter-9b-hf", device_map=auto)
 ```
 
-</details>
+Previous [OpenFlamingo](https://github.com/mlfoundations/open_flamingo) was developed with [DistributedDataParallel](https://pytorch.org/docs/stable/nn.html#torch.nn.parallel.DistributedDataParallel) (DDP) on A100 cluster. Loading OpenFlamingo-9B to GPU requires **at least 33G GPU memory**, which is only available on A100 GPUs.
 
-### Dataset Preparation
+In order to allow more researchers without access to A100 machines to try training OpenFlamingo, we wrap the OpenFlamingo model into a 🤗 huggingface model ([Jinghao](https://king159.github.io/) has submitted a [PR](https://github.com/huggingface/transformers/pull/23063) to the /huggingface/transformers!). Via `device_map=auto`, the large model is sharded across multiple GPUs when loading and training. This can help researchers who do not have access to A100-80G GPUs to achieve similar throughput in training, testing on 4x RTX-3090-24G GPUs, and model deployment on 2x RTX-3090-24G GPUs. Specific details are below (may vary depending on the CPU and disk performance, as we conducted training on different machines).
 
-Download a subset pretraining multi_instruct dataset
+<div style="text-align:center">
+<img src="assets/table.png"  width="100%" height="100%">
+</div>
+
+---
+<div style="text-align:center">
+<img src="assets/efficiency.png"  width="100%" height="100%">
+</div>
+
+Our Otter model is also developed in this way and it's deployed on the 🤗 Hugging Face model hub. Our model can be hosted on two RTX-3090-24G GPUs and achieve a similar speed to one A100-80G machine.
+
+
+
+## 🗄 Dataset Preparation
+
+### Multi-modal instruction tuning dataset with in-context examples (ICI)
+
+The pre-training process for the OpenFlamingo model employs the MMC4 interleaved multimodality dataset to endow the model with in-context few-shot learning capabilities. The development of our instruction-following dataset adheres to the guiding principles of MMC4, which dictate that the instruction and image examples incorporated into the context should exhibit semantic pertinence to the query instruction and image.
+
+1. To augment the LLaVA dataset, we retrieve in-context examples for each query data.
+2. We curate high-quality, in-progress panoptic video scene graph data from the PVSG repository. For each video, we select 4-8 frames to be annotated for instruction-following, using the LLaVa dataset as a reference. During the training phase, given a frame, we opt for additional frames, along with their corresponding instructions and answers, to serve as in-context examples.
+
+### Example
+
+<p align="center" width="100%"><img src="https://i.postimg.cc/vmmP0bH0/image-example-3.png" alt="otter-example" style="width: 100%; min-width: 300px; display: block; margin: auto;"></a></p>
+
+### Preparation
+
+We unify different instructing data into a single dataset [class](pipeline/multi_instruct_data_utils/unify_dataset.py). The full dataset is coming soon! 
+
+<!-- Download a subset of the pretraining `multi_instruct_data` dataset
 
 ```bash
 wget https://ofa-beijing.oss-cn-beijing.aliyuncs.com/datasets/pretrain_data/pretrain_data_examples.zip;
 unzip pretrain_data_examples.zip ./example_multi_instruct_data
+``` -->
+
+## ☄️ Training
+
+Train on `in-context-instruction(ICI)` datasets, using the following commands:
+
+First, run, and answer the questions asked. This will generate a config file and save it to the cache folder. The config will be used automatically to properly set the default options when doing `accelerate launch`.
+
+```bash
+accelerate config
 ```
 
-### Training
+Then run the training script.
 
-Train on multi_instruct example datasets, use following commands:
-
-``` bash
-python -m torch.distributed.run --nproc_per_node=1 open_flamingo/train/instruction_following.py \
---run_name=flamingo3B \
---lm_path=facebook/opt-1.3b \
---tokenizer_path=facebook/opt-1.3b \
+```bash
+accelerate launch --pretrained_model_name_or_path=luodian/openflamingo-9b-hf \
+--lm_path=luodian/llama-7b-hf \
+--tokenizer_path=luodian/llama-7b-hf \
 --dataset_resampled \
---multi_instruct_path=./example_multi_instruct_data/vision_language_examples.tsv \
---batch_size=8 --num_epochs=30 \
---report_to_wandb --wandb_project=flamingo3B \
---wandb_entity=drluodian \
+--multi_instruct_path=./in_context_instruct.tsv \
+--run_name=otter-9b \
+--batch_size=1 \
+--num_epochs=6 \
+--report_to_wandb \
+--cross_attn_every_n_layers=4 \
+--lr_scheduler=cosine \
 --delete_previous_checkpoint \
---run_name=dev/multi_instruct_caption_flamingo3B 
+--learning_rate=1e-5 \
 ```
 
-### Hyperparameters
+## 💎 Checkpoints
 
-## Experiments Results
+For details, you may refer to the [model card](docs/model_card.md).
 
-We report accuracy on following datasets after instruction following (IF) tuning. 
+## 🪩 Web Demo
 
-1. COCO Caption
-2. VQAv2
-3. OKVQA
-4. ImageNet
-5. Flickr30
+We host our [Otter-9B Demo](https://otter.cliangyu.com/) via dual RTX-3090-24G GPUs. Launch your own demo by following the [demo instructions](docs/demo.md).
 
-### VQAv2 (VQA accuracy)
+## 🛠 Incoming Features
 
-|            | 0-shot | 4-shot | 8-shot | 16-shot | 32-shot |
-|------------|--------|--------|--------|---------|---------|
-| OpenFlamingo-9B (ViT-G + ) | 43.5   | 44.0   | 47.5   | 48.9    | 50.3    |
-| DeepMind Flamingo-9B | 51.8   | 56.3   | 58.0   | 59.4    | 60.41   |
+We are working towards offering these features to our users. However, we have encountered some issues in the process. If you have the solutions to these issues, we would be grateful if you could submit a pull request with your code. Your contribution would be highly appreciated.
 
-### COCO Caption (CIDEr)
+- [ ]  `xformers` support: for saving GPU memory and training speedup. issue [#35](https://github.com/Luodian/PET-VLM/issues/35)
+- [ ]  `load_in_8bit` support: for saving GPU memory and training speedup. [[issue]()]
 
-|            | 0-shot | 4-shot | 8-shot | 16-shot | 32-shot |
-|------------|--------|--------|--------|---------|---------|
-| OpenFlamingo-9B | 65.5   | 74.3   | 79.3   | 81.8    | 84.5    |
-| DeepMind Flamingo-9B | 79.4   | 93.1   | 99.0   | 102.2   | 106.3   |
+### Models
 
-### Authors
+We are working on the following models with much stronger performance.
 
-Equal contribution, alphabetical order
+- [ ] Otter-9B for Videos
+- [ ] Otter-15B
 
-[Li Bo](https://brianboli.com/)
 
-[Wang Jinghao](https://king159.github.io/)
+## 📑 Citation
+
+If you found this repository useful, please consider citing:
+```
+@software{li_bo_2023_7879884,
+  author       = {Li, Bo and Zhang, Yuanhan and Chen, Liangyu and Wang, Jinghao and Yang, Jingkang and Liu, Ziwei},
+  title        = {{Otter: Multi-Modal In-Context Learning Model with Instruction Tuning}},
+  month        = apr,
+  year         = 2023,
+  publisher    = {Zenodo},
+  version      = {0.1},
+  doi          = {10.5281/zenodo.7879884},
+  url          = {https://doi.org/10.5281/zenodo.7879884}
+}
+```
+
+### 👨‍🏫 Acknowledgements
+
+We thank [Chunyuan Li](https://chunyuan.li/) and [Jack Hessel](https://jmhessel.com/) for their advise and support, as well as the [OpenFlamingo](https://github.com/mlfoundations/open_flamingo) team for their great contribution to the open source community.
