@@ -1,5 +1,5 @@
 <p align="center" width="100%">
-<img src="assets/title.png"  width="80%" height="80%">
+<img src="https://i.postimg.cc/CLPnPvZW/title.png"  width="80%" height="80%">
 </p>
 
 
@@ -33,7 +33,7 @@
 ## 🦦 Overview
 
 <div style="text-align:center">
-<img src="assets/teaser.png"  width="100%" height="100%">
+<img src="https://i.postimg.cc/Z5fkydMP/teaser.png"  width="100%" height="100%">
 </div>
 
 Recent research highlights the importance of fine-tuning instruction for empowering large language models (LLMs), such as enhancing GPT-3 to Chat-GPT, to follow natural language instructions and effectively accomplish real-world tasks. Flamingo is considered a GPT-3 moment in the multimodal domain. 
@@ -93,12 +93,12 @@ Previous [OpenFlamingo](https://github.com/mlfoundations/open_flamingo) was deve
 In order to allow more researchers without access to A100 machines to try training OpenFlamingo, we wrap the OpenFlamingo model into a 🤗 huggingface model ([Jinghao](https://king159.github.io/) has submitted a [PR](https://github.com/huggingface/transformers/pull/23063) to the /huggingface/transformers!). Via `device_map=auto`, the large model is sharded across multiple GPUs when loading and training. This can help researchers who do not have access to A100-80G GPUs to achieve similar throughput in training, testing on 4x RTX-3090-24G GPUs, and model deployment on 2x RTX-3090-24G GPUs. Specific details are below (may vary depending on the CPU and disk performance, as we conducted training on different machines).
 
 <div style="text-align:center">
-<img src="assets/table.png"  width="100%" height="100%">
+<img src="https://i.postimg.cc/LsNs55zG/table.png"  width="100%" height="100%">
 </div>
 
 ---
 <div style="text-align:center">
-<img src="assets/efficiency.png"  width="100%" height="100%">
+<img src="https://i.postimg.cc/tTcCdcv5/efficiency.png"  width="100%" height="100%">
 </div>
 
 Our Otter model is also developed in this way and it's deployed on the 🤗 Hugging Face model hub. Our model can be hosted on two RTX-3090-24G GPUs and achieve a similar speed to one A100-80G machine.
