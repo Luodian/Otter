@@ -22,7 +22,7 @@
 
 ![](https://img.shields.io/badge/otter-v0.1-darkcyan)
 ![](https://img.shields.io/github/stars/luodian/otter?style=social)
-![visitors](https://visitor-badge.glitch.me/badge?page_id=Luodian.Otter&left_color=green&right_color=red)
+![Visitors](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2FLuodian%2Fotter&countColor=%23697689&style=flat)
 <!-- [![](https://img.shields.io/badge/demo-online-orange)](https://otter.cliangyu.com) -->
 ![](https://black.readthedocs.io/en/stable/_static/license.svg)
 ![](https://img.shields.io/badge/code%20style-black-000000.svg)
