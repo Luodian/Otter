@@ -48,6 +48,7 @@ import requests
 import torch
 import transformers
 from PIL import Image
+from otter.modeling_otter import OtterForConditionalGeneration
 
 model = OtterForConditionalGeneration.from_pretrained(
     "luodian/otter-9b-hf", device_map="auto"

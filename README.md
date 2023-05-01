@@ -22,8 +22,7 @@
 
 ![](https://img.shields.io/badge/otter-v0.1-darkcyan)
 ![](https://img.shields.io/github/stars/luodian/otter?style=social)
-![Visitors](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2FLuodian%2FOtter&countColor=%23ff9300&style=flat)
-<!-- [![](https://img.shields.io/badge/demo-online-orange)](https://otter.cliangyu.com) -->
+[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FLuodian%2Fotter&count_bg=%23FFA500&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false)](https://hits.seeyoufarm.com)
 ![](https://black.readthedocs.io/en/stable/_static/license.svg)
 ![](https://img.shields.io/badge/code%20style-black-000000.svg)
 
