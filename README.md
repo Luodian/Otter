@@ -22,6 +22,7 @@
 
 ![](https://img.shields.io/badge/otter-v0.1-darkcyan)
 ![](https://img.shields.io/github/stars/luodian/otter?style=social)
+![visitors](https://visitor-badge.glitch.me/badge?page_id=Luodian.Otter&left_color=green&right_color=red)
 <!-- [![](https://img.shields.io/badge/demo-online-orange)](https://otter.cliangyu.com) -->
 ![](https://black.readthedocs.io/en/stable/_static/license.svg)
 ![](https://img.shields.io/badge/code%20style-black-000000.svg)
