@@ -21,7 +21,7 @@ from pipeline.serve.gradio_css import code_highlight_css
 
 DEFAULT_IMAGE_TOKEN = "<image>"
 DEFAULT_DEMO_END_TOKEN = "<|endofchunk|>"
-DEFAULT_ANSWER_TOKEN = "<answer>"
+# DEFAULT_ANSWER_TOKEN = "<answer>"
 template_name = "otter"
 
 logger = build_logger("gradio_web_server", "gradio_web_server.log")
@@ -179,6 +179,7 @@ def clear_history(request: gr.Request):
 
 def add_text(
     state,
+    model_selector,
     text_demo_question_1,
     text_demo_answer_1,
     image_demo_1,
@@ -189,6 +190,14 @@ def add_text(
     image_3,
     request: gr.Request,
 ):
+    if "otter" in model_selector:
+        DEFAULT_ANSWER_TOKEN = "<answer>"
+        human_role_label = conv_templates[template_name].copy().roles[0] + ": "
+        bot_role_label = " " + conv_templates[template_name].copy().roles[1] + ": "
+    else:
+        DEFAULT_ANSWER_TOKEN = ""
+        human_role_label = ""
+        bot_role_label = ""
     text = (
         text_3
         + " "
@@ -224,20 +233,16 @@ def add_text(
     if image_3 is not None:
         text = (
             DEFAULT_IMAGE_TOKEN
-            + conv_templates[template_name].copy().roles[0]
-            + ": "
+            + human_role_label
             + text
         )
     if text_demo_answer_2 != "":
         assert image_demo_2 is not None
         text = (
             DEFAULT_IMAGE_TOKEN
-            + conv_templates[template_name].copy().roles[0]
-            + ": "
+            + human_role_label
             + text_demo_question_2
-            + " "
-            + conv_templates[template_name].copy().roles[1]
-            + ":"
+            + bot_role_label
             + DEFAULT_ANSWER_TOKEN
             + text_demo_answer_2
             + DEFAULT_DEMO_END_TOKEN
@@ -247,12 +252,9 @@ def add_text(
         assert image_demo_1 is not None
         text = (
             DEFAULT_IMAGE_TOKEN
-            + conv_templates[template_name].copy().roles[0]
-            + ": "
+            + human_role_label
             + text_demo_question_1
-            + " "
-            + conv_templates[template_name].copy().roles[1]
-            + ":"
+            + bot_role_label
             + DEFAULT_ANSWER_TOKEN
             + text_demo_answer_1
             + DEFAULT_DEMO_END_TOKEN
@@ -455,19 +457,23 @@ a:link {
 </style>
 <h1><a href="https://github.com/Luodian/otter"><img src="https://cliangyu.com/images/li2023otter.png" alt="Otter: Multi-Modal In-Context Learning Model with Instruction Tuning" width="500px" class="center"></a></h1>
 </header>
-
-<h3><a href="https://github.com/Luodian/otter"><img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" style="height: 15px; display:inline;" class="icon" alt="github">GitHub</a>
+<h2><a href="https://github.com/Luodian/otter"><img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" style="height: 15px; display:inline;" class="icon" alt="github">GitHub</a>
 &nbsp;&nbsp;&nbsp;
 <a href="https://youtu.be/ys4Hwh86vM0"><img src="https://www.svgrepo.com/show/13671/youtube.svg" style="height: 15px; display:inline;" class="icon" alt="video demo">Video Demo</a>
-</h3>
+</h2>
+
+<span style="font-size:larger;">
+
+
+
+### Note: 
+Following OpenFlamingo, you need to input at least one image in the first round of conversation with both Otter and OpenFlamingo.
+Current Otter model (ver. Apr 25) is under development. A model supporting better conversations will be released soon. If model repeatively describes previous images, please click "clear history" to clean all image caches to make sure the model perform correctly.
+</span>
 
 | Choose a model to chat with | |
 | --- | --- |
 | [Otter](https://github.com/Luodian/otter): a chat assistant fine-tuned from OpenFlamingo and in-context instructions. | [OpenFlamingo](https://github.com/mlfoundations/open_flamingo): a multimodal foundation model for in-context learning. |
-
-### Note: 
-Following OpenFlamingo, you need to input at least one image in the first round of conversation with both Otter and OpenFlamingo.
-Current Otter model (ver. Apr 25) is under development. A model supporting better conversations will be released soon. 
 """
 
 tos_markdown = """
@@ -720,6 +726,7 @@ def build_demo(embed_mode):
             add_text,
             [
                 state,
+                model_selector,
             ]
             + demo_list
             + [
@@ -749,6 +756,7 @@ def build_demo(embed_mode):
             add_text,
             [
                 state,
+                model_selector,
             ]
             + demo_list
             + [
