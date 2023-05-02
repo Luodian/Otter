@@ -459,7 +459,10 @@ a:link {
 </header>
 <h2><a href="https://github.com/Luodian/otter"><img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" style="height: 15px; display:inline;" class="icon" alt="github">GitHub</a>
 &nbsp;&nbsp;&nbsp;
-<a href="https://youtu.be/ys4Hwh86vM0"><img src="https://www.svgrepo.com/show/13671/youtube.svg" style="height: 15px; display:inline;" class="icon" alt="video demo">Video Demo</a>
+<a href="https://youtu.be/r-YM4DGGAdE"><img src="https://www.svgrepo.com/show/13671/youtube.svg" style="height: 15px; display:inline;" class="icon" alt="video demo">Video Demo</a>
+&nbsp;&nbsp;&nbsp;
+<img style="height: 20px; display:inline;" src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fotter.cliangyu.com&count_bg=%23FFA500&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false"/>
+
 </h2>
 
 <span style="font-size:larger;">
