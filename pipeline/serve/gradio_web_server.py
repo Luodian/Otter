@@ -190,6 +190,7 @@ def add_text(
     image_3,
     request: gr.Request,
 ):
+    template_name = "otter" if "otter" in model_selector else "open_flamingo"
     if "otter" in model_selector:
         DEFAULT_ANSWER_TOKEN = "<answer>"
         human_role_label = conv_templates[template_name].copy().roles[0] + ": "
@@ -197,14 +198,15 @@ def add_text(
     else:
         DEFAULT_ANSWER_TOKEN = ""
         human_role_label = ""
-        bot_role_label = ""
-    text = (
-        text_3
-        + " "
-        + conv_templates[template_name].copy().roles[1]
+        bot_role_label = " "
+    text = text_3
+    if conv_templates[template_name].copy().roles[1] is not None:
+        text += (
+        " "
+        + conv_templates[template_name].copy().roles[1] 
         + ":"
         + DEFAULT_ANSWER_TOKEN
-    )
+        )
     logger.info(f"add_text. ip: {request.client.host}. len: {len(text)}")
     if state is None:
         state = conv_templates[template_name].copy()
@@ -312,6 +314,7 @@ def http_bot(
     logger.info(f"http_bot. ip: {request.client.host}")
     start_tstamp = time.time()
     model_name = model_selector
+    template_name = "otter" if "otter" in model_selector else "open_flamingo"
 
     if state.skip_next:
         # This generate call is skipped due to invalid inputs
@@ -349,9 +352,11 @@ def http_bot(
         return
 
     # Construct prompt
-    role_label = state.roles[1] + ": "
-    # hard code preprocessing: remove the last role label
-    prompt = state.get_prompt()[: -len(role_label)]
+    prompt = state.get_prompt()
+    if state.roles[1] is not None:
+        role_label = state.roles[1] + ": "
+        # hard code preprocessing: remove the last role label
+        prompt = prompt[: -len(role_label)]
 
     # Construct generation kwargs
     generation_kwargs = {

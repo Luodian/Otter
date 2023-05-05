@@ -114,8 +114,9 @@ class Conversation:
                         img_b64_str = base64.b64encode(buffered.getvalue()).decode()
                         img_str = f'<img src="data:image/png;base64,{img_b64_str}" alt="user upload image" />'
                         msg = msg.replace("<image>", img_str, 1)
-                # hard-coded post processing
-                msg = msg[: msg.rfind("GPT:")]
+                # hard-coded post processing for Otter
+                if msg.rfind("GPT:") != -1:
+                    msg = msg[: msg.rfind("GPT:")] # remove the last GPT label
                 msg = msg.replace("GPT:", "\nOtter:")
                 msg = msg.replace("<|endofchunk|>", "")
                 ret.append([msg, None])
@@ -242,12 +243,23 @@ otter_v1 = Conversation(
     sep2="</s>",
 )
 
+open_flamingo_v1 = Conversation(
+    system="",
+    roles=(None, None),
+    messages=(),
+    offset=0,
+    sep_style=SeparatorStyle.TWO,
+    sep="",
+    sep2="</s>",
+)
+
 
 default_conversation = otter_v1
 conv_templates = {
     "v1": conv_v1_2,
     "bair_v1": conv_bair_v1,
     "otter": otter_v1,
+    "open_flamingo": open_flamingo_v1,
 }
 
 
