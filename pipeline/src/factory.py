@@ -1,4 +1,9 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer, LlamaForCausalLM
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    LlamaTokenizer,
+    LlamaForCausalLM,
+)
 import open_clip
 
 from .collie import Flamingo
@@ -47,7 +52,7 @@ def create_model_and_transforms(
         text_tokenizer = AutoTokenizer.from_pretrained(
             tokenizer_path, local_files_only=use_local_files
         )
-        
+
     # add Flamingo special tokens to the tokenizer
     text_tokenizer.add_special_tokens(
         {"additional_special_tokens": ["<|endofchunk|>", "<image>"]}
