@@ -202,10 +202,10 @@ def add_text(
     text = text_3
     if conv_templates[template_name].copy().roles[1] is not None:
         text += (
-        " "
-        + conv_templates[template_name].copy().roles[1] 
-        + ":"
-        + DEFAULT_ANSWER_TOKEN
+            " "
+            + conv_templates[template_name].copy().roles[1]
+            + ":"
+            + DEFAULT_ANSWER_TOKEN
         )
     logger.info(f"add_text. ip: {request.client.host}. len: {len(text)}")
     if state is None:
@@ -233,11 +233,7 @@ def add_text(
 
     text = text[:1536]  # Hard cut-off
     if image_3 is not None:
-        text = (
-            DEFAULT_IMAGE_TOKEN
-            + human_role_label
-            + text
-        )
+        text = DEFAULT_IMAGE_TOKEN + human_role_label + text
     if text_demo_answer_2 != "":
         assert image_demo_2 is not None
         text = (
@@ -638,8 +634,26 @@ def build_demo(embed_mode):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         gr.Examples(
             examples=[
-                [f"{cur_dir}/examples/cat.jpg", "An image of", "two cats.", f"{cur_dir}/examples/bathroom.jpg", "An image of", "a bathroom sink.", f"{cur_dir}/examples/dinner.jpg", "An image of"],
-                [f"{cur_dir}/examples/tennis.jpg", "What is the danger of this sport?", "The player may get hitted by the tennis ball.", f"{cur_dir}/examples/baseball.jpg", "What is the danger of this sport?", "While chasing the baseball, the player may inadvertently collide with other players.",  f"{cur_dir}/examples/soccer.png", "What is the danger of this sport?"],
+                [
+                    f"{cur_dir}/examples/cat.jpg",
+                    "An image of",
+                    "two cats.",
+                    f"{cur_dir}/examples/bathroom.jpg",
+                    "An image of",
+                    "a bathroom sink.",
+                    f"{cur_dir}/examples/dinner.jpg",
+                    "An image of",
+                ],
+                [
+                    f"{cur_dir}/examples/tennis.jpg",
+                    "What is the danger of this sport?",
+                    "The player may get hitted by the tennis ball.",
+                    f"{cur_dir}/examples/baseball.jpg",
+                    "What is the danger of this sport?",
+                    "While chasing the baseball, the player may inadvertently collide with other players.",
+                    f"{cur_dir}/examples/soccer.png",
+                    "What is the danger of this sport?",
+                ],
             ],
             inputs=[
                 imagebox_demo_1,

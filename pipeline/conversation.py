@@ -116,7 +116,7 @@ class Conversation:
                         msg = msg.replace("<image>", img_str, 1)
                 # hard-coded post processing for Otter
                 if msg.rfind("GPT:") != -1:
-                    msg = msg[: msg.rfind("GPT:")] # remove the last GPT label
+                    msg = msg[: msg.rfind("GPT:")]  # remove the last GPT label
                 msg = msg.replace("GPT:", "\nOtter:")
                 msg = msg.replace("<|endofchunk|>", "")
                 ret.append([msg, None])
