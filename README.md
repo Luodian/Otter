@@ -142,7 +142,8 @@ accelerate config
 Then run the training script.
 
 ```bash
-accelerate launch --pretrained_model_name_or_path=luodian/openflamingo-9b-hf \
+accelerate launch pipeline/train/instruction_following.py \
+--pretrained_model_name_or_path=luodian/openflamingo-9b-hf \
 --lm_path=luodian/llama-7b-hf \
 --tokenizer_path=luodian/llama-7b-hf \
 --dataset_resampled \
