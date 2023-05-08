@@ -24,6 +24,7 @@ from pipeline.train.train_utils import (
     get_cast_dtype,
     get_checkpoint,
 )
+
 # from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 # from flamingo.configuration_flamingo import FlamingoConfig
 from otter.modeling_otter import OtterForConditionalGeneration
@@ -148,7 +149,9 @@ def train_one_epoch(
             if isinstance(m, torch.nn.Embedding) and m.weight.requires_grad:
                 zero_mask = torch.zeros_like(m.weight.grad)
                 zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
-                zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
+                zero_mask[endofchunk_token_id] = torch.ones_like(
+                    zero_mask[endofchunk_token_id]
+                )
                 zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
                 m.weight.grad = m.weight.grad * zero_mask
 
