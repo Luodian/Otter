@@ -593,6 +593,7 @@ class FlamingoModel(FlamingoPreTrainedModel):
                 param.requires_grad = False
         # Unfreeze LM input embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
+        self.lang_encoder.lm_head.requires_grad_(True)
 
     def forward(
         self,
@@ -766,6 +767,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
                 param.requires_grad = False
         # Unfreeze LM input embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
+        self.lang_encoder.lm_head.requires_grad_(True)
 
     def forward(
         self,
