@@ -39,7 +39,6 @@ torch.backends.cuda.matmul.allow_tf32 = True
 # The flag below controls whether to allow TF32 on cuDNN. This flag defaults to True.
 torch.backends.cudnn.allow_tf32 = True
 
-
 def random_seed(seed=42, rank=0):
     torch.manual_seed(seed + rank)
     np.random.seed(seed + rank)
@@ -354,11 +353,11 @@ def main():
     if args.pretrained_model_name_or_path is not None:
         model = FlamingoForConditionalGeneration.from_pretrained(
             args.pretrained_model_name_or_path,
-            device_map="auto",
+            device_map={"":torch.cuda.current_device()},
             local_files_only=args.offline,
         )
     else:
-        config = FlamingoConfig.from_json_file("./flamingo_hf/config.json")
+        config = FlamingoConfig.from_json_file("./flamingo/config.json")
         model = FlamingoForConditionalGeneration(config=config)
 
     tokenizer = model.text_tokenizer
@@ -424,7 +423,7 @@ def main():
     )
     if (
         os.path.exists(f"{args.external_save_dir}")
-        and args.resume_from_checkpoint is None
+        and args.resume_from_checkpoint is None and args.pretrained_model_name_or_path is None
     ):
         checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
         if len(checkpoint_list) == 0:
