@@ -43,19 +43,19 @@ Large Language Models (LLMs) have exhibited exceptional universal aptitude as fe
 ## 🦦 Examples
 
 <div style="text-align:center">
-<img src="https://i.postimg.cc/1RVtSSpJ/deeper-understanding.png"  width="100%" height="100%">
+<img src="https://s2.loli.net/2023/05/08/LIk1SOaKWw73Gz4.png"  width="100%" height="100%">
 </div>
 
 ---
 
 <div style="text-align:center">
-<img src="https://i.postimg.cc/76yBLw50/instruction-following.png"  width="100%" height="100%">
+<img src="https://s2.loli.net/2023/05/08/dj8NJeYh9EMtkWb.png"  width="100%" height="100%">
 </div>
 
 ---
 
 <div style="text-align:center">
-<img src="https://i.postimg.cc/4yWwwcBQ/in-context-learning-demo.png"  width="100%" height="100%">
+<img src="https://s2.loli.net/2023/05/08/rpPX39icK7lVNnF.png"  width="100%" height="100%">
 </div>
 
 ## 🗂️ Environments
@@ -102,7 +102,7 @@ Our Multi-Modal In-Context Instruction Tuning (MIMIC-IT) dataset aims to augment
 ### Example
 
 <div style="text-align:center">
-<img src="https://i.postimg.cc/8zcWL323/context.png"  width="100%" height="100%">
+<img src="https://s2.loli.net/2023/05/08/Vyp2eXNtW3xC1Ji.png"  width="100%" height="100%">
 </div>
 
 ### Preparation
