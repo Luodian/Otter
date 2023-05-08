@@ -21,7 +21,6 @@
  -----------------
 
 ![](https://img.shields.io/badge/otter-v0.1-darkcyan)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/release/python-390/)
 ![](https://img.shields.io/github/stars/luodian/otter?style=social)
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FLuodian%2Fotter&count_bg=%23FFA500&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false)](https://hits.seeyoufarm.com)
 ![](https://black.readthedocs.io/en/stable/_static/license.svg)
@@ -36,7 +35,7 @@
 ## 🦦 Overview
 
 <div style="text-align:center">
-<img src="https://i.postimg.cc/Z5fkydMP/teaser.png"  width="100%" height="100%">
+<img src="https://i.postimg.cc/CKgQ2PP7/otter-teaser.png"  width="100%" height="100%">
 </div>
 
 Large Language Models (LLMs) have exhibited exceptional universal aptitude as few/zero-shot learners for numerous tasks, thanks to their pre-training on large-scale text data. GPT-3 is a prominent LLM that has showcased significant capabilities in this regard. Furthermore, variants of GPT-3, namely InstrctGPT and ChatGPT, equipped with instruction tuning, have proven effective in interpreting natural language instructions to perform complex real-world tasks. In this paper, we propose to introduce instruction tuning into multi-modal models, motivated by the Flamingo model's upstream interleaved format pretraining dataset. We adopt a similar approach to construct our **MI**-**M**odal **I**n-**C**ontext **I**nstruction **T**uning (**MIMIC-IT**) dataset. We then introduce 🦦 Otter, a multi-modal model based on OpenFlamingo (open-sourced version of DeepMind's Flamingo), trained on MIMIC-IT and showcasing improved instruction-following ability and in-context learning. We also optimize OpenFlamingo's implementation for researchers, democratizing the required training resources from 1$\times$ A100 GPU to 4$\times$ RTX-3090 GPUs, and integrate both OpenFlamingo and Otter into Hugging Face Transformers for more researchers to incorporate the models into their customized training and inference pipelines.
@@ -44,31 +43,19 @@ Large Language Models (LLMs) have exhibited exceptional universal aptitude as fe
 ## 🦦 Examples
 
 <div style="text-align:center">
-<img src="https://i.postimg.cc/KYqmWG7j/example-description2.png"  width="100%" height="100%">
+<img src="https://i.postimg.cc/1RVtSSpJ/deeper-understanding.png"  width="100%" height="100%">
 </div>
 
 ---
 
 <div style="text-align:center">
-<img src="https://i.postimg.cc/FRYh5MGZ/example-description.png"  width="100%" height="100%">
+<img src="https://i.postimg.cc/76yBLw50/instruction-following.png"  width="100%" height="100%">
 </div>
 
 ---
 
 <div style="text-align:center">
-<img src="https://i.postimg.cc/YSqp8GWT/example-understanding.png"  width="100%" height="100%">
-</div>
-
----
-
-<div style="text-align:center">
-<img src="https://i.postimg.cc/FzjKJbjJ/examples-ict.png"  width="100%" height="100%">
-</div>
-
----
-
-<div style="text-align:center">
-<img src="https://i.postimg.cc/JnBrfwzL/examples-ict2.png"  width="100%" height="100%">
+<img src="https://i.postimg.cc/4yWwwcBQ/in-context-learning-demo.png"  width="100%" height="100%">
 </div>
 
 ## 🗂️ Environments
@@ -108,25 +95,17 @@ Our Otter model is also developed in this way and it's deployed on the 🤗 Hugg
 
 ### Multi-modal instruction tuning dataset with in-context examples (ICI)
 
-The pre-training process for the OpenFlamingo model employs the MMC4 interleaved multimodality dataset to endow the model with in-context few-shot learning capabilities. The development of our instruction-following dataset adheres to the guiding principles of MMC4, which dictate that the instruction and image examples incorporated into the context should exhibit semantic pertinence to the query instruction and image.
+The OpenFlamingo framework leverages the interleaved multi-modal MMC4 dataset to emerge in its few-shot, in-context learning capabilities. The MMC4 dataset is composed of image-text pairs derived from individual HTML files, with significant contextual relationships between different pairs, as depicted in below Figure (a). An MMC4 training data sample contains (i) a queried image-text pair, where the text typically describes the image, and (ii) context, which includes the remaining image-text pairs from the same HTML file. The primary training objective of OpenFlamingo is to generate text for the queried image-text pair, and the paradigm of generating query text conditioned on in-context examples ensures OpenFlamingo's in-context learning capacity during the inference phase.
 
-1. To augment the LLaVA dataset, we retrieve in-context examples for each query data.
-2. We curate high-quality, in-progress panoptic video scene graph data from the PVSG repository. For each video, we select 4-8 frames to be annotated for instruction-following, using the LLaVa dataset as a reference. During the training phase, given a frame, we opt for additional frames, along with their corresponding instructions and answers, to serve as in-context examples.
+Our Multi-Modal In-Context Instruction Tuning (MIMIC-IT) dataset aims to augment OpenFlamingo's instruction comprehension capabilities while preserving its in-context learning capacity. To unleash OpenFlamingo's instruction-following potential, we compile data from visual-language tasks into image-instruction-answer triplets. Concurrently, to maintain OpenFlamingo's in-context learning capacity, we retrieve in-context examples for each triplet, which often lack correlated context, such as a visual question-answer data sample in VQAv2. Specifically, each MIMIC-IT data sample consists of (i) a queried image-instruction-answer triplet, with the instruction-answer tailored to the image, and (ii) context. The context contains a series of image-instruction-answer triplets that contextually correlate with the queried triplet, emulating the relationship between the context and the queried image-text pair found in the MMC4 dataset. The training objective for MIMIC-IT is to generate the answer within the queried image-instruction-answer triplet. The image-instruction-answer triplets are derived from (i) visual question-answer datasets, namely, VQAv2 and GQA, (ii) visual instruction datasets, such as LLaVA, (iii) an in-progress, high-quality panoptic video scene graph dataset from the PVSG repository. For each video, we select 4-8 frames for instruction-following annotation, using the LLaVA dataset as a reference. We have developed three heuristics to construct the context for each image-instruction-answer triplet, as illustrated in Figure (b).
 
 ### Example
 
-<p align="center" width="100%"><img src="https://i.postimg.cc/vmmP0bH0/image-example-3.png" alt="otter-example" style="width: 100%; min-width: 300px; display: block; margin: auto;"></a></p>
+<p align="center" width="100%"><img src="https://i.postimg.cc/8zcWL323/context.png" alt="otter-example" style="width: 100%; min-width: 300px; display: block; margin: auto;"></a></p>
 
 ### Preparation
 
 We unify different instructing data into a single dataset [class](pipeline/multi_instruct_data_utils/unify_dataset.py). The full dataset is coming soon! 
-
-<!-- Download a subset of the pretraining `multi_instruct_data` dataset
-
-```bash
-wget https://ofa-beijing.oss-cn-beijing.aliyuncs.com/datasets/pretrain_data/pretrain_data_examples.zip;
-unzip pretrain_data_examples.zip ./example_multi_instruct_data
-``` -->
 
 ## ☄️ Training
 
