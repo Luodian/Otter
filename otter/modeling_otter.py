@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 from transformers.modeling_utils import PreTrainedModel
 from transformers.modeling_outputs import CausalLMOutputWithPast
-from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 from einops import rearrange, repeat
 from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
@@ -12,9 +11,12 @@ from .configuration_otter import OtterConfig
 
 XFORMERS_AVAIL = False
 try:
-    import xformers
     import xformers.ops as xops
+    from xformers_model import CLIPVisionModel, LlamaForCausalLM
+    from transformers import LlamaTokenizer
 except ImportError:
+    from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
+
     XFORMERS_AVAIL = False
     print(
         "You are recommended to install xformers via `pip install xformers` or `conda install -c xformers xformers`"
@@ -766,8 +768,9 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         for name, param in self.lang_encoder.named_parameters():
             if "gated_cross_attn_layer" not in name:
                 param.requires_grad = False
-        # Unfreeze LM input embeddings
+        # Unfreeze LM input and output embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
+        self.lang_encoder.get_output_embeddings().requires_grad_(True)
 
     def forward(
         self,
