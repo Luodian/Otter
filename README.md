@@ -26,50 +26,36 @@
 ![](https://black.readthedocs.io/en/stable/_static/license.svg)
 ![](https://img.shields.io/badge/code%20style-black-000000.svg)
 
- [Otter-9B (Huggingface Models)](https://huggingface.co/luodian/otter-9b-hf) | [Youtube Video](https://youtu.be/r-YM4DGGAdE) | [Bilibili Video](https://www.bilibili.com/video/BV1iL411h7HZ/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)
- 
-[Live Demo (soon)](https://otter.cliangyu.com/) | [Paper (soon)]()
+ [Otter-9B (Hugging Face Models)](https://huggingface.co/luodian/otter-9b-hf) | [Youtube Video](https://youtu.be/r-YM4DGGAdE) | [Bilibili Video](https://www.bilibili.com/video/BV1iL411h7HZ/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) | [Live Demo](https://otter.cliangyu.com/) | [Paper](https://arxiv.org/abs/2305.03726)
+
+## Update
+
+- [2023-05-08] Check our Arxiv release paper at [Otter: A Multi-Modal Model with In-Context Instruction Tuning](https://arxiv.org/abs/2305.03726) !
 
 ## 🦦 Overview
 
 <div style="text-align:center">
-<img src="https://i.postimg.cc/Z5fkydMP/teaser.png"  width="100%" height="100%">
+<img src="https://i.postimg.cc/CKgQ2PP7/otter-teaser.png"  width="100%" height="100%">
 </div>
 
-Recent research highlights the importance of fine-tuning instruction for empowering large language models (LLMs), such as enhancing GPT-3 to Chat-GPT, to follow natural language instructions and effectively accomplish real-world tasks. Flamingo is considered a GPT-3 moment in the multimodal domain. 
-
-In our project, we propose 🦦 Otter, an instruction-tuned model built upon OpenFlamingo that has been customized for a context. We improve its conversational skills by using a carefully crafted multimodal instruction tuning dataset. Each data sample includes an image-specific instruction along with multiple examples of multimodal instructions for that context, also known as multimodal in-context learning examples.
-
-By utilizing high-quality data, we were able to train 🦦 Otter using limited resources (4x RTX-3090-24G GPUs) in our lab. Remarkably, it surpassed the performance of OpenFlamingo. While Otter may not be the most advanced and may occasionally experience confusion, we are committed to consistently enhancing its capabilities by including more types of training data and a larger model. In the current era of expansive foundational models, we firmly believe that anyone should have the opportunity to train their own models, even with scarce data and resources, and cultivate the models to develop their intelligence.
+Large Language Models (LLMs) have exhibited exceptional universal aptitude as few/zero-shot learners for numerous tasks, thanks to their pre-training on large-scale text data. GPT-3 is a prominent LLM that has showcased significant capabilities in this regard. Furthermore, variants of GPT-3, namely InstrctGPT and ChatGPT, equipped with instruction tuning, have proven effective in interpreting natural language instructions to perform complex real-world tasks. In this paper, we propose to introduce instruction tuning into multi-modal models, motivated by the Flamingo model's upstream interleaved format pretraining dataset. We adopt a similar approach to construct our **MI**-**M**odal **I**n-**C**ontext **I**nstruction **T**uning (**MIMIC-IT**) dataset. We then introduce 🦦 Otter, a multi-modal model based on OpenFlamingo (open-sourced version of DeepMind's Flamingo), trained on MIMIC-IT and showcasing improved instruction-following ability and in-context learning. We also optimize OpenFlamingo's implementation for researchers, democratizing the required training resources from 1$\times$ A100 GPU to 4$\times$ RTX-3090 GPUs, and integrate both OpenFlamingo and Otter into Hugging Face Transformers for more researchers to incorporate the models into their customized training and inference pipelines.
 
 ## 🦦 Examples
 
 <div style="text-align:center">
-<img src="https://i.postimg.cc/KYqmWG7j/example-description2.png"  width="100%" height="100%">
+<img src="https://s2.loli.net/2023/05/08/LIk1SOaKWw73Gz4.png"  width="100%" height="100%">
 </div>
 
 ---
 
 <div style="text-align:center">
-<img src="https://i.postimg.cc/FRYh5MGZ/example-description.png"  width="100%" height="100%">
+<img src="https://s2.loli.net/2023/05/08/dj8NJeYh9EMtkWb.png"  width="100%" height="100%">
 </div>
 
 ---
 
 <div style="text-align:center">
-<img src="https://i.postimg.cc/YSqp8GWT/example-understanding.png"  width="100%" height="100%">
-</div>
-
----
-
-<div style="text-align:center">
-<img src="https://i.postimg.cc/FzjKJbjJ/examples-ict.png"  width="100%" height="100%">
-</div>
-
----
-
-<div style="text-align:center">
-<img src="https://i.postimg.cc/JnBrfwzL/examples-ict2.png"  width="100%" height="100%">
+<img src="https://s2.loli.net/2023/05/08/rpPX39icK7lVNnF.png"  width="100%" height="100%">
 </div>
 
 ## 🗂️ Environments
@@ -78,7 +64,7 @@ You may install via `conda env create -f environment.yml`. Especially to make su
 
 ## 🤗 Hugging Face Model
 
-You can use the 🦩 Flamingo model / 🦦 Otter model as a 🤗 huggingface model with only a few lines! One-click and then model configs/weights are downloaded automatically.
+You can use the 🦩 Flamingo model / 🦦 Otter model as a 🤗 Hugging Face model with only a few lines! One-click and then model configs/weights are downloaded automatically.
 
 ``` python
 from flamingo import FlamingoModel
@@ -90,7 +76,7 @@ otter_model = OtterModel.from_pretrained("luodian/otter-9b-hf", device_map=auto)
 
 Previous [OpenFlamingo](https://github.com/mlfoundations/open_flamingo) was developed with [DistributedDataParallel](https://pytorch.org/docs/stable/nn.html#torch.nn.parallel.DistributedDataParallel) (DDP) on A100 cluster. Loading OpenFlamingo-9B to GPU requires **at least 33G GPU memory**, which is only available on A100 GPUs.
 
-In order to allow more researchers without access to A100 machines to try training OpenFlamingo, we wrap the OpenFlamingo model into a 🤗 huggingface model ([Jinghao](https://king159.github.io/) has submitted a [PR](https://github.com/huggingface/transformers/pull/23063) to the /huggingface/transformers!). Via `device_map=auto`, the large model is sharded across multiple GPUs when loading and training. This can help researchers who do not have access to A100-80G GPUs to achieve similar throughput in training, testing on 4x RTX-3090-24G GPUs, and model deployment on 2x RTX-3090-24G GPUs. Specific details are below (may vary depending on the CPU and disk performance, as we conducted training on different machines).
+In order to allow more researchers without access to A100 machines to try training OpenFlamingo, we wrap the OpenFlamingo model into a 🤗 hugging Face model ([Jinghao](https://king159.github.io/) has submitted a [PR](https://github.com/huggingface/transformers/pull/23063) to the /huggingface/transformers!). Via `device_map=auto`, the large model is sharded across multiple GPUs when loading and training. This can help researchers who do not have access to A100-80G GPUs to achieve similar throughput in training, testing on 4x RTX-3090-24G GPUs, and model deployment on 2x RTX-3090-24G GPUs. Specific details are below (may vary depending on the CPU and disk performance, as we conducted training on different machines).
 
 <div style="text-align:center">
 <img src="https://i.postimg.cc/LsNs55zG/table.png"  width="100%" height="100%">
@@ -107,31 +93,25 @@ Our Otter model is also developed in this way and it's deployed on the 🤗 Hugg
 
 ## 🗄 Dataset Preparation
 
-### Multi-modal instruction tuning dataset with in-context examples (ICI)
+### MultI-Modal In-Context Instruction Tuning (MIMIC-IT) dataset
 
-The pre-training process for the OpenFlamingo model employs the MMC4 interleaved multimodality dataset to endow the model with in-context few-shot learning capabilities. The development of our instruction-following dataset adheres to the guiding principles of MMC4, which dictate that the instruction and image examples incorporated into the context should exhibit semantic pertinence to the query instruction and image.
+The OpenFlamingo framework leverages the interleaved multi-modal MMC4 dataset to emerge in its few-shot, in-context learning capabilities. The MMC4 dataset is composed of image-text pairs derived from individual HTML files, with significant contextual relationships between different pairs, as depicted in below Figure (a). An MMC4 training data sample contains (i) a queried image-text pair, where the text typically describes the image, and (ii) context, which includes the remaining image-text pairs from the same HTML file. The primary training objective of OpenFlamingo is to generate text for the queried image-text pair, and the paradigm of generating query text conditioned on in-context examples ensures OpenFlamingo's in-context learning capacity during the inference phase.
 
-1. To augment the LLaVA dataset, we retrieve in-context examples for each query data.
-2. We curate high-quality, in-progress panoptic video scene graph data from the PVSG repository. For each video, we select 4-8 frames to be annotated for instruction-following, using the LLaVa dataset as a reference. During the training phase, given a frame, we opt for additional frames, along with their corresponding instructions and answers, to serve as in-context examples.
+Our Multi-Modal In-Context Instruction Tuning (MIMIC-IT) dataset aims to augment OpenFlamingo's instruction comprehension capabilities while preserving its in-context learning capacity. To unleash OpenFlamingo's instruction-following potential, we compile data from visual-language tasks into image-instruction-answer triplets. Concurrently, to maintain OpenFlamingo's in-context learning capacity, we retrieve in-context examples for each triplet, which often lack correlated context, such as a visual question-answer data sample in VQAv2. Specifically, each MIMIC-IT data sample consists of (i) a queried image-instruction-answer triplet, with the instruction-answer tailored to the image, and (ii) context. The context contains a series of image-instruction-answer triplets that contextually correlate with the queried triplet, emulating the relationship between the context and the queried image-text pair found in the MMC4 dataset. The training objective for MIMIC-IT is to generate the answer within the queried image-instruction-answer triplet. The image-instruction-answer triplets are derived from (i) visual question-answer datasets, namely, VQAv2 and GQA, (ii) visual instruction datasets, such as LLaVA, (iii) an in-progress, high-quality panoptic video scene graph dataset from the PVSG repository. For each video, we select 4-8 frames for instruction-following annotation, using the LLaVA dataset as a reference. We have developed three heuristics to construct the context for each image-instruction-answer triplet, as illustrated in Figure (b).
 
 ### Example
 
-<p align="center" width="100%"><img src="https://i.postimg.cc/vmmP0bH0/image-example-3.png" alt="otter-example" style="width: 100%; min-width: 300px; display: block; margin: auto;"></a></p>
+<div style="text-align:center">
+<img src="https://s2.loli.net/2023/05/08/Vyp2eXNtW3xC1Ji.png"  width="100%" height="100%">
+</div>
 
 ### Preparation
 
 We unify different instructing data into a single dataset [class](pipeline/multi_instruct_data_utils/unify_dataset.py). The full dataset is coming soon! 
 
-<!-- Download a subset of the pretraining `multi_instruct_data` dataset
-
-```bash
-wget https://ofa-beijing.oss-cn-beijing.aliyuncs.com/datasets/pretrain_data/pretrain_data_examples.zip;
-unzip pretrain_data_examples.zip ./example_multi_instruct_data
-``` -->
-
 ## ☄️ Training
 
-Train on `in-context-instruction(ICI)` datasets, using the following commands:
+Train on `MIMIC-IT` datasets, using the following commands:
 
 First, run, and answer the questions asked. This will generate a config file and save it to the cache folder. The config will be used automatically to properly set the default options when doing `accelerate launch`.
 
@@ -144,8 +124,6 @@ Then run the training script.
 ```bash
 accelerate launch pipeline/train/instruction_following.py \
 --pretrained_model_name_or_path=luodian/openflamingo-9b-hf \
---lm_path=luodian/llama-7b-hf \
---tokenizer_path=luodian/llama-7b-hf \
 --dataset_resampled \
 --multi_instruct_path=./in_context_instruct.tsv \
 --run_name=otter-9b \
