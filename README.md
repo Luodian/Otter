@@ -28,11 +28,11 @@
 
  [Otter-9B (Hugging Face Models)](https://huggingface.co/luodian/otter-9b-hf) | [Youtube Video](https://youtu.be/r-YM4DGGAdE) | [Bilibili Video](https://www.bilibili.com/video/BV1iL411h7HZ/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) | [Live Demo](https://otter.cliangyu.com/) | [Paper](https://arxiv.org/abs/2305.03726)
 
-## Update
+## 🦾 Update
 
 - [2023-05-08]
   1. Check our Arxiv release paper at [Otter: A Multi-Modal Model with In-Context Instruction Tuning](https://arxiv.org/abs/2305.03726) !
-  2. we support `xformers` for memory efficient attention.
+  2. We support `xformers` for memory efficient attention.
 
 ## 🦦 Overview
 
@@ -150,7 +150,7 @@ We host our [Otter-9B Demo](https://otter.cliangyu.com/) via dual RTX-3090-24G G
 
 We are working towards offering these features to our users. However, we have encountered some issues in the process. If you have the solutions to these issues, we would be grateful if you could submit a pull request with your code. Your contribution would be highly appreciated.
 
-- [ ]  `xformers` support: for saving GPU memory and training speedup. issue [#35](https://github.com/Luodian/PET-VLM/issues/35)
+- [x]  `xformers` support: for saving GPU memory and training speedup. issue [#35](https://github.com/Luodian/PET-VLM/issues/35)
 - [ ]  `load_in_8bit` support: for saving GPU memory and training speedup. [[issue]()]
 
 ### Models
