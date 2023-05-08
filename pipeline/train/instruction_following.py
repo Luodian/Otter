@@ -24,13 +24,16 @@ from pipeline.train.train_utils import (
     get_cast_dtype,
     get_checkpoint,
 )
-from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
+
+# from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
+# from flamingo.configuration_flamingo import FlamingoConfig
+from otter.modeling_otter import OtterForConditionalGeneration
+from otter.configuration_otter import OtterConfig
 from tqdm import tqdm
 import time
 
 from pipeline.multi_instruct_data_utils.arguments import add_data_args
 from accelerate import Accelerator
-from flamingo.configuration_flamingo import FlamingoConfig
 
 # The flag below controls whether to allow TF32 on matmul. This flag defaults to False
 # in PyTorch 1.12 and later.
@@ -145,8 +148,10 @@ def train_one_epoch(
         def mask_embedding(m):
             if isinstance(m, torch.nn.Embedding) and m.weight.requires_grad:
                 zero_mask = torch.zeros_like(m.weight.grad)
-                # zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
-                # zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
+                zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
+                zero_mask[endofchunk_token_id] = torch.ones_like(
+                    zero_mask[endofchunk_token_id]
+                )
                 zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
                 m.weight.grad = m.weight.grad * zero_mask
 
@@ -352,14 +357,14 @@ def main():
     random_seed(args.seed)
 
     if args.pretrained_model_name_or_path is not None:
-        model = FlamingoForConditionalGeneration.from_pretrained(
+        model = OtterForConditionalGeneration.from_pretrained(
             args.pretrained_model_name_or_path,
-            device_map="auto",
+            device_map={"": torch.cuda.current_device()},
             local_files_only=args.offline,
         )
     else:
-        config = FlamingoConfig.from_json_file("./flamingo_hf/config.json")
-        model = FlamingoForConditionalGeneration(config=config)
+        config = OtterConfig.from_json_file("./otter/config.json")
+        model = OtterForConditionalGeneration(config=config)
 
     tokenizer = model.text_tokenizer
     image_processor = CLIPImageProcessor()
@@ -425,6 +430,7 @@ def main():
     if (
         os.path.exists(f"{args.external_save_dir}")
         and args.resume_from_checkpoint is None
+        and args.pretrained_model_name_or_path is None
     ):
         checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
         if len(checkpoint_list) == 0:
