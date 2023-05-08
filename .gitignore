@@ -183,6 +183,7 @@ flamingo_9b_hf/*
 nginx/*
 logs/*
 ofa_compress/*
+xformers_model/*
 
 #yuanhan
 tools
