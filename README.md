@@ -30,7 +30,9 @@
 
 ## Update
 
-- [2023-05-08] Check our Arxiv release paper at [Otter: A Multi-Modal Model with In-Context Instruction Tuning](https://arxiv.org/abs/2305.03726) !
+- [2023-05-08]
+  1. Check our Arxiv release paper at [Otter: A Multi-Modal Model with In-Context Instruction Tuning](https://arxiv.org/abs/2305.03726) !
+  2. we support `xformers` for memory efficient attention.
 
 ## 🦦 Overview
 
