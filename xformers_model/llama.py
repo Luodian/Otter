@@ -284,11 +284,18 @@ class LlamaAttention(nn.Module):
         query_states = query_states.transpose(1, 2)
         key_states = key_states.transpose(1, 2)
         value_states = value_states.transpose(1, 2)
+        # attn_output = xops.memory_efficient_attention(
+        #     query_states,
+        #     key_states,
+        #     value_states,
+        #     attn_bias=None if attention_mask.sum() == 0 else xops.LowerTriangularMask(),
+        # )
+        # TODO-BLI: attention_mask.sum() operation will result in low throughput. 
         attn_output = xops.memory_efficient_attention(
             query_states,
             key_states,
             value_states,
-            attn_bias=None if attention_mask.sum() == 0 else xops.LowerTriangularMask(),
+            attn_bias=xops.LowerTriangularMask(),
         )
         attn_output = attn_output.reshape(bsz, q_len, self.hidden_size)
         attn_output = self.o_proj(attn_output)

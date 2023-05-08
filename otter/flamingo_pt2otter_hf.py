@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 
-from .modeling_otter import (
+from otter.modeling_otter import (
     OtterPreTrainedModel,
     OtterLMMixin,
     extend_instance,
@@ -17,7 +17,7 @@ from .modeling_otter import (
     OtterPerceiverResampler,
 )
 
-from .configuration_otter import OtterConfig
+from otter.configuration_otter import OtterConfig
 
 
 class OtterModel(OtterPreTrainedModel):

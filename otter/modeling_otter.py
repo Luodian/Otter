@@ -9,19 +9,28 @@ from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
 from .configuration_otter import OtterConfig
 
+import sys
+# The package importlib_metadata is in a different place, depending on the python version.
+if sys.version_info < (3, 8):
+    import importlib_metadata
+else:
+    import importlib.metadata as importlib_metadata
+
 XFORMERS_AVAIL = False
 try:
     import xformers.ops as xops
     from xformers_model import CLIPVisionModel, LlamaForCausalLM
     from transformers import LlamaTokenizer
+    _xformers_version = importlib_metadata.version("xformers")
+    print(f"Successfully imported xformers version {_xformers_version}")
 except ImportError:
     from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 
     XFORMERS_AVAIL = False
-    print(
-        "You are recommended to install xformers via `pip install xformers` or `conda install -c xformers xformers`"
-    )
-
+    print("No xformers found. You are recommended to install xformers via `pip install xformers` or `conda install -c xformers xformers`")
+    
+# from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
+    
 __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
     "opt": "model.decoder.layers",
     "gptneo": "transformer.h",
@@ -37,18 +46,14 @@ def _infer_decoder_layers_attr_name(model: nn.Module):
         if k.lower() in model.__class__.__name__.lower():
             return __KNOWN_DECODER_LAYERS_ATTR_NAMES[k]
 
-    raise ValueError(
-        f"We require the attribute name for the nn.ModuleList in the decoder storing the transformer block layers. Please supply this string manually."
-    )
+    raise ValueError(f"We require the attribute name for the nn.ModuleList in the decoder storing the transformer block layers. Please supply this string manually.")
 
 
 def extend_instance(obj, mixin):
     """Apply mixins to a class instance after creation"""
     base_cls = obj.__class__
     base_cls_name = obj.__class__.__name__
-    obj.__class__ = type(
-        base_cls_name, (mixin, base_cls), {}
-    )  # mixin needs to go first for our forward() logic to work
+    obj.__class__ = type(base_cls_name, (mixin, base_cls), {})  # mixin needs to go first for our forward() logic to work
 
 
 def getattr_recursive(obj, att):
@@ -152,24 +157,12 @@ class OtterPerceiverResampler(nn.Module):
     ):
         super().__init__()
         self.latents = nn.Parameter(torch.randn(num_latents, dim))
-        self.frame_embs = (
-            nn.Parameter(torch.randn(max_num_frames, dim))
-            if exists(max_num_frames)
-            else None
-        )
-        self.media_time_embs = (
-            nn.Parameter(torch.randn(max_num_media, 1, dim))
-            if exists(max_num_media)
-            else None
-        )
+        self.frame_embs = nn.Parameter(torch.randn(max_num_frames, dim)) if exists(max_num_frames) else None
+        self.media_time_embs = nn.Parameter(torch.randn(max_num_media, 1, dim)) if exists(max_num_media) else None
 
         self.layers = nn.ModuleList([])
         for _ in range(depth):
-            self.layers.append(
-                OtterPerceiverBlock(
-                    dim=dim, dim_head=dim_head, heads=heads, mult=ff_mult
-                )
-            )
+            self.layers.append(OtterPerceiverBlock(dim=dim, dim_head=dim_head, heads=heads, mult=ff_mult))
 
         self.norm = nn.LayerNorm(dim)
 
@@ -187,9 +180,7 @@ class OtterPerceiverResampler(nn.Module):
         if exists(self.frame_embs):
             frame_embs = repeat(self.frame_embs[:F], "F d -> b T F v d", b=b, T=T, v=v)
             x = x + frame_embs
-        x = rearrange(
-            x, "b T F v d -> b T (F v) d"
-        )  # flatten the frame and spatial dimensions
+        x = rearrange(x, "b T F v d -> b T (F v) d")  # flatten the frame and spatial dimensions
         if exists(self.media_time_embs):
             x = x + self.media_time_embs[:T]
 
@@ -294,9 +285,7 @@ class OtterMaskedCrossAttention(nn.Module):
             if exists(media_locations) and self.only_attend_immediate_media:
                 # any text without a preceding media needs to have attention zeroed out
                 text_without_media_mask = text_time == 0
-                text_without_media_mask = rearrange(
-                    text_without_media_mask, "b i -> b 1 i 1"
-                )
+                text_without_media_mask = rearrange(text_without_media_mask, "b i -> b 1 i 1")
                 attn = attn.masked_fill(text_without_media_mask, 0.0)
 
             out = torch.einsum("... i j, ... j d -> ... i d", attn, v)
@@ -306,9 +295,7 @@ class OtterMaskedCrossAttention(nn.Module):
             k = rearrange(k, "b n (h d) -> b n h d", h=h)
             v = rearrange(v, "b n (h d) -> b n h d", h=h)
             attn_mask = None
-            out = xops.memory_efficient_attention(
-                q, k, v, attn_bias=attn_mask, scale=self.scale
-            )
+            out = xops.memory_efficient_attention(q, k, v, attn_bias=attn_mask, scale=self.scale)
         return self.to_out(out)
 
 
@@ -398,9 +385,7 @@ class OtterLayer(nn.Module):
         **decoder_layer_kwargs,
     ):
         if self.gated_cross_attn_layer is None:
-            return self.decoder_layer(
-                lang_x, attention_mask=attention_mask, **decoder_layer_kwargs
-            )
+            return self.decoder_layer(lang_x, attention_mask=attention_mask, **decoder_layer_kwargs)
 
         if self.vis_x is None:
             raise ValueError("vis_x must be conditioned before forward pass")
@@ -414,9 +399,7 @@ class OtterLayer(nn.Module):
             media_locations=self.media_locations,
             attend_previous=self.attend_previous,
         )
-        lang_x = self.decoder_layer(
-            lang_x, attention_mask=attention_mask, **decoder_layer_kwargs
-        )
+        lang_x = self.decoder_layer(lang_x, attention_mask=attention_mask, **decoder_layer_kwargs)
         return lang_x
 
 
@@ -458,16 +441,7 @@ class OtterLMMixin(nn.Module):
                 for layer_idx, _ in enumerate(self._get_decoder_layers())
             ]
         )
-        self._set_decoder_layers(
-            nn.ModuleList(
-                [
-                    OtterLayer(gated_cross_attn_layer, decoder_layer)
-                    for gated_cross_attn_layer, decoder_layer in zip(
-                        gated_cross_attn_layers, self._get_decoder_layers()
-                    )
-                ]
-            )
-        )
+        self._set_decoder_layers(nn.ModuleList([OtterLayer(gated_cross_attn_layer, decoder_layer) for gated_cross_attn_layer, decoder_layer in zip(gated_cross_attn_layers, self._get_decoder_layers())]))
         self.media_token_id = media_token_id
         self.use_media_placement_augmentation = use_media_placement_augmentation
         self.only_attend_previous = only_attend_previous
@@ -476,9 +450,7 @@ class OtterLMMixin(nn.Module):
     def forward(self, *input, **kwargs):
         """Condition the Otter layers on the media locations before forward()"""
         if not self.initialized_otter:
-            raise ValueError(
-                "Otter layers are not initialized. Please call `init_otter` first."
-            )
+            raise ValueError("Otter layers are not initialized. Please call `init_otter` first.")
 
         input_ids = kwargs["input_ids"] if "input_ids" in kwargs else input[0]
         media_locations = input_ids == self.media_token_id
@@ -492,9 +464,7 @@ class OtterLMMixin(nn.Module):
             layer.condition_media_locations(media_locations)
             layer.condition_attend_previous(attend_previous)
 
-        return super().forward(
-            *input, **kwargs
-        )  # Call the other parent's forward method
+        return super().forward(*input, **kwargs)  # Call the other parent's forward method
 
     def is_conditioned(self) -> bool:
         """Check whether all decoder layers are already conditioned."""
@@ -531,15 +501,11 @@ class OtterModel(OtterPreTrainedModel):
         config: OtterConfig,
     ):
         super().__init__(config)
-        text_tokenizer = LlamaTokenizer.from_pretrained(
-            config.text_config._name_or_path
-        )
+        text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
         lang_encoder = LlamaForCausalLM(config=config.text_config)
         vision_encoder = CLIPVisionModel(config=config.vision_config)
 
-        text_tokenizer.add_special_tokens(
-            {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
-        )
+        text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
         if text_tokenizer.pad_token is None:
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
         self.text_tokenizer = text_tokenizer
@@ -635,18 +601,12 @@ class OtterModel(OtterPreTrainedModel):
             use_cache: whether to use cached key values. See use_cache
                 documentation in Hugging Face CausalLM models.
         """
-        assert (
-            vision_x is not None
-        ) or use_cached_vision_x, (
-            "Must provide either vision_x or use_cached_vision_x to True."
-        )
+        assert (vision_x is not None) or use_cached_vision_x, "Must provide either vision_x or use_cached_vision_x to True."
 
         if use_cached_vision_x:
             # Case: use cached; vision_x should be cached and other
             # vision-related inputs should not be provided.
-            assert (
-                vision_x is None
-            ), "Expect vision_x to be None when use_cached_vision_x is True."
+            assert vision_x is None, "Expect vision_x to be None when use_cached_vision_x is True."
             assert self.lang_encoder.is_conditioned()
 
         else:
@@ -701,15 +661,11 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         config: OtterConfig,
     ):
         super().__init__(config)
-        text_tokenizer = LlamaTokenizer.from_pretrained(
-            config.text_config._name_or_path
-        )
+        text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
         lang_encoder = LlamaForCausalLM(config=config.text_config)
         vision_encoder = CLIPVisionModel(config=config.vision_config)
 
-        text_tokenizer.add_special_tokens(
-            {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
-        )
+        text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
         if text_tokenizer.pad_token is None:
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
         self.text_tokenizer = text_tokenizer
@@ -804,18 +760,12 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             use_cache: whether to use cached key values. See use_cache
                 documentation in Hugging Face CausalLM models.
         """
-        assert (
-            vision_x is not None
-        ) or use_cached_vision_x, (
-            "Must provide either vision_x or use_cached_vision_x to True."
-        )
+        assert (vision_x is not None) or use_cached_vision_x, "Must provide either vision_x or use_cached_vision_x to True."
 
         if use_cached_vision_x:
             # Case: use cached; vision_x should be cached and other
             # vision-related inputs should not be provided.
-            assert (
-                vision_x is None
-            ), "Expect vision_x to be None when use_cached_vision_x is True."
+            assert vision_x is None, "Expect vision_x to be None when use_cached_vision_x is True."
             assert self.lang_encoder.is_conditioned()
 
         else:
