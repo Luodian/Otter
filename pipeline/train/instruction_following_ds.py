@@ -405,7 +405,8 @@ def main():
     )
     if (
         os.path.exists(f"{args.external_save_dir}")
-        and args.resume_from_checkpoint is None and args.pretrained_model_name_or_path is None
+        and args.resume_from_checkpoint is None
+        and args.pretrained_model_name_or_path is None
     ):
         checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
         if len(checkpoint_list) == 0:
@@ -442,7 +443,9 @@ def main():
     optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
     accelerator = Accelerator()
     if accelerator.state.deepspeed_plugin is not None:
-        accelerator.state.deepspeed_plugin.deepspeed_config['train_micro_batch_size_per_gpu'] = args.batch_size
+        accelerator.state.deepspeed_plugin.deepspeed_config[
+            "train_micro_batch_size_per_gpu"
+        ] = args.batch_size
     multi_instruct_loader = multi_instruct_dataset.dataloader
     model, optimizer, multi_instruct_loader = accelerator.prepare(
         model, optimizer, multi_instruct_loader
