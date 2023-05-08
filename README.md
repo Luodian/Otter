@@ -93,7 +93,7 @@ Our Otter model is also developed in this way and it's deployed on the 🤗 Hugg
 
 ## 🗄 Dataset Preparation
 
-### Multi-modal instruction tuning dataset with in-context examples (ICI)
+### MultI-Modal In-Context Instruction Tuning (MIMIC-IT) dataset
 
 The OpenFlamingo framework leverages the interleaved multi-modal MMC4 dataset to emerge in its few-shot, in-context learning capabilities. The MMC4 dataset is composed of image-text pairs derived from individual HTML files, with significant contextual relationships between different pairs, as depicted in below Figure (a). An MMC4 training data sample contains (i) a queried image-text pair, where the text typically describes the image, and (ii) context, which includes the remaining image-text pairs from the same HTML file. The primary training objective of OpenFlamingo is to generate text for the queried image-text pair, and the paradigm of generating query text conditioned on in-context examples ensures OpenFlamingo's in-context learning capacity during the inference phase.
 
@@ -101,7 +101,9 @@ Our Multi-Modal In-Context Instruction Tuning (MIMIC-IT) dataset aims to augment
 
 ### Example
 
-<p align="center" width="100%"><img src="https://i.postimg.cc/8zcWL323/context.png" alt="otter-example" style="width: 100%; min-width: 300px; display: block; margin: auto;"></a></p>
+<div style="text-align:center">
+<img src="https://i.postimg.cc/8zcWL323/context.png"  width="100%" height="100%">
+</div>
 
 ### Preparation
 
@@ -109,7 +111,7 @@ We unify different instructing data into a single dataset [class](pipeline/multi
 
 ## ☄️ Training
 
-Train on `in-context-instruction(ICI)` datasets, using the following commands:
+Train on `MIMIC-IT` datasets, using the following commands:
 
 First, run, and answer the questions asked. This will generate a config file and save it to the cache folder. The config will be used automatically to properly set the default options when doing `accelerate launch`.
 
@@ -120,9 +122,8 @@ accelerate config
 Then run the training script.
 
 ```bash
-accelerate launch --pretrained_model_name_or_path=luodian/openflamingo-9b-hf \
---lm_path=luodian/llama-7b-hf \
---tokenizer_path=luodian/llama-7b-hf \
+accelerate launch pipeline/train/instruction_following.py \
+--pretrained_model_name_or_path=luodian/openflamingo-9b-hf \
 --dataset_resampled \
 --multi_instruct_path=./in_context_instruct.tsv \
 --run_name=otter-9b \
