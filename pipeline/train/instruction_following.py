@@ -369,6 +369,13 @@ def main():
     tokenizer = model.text_tokenizer
     image_processor = CLIPImageProcessor()
 
+    # add <answer> token to tokenizer
+    tokenizer.add_special_tokens(
+        {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
+    )
+
+    model.lang_encoder.resize_token_embeddings(len(tokenizer))
+
     random_seed(args.seed, args.rank)
 
     print(f"Start running training on rank {args.rank}.")
@@ -456,13 +463,6 @@ def main():
         model.load_state_dict(
             torch.load(args.resume_from_checkpoint, map_location="cpu"), False
         )
-
-    # add <answer> token to tokenizer
-    tokenizer.add_special_tokens(
-        {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
-    )
-
-    model.lang_encoder.resize_token_embeddings(len(tokenizer))
 
     optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
     accelerator = Accelerator()
