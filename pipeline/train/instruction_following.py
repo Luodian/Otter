@@ -366,7 +366,6 @@ def main():
         config = OtterConfig.from_json_file("./otter/config.json")
         model = OtterForConditionalGeneration(config=config)
 
-
     tokenizer = model.text_tokenizer
     image_processor = CLIPImageProcessor()
 
