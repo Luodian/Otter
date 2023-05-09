@@ -354,7 +354,7 @@ def main():
     if args.pretrained_model_name_or_path is not None:
         model = FlamingoForConditionalGeneration.from_pretrained(
             args.pretrained_model_name_or_path,
-            device_map={'':torch.cuda.current_device()},
+            device_map={"": torch.cuda.current_device()},
             local_files_only=args.offline,
         )
     else:

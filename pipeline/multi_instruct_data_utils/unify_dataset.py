@@ -54,9 +54,7 @@ def numpy_seed(seed, *addl_seeds):
 
 
 class UnifyDataset(MultiInstructDataset):
-    def __init__(
-        self, args, is_test=False, supported_data_types=["caption", "qa"]
-    ):
+    def __init__(self, args, is_test=False, supported_data_types=["caption", "qa"]):
         super().__init__(args, is_test)
         self.max_src_length = args.max_src_length
         self.max_tgt_length = args.max_tgt_length
@@ -81,7 +79,6 @@ class UnifyDataset(MultiInstructDataset):
                 transforms.Normalize(mean=FLAMINGO_MEAN, std=FLAMINGO_STD),
             ]
         )
-
 
         self.file_path = args.multi_instruct_path
         assert os.path.exists(
@@ -191,7 +188,9 @@ class UnifyDataset(MultiInstructDataset):
             gt_objects,
             dataset_name,
             type,
-        ) = self.dataset[index].rstrip("\n").split(self.separator)
+        ) = (
+            self.dataset[index].rstrip("\n").split(self.separator)
+        )
         if type not in self.supported_data_types:
             return None
 
