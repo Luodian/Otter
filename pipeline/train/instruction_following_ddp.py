@@ -32,6 +32,13 @@ from pipeline.multi_instruct_data_utils.arguments import add_data_args
 from accelerate import Accelerator
 from flamingo.configuration_flamingo import FlamingoConfig
 
+# The flag below controls whether to allow TF32 on matmul. This flag defaults to False
+# in PyTorch 1.12 and later.
+torch.backends.cuda.matmul.allow_tf32 = True
+
+# The flag below controls whether to allow TF32 on cuDNN. This flag defaults to True.
+torch.backends.cudnn.allow_tf32 = True
+
 
 def random_seed(seed=42, rank=0):
     torch.manual_seed(seed + rank)
@@ -74,11 +81,6 @@ def train_one_epoch(
         AverageMeter()
     )  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
-    # orig_embeds_params = {}
-
-    # for name, param in accelerator.unwrap_model(model).named_parameters():
-    #     if "embed_tokens" in name:
-    #         orig_embeds_params[name] = param.ds_tensor.clone()
 
     # loop through dataloader
     for num_steps, (batch_multi_instruct) in tqdm(
@@ -137,6 +139,19 @@ def train_one_epoch(
 
         #### BACKWARD PASS ####
         accelerator.backward(divided_loss_multi_instruct)
+
+        #### MASK GRADIENTS FOR EMBEDDINGS ####
+        # Note (anas): Do not apply weight decay to embeddings as it will break this function.
+        def mask_embedding(m):
+            if isinstance(m, torch.nn.Embedding) and m.weight.requires_grad:
+                zero_mask = torch.zeros_like(m.weight.grad)
+                # zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
+                # zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
+                zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
+                m.weight.grad = m.weight.grad * zero_mask
+
+        model.apply(mask_embedding)
+
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
         # step optimizer and log
@@ -146,16 +161,6 @@ def train_one_epoch(
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()
-
-            # # RESET PARAMS FOR EMBEDDINGS
-            # for name, param in accelerator.unwrap_model(model).named_parameters():
-            #     if "embed_tokens" in name:
-            #         ds_dim = param.ds_shape[1]
-            #         # TODO: use index to reset params
-            #         # media_index_no_updates = torch.arange(param.ds_tensor.shape) != media_token_id
-            #         param.ds_tensor[
-            #             : endofchunk_token_id * ds_dim
-            #         ] = orig_embeds_params[name][: endofchunk_token_id * ds_dim]
 
             # step time and reset end outside of rank 0
             step_time_m.update(time.time() - end)
@@ -349,11 +354,11 @@ def main():
     if args.pretrained_model_name_or_path is not None:
         model = FlamingoForConditionalGeneration.from_pretrained(
             args.pretrained_model_name_or_path,
-            device_map="auto",
+            device_map={'':torch.cuda.current_device()},
             local_files_only=args.offline,
         )
     else:
-        config = FlamingoConfig.from_json_file("./flamingo/config.json")
+        config = FlamingoConfig.from_json_file("./flamingo_hf/config.json")
         model = FlamingoForConditionalGeneration(config=config)
 
     tokenizer = model.text_tokenizer
@@ -420,7 +425,6 @@ def main():
     if (
         os.path.exists(f"{args.external_save_dir}")
         and args.resume_from_checkpoint is None
-        and args.pretrained_model_name_or_path is None
     ):
         checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
         if len(checkpoint_list) == 0:
@@ -456,14 +460,9 @@ def main():
 
     optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
     accelerator = Accelerator()
-    if accelerator.state.deepspeed_plugin is not None:
-        accelerator.state.deepspeed_plugin.deepspeed_config[
-            "train_micro_batch_size_per_gpu"
-        ] = args.batch_size
     multi_instruct_loader = multi_instruct_dataset.dataloader
-    model, optimizer, multi_instruct_loader = accelerator.prepare(
-        model, optimizer, multi_instruct_loader
-    )
+    # model, optimizer, multi_instruct_loader = accelerator.prepare(model, optimizer, multi_instruct_loader)
+    model, optimizer = accelerator.prepare(model, optimizer)
     model.train()
     # model.gradient_checkpointing_enable()
 

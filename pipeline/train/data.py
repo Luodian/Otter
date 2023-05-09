@@ -673,12 +673,13 @@ from pipeline.multi_instruct_data_utils.unify_dataset import UnifyDataset
 def get_multi_instruction_dataset(
     args, image_processor, tokenizer, epoch=0, floor=False
 ):
-    multi_instruct_path = args.multi_instruct_path
+    # multi_instruct_path = args.multi_instruct_path
     ImageFile.LOAD_TRUNCATED_IMAGES = True
-    dataset = FileDataset(multi_instruct_path, args.selected_cols)
+    # dataset = FileDataset(multi_instruct_path, args.selected_cols)
     args.task = "pretrain"
     args.tokenizer = tokenizer
-    unified_dataset = UnifyDataset(args, dataset)
+    unified_dataset = UnifyDataset(args)
+    # unified_dataset = UnifyDataset(args, dataset)
 
     # create a shared epoch store to sync epoch to dataloader worker proc
     shared_epoch = SharedEpoch(epoch=epoch)
@@ -704,16 +705,16 @@ def get_multi_instruction_dataset(
     #     num_workers=args.workers,
     #     persistent_workers=True,
     # )
-    if args.world_size > 1:
-        sampler = DistributedSampler(unified_dataset)
-    else:
-        sampler = RandomSampler(unified_dataset)
+    # if args.world_size > 1:
+    #     sampler = DistributedSampler(unified_dataset)
+    # else:
+    sampler = RandomSampler(unified_dataset)
 
     dataloader = torch.utils.data.DataLoader(
         unified_dataset,
         sampler=sampler,
         batch_size=args.batch_size,
-        num_workers=0,
+        num_workers=args.workers,
         pin_memory=True,
         drop_last=True,
         collate_fn=unified_dataset.collate,

@@ -769,6 +769,8 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
         self.lang_encoder.lm_head.requires_grad_(True)
 
+        self.lang_encoder.lm_head.requires_grad = True
+
     def forward(
         self,
         vision_x: torch.Tensor,

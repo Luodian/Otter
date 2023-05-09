@@ -21,6 +21,8 @@ from .multi_instruct_dataset import (
     collate_fn,
 )
 
+import os
+
 label_map = {"entailment": 0, "not_entailment": 1}
 
 IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
@@ -53,9 +55,9 @@ def numpy_seed(seed, *addl_seeds):
 
 class UnifyDataset(MultiInstructDataset):
     def __init__(
-        self, args, dataset, is_test=False, supported_data_types=["caption", "qa"]
+        self, args, is_test=False, supported_data_types=["caption", "qa"]
     ):
-        super().__init__(args, dataset, is_test)
+        super().__init__(args, is_test)
         self.max_src_length = args.max_src_length
         self.max_tgt_length = args.max_tgt_length
 
@@ -80,13 +82,24 @@ class UnifyDataset(MultiInstructDataset):
             ]
         )
 
-        self.dataset = dataset
+
+        self.file_path = args.multi_instruct_path
+        assert os.path.exists(
+            self.file_path
+        ), "Error: The local datafile {} not exists!".format(self.file_path)
+        self.separator = "\t"
+        # self.selected_col_ids = [
+        #         int(col_id) for col_id in args.selected_col_ids.split(",")
+        #     ]
+        # self.dtypes = [str for col_id in self.selected_col_ids]
+
+        with open(self.file_path) as f:
+            self.dataset = f.readlines()
 
         self.bos_item = torch.LongTensor([args.tokenizer.bos_token_id])
         self.eos_item = torch.LongTensor([args.tokenizer.eos_token_id])
         self.bos_mask = torch.LongTensor([1])
         self.eos_mask = torch.LongTensor([1])
-
         self.rank = args.rank
 
     def pre_question(self, question, max_ques_words):
@@ -178,7 +191,7 @@ class UnifyDataset(MultiInstructDataset):
             gt_objects,
             dataset_name,
             type,
-        ) = self.dataset[index]
+        ) = self.dataset[index].rstrip("\n").split(self.separator)
         if type not in self.supported_data_types:
             return None
 
@@ -276,6 +289,9 @@ class UnifyDataset(MultiInstructDataset):
         examples = [example]
 
         return examples
+
+    def __len__(self):
+        return len(self.dataset)
 
     def __getitem__(self, index):
         with numpy_seed(self.seed, self.epoch):
