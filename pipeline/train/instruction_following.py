@@ -371,15 +371,16 @@ def main():
         config = FlamingoConfig.from_json_file("./flamingo/config.json")
         model = FlamingoForConditionalGeneration(config=config)
 
-        '''
+        """
         TODO: deprecate this option since the original checkpoints are not supported in future versions
         TODO: all future checkpoints (even released from openflamingo), we will convert them and save to huggingface format.
         TODO: supposedly using "args.pretrained_model_name_or_path" should be the best way to load the model.
-        '''
+        """
         if args.load_from_original_checkpoint is not None:
             print(f"Loading checkpoint from {args.load_from_original_checkpoint}")
             model.load_state_dict(
-                torch.load(args.load_from_original_checkpoint, map_location="cpu"), False
+                torch.load(args.load_from_original_checkpoint, map_location="cpu"),
+                False,
             )
 
     tokenizer = model.text_tokenizer
