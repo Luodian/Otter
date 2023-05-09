@@ -25,8 +25,8 @@ from pipeline.train.train_utils import (
     get_checkpoint,
 )
 
-# from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
-# from flamingo.configuration_flamingo import FlamingoConfig
+from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
+from flamingo.configuration_flamingo import FlamingoConfig
 from otter.modeling_otter import OtterForConditionalGeneration
 from otter.configuration_otter import OtterConfig
 from tqdm import tqdm
@@ -213,15 +213,16 @@ def train_one_epoch(
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--vision_encoder_path", default="ViT-L-14", type=str)
-    parser.add_argument("--vision_encoder_pretrained", default="openai", type=str)
-    parser.add_argument("--lm_path", default="facebook/opt-1.3b", type=str)
-    parser.add_argument(
-        "--tokenizer_path",
-        default="facebook/opt-30b",
-        type=str,
-        help="path to tokenizer",
-    )
+    # TODO: Deprecate this in future versions, only use pretrianed_model_name_or_path to load the whole model.
+    # parser.add_argument("--vision_encoder_path", default="ViT-L-14", type=str)
+    # parser.add_argument("--vision_encoder_pretrained", default="openai", type=str)
+    # parser.add_argument("--lm_path", default="facebook/opt-1.3b", type=str)
+    # parser.add_argument(
+    #     "--tokenizer_path",
+    #     default="facebook/opt-30b",
+    #     type=str,
+    #     help="path to tokenizer",
+    # )
     parser.add_argument(
         "--cross_attn_every_n_layers",
         type=int,
@@ -256,10 +257,14 @@ def main():
         default=None,
     )
     parser.add_argument(
-        "--resume_from_checkpoint",
+        "--load_from_original_checkpoint",
         type=str,
-        help="path to checkpoint to resume from, this should contain model, optimizer, and lr_scheduler states",
+        help="path to openflamingo provided checkpoint, in .pt format",
         default=None,
+    )
+    parser.add_argument(
+        "--resume_from_checkpoint",
+        action="store_true",
     )
     parser.add_argument(
         "--overwrite_checkpoint",
@@ -357,14 +362,26 @@ def main():
     random_seed(args.seed)
 
     if args.pretrained_model_name_or_path is not None:
-        model = OtterForConditionalGeneration.from_pretrained(
+        model = FlamingoForConditionalGeneration.from_pretrained(
             args.pretrained_model_name_or_path,
-            device_map={"": torch.cuda.current_device()},
+            device_map="auto",
             local_files_only=args.offline,
         )
     else:
-        config = OtterConfig.from_json_file("./otter/config.json")
-        model = OtterForConditionalGeneration(config=config)
+        config = FlamingoConfig.from_json_file("./flamingo/config.json")
+        model = FlamingoForConditionalGeneration(config=config)
+
+        """
+        TODO: deprecate this option since the original checkpoints are not supported in future versions
+        TODO: all future checkpoints (even released from openflamingo), we will convert them and save to huggingface format.
+        TODO: supposedly using "args.pretrained_model_name_or_path" should be the best way to load the model.
+        """
+        if args.load_from_original_checkpoint is not None:
+            print(f"Loading checkpoint from {args.load_from_original_checkpoint}")
+            model.load_state_dict(
+                torch.load(args.load_from_original_checkpoint, map_location="cpu"),
+                False,
+            )
 
     tokenizer = model.text_tokenizer
     image_processor = CLIPImageProcessor()
@@ -436,33 +453,26 @@ def main():
     )
     if (
         os.path.exists(f"{args.external_save_dir}")
-        and args.resume_from_checkpoint is None
-        and args.pretrained_model_name_or_path is None
+        and args.resume_from_checkpoint is True
     ):
         checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
         if len(checkpoint_list) == 0:
             print(f"Found no checkpoints for run {args.external_save_dir}.")
         else:
-            args.resume_from_checkpoint = sorted(
+            resume_from_checkpoint_path = sorted(
                 checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0])
             )[-1]
             print(
-                f"Found checkpoint {args.resume_from_checkpoint} for run {args.external_save_dir}."
+                f"Found checkpoint {resume_from_checkpoint_path} for run {args.external_save_dir}."
             )
 
         if args.rank == 0:
-            print(f"Loading checkpoint from {args.resume_from_checkpoint}")
-        checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
+            print(f"Loading checkpoint from {resume_from_checkpoint_path}")
+        checkpoint = torch.load(resume_from_checkpoint_path, map_location="cpu")
         model.load_state_dict(checkpoint["model_state_dict"], False)
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
         resume_from_epoch = checkpoint["epoch"] + 1
-
-    elif args.resume_from_checkpoint is not None:
-        print(f"Loading checkpoint from {args.resume_from_checkpoint}")
-        model.load_state_dict(
-            torch.load(args.resume_from_checkpoint, map_location="cpu"), False
-        )
 
     optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
     accelerator = Accelerator()
