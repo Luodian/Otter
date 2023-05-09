@@ -285,6 +285,7 @@ def main():
     )
     parser.add_argument("--loss_multiplier_multi_instruct", type=float, default=1.0)
     parser.add_argument("--warmup_steps", default=1000, type=int)
+    parser.add_argument("--warmup_steps_ratio", default=None, type=float)
     parser.add_argument("--weight_decay", default=0.1, type=float)
     parser.add_argument(
         "--precision",
@@ -375,18 +376,12 @@ def main():
     )
 
     model.lang_encoder.resize_token_embeddings(len(tokenizer))
+    
+    args.tokenizer = tokenizer
 
     random_seed(args.seed, args.rank)
 
     print(f"Start running training on rank {args.rank}.")
-
-    if args.rank == 0 and args.report_to_wandb:
-        wandb.init(
-            project=args.wandb_project,
-            entity=args.wandb_entity,
-            name=args.run_name,
-            config=vars(args),
-        )
 
     device_id = args.rank % torch.cuda.device_count()
 
@@ -475,6 +470,9 @@ def main():
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
 
+
+    args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
+
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
             optimizer,
@@ -490,6 +488,14 @@ def main():
     else:
         lr_scheduler = get_constant_schedule_with_warmup(
             optimizer, num_warmup_steps=args.warmup_steps
+        )
+
+    if args.rank == 0 and args.report_to_wandb:
+        wandb.init(
+            project=args.wandb_project,
+            entity=args.wandb_entity,
+            name=args.run_name,
+            config=vars(args),
         )
 
     for epoch in range(resume_from_epoch, args.num_epochs):
