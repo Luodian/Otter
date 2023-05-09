@@ -393,6 +393,8 @@ def main():
 
     model.lang_encoder.resize_token_embeddings(len(tokenizer))
 
+    args.tokenizer = tokenizer
+
     random_seed(args.seed, args.rank)
 
     print(f"Start running training on rank {args.rank}.")
@@ -484,6 +486,12 @@ def main():
 
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
+
+    args.warmup_steps = (
+        total_training_steps * args.warmup_steps_ratio
+        if args.warmup_steps_ratio is not None
+        else args.warmup_steps
+    )
 
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
