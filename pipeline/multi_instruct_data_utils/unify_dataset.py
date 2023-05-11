@@ -8,6 +8,7 @@ import base64
 from io import BytesIO
 import re
 import contextlib
+import os
 
 from PIL import ImageFile
 from torchvision import transforms
