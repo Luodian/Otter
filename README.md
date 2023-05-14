@@ -31,7 +31,7 @@
 ## 🦾 Update
     
 - [2023-05-14]
-  1. Battle Otter with Owl? the Pokémon Arena is here! Our model is selected in [Multi-Modal Arena](http://vlarena.opengvlab.com/). This is an interesting Multi-Modal Foundation Models competition arena that let you see different models reaction to the same question.
+  1. Otter battles with Owl? the Pokémon Arena is here! Our model is selected in [Multi-Modal Arena](http://vlarena.opengvlab.com/). This is an interesting Multi-Modal Foundation Models competition arena that let you see different models reaction to the same question.
 
 - [2023-05-08]
   1. Check our Arxiv release paper at [Otter: A Multi-Modal Model with In-Context Instruction Tuning](https://arxiv.org/abs/2305.03726) !
