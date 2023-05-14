@@ -26,9 +26,12 @@
 ![](https://black.readthedocs.io/en/stable/_static/license.svg)
 ![](https://img.shields.io/badge/code%20style-black-000000.svg)
 
- [Otter-9B (Hugging Face Models)](https://huggingface.co/luodian/otter-9b-hf) | [Youtube Video](https://youtu.be/r-YM4DGGAdE) | [Bilibili Video](https://www.bilibili.com/video/BV1iL411h7HZ/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) | [Live Demo](https://otter.cliangyu.com/) | [Paper](https://arxiv.org/abs/2305.03726)
+ [Otter-9B (Hugging Face Models)](https://huggingface.co/luodian/otter-9b-hf) | [Youtube Video](https://youtu.be/r-YM4DGGAdE) | [Bilibili Video](https://www.bilibili.com/video/BV1iL411h7HZ/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) | [Multi-Modal Arena](http://vlarena.opengvlab.com/) | [Paper](https://arxiv.org/abs/2305.03726)
 
 ## 🦾 Update
+    
+- [2023-05-14]
+  1. Battle Otter with Owl? the Pokémon Arena is here! Our model is selected in [Multi-Modal Arena](http://vlarena.opengvlab.com/). This is an interesting Multi-Modal Foundation Models competition arena that let you see different models reaction to the same question.
 
 - [2023-05-08]
   1. Check our Arxiv release paper at [Otter: A Multi-Modal Model with In-Context Instruction Tuning](https://arxiv.org/abs/2305.03726) !
