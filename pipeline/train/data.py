@@ -671,9 +671,9 @@ from pipeline.multi_instruct_data_utils.unify_dataset import UnifyDataset
 
 
 def get_multi_instruction_dataset(
-    args, image_processor, tokenizer, epoch=0, floor=False
+    args, tokenizer, epoch=0, floor=False
 ):
-    # multi_instruct_path = args.multi_instruct_path
+    multi_instruct_path = args.multi_instruct_path
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     # dataset = FileDataset(multi_instruct_path, args.selected_cols)
     args.task = "pretrain"
@@ -724,7 +724,9 @@ def get_multi_instruction_dataset(
     dataloader.num_batches = num_batches
     dataloader.num_samples = num_samples
 
-    return DataInfo(dataloader=dataloader, sampler=sampler, shared_epoch=shared_epoch)
+    return dataloader
+
+    # return DataInfo(dataloader=dataloader, sampler=sampler, shared_epoch=shared_epoch)
 
 
 def get_dataset_fn(dataset_type):
@@ -740,7 +742,7 @@ def get_dataset_fn(dataset_type):
         raise ValueError(f"Unsupported dataset type: {dataset_type}")
 
 
-def get_data(args, image_processor, tokenizer, dataset_type, epoch=0):
+def get_data(args, tokenizer, dataset_type, epoch=0):
     return get_dataset_fn(dataset_type)(
-        args, image_processor=image_processor, epoch=epoch, tokenizer=tokenizer
+        args, epoch=epoch, tokenizer=tokenizer
     )

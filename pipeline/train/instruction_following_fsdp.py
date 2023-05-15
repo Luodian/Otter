@@ -156,27 +156,17 @@ def train_one_epoch(
 
             #### MASK GRADIENTS FOR EMBEDDINGS ####
             # Note (anas): Do not apply weight decay to embeddings as it will break this function.
-            # def mask_embedding(m):
-            #     if isinstance(m, torch.nn.Embedding) and m.weight.requires_grad:
-            #         zero_mask = torch.zeros_like(m.weight.grad)
-            #         # zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
-            #         # zero_mask[endofchunk_token_id] = torch.ones_like(
-            #         #     zero_mask[endofchunk_token_id]
-            #         # )
-            #         zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
-            #         m.weight.grad = m.weight.grad * zero_mask
             def mask_embedding(m):
-                if  m.weight.requires_grad:
+                if isinstance(m, torch.nn.Embedding) and m.weight.requires_grad:
                     zero_mask = torch.zeros_like(m.weight.grad)
+                    zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
+                    zero_mask[endofchunk_token_id] = torch.ones_like(
+                        zero_mask[endofchunk_token_id]
+                    )
                     zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
                     m.weight.grad = m.weight.grad * zero_mask
 
-
-            if args.mask_lm_head:
-                # model.apply(mask_embedding)
-                model.module.lang_encoder.model.embed_tokens.apply(mask_embedding)
-                model.module.lang_encoder.lm_head.apply(mask_embedding)
-                
+            model.apply(mask_embedding)
 
             # torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             if accelerator.sync_gradients:
@@ -345,8 +335,6 @@ def main():
         action="store_true",
         help="Don't set device index from local rank (when CUDA_VISIBLE_DEVICES restricted to one per proc).",
     )
-    # YH: Training detail
-    parser.add_argument("--mask_lm_head", action="store_true")
     # this could potentially save 33GB of all model parameters for otter-9b, including the language and vision model.
     parser.add_argument("--save_hf_model", default=False, action="store_true")
     # wandb args
@@ -388,7 +376,7 @@ def main():
     if args.pretrained_model_name_or_path is not None:
         model = FlamingoForConditionalGeneration.from_pretrained(
             args.pretrained_model_name_or_path,
-            device_map={'':torch.cuda.current_device()},
+            device_map="auto",
             local_files_only=args.offline,
         )
     else:

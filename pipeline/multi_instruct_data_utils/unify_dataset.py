@@ -54,6 +54,9 @@ def numpy_seed(seed, *addl_seeds):
 
 
 class UnifyDataset(MultiInstructDataset):
+    # def __init__(
+    #     self, args, dataset, is_test=False, supported_data_types=["caption", "qa"]
+    # ):
     def __init__(
         self, args, is_test=False, supported_data_types=["caption", "qa"]
     ):
@@ -88,6 +91,7 @@ class UnifyDataset(MultiInstructDataset):
             self.file_path
         ), "Error: The local datafile {} not exists!".format(self.file_path)
         self.separator = "\t"
+
         # self.selected_col_ids = [
         #         int(col_id) for col_id in args.selected_col_ids.split(",")
         #     ]
@@ -95,6 +99,7 @@ class UnifyDataset(MultiInstructDataset):
 
         with open(self.file_path) as f:
             self.dataset = f.readlines()
+        # self.dataset = dataset
 
         self.bos_item = torch.LongTensor([args.tokenizer.bos_token_id])
         self.eos_item = torch.LongTensor([args.tokenizer.eos_token_id])

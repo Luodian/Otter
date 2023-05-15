@@ -9,7 +9,7 @@ pipeline/train/instruction_following_ddp.py \
 --num_epochs=6 \
 --report_to_wandb \
 --wandb_entity=ntu-slab \
---run_name=multi_instruct_chunyuan-core_lr1e-5_6epochs_ddp_unfreeze_lm \
+--run_name=multi_instruct_chunyuan-core_lr1e-5_6epochs_ddp_freeze_lm \
 --wandb_project=otter9B \
 --workers=2 \
 --cross_attn_every_n_layers=4 \
@@ -17,3 +17,4 @@ pipeline/train/instruction_following_ddp.py \
 --delete_previous_checkpoint \
 --learning_rate=1e-5 \
 --warmup_steps_ratio=0.01 \
+--mask_lm_head \
