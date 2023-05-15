@@ -112,11 +112,8 @@ def train_one_epoch(
         #     device_id, dtype=cast_dtype, non_blocking=True
         # )
 
-
         images = (
-            batch_multi_instruct["net_input"]["patch_images"]
-            .unsqueeze(1)
-            .unsqueeze(1)
+            batch_multi_instruct["net_input"]["patch_images"].unsqueeze(1).unsqueeze(1)
         )
         input_ids = batch_multi_instruct["net_input"]["input_ids"]
         attention_mask = batch_multi_instruct["net_input"]["attention_masks"]
@@ -159,11 +156,15 @@ def train_one_epoch(
             def mask_embedding(m):
                 if isinstance(m, torch.nn.Embedding) and m.weight.requires_grad:
                     zero_mask = torch.zeros_like(m.weight.grad)
-                    zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
+                    zero_mask[media_token_id] = torch.ones_like(
+                        zero_mask[media_token_id]
+                    )
                     zero_mask[endofchunk_token_id] = torch.ones_like(
                         zero_mask[endofchunk_token_id]
                     )
-                    zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
+                    zero_mask[answer_token_id] = torch.ones_like(
+                        zero_mask[answer_token_id]
+                    )
                     m.weight.grad = m.weight.grad * zero_mask
 
             model.apply(mask_embedding)
@@ -306,7 +307,7 @@ def main():
     )
     # data args
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--train_num_samples", type=int,default=None)
+    parser.add_argument("--train_num_samples", type=int, default=None)
     parser.add_argument("--dataset_resampled", action="store_true")
     # distributed training args
     parser.add_argument(
@@ -408,9 +409,7 @@ def main():
 
     device_id = args.rank % torch.cuda.device_count()
 
-    multi_instruct_loader = get_data(
-        args, tokenizer, "multi_instruct"
-    )
+    multi_instruct_loader = get_data(args, tokenizer, "multi_instruct")
 
     def get_grouped_params(model):
         params_with_wd, params_without_wd = [], []
@@ -442,7 +441,7 @@ def main():
         else args.train_num_samples
     )
 
-    total_training_steps = (len(multi_instruct_loader) * args.num_epochs)
+    total_training_steps = len(multi_instruct_loader) * args.num_epochs
 
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
@@ -510,8 +509,12 @@ def main():
             config=vars(args),
         )
 
-    accelerator = Accelerator(gradient_accumulation_steps = args.gradient_accumulation_steps)
-    model, optimizer, lr_scheduler, multi_instruct_loader = accelerator.prepare(model, optimizer, lr_scheduler, multi_instruct_loader)
+    accelerator = Accelerator(
+        gradient_accumulation_steps=args.gradient_accumulation_steps
+    )
+    model, optimizer, lr_scheduler, multi_instruct_loader = accelerator.prepare(
+        model, optimizer, lr_scheduler, multi_instruct_loader
+    )
     model.train()
 
     device_id = accelerator.device

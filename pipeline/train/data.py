@@ -670,9 +670,7 @@ from pipeline.multi_instruct_data_utils.input_dataset import FileDataset
 from pipeline.multi_instruct_data_utils.unify_dataset import UnifyDataset
 
 
-def get_multi_instruction_dataset(
-    args, tokenizer, epoch=0, floor=False
-):
+def get_multi_instruction_dataset(args, tokenizer, epoch=0, floor=False):
     multi_instruct_path = args.multi_instruct_path
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     # dataset = FileDataset(multi_instruct_path, args.selected_cols)
@@ -743,6 +741,4 @@ def get_dataset_fn(dataset_type):
 
 
 def get_data(args, tokenizer, dataset_type, epoch=0):
-    return get_dataset_fn(dataset_type)(
-        args, epoch=epoch, tokenizer=tokenizer
-    )
+    return get_dataset_fn(dataset_type)(args, epoch=epoch, tokenizer=tokenizer)

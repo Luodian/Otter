@@ -769,7 +769,9 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
         self.lang_encoder.lm_head.requires_grad_(True)
         # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
-        print(f"Trainable param: {sum(p.numel() for p in self.parameters() if p.requires_grad)}")
+        print(
+            f"Trainable param: {sum(p.numel() for p in self.parameters() if p.requires_grad)}"
+        )
 
     def forward(
         self,
