@@ -156,27 +156,17 @@ def train_one_epoch(
 
             #### MASK GRADIENTS FOR EMBEDDINGS ####
             # Note (anas): Do not apply weight decay to embeddings as it will break this function.
-            # def mask_embedding(m):
-            #     if isinstance(m, torch.nn.Embedding) and m.weight.requires_grad:
-            #         zero_mask = torch.zeros_like(m.weight.grad)
-            #         # zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
-            #         # zero_mask[endofchunk_token_id] = torch.ones_like(
-            #         #     zero_mask[endofchunk_token_id]
-            #         # )
-            #         zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
-            #         m.weight.grad = m.weight.grad * zero_mask
             def mask_embedding(m):
-                if  m.weight.requires_grad:
+                if isinstance(m, torch.nn.Embedding) and m.weight.requires_grad:
                     zero_mask = torch.zeros_like(m.weight.grad)
+                    zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
+                    zero_mask[endofchunk_token_id] = torch.ones_like(
+                        zero_mask[endofchunk_token_id]
+                    )
                     zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
                     m.weight.grad = m.weight.grad * zero_mask
 
-
-            if args.mask_lm_head:
-                # model.apply(mask_embedding)
-                model.module.lang_encoder.model.embed_tokens.apply(mask_embedding)
-                model.module.lang_encoder.lm_head.apply(mask_embedding)
-                
+            model.apply(mask_embedding)
 
             # torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             if accelerator.sync_gradients:
@@ -239,15 +229,16 @@ def train_one_epoch(
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--vision_encoder_path", default="ViT-L-14", type=str)
-    parser.add_argument("--vision_encoder_pretrained", default="openai", type=str)
-    parser.add_argument("--lm_path", default="facebook/opt-1.3b", type=str)
-    parser.add_argument(
-        "--tokenizer_path",
-        default="facebook/opt-30b",
-        type=str,
-        help="path to tokenizer",
-    )
+    # TODO: Deprecate this in future versions, only use pretrianed_model_name_or_path to load the whole model.
+    # parser.add_argument("--vision_encoder_path", default="ViT-L-14", type=str)
+    # parser.add_argument("--vision_encoder_pretrained", default="openai", type=str)
+    # parser.add_argument("--lm_path", default="facebook/opt-1.3b", type=str)
+    # parser.add_argument(
+    #     "--tokenizer_path",
+    #     default="facebook/opt-30b",
+    #     type=str,
+    #     help="path to tokenizer",
+    # )
     parser.add_argument(
         "--cross_attn_every_n_layers",
         type=int,
@@ -282,10 +273,14 @@ def main():
         default=None,
     )
     parser.add_argument(
-        "--resume_from_checkpoint",
+        "--load_from_original_checkpoint",
         type=str,
-        help="path to checkpoint to resume from, this should contain model, optimizer, and lr_scheduler states",
+        help="path to openflamingo provided checkpoint, in .pt format",
         default=None,
+    )
+    parser.add_argument(
+        "--resume_from_checkpoint",
+        action="store_true",
     )
     parser.add_argument(
         "--overwrite_checkpoint",
@@ -345,8 +340,6 @@ def main():
         action="store_true",
         help="Don't set device index from local rank (when CUDA_VISIBLE_DEVICES restricted to one per proc).",
     )
-    # YH: Training detail
-    parser.add_argument("--mask_lm_head", action="store_true")
     # this could potentially save 33GB of all model parameters for otter-9b, including the language and vision model.
     parser.add_argument("--save_hf_model", default=False, action="store_true")
     # wandb args
@@ -388,12 +381,24 @@ def main():
     if args.pretrained_model_name_or_path is not None:
         model = FlamingoForConditionalGeneration.from_pretrained(
             args.pretrained_model_name_or_path,
-            device_map={"": torch.cuda.current_device()},
+            device_map="auto",
             local_files_only=args.offline,
         )
     else:
         config = FlamingoConfig.from_json_file("./flamingo/config.json")
         model = FlamingoForConditionalGeneration(config=config)
+
+        """
+        TODO: deprecate this option since the original checkpoints are not supported in future versions
+        TODO: all future checkpoints (even released from openflamingo), we will convert them and save to huggingface format.
+        TODO: supposedly using "args.pretrained_model_name_or_path" should be the best way to load the model.
+        """
+        if args.load_from_original_checkpoint is not None:
+            print(f"Loading checkpoint from {args.load_from_original_checkpoint}")
+            model.load_state_dict(
+                torch.load(args.load_from_original_checkpoint, map_location="cpu"),
+                False,
+            )
 
     tokenizer = model.text_tokenizer
     image_processor = CLIPImageProcessor()
@@ -404,7 +409,7 @@ def main():
     )
 
     model.lang_encoder.resize_token_embeddings(len(tokenizer))
-    
+
     args.tokenizer = tokenizer
 
     random_seed(args.seed, args.rank)
@@ -467,33 +472,26 @@ def main():
     )
     if (
         os.path.exists(f"{args.external_save_dir}")
-        and args.resume_from_checkpoint is None
-        and args.pretrained_model_name_or_path is None
+        and args.resume_from_checkpoint is True
     ):
         checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
         if len(checkpoint_list) == 0:
             print(f"Found no checkpoints for run {args.external_save_dir}.")
         else:
-            args.resume_from_checkpoint = sorted(
+            resume_from_checkpoint_path = sorted(
                 checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0])
             )[-1]
             print(
-                f"Found checkpoint {args.resume_from_checkpoint} for run {args.external_save_dir}."
+                f"Found checkpoint {resume_from_checkpoint_path} for run {args.external_save_dir}."
             )
 
         if args.rank == 0:
-            print(f"Loading checkpoint from {args.resume_from_checkpoint}")
-        checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
+            print(f"Loading checkpoint from {resume_from_checkpoint_path}")
+        checkpoint = torch.load(resume_from_checkpoint_path, map_location="cpu")
         model.load_state_dict(checkpoint["model_state_dict"], False)
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
         resume_from_epoch = checkpoint["epoch"] + 1
-
-    elif args.resume_from_checkpoint is not None:
-        print(f"Loading checkpoint from {args.resume_from_checkpoint}")
-        model.load_state_dict(
-            torch.load(args.resume_from_checkpoint, map_location="cpu"), False
-        )
 
     optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
     # model.gradient_checkpointing_enable()
@@ -501,8 +499,11 @@ def main():
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
 
-
-    args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
+    args.warmup_steps = (
+        total_training_steps * args.warmup_steps_ratio
+        if args.warmup_steps_ratio is not None
+        else args.warmup_steps
+    )
 
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
