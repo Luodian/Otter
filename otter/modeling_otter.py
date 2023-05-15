@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 import torch
 import torch.nn as nn
@@ -624,7 +624,7 @@ class OtterModel(OtterPreTrainedModel):
         labels: Optional[torch.Tensor] = None,
         use_cached_vision_x: bool = False,
         clear_conditioned_layers: bool = True,
-        past_key_values: Optional[torch.Tensor] = None,
+        past_key_values: Optional[List[torch.FloatTensor]] = None,
         use_cache: bool = False,
         **kwargs,
     ) -> CausalLMOutputWithPast:
@@ -793,7 +793,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         labels: Optional[torch.Tensor] = None,
         use_cached_vision_x: bool = False,
         clear_conditioned_layers: bool = True,
-        past_key_values: Optional[torch.Tensor] = None,
+        past_key_values: Optional[List[torch.FloatTensor]] = None,
         use_cache: bool = False,
         **kwargs,
     ) -> CausalLMOutputWithPast:

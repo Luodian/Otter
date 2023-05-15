@@ -8,6 +8,7 @@ import base64
 from io import BytesIO
 import re
 import contextlib
+import os
 
 from PIL import ImageFile
 from torchvision import transforms
@@ -85,7 +86,6 @@ class UnifyDataset(MultiInstructDataset):
             self.file_path
         ), "Error: The local datafile {} not exists!".format(self.file_path)
         self.separator = "\t"
-
         # self.selected_col_ids = [
         #         int(col_id) for col_id in args.selected_col_ids.split(",")
         #     ]
