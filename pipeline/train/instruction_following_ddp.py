@@ -112,8 +112,11 @@ def train_one_epoch(
         #     device_id, dtype=cast_dtype, non_blocking=True
         # )
 
+
         images = (
-            batch_multi_instruct["net_input"]["patch_images"].unsqueeze(1).unsqueeze(1)
+            batch_multi_instruct["net_input"]["patch_images"]
+            .unsqueeze(1)
+            .unsqueeze(1)
         )
         input_ids = batch_multi_instruct["net_input"]["input_ids"]
         attention_mask = batch_multi_instruct["net_input"]["attention_masks"]
@@ -153,21 +156,27 @@ def train_one_epoch(
 
             #### MASK GRADIENTS FOR EMBEDDINGS ####
             # Note (anas): Do not apply weight decay to embeddings as it will break this function.
+            # def mask_embedding(m):
+            #     if isinstance(m, torch.nn.Embedding) and m.weight.requires_grad:
+            #         zero_mask = torch.zeros_like(m.weight.grad)
+            #         # zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
+            #         # zero_mask[endofchunk_token_id] = torch.ones_like(
+            #         #     zero_mask[endofchunk_token_id]
+            #         # )
+            #         zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
+            #         m.weight.grad = m.weight.grad * zero_mask
             def mask_embedding(m):
-                if isinstance(m, torch.nn.Embedding) and m.weight.requires_grad:
+                if  m.weight.requires_grad:
                     zero_mask = torch.zeros_like(m.weight.grad)
-                    zero_mask[media_token_id] = torch.ones_like(
-                        zero_mask[media_token_id]
-                    )
-                    zero_mask[endofchunk_token_id] = torch.ones_like(
-                        zero_mask[endofchunk_token_id]
-                    )
-                    zero_mask[answer_token_id] = torch.ones_like(
-                        zero_mask[answer_token_id]
-                    )
+                    zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
                     m.weight.grad = m.weight.grad * zero_mask
 
-            model.apply(mask_embedding)
+
+            if args.mask_lm_head:
+                # model.apply(mask_embedding)
+                model.module.lang_encoder.model.embed_tokens.apply(mask_embedding)
+                model.module.lang_encoder.lm_head.apply(mask_embedding)
+                
 
             # torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             if accelerator.sync_gradients:
@@ -230,6 +239,15 @@ def train_one_epoch(
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--vision_encoder_path", default="ViT-L-14", type=str)
+    parser.add_argument("--vision_encoder_pretrained", default="openai", type=str)
+    parser.add_argument("--lm_path", default="facebook/opt-1.3b", type=str)
+    parser.add_argument(
+        "--tokenizer_path",
+        default="facebook/opt-30b",
+        type=str,
+        help="path to tokenizer",
+    )
     parser.add_argument(
         "--cross_attn_every_n_layers",
         type=int,
@@ -264,14 +282,10 @@ def main():
         default=None,
     )
     parser.add_argument(
-        "--load_from_original_checkpoint",
-        type=str,
-        help="path to openflamingo provided checkpoint, in .pt format",
-        default=None,
-    )
-    parser.add_argument(
         "--resume_from_checkpoint",
-        action="store_true",
+        type=str,
+        help="path to checkpoint to resume from, this should contain model, optimizer, and lr_scheduler states",
+        default=None,
     )
     parser.add_argument(
         "--overwrite_checkpoint",
@@ -307,7 +321,7 @@ def main():
     )
     # data args
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--train_num_samples", type=int, default=None)
+    parser.add_argument("--train_num_samples", type=int,default=None)
     parser.add_argument("--dataset_resampled", action="store_true")
     # distributed training args
     parser.add_argument(
@@ -331,6 +345,8 @@ def main():
         action="store_true",
         help="Don't set device index from local rank (when CUDA_VISIBLE_DEVICES restricted to one per proc).",
     )
+    # YH: Training detail
+    parser.add_argument("--mask_lm_head", action="store_true")
     # this could potentially save 33GB of all model parameters for otter-9b, including the language and vision model.
     parser.add_argument("--save_hf_model", default=False, action="store_true")
     # wandb args
@@ -372,26 +388,15 @@ def main():
     if args.pretrained_model_name_or_path is not None:
         model = FlamingoForConditionalGeneration.from_pretrained(
             args.pretrained_model_name_or_path,
-            device_map="auto",
+            device_map={"": torch.cuda.current_device()},
             local_files_only=args.offline,
         )
     else:
         config = FlamingoConfig.from_json_file("./flamingo/config.json")
         model = FlamingoForConditionalGeneration(config=config)
 
-        """
-        TODO: deprecate this option since the original checkpoints are not supported in future versions
-        TODO: all future checkpoints (even released from openflamingo), we will convert them and save to huggingface format.
-        TODO: supposedly using "args.pretrained_model_name_or_path" should be the best way to load the model.
-        """
-        if args.load_from_original_checkpoint is not None:
-            print(f"Loading checkpoint from {args.load_from_original_checkpoint}")
-            model.load_state_dict(
-                torch.load(args.load_from_original_checkpoint, map_location="cpu"),
-                False,
-            )
-
     tokenizer = model.text_tokenizer
+    image_processor = CLIPImageProcessor()
 
     # add <answer> token to tokenizer
     tokenizer.add_special_tokens(
@@ -399,7 +404,7 @@ def main():
     )
 
     model.lang_encoder.resize_token_embeddings(len(tokenizer))
-
+    
     args.tokenizer = tokenizer
 
     random_seed(args.seed, args.rank)
@@ -408,7 +413,9 @@ def main():
 
     device_id = args.rank % torch.cuda.device_count()
 
-    multi_instruct_loader = get_data(args, tokenizer, "multi_instruct")
+    multi_instruct_loader = get_data(
+        args, tokenizer, "multi_instruct"
+    )
 
     def get_grouped_params(model):
         params_with_wd, params_without_wd = [], []
@@ -434,13 +441,22 @@ def main():
             {"params": params_without_wd, "weight_decay": 0.0},
         ]
 
+    # args.train_num_samples = (
+    #     multi_instruct_dataset.dataloader.num_samples
+    #     if args.train_num_samples is None
+    #     else args.train_num_samples
+    # )
+
     args.train_num_samples = (
         multi_instruct_loader.num_samples
         if args.train_num_samples is None
         else args.train_num_samples
     )
 
-    total_training_steps = len(multi_instruct_loader) * args.num_epochs
+    # total_training_steps = (
+    #     (args.train_num_samples) // (args.batch_size * args.world_size)
+    # ) * args.num_epochs
+    total_training_steps = (len(multi_instruct_loader) * args.num_epochs)
 
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
@@ -451,37 +467,42 @@ def main():
     )
     if (
         os.path.exists(f"{args.external_save_dir}")
-        and args.resume_from_checkpoint is True
+        and args.resume_from_checkpoint is None
+        and args.pretrained_model_name_or_path is None
     ):
         checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
         if len(checkpoint_list) == 0:
             print(f"Found no checkpoints for run {args.external_save_dir}.")
         else:
-            resume_from_checkpoint_path = sorted(
+            args.resume_from_checkpoint = sorted(
                 checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0])
             )[-1]
             print(
-                f"Found checkpoint {resume_from_checkpoint_path} for run {args.external_save_dir}."
+                f"Found checkpoint {args.resume_from_checkpoint} for run {args.external_save_dir}."
             )
 
         if args.rank == 0:
-            print(f"Loading checkpoint from {resume_from_checkpoint_path}")
-        checkpoint = torch.load(resume_from_checkpoint_path, map_location="cpu")
+            print(f"Loading checkpoint from {args.resume_from_checkpoint}")
+        checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
         model.load_state_dict(checkpoint["model_state_dict"], False)
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
         resume_from_epoch = checkpoint["epoch"] + 1
 
+    elif args.resume_from_checkpoint is not None:
+        print(f"Loading checkpoint from {args.resume_from_checkpoint}")
+        model.load_state_dict(
+            torch.load(args.resume_from_checkpoint, map_location="cpu"), False
+        )
+
     optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
+    # model.gradient_checkpointing_enable()
 
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
 
-    args.warmup_steps = (
-        total_training_steps * args.warmup_steps_ratio
-        if args.warmup_steps_ratio is not None
-        else args.warmup_steps
-    )
+
+    args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
 
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
@@ -508,14 +529,13 @@ def main():
             config=vars(args),
         )
 
-    accelerator = Accelerator(
-        gradient_accumulation_steps=args.gradient_accumulation_steps
-    )
-    model, optimizer, lr_scheduler, multi_instruct_loader = accelerator.prepare(
-        model, optimizer, lr_scheduler, multi_instruct_loader
-    )
+    # import pdb;pdb.set_trace()
+    accelerator = Accelerator(gradient_accumulation_steps = args.gradient_accumulation_steps)
+    # multi_instruct_loader = multi_instruct_dataset.dataloader
+    model, optimizer, lr_scheduler, multi_instruct_loader = accelerator.prepare(model, optimizer, lr_scheduler, multi_instruct_loader)
     model.train()
 
+    # From yh
     device_id = accelerator.device
 
     for epoch in range(resume_from_epoch, args.num_epochs):
@@ -538,6 +558,25 @@ def main():
                 os.makedirs(args.external_save_dir)
 
         accelerator.wait_for_everyone()
+        # if args.rank == 0:
+        #     unwrapped_model = accelerator.unwrap_model(model)
+            # accelerator.save(
+            #     {
+            #         "epoch": epoch,
+            #         "model_state_dict": get_checkpoint(model=unwrapped_model),
+            #         "optimizer_state_dict": optimizer.optimizer.state_dict(),  # optimizer is an AcceleratedOptimizer object
+            #         "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+            #     },
+            #     f"{args.external_save_dir}/checkpoint_{epoch}.pt",
+            # )
+            # print(f"save model at ./bundle.pth")
+            # if args.report_to_wandb and args.save_checkpoints_to_wandb:
+            #     wandb.save(f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+
+            # if args.delete_previous_checkpoint:
+            #     if epoch > 0:
+            #         os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
+            # sys.stdout.flush()
 
     accelerator.wait_for_everyone()
     if args.rank == 0:
