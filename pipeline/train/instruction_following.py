@@ -35,6 +35,8 @@ import time
 from pipeline.multi_instruct_data_utils.arguments import add_data_args
 from accelerate import Accelerator
 
+import sys
+
 # The flag below controls whether to allow TF32 on matmul. This flag defaults to False
 # in PyTorch 1.12 and later.
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -65,8 +67,8 @@ def train_one_epoch(
     num_batches_per_epoch = len(multi_instruct_loader)
     total_training_steps = num_batches_per_epoch * args.num_epochs
 
-    autocast = get_autocast(args.precision)
-    cast_dtype = get_cast_dtype(args.precision)
+    # autocast = get_autocast(args.precision)
+    # cast_dtype = get_cast_dtype(args.precision)
 
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
     endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)[
@@ -97,18 +99,24 @@ def train_one_epoch(
         global_step = num_steps + epoch * num_batches_per_epoch
         #### MULTI_INSTRUCT FORWARD PASS ####
 
+        # images = (
+        #     batch_multi_instruct["net_input"]["patch_images"]
+        #     .to(device_id, dtype=cast_dtype, non_blocking=True)
+        #     .unsqueeze(1)
+        #     .unsqueeze(1)
+        # )
+        # input_ids = batch_multi_instruct["net_input"]["input_ids"].to(
+        #     device_id, dtype=cast_dtype, non_blocking=True
+        # )
+        # attention_mask = batch_multi_instruct["net_input"]["attention_masks"].to(
+        #     device_id, dtype=cast_dtype, non_blocking=True
+        # )
+
         images = (
-            batch_multi_instruct["net_input"]["patch_images"]
-            .to(device_id, dtype=cast_dtype, non_blocking=True)
-            .unsqueeze(1)
-            .unsqueeze(1)
+            batch_multi_instruct["net_input"]["patch_images"].unsqueeze(1).unsqueeze(1)
         )
-        input_ids = batch_multi_instruct["net_input"]["input_ids"].to(
-            device_id, dtype=cast_dtype, non_blocking=True
-        )
-        attention_mask = batch_multi_instruct["net_input"]["attention_masks"].to(
-            device_id, dtype=cast_dtype, non_blocking=True
-        )
+        input_ids = batch_multi_instruct["net_input"]["input_ids"]
+        attention_mask = batch_multi_instruct["net_input"]["attention_masks"]
 
         labels = input_ids.clone()
         labels[labels == tokenizer.pad_token_id] = -100
@@ -126,9 +134,11 @@ def train_one_epoch(
         labels[labels == answer_token_id] = -100
         labels[labels == media_token_id] = -100
 
-        labels.to(device_id, dtype=cast_dtype, non_blocking=True)
+        # labels.to(device_id, dtype=cast_dtype, non_blocking=True)
 
-        with autocast():
+        with accelerator.accumulate(model):
+            # with autocast():
+            # with accelerator.autocast():
             loss_multi_instruct = model(
                 vision_x=images,
                 lang_x=input_ids,
@@ -136,41 +146,48 @@ def train_one_epoch(
                 labels=labels,
             )[0]
 
-        divided_loss_multi_instruct = (
-            loss_multi_instruct / args.gradient_accumulation_steps
-        )
+            # divided_loss_multi_instruct = loss_multi_instruct
 
-        #### BACKWARD PASS ####
-        accelerator.backward(divided_loss_multi_instruct)
+            #### BACKWARD PASS ####
+            accelerator.backward(loss_multi_instruct)
 
-        #### MASK GRADIENTS FOR EMBEDDINGS ####
-        # Note (anas): Do not apply weight decay to embeddings as it will break this function.
-        def mask_embedding(m):
-            if isinstance(m, torch.nn.Embedding) and m.weight.requires_grad:
-                zero_mask = torch.zeros_like(m.weight.grad)
-                zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
-                zero_mask[endofchunk_token_id] = torch.ones_like(
-                    zero_mask[endofchunk_token_id]
-                )
-                zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
-                m.weight.grad = m.weight.grad * zero_mask
+            #### MASK GRADIENTS FOR EMBEDDINGS ####
+            # Note (anas): Do not apply weight decay to embeddings as it will break this function.
+            def mask_embedding(m):
+                if isinstance(m, torch.nn.Embedding) and m.weight.requires_grad:
+                    zero_mask = torch.zeros_like(m.weight.grad)
+                    zero_mask[media_token_id] = torch.ones_like(
+                        zero_mask[media_token_id]
+                    )
+                    zero_mask[endofchunk_token_id] = torch.ones_like(
+                        zero_mask[endofchunk_token_id]
+                    )
+                    zero_mask[answer_token_id] = torch.ones_like(
+                        zero_mask[answer_token_id]
+                    )
+                    m.weight.grad = m.weight.grad * zero_mask
 
-        model.apply(mask_embedding)
+            model.apply(mask_embedding)
 
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            # torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            if accelerator.sync_gradients:
+                accelerator.clip_grad_norm_(model.parameters(), 1.0)
 
-        # step optimizer and log
-        if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (
-            num_steps == num_batches_per_epoch - 1
-        ):
+            # step optimizer and log
+            # if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (
+            #     num_steps == num_batches_per_epoch - 1
+            # ):
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()
 
-            # step time and reset end outside of rank 0
-            step_time_m.update(time.time() - end)
-            end = time.time()
+        # step time and reset end outside of rank 0
+        step_time_m.update(time.time() - end)
+        end = time.time()
 
+        if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (
+            num_steps == num_batches_per_epoch - 1
+        ):
             if args.rank == 0 and args.report_to_wandb:
                 # compute within rank 0
                 multi_instruct_samples_per_second = (
@@ -198,8 +215,8 @@ def train_one_epoch(
 
                 wandb.log(
                     {
-                        "loss_multi_instruct": divided_loss_multi_instruct.item(),
-                        "global_step": global_step,
+                        "loss_multi_instruct": loss_multi_instruct.item(),
+                        "global_step": global_step // args.gradient_accumulation_steps,
                     },
                     commit=True,
                 )
@@ -213,16 +230,6 @@ def train_one_epoch(
 
 def main():
     parser = argparse.ArgumentParser()
-    # TODO: Deprecate this in future versions, only use pretrianed_model_name_or_path to load the whole model.
-    # parser.add_argument("--vision_encoder_path", default="ViT-L-14", type=str)
-    # parser.add_argument("--vision_encoder_pretrained", default="openai", type=str)
-    # parser.add_argument("--lm_path", default="facebook/opt-1.3b", type=str)
-    # parser.add_argument(
-    #     "--tokenizer_path",
-    #     default="facebook/opt-30b",
-    #     type=str,
-    #     help="path to tokenizer",
-    # )
     parser.add_argument(
         "--cross_attn_every_n_layers",
         type=int,
@@ -290,6 +297,7 @@ def main():
     )
     parser.add_argument("--loss_multiplier_multi_instruct", type=float, default=1.0)
     parser.add_argument("--warmup_steps", default=1000, type=int)
+    parser.add_argument("--warmup_steps_ratio", default=None, type=float)
     parser.add_argument("--weight_decay", default=0.1, type=float)
     parser.add_argument(
         "--precision",
@@ -299,7 +307,7 @@ def main():
     )
     # data args
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--train_num_samples", type=int)
+    parser.add_argument("--train_num_samples", type=int, default=None)
     parser.add_argument("--dataset_resampled", action="store_true")
     # distributed training args
     parser.add_argument(
@@ -399,19 +407,9 @@ def main():
 
     print(f"Start running training on rank {args.rank}.")
 
-    if args.rank == 0 and args.report_to_wandb:
-        wandb.init(
-            project=args.wandb_project,
-            entity=args.wandb_entity,
-            name=args.run_name,
-            config=vars(args),
-        )
-
     device_id = args.rank % torch.cuda.device_count()
 
-    multi_instruct_dataset = get_data(
-        args, image_processor, tokenizer, "multi_instruct"
-    )
+    multi_instruct_loader = get_data(args, tokenizer, "multi_instruct")
 
     def get_grouped_params(model):
         params_with_wd, params_without_wd = [], []
@@ -438,13 +436,12 @@ def main():
         ]
 
     args.train_num_samples = (
-        multi_instruct_dataset.dataloader.num_samples
+        multi_instruct_loader.num_samples
         if args.train_num_samples is None
         else args.train_num_samples
     )
-    total_training_steps = (
-        (args.train_num_samples) // (args.batch_size * args.world_size)
-    ) * args.num_epochs
+
+    total_training_steps = len(multi_instruct_loader) * args.num_epochs
 
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
@@ -477,12 +474,6 @@ def main():
         resume_from_epoch = checkpoint["epoch"] + 1
 
     optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
-    accelerator = Accelerator()
-    multi_instruct_loader = multi_instruct_dataset.dataloader
-    # model, optimizer, multi_instruct_loader = accelerator.prepare(model, optimizer, multi_instruct_loader)
-    model, optimizer = accelerator.prepare(model, optimizer)
-    model.train()
-    # model.gradient_checkpointing_enable()
 
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
@@ -496,22 +487,40 @@ def main():
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
             optimizer,
-            num_warmup_steps=args.warmup_steps,
-            num_training_steps=total_training_steps,
+            num_warmup_steps=args.warmup_steps // args.gradient_accumulation_steps,
+            num_training_steps=total_training_steps // args.gradient_accumulation_steps,
         )
     elif args.lr_scheduler == "cosine":
         lr_scheduler = get_cosine_schedule_with_warmup(
             optimizer,
-            num_warmup_steps=args.warmup_steps,
-            num_training_steps=total_training_steps,
+            num_warmup_steps=args.warmup_steps // args.gradient_accumulation_steps,
+            num_training_steps=total_training_steps // args.gradient_accumulation_steps,
         )
     else:
         lr_scheduler = get_constant_schedule_with_warmup(
             optimizer, num_warmup_steps=args.warmup_steps
         )
 
+    if args.rank == 0 and args.report_to_wandb:
+        wandb.init(
+            project=args.wandb_project,
+            entity=args.wandb_entity,
+            name=args.run_name,
+            config=vars(args),
+        )
+
+    accelerator = Accelerator(
+        gradient_accumulation_steps=args.gradient_accumulation_steps
+    )
+    model, optimizer, lr_scheduler, multi_instruct_loader = accelerator.prepare(
+        model, optimizer, lr_scheduler, multi_instruct_loader
+    )
+    model.train()
+
+    device_id = accelerator.device
+
     for epoch in range(resume_from_epoch, args.num_epochs):
-        multi_instruct_dataset.set_epoch(epoch)
+        # multi_instruct_dataset.set_epoch(epoch)
 
         train_one_epoch(
             args=args,
@@ -529,30 +538,13 @@ def main():
             if not os.path.exists(args.external_save_dir):
                 os.makedirs(args.external_save_dir)
 
-            accelerator.wait_for_everyone()
-            unwrapped_model = accelerator.unwrap_model(model)
-            accelerator.save(
-                {
-                    "epoch": epoch,
-                    "model_state_dict": get_checkpoint(model=unwrapped_model),
-                    "optimizer_state_dict": optimizer.optimizer.state_dict(),  # optimizer is an AcceleratedOptimizer object
-                    "lr_scheduler_state_dict": lr_scheduler.state_dict(),
-                },
-                f"{args.external_save_dir}/checkpoint_{epoch}.pt",
-            )
-            # print(f"save model at ./bundle.pth")
-            if args.report_to_wandb and args.save_checkpoints_to_wandb:
-                wandb.save(f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+        accelerator.wait_for_everyone()
 
-            if args.delete_previous_checkpoint:
-                if epoch > 0:
-                    os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
-
+    accelerator.wait_for_everyone()
     if args.rank == 0:
         if not os.path.exists(args.external_save_dir):
             os.makedirs(args.external_save_dir)
 
-        accelerator.wait_for_everyone()
         unwrapped_model = accelerator.unwrap_model(model)
         accelerator.save(
             get_checkpoint(model=unwrapped_model),

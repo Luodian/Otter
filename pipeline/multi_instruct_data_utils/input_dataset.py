@@ -139,7 +139,7 @@ class FileDataset(object):
 
     def __getitem__(self, index):
         if self.data_cnt == self.row_count:
-            print("reach the end of datafile, start a new reader")
+            print(f"{self.slice_id} reach the end of datafile, start a new reader")
             self.data_cnt = 0
             self._reader = self._get_reader()
         cur_line = self._reader.readline()

@@ -22,6 +22,8 @@ from .multi_instruct_dataset import (
     collate_fn,
 )
 
+import os
+
 label_map = {"entailment": 0, "not_entailment": 1}
 
 IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
@@ -91,12 +93,12 @@ class UnifyDataset(MultiInstructDataset):
 
         with open(self.file_path) as f:
             self.dataset = f.readlines()
+        # self.dataset = dataset
 
         self.bos_item = torch.LongTensor([args.tokenizer.bos_token_id])
         self.eos_item = torch.LongTensor([args.tokenizer.eos_token_id])
         self.bos_mask = torch.LongTensor([1])
         self.eos_mask = torch.LongTensor([1])
-
         self.rank = args.rank
 
     def pre_question(self, question, max_ques_words):
@@ -288,6 +290,9 @@ class UnifyDataset(MultiInstructDataset):
         examples = [example]
 
         return examples
+
+    def __len__(self):
+        return len(self.dataset)
 
     def __getitem__(self, index):
         with numpy_seed(self.seed, self.epoch):

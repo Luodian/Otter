@@ -184,6 +184,7 @@ nginx/*
 logs/*
 ofa_compress/*
 xformers_model/*
+train_*.sh
 
 #yuanhan
 tools

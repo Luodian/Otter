@@ -74,7 +74,11 @@ def train_one_epoch(
         AverageMeter()
     )  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
-    orig_embeds_params = {}
+    # orig_embeds_params = {}
+
+    # for name, param in accelerator.unwrap_model(model).named_parameters():
+    #     if "embed_tokens" in name:
+    #         orig_embeds_params[name] = param.ds_tensor.clone()
 
     # loop through dataloader
     for num_steps, (batch_multi_instruct) in tqdm(
@@ -142,6 +146,16 @@ def train_one_epoch(
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()
+
+            # # RESET PARAMS FOR EMBEDDINGS
+            # for name, param in accelerator.unwrap_model(model).named_parameters():
+            #     if "embed_tokens" in name:
+            #         ds_dim = param.ds_shape[1]
+            #         # TODO: use index to reset params
+            #         # media_index_no_updates = torch.arange(param.ds_tensor.shape) != media_token_id
+            #         param.ds_tensor[
+            #             : endofchunk_token_id * ds_dim
+            #         ] = orig_embeds_params[name][: endofchunk_token_id * ds_dim]
 
             # step time and reset end outside of rank 0
             step_time_m.update(time.time() - end)

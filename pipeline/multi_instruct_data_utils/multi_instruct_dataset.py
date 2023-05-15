@@ -38,19 +38,18 @@ def numpy_seed(seed, *addl_seeds):
 
 
 class MultiInstructDataset(Dataset):
-    def __init__(self, args, dataset, is_test=False):
+    def __init__(self, args, is_test=False):
         # Input parameters.
         self.args = args
         self.task_name = args.task
-        self.dataset = dataset
         self.is_test = is_test
         self.tokenizer = args.tokenizer
 
     def __str__(self):
         return f"type: {type(self)}, length: {len(self)}"
 
-    def __len__(self):
-        return len(self.dataset)
+    # def __len__(self):
+    #     return len(self.dataset)
 
     def collate(self, samples):
         """Merge a list of samples to form a mini-batch.
