@@ -472,7 +472,7 @@ a:link {
 
 ### Note: 
 Following OpenFlamingo, you need to input at least one image in the first round of conversation with both Otter and OpenFlamingo.
-Current Otter model (ver. Apr 25) is under development. A model supporting better conversations will be released soon. If model repeatively describes previous images, please click "clear history" to clean all image caches to make sure the model perform correctly.
+Current Otter model (ver. Apr 25) is under development. A model supporting better conversations will be released soon. If model repeatedly describes previous images, please click "clear history" to clean all image caches to make sure the model perform correctly.
 </span>
 
 | Choose a model to chat with | |
