@@ -112,11 +112,8 @@ def train_one_epoch(
         #     device_id, dtype=cast_dtype, non_blocking=True
         # )
 
-
         images = (
-            batch_multi_instruct["net_input"]["patch_images"]
-            .unsqueeze(1)
-            .unsqueeze(1)
+            batch_multi_instruct["net_input"]["patch_images"].unsqueeze(1).unsqueeze(1)
         )
         input_ids = batch_multi_instruct["net_input"]["input_ids"]
         attention_mask = batch_multi_instruct["net_input"]["attention_masks"]
@@ -166,17 +163,17 @@ def train_one_epoch(
             #         zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
             #         m.weight.grad = m.weight.grad * zero_mask
             def mask_embedding(m):
-                if  m.weight.requires_grad:
+                if m.weight.requires_grad:
                     zero_mask = torch.zeros_like(m.weight.grad)
-                    zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
+                    zero_mask[answer_token_id] = torch.ones_like(
+                        zero_mask[answer_token_id]
+                    )
                     m.weight.grad = m.weight.grad * zero_mask
-
 
             if args.mask_lm_head:
                 # model.apply(mask_embedding)
                 model.module.lang_encoder.model.embed_tokens.apply(mask_embedding)
                 model.module.lang_encoder.lm_head.apply(mask_embedding)
-                
 
             # torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             if accelerator.sync_gradients:
@@ -321,7 +318,7 @@ def main():
     )
     # data args
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--train_num_samples", type=int,default=None)
+    parser.add_argument("--train_num_samples", type=int, default=None)
     parser.add_argument("--dataset_resampled", action="store_true")
     # distributed training args
     parser.add_argument(
@@ -404,7 +401,7 @@ def main():
     )
 
     model.lang_encoder.resize_token_embeddings(len(tokenizer))
-    
+
     args.tokenizer = tokenizer
 
     random_seed(args.seed, args.rank)
@@ -413,9 +410,7 @@ def main():
 
     device_id = args.rank % torch.cuda.device_count()
 
-    multi_instruct_loader = get_data(
-        args, tokenizer, "multi_instruct"
-    )
+    multi_instruct_loader = get_data(args, tokenizer, "multi_instruct")
 
     def get_grouped_params(model):
         params_with_wd, params_without_wd = [], []
@@ -456,7 +451,7 @@ def main():
     # total_training_steps = (
     #     (args.train_num_samples) // (args.batch_size * args.world_size)
     # ) * args.num_epochs
-    total_training_steps = (len(multi_instruct_loader) * args.num_epochs)
+    total_training_steps = len(multi_instruct_loader) * args.num_epochs
 
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
@@ -501,8 +496,11 @@ def main():
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
 
-
-    args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
+    args.warmup_steps = (
+        total_training_steps * args.warmup_steps_ratio
+        if args.warmup_steps_ratio is not None
+        else args.warmup_steps
+    )
 
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
@@ -530,9 +528,13 @@ def main():
         )
 
     # import pdb;pdb.set_trace()
-    accelerator = Accelerator(gradient_accumulation_steps = args.gradient_accumulation_steps)
+    accelerator = Accelerator(
+        gradient_accumulation_steps=args.gradient_accumulation_steps
+    )
     # multi_instruct_loader = multi_instruct_dataset.dataloader
-    model, optimizer, lr_scheduler, multi_instruct_loader = accelerator.prepare(model, optimizer, lr_scheduler, multi_instruct_loader)
+    model, optimizer, lr_scheduler, multi_instruct_loader = accelerator.prepare(
+        model, optimizer, lr_scheduler, multi_instruct_loader
+    )
     model.train()
 
     # From yh
@@ -560,23 +562,23 @@ def main():
         accelerator.wait_for_everyone()
         # if args.rank == 0:
         #     unwrapped_model = accelerator.unwrap_model(model)
-            # accelerator.save(
-            #     {
-            #         "epoch": epoch,
-            #         "model_state_dict": get_checkpoint(model=unwrapped_model),
-            #         "optimizer_state_dict": optimizer.optimizer.state_dict(),  # optimizer is an AcceleratedOptimizer object
-            #         "lr_scheduler_state_dict": lr_scheduler.state_dict(),
-            #     },
-            #     f"{args.external_save_dir}/checkpoint_{epoch}.pt",
-            # )
-            # print(f"save model at ./bundle.pth")
-            # if args.report_to_wandb and args.save_checkpoints_to_wandb:
-            #     wandb.save(f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+        # accelerator.save(
+        #     {
+        #         "epoch": epoch,
+        #         "model_state_dict": get_checkpoint(model=unwrapped_model),
+        #         "optimizer_state_dict": optimizer.optimizer.state_dict(),  # optimizer is an AcceleratedOptimizer object
+        #         "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+        #     },
+        #     f"{args.external_save_dir}/checkpoint_{epoch}.pt",
+        # )
+        # print(f"save model at ./bundle.pth")
+        # if args.report_to_wandb and args.save_checkpoints_to_wandb:
+        #     wandb.save(f"{args.external_save_dir}/checkpoint_{epoch}.pt")
 
-            # if args.delete_previous_checkpoint:
-            #     if epoch > 0:
-            #         os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
-            # sys.stdout.flush()
+        # if args.delete_previous_checkpoint:
+        #     if epoch > 0:
+        #         os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
+        # sys.stdout.flush()
 
     accelerator.wait_for_everyone()
     if args.rank == 0:
