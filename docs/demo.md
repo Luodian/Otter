@@ -6,7 +6,7 @@ We will show you how to host a demo on your own computer using gradio.
 
 ### Download the checkpoints
 
-We assume that you have downloaded the 🦦 Otter checkpoint and the 🦩 Open Flamingo checkpoint.
+The 🦦 Otter checkpoint and the 🦩 Open Flamingo checkpoint can be auto-downloaded with the code below.
 
 ## Start Demo 
 
@@ -80,7 +80,7 @@ vision_x = (
 model.text_tokenizer.padding_side = "left"
 lang_x = model.text_tokenizer(
     [
-        "<image> User: what does the image describe? GPT: <answer> two cats sleeping. <|endofchunk|> <image> User: what does the image describe? GPT: <answer> a bathroom sink. <|endofchunk|> <image> User: what does the image describe? GPT: <answer>"
+        "<image>User: what does the image describe? GPT:<answer> two cats sleeping.<|endofchunk|><image>User: what does the image describe? GPT:<answer> a bathroom sink.<|endofchunk|><image>User: what does the image describe? GPT:<answer>"
     ],
     return_tensors="pt",
 )

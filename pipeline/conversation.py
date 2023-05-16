@@ -42,6 +42,8 @@ class Conversation:
             seps = [self.sep, self.sep2]
             ret = self.system + seps[0]
             for i, (role, message) in enumerate(self.messages):
+                role = None  # hard-coded to remove role labels for Apr 29 model
+
                 if message:
                     if type(message) is tuple:
                         message = message[0]
