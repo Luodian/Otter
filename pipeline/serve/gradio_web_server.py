@@ -192,13 +192,13 @@ def add_text(
 ):
     template_name = "otter" if "otter" in model_selector else "open_flamingo"
     if "otter" in model_selector:
-        DEFAULT_ANSWER_TOKEN = "<answer>"
+        DEFAULT_ANSWER_TOKEN = "<answer> "
         human_role_label = conv_templates[template_name].copy().roles[0] + ": "
-        bot_role_label = " " + conv_templates[template_name].copy().roles[1] + ": "
+        bot_role_label = " " + conv_templates[template_name].copy().roles[1] + ":"
     else:
         DEFAULT_ANSWER_TOKEN = ""
         human_role_label = ""
-        bot_role_label = " "
+        bot_role_label = ""
     text = text_3
     if conv_templates[template_name].copy().roles[1] is not None:
         text += (
@@ -349,10 +349,11 @@ def http_bot(
 
     # Construct prompt
     prompt = state.get_prompt()
-    if state.roles[1] is not None:
-        role_label = state.roles[1] + ": "
-        # hard code preprocessing: remove the last role label
-        prompt = prompt[: -len(role_label)]
+    prompt = prompt.strip()
+    # if state.roles[1] is not None:
+    #     role_label = state.roles[1] + ": "
+    #     # hard code preprocessing: remove the last role label
+    #     prompt = prompt[: -len(role_label)]
 
     # Construct generation kwargs
     generation_kwargs = {

@@ -25,6 +25,7 @@ from pipeline.serve.serving_utils import (
 from pipeline import create_model_and_transforms
 from huggingface_hub import hf_hub_download
 import transformers
+from otter import OtterForConditionalGeneration
 from flamingo import FlamingoForConditionalGeneration
 
 GB = 1 << 30
@@ -85,7 +86,12 @@ class ModelWorker:
     def load_model(self, lm_path, checkpoint_path, num_gpus, load_in_8bit, load_pt):
         if not load_pt:
             device_map = "auto" if num_gpus > 0 else None
-            model = FlamingoForConditionalGeneration.from_pretrained(
+            if 'otter' in checkpoint_path:
+                model = OtterForConditionalGeneration.from_pretrained(
+                checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit
+            )
+            else:
+                model = FlamingoForConditionalGeneration.from_pretrained(
                 checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit
             )
             tokenizer = model.text_tokenizer
