@@ -185,6 +185,7 @@ logs/*
 ofa_compress/*
 xformers_model/*
 train_*.sh
+gpt_playground/*
 
 #yuanhan
 tools
