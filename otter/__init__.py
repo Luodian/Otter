@@ -8,7 +8,9 @@ from transformers.utils import (
 
 
 _import_structure = {
-    "configuration_otter": ["OtterConfig",],
+    "configuration_otter": [
+        "OtterConfig",
+    ],
 }
 
 try:

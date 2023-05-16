@@ -106,7 +106,11 @@ class UnifyDataset(MultiInstructDataset):
             question.lower().lstrip(",.!?*#:;~").replace("-", " ").replace("/", " ")
         )
 
-        question = re.sub(r"\s{2,}", " ", question,)
+        question = re.sub(
+            r"\s{2,}",
+            " ",
+            question,
+        )
         question = question.rstrip("\n")
         question = question.strip(" ")
 
@@ -118,7 +122,11 @@ class UnifyDataset(MultiInstructDataset):
         return question
 
     def pre_answer(self, answer, max_ans_words):
-        answer = re.sub(r"\s{2,}", " ", answer,)
+        answer = re.sub(
+            r"\s{2,}",
+            " ",
+            answer,
+        )
         answer = answer.rstrip("\n")
         answer = answer.strip(" ")
 
@@ -154,7 +162,11 @@ class UnifyDataset(MultiInstructDataset):
             .replace("<person>", "person")
         )
 
-        caption = re.sub(r"\s{2,}", " ", caption,)
+        caption = re.sub(
+            r"\s{2,}",
+            " ",
+            caption,
+        )
         caption = caption.rstrip("\n")
         caption = caption.strip(" ")
 
@@ -169,7 +181,16 @@ class UnifyDataset(MultiInstructDataset):
         self.epoch = epoch
 
     def process_image_text_pair(self, index):
-        (uniq_id, image, caption, question, refs, gt_objects, dataset_name, type,) = (
+        (
+            uniq_id,
+            image,
+            caption,
+            question,
+            refs,
+            gt_objects,
+            dataset_name,
+            type,
+        ) = (
             self.dataset[index].rstrip("\n").split(self.separator)
         )
         if type not in self.supported_data_types:

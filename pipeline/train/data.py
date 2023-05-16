@@ -185,7 +185,11 @@ _SAMPLE_SHUFFLE_INITIAL = 1000
 
 class detshuffle2(wds.PipelineStage):
     def __init__(
-        self, bufsize=1000, initial=100, seed=0, epoch=-1,
+        self,
+        bufsize=1000,
+        initial=100,
+        seed=0,
+        epoch=-1,
     ):
         self.bufsize = bufsize
         self.initial = initial
@@ -416,7 +420,10 @@ def get_mmc4_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
             # at this point, we have an iterator over the shards assigned to each worker at each node
             # wds.tarfile_to_samples(handler=log_and_continue),
             tarfile_to_samples_nothrow,
-            wds.shuffle(bufsize=_SAMPLE_SHUFFLE_SIZE, initial=_SAMPLE_SHUFFLE_INITIAL,),
+            wds.shuffle(
+                bufsize=_SAMPLE_SHUFFLE_SIZE,
+                initial=_SAMPLE_SHUFFLE_INITIAL,
+            ),
         ]
     )
 
@@ -508,7 +515,10 @@ def get_laion_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
             # at this point, we have an iterator over the shards assigned to each worker at each node
             # wds.tarfile_to_samples(handler=log_and_continue),
             tarfile_to_samples_nothrow,
-            wds.shuffle(bufsize=_SAMPLE_SHUFFLE_SIZE, initial=_SAMPLE_SHUFFLE_INITIAL,),
+            wds.shuffle(
+                bufsize=_SAMPLE_SHUFFLE_SIZE,
+                initial=_SAMPLE_SHUFFLE_INITIAL,
+            ),
         ]
     )
 
@@ -604,7 +614,10 @@ def get_coco_vqa_dataset(args, image_processor, tokenizer, epoch=0, floor=False)
             # at this point, we have an iterator over the shards assigned to each worker at each node
             # wds.tarfile_to_samples(handler=log_and_continue),
             tarfile_to_samples_nothrow,
-            wds.shuffle(bufsize=_SAMPLE_SHUFFLE_SIZE, initial=_SAMPLE_SHUFFLE_INITIAL,),
+            wds.shuffle(
+                bufsize=_SAMPLE_SHUFFLE_SIZE,
+                initial=_SAMPLE_SHUFFLE_INITIAL,
+            ),
         ]
     )
 

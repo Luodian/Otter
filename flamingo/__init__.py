@@ -8,7 +8,9 @@ from transformers.utils import (
 
 
 _import_structure = {
-    "configuration_flamingo": ["FlamingoConfig",],
+    "configuration_flamingo": [
+        "FlamingoConfig",
+    ],
 }
 
 try:

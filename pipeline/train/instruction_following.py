@@ -270,10 +270,12 @@ def main():
         default=None,
     )
     parser.add_argument(
-        "--resume_from_checkpoint", action="store_true",
+        "--resume_from_checkpoint",
+        action="store_true",
     )
     parser.add_argument(
-        "--overwrite_checkpoint", action="store_true",
+        "--overwrite_checkpoint",
+        action="store_true",
     )
     parser.add_argument(
         "--delete_previous_checkpoint",
@@ -334,10 +336,12 @@ def main():
     # wandb args
     parser.add_argument("--report_to_wandb", default=False, action="store_true")
     parser.add_argument(
-        "--wandb_project", type=str,
+        "--wandb_project",
+        type=str,
     )
     parser.add_argument(
-        "--wandb_entity", type=str,
+        "--wandb_entity",
+        type=str,
     )
     parser.add_argument(
         "--save_checkpoints_to_wandb",

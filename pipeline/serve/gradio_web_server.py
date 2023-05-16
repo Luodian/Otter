@@ -135,9 +135,21 @@ def regenerate(state, request: gr.Request):
     state.messages[-1][-1] = None
     state.skip_next = False
     return (
-        (state, state.to_gradio_chatbot(),)
-        + ("", "", None,) * 2
-        + ("", None,) * 1
+        (
+            state,
+            state.to_gradio_chatbot(),
+        )
+        + (
+            "",
+            "",
+            None,
+        )
+        * 2
+        + (
+            "",
+            None,
+        )
+        * 1
         + (disable_btn,) * 5
     )
 
@@ -145,7 +157,24 @@ def regenerate(state, request: gr.Request):
 def clear_history(request: gr.Request):
     logger.info(f"clear_history. ip: {request.client.host}")
     state = None
-    return (state, [],) + ("", "", None,) * 2 + ("", None,) * 1 + (disable_btn,) * 5
+    return (
+        (
+            state,
+            [],
+        )
+        + (
+            "",
+            "",
+            None,
+        )
+        * 2
+        + (
+            "",
+            None,
+        )
+        * 1
+        + (disable_btn,) * 5
+    )
 
 
 def add_text(
@@ -192,7 +221,12 @@ def add_text(
             state.skip_next = True
             return (
                 (state, state.to_gradio_chatbot())
-                + ("", "", None,) * 2
+                + (
+                    "",
+                    "",
+                    None,
+                )
+                * 2
                 + (moderation_msg, None)
                 + (disable_btn,) * 5
             )
@@ -230,9 +264,21 @@ def add_text(
     state.append_message(state.roles[1], None)
     state.skip_next = False
     return (
-        (state, state.to_gradio_chatbot(),)
-        + ("", "", None,) * 2
-        + ("", None,) * 1
+        (
+            state,
+            state.to_gradio_chatbot(),
+        )
+        + (
+            "",
+            "",
+            None,
+        )
+        * 2
+        + (
+            "",
+            None,
+        )
+        * 1
         + (disable_btn,) * 5
     )
 
@@ -665,34 +711,98 @@ def build_demo(embed_mode):
         regenerate_btn.click(
             regenerate,
             state,
-            [state, chatbot,] + demo_list + [textbox_3, imagebox_3,] + btn_list,
+            [
+                state,
+                chatbot,
+            ]
+            + demo_list
+            + [
+                textbox_3,
+                imagebox_3,
+            ]
+            + btn_list,
         ).then(
             http_bot,
-            [state, model_selector,] + prarameter_list,
+            [
+                state,
+                model_selector,
+            ]
+            + prarameter_list,
             [state, chatbot] + btn_list,
         )
         clear_btn.click(
             clear_history,
             None,
-            [state, chatbot,] + demo_list + [textbox_3, imagebox_3,] + btn_list,
+            [
+                state,
+                chatbot,
+            ]
+            + demo_list
+            + [
+                textbox_3,
+                imagebox_3,
+            ]
+            + btn_list,
         )
 
         textbox_3.submit(
             add_text,
-            [state, model_selector,] + demo_list + [textbox_3, imagebox_3,],
-            [state, chatbot,] + demo_list + [textbox_3, imagebox_3,] + btn_list,
+            [
+                state,
+                model_selector,
+            ]
+            + demo_list
+            + [
+                textbox_3,
+                imagebox_3,
+            ],
+            [
+                state,
+                chatbot,
+            ]
+            + demo_list
+            + [
+                textbox_3,
+                imagebox_3,
+            ]
+            + btn_list,
         ).then(
             http_bot,
-            [state, model_selector,] + prarameter_list,
+            [
+                state,
+                model_selector,
+            ]
+            + prarameter_list,
             [state, chatbot] + btn_list,
         )
         submit_btn.click(
             add_text,
-            [state, model_selector,] + demo_list + [textbox_3, imagebox_3,],
-            [state, chatbot,] + demo_list + [textbox_3, imagebox_3,] + btn_list,
+            [
+                state,
+                model_selector,
+            ]
+            + demo_list
+            + [
+                textbox_3,
+                imagebox_3,
+            ],
+            [
+                state,
+                chatbot,
+            ]
+            + demo_list
+            + [
+                textbox_3,
+                imagebox_3,
+            ]
+            + btn_list,
         ).then(
             http_bot,
-            [state, model_selector,] + prarameter_list,
+            [
+                state,
+                model_selector,
+            ]
+            + prarameter_list,
             [state, chatbot] + btn_list,
         )
 

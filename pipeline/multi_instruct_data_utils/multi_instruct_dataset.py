@@ -100,7 +100,10 @@ def collate_fn(samples, pad_idx, eos_idx):
     batch = {
         "id": id,
         "nsentences": len(samples),
-        "net_input": {"input_ids": src_tokens, "attention_masks": src_tokens_masks,},
+        "net_input": {
+            "input_ids": src_tokens,
+            "attention_masks": src_tokens_masks,
+        },
     }
     if samples[0].get("patch_image", None) is not None:
         batch["net_input"]["patch_images"] = torch.stack(

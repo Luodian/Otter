@@ -25,7 +25,7 @@ def FeedForward(dim, mult=4):
 class PerceiverAttention(nn.Module):
     def __init__(self, *, dim, dim_head=64, heads=8):
         super().__init__()
-        self.scale = dim_head ** -0.5
+        self.scale = dim_head**-0.5
         self.heads = heads
         inner_dim = dim_head * heads
 
@@ -147,7 +147,7 @@ class MaskedCrossAttention(nn.Module):
         only_attend_previous=True,
     ):
         super().__init__()
-        self.scale = dim_head ** -0.5
+        self.scale = dim_head**-0.5
         self.heads = heads
         inner_dim = dim_head * heads
 
@@ -258,7 +258,11 @@ class GatedCrossAttentionBlock(nn.Module):
         self.ff_gate = nn.Parameter(torch.tensor([0.0]))
 
     def forward(
-        self, x, media, media_locations=None, attend_previous=True,
+        self,
+        x,
+        media,
+        media_locations=None,
+        attend_previous=True,
     ):
         x = (
             self.attn(

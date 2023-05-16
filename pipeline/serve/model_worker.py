@@ -239,7 +239,10 @@ class ModelWorker:
         streamer = TextIteratorStreamer(
             tokenizer, skip_prompt=True, skip_special_tokens=True
         )
-        inputs = tokenizer(prompt, return_tensors="pt",).to(self.device)
+        inputs = tokenizer(
+            prompt,
+            return_tensors="pt",
+        ).to(self.device)
         generation_kwargs = params.get("generation_kwargs", {})
         logger.info(f"generation_kwargs: {generation_kwargs}")
         generation_input = dict(
