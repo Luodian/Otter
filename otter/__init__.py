@@ -8,9 +8,7 @@ from transformers.utils import (
 
 
 _import_structure = {
-    "configuration_otter": [
-        "OtterConfig",
-    ],
+    "configuration_otter": ["OtterConfig",],
 }
 
 try:
@@ -26,9 +24,7 @@ else:
     ]
 
 if TYPE_CHECKING:
-    from .configuration_otter import (
-        OtterConfig,
-    )
+    from .configuration_otter import OtterConfig
 
     # from .processing_otter import OtterProcessor
 

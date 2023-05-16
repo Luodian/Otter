@@ -8,9 +8,7 @@ from transformers.utils import (
 
 
 _import_structure = {
-    "configuration_flamingo": [
-        "FlamingoConfig",
-    ],
+    "configuration_flamingo": ["FlamingoConfig",],
 }
 
 try:
@@ -26,9 +24,7 @@ else:
     ]
 
 if TYPE_CHECKING:
-    from .configuration_flamingo import (
-        FlamingoConfig,
-    )
+    from .configuration_flamingo import FlamingoConfig
 
     # from .processing_flamingo import FlamingoProcessor
 

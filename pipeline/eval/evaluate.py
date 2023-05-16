@@ -119,26 +119,18 @@ parser.add_argument(
     default=None,
 )
 parser.add_argument(
-    "--coco_annotations_json_path",
-    type=str,
-    default=None,
+    "--coco_annotations_json_path", type=str, default=None,
 )
 
 ## VQAV2 Dataset
 parser.add_argument(
-    "--vqav2_image_dir_path",
-    type=str,
-    default=None,
+    "--vqav2_image_dir_path", type=str, default=None,
 )
 parser.add_argument(
-    "--vqav2_questions_json_path",
-    type=str,
-    default=None,
+    "--vqav2_questions_json_path", type=str, default=None,
 )
 parser.add_argument(
-    "--vqav2_annotations_json_path",
-    type=str,
-    default=None,
+    "--vqav2_annotations_json_path", type=str, default=None,
 )
 
 ## OK-VQA Dataset
@@ -552,8 +544,7 @@ def evaluate_coco_flickr(
         )
 
     metrics = compute_cider(
-        result_path=results_path,
-        annotations_path=annotations_json_path,
+        result_path=results_path, annotations_path=annotations_json_path,
     )
 
     # delete the temporary file

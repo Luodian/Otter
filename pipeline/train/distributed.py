@@ -108,10 +108,7 @@ def init_distributed_device(args):
     else:
         # needed to run on single gpu
         torch.distributed.init_process_group(
-            backend=args.dist_backend,
-            init_method=args.dist_url,
-            world_size=1,
-            rank=0,
+            backend=args.dist_backend, init_method=args.dist_url, world_size=1, rank=0,
         )
 
     if torch.cuda.is_available():

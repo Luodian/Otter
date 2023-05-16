@@ -48,8 +48,7 @@ class OtterModel(OtterPreTrainedModel):
     config_class = OtterConfig
 
     def __init__(
-        self,
-        config: OtterConfig,
+        self, config: OtterConfig,
     ):
         super().__init__(config)
         text_tokenizer = LlamaTokenizer.from_pretrained(
@@ -132,11 +131,7 @@ if __name__ == "__main__":
         help="Path to the pt checkpoint",
     )
     parser.add_argument(
-        "--new_hf_path",
-        "-new",
-        type=str,
-        required=True,
-        help="Path to the hf folder",
+        "--new_hf_path", "-new", type=str, required=True, help="Path to the hf folder",
     )
     args = parser.parse_args()
     if not os.path.exists(os.path.dirname(args.new_hf_path)):

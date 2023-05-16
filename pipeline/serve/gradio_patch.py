@@ -47,9 +47,7 @@ class Chatbot(Changeable, Selectable, IOComponent, JSONSerializable):
             elem_classes: An optional list of strings that are assigned as the classes of this component in the HTML DOM. Can be used for targeting CSS styles.
         """
         if color_map is not None:
-            warnings.warn(
-                "The 'color_map' parameter has been deprecated.",
-            )
+            warnings.warn("The 'color_map' parameter has been deprecated.",)
         # self.md = utils.get_markdown_parser()
         self.md = Markdown(extras=["fenced-code-blocks", "tables", "break-on-newline"])
         self.select: EventListenerMethod
@@ -164,7 +162,6 @@ class Chatbot(Changeable, Selectable, IOComponent, JSONSerializable):
             warnings.warn("The 'color_map' parameter has been deprecated.")
 
         Component.style(
-            self,
-            **kwargs,
+            self, **kwargs,
         )
         return self

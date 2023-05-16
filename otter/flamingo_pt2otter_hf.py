@@ -25,8 +25,7 @@ class OtterModel(OtterPreTrainedModel):
     config_class = OtterConfig
 
     def __init__(
-        self,
-        config: OtterConfig,
+        self, config: OtterConfig,
     ):
         super().__init__(config)
         text_tokenizer = LlamaTokenizer.from_pretrained(
@@ -140,11 +139,7 @@ if __name__ == "__main__":
         help="Path to the Open Flamingo checkpoint",
     )
     parser.add_argument(
-        "--new_hf_path",
-        "-new",
-        type=str,
-        required=True,
-        help="Path to the HF folder",
+        "--new_hf_path", "-new", type=str, required=True, help="Path to the HF folder",
     )
     args = parser.parse_args()
     dump_hf_model(args.old_ckpt_path, args.new_hf_path)

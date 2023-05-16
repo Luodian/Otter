@@ -29,10 +29,7 @@ class FlamingoLayer(nn.Module):
         self.attend_previous = attend_previous
 
     def forward(
-        self,
-        lang_x,
-        attention_mask=None,
-        **decoder_layer_kwargs,
+        self, lang_x, attention_mask=None, **decoder_layer_kwargs,
     ):
         if self.gated_cross_attn_layer is None:
             return self.decoder_layer(

@@ -18,8 +18,7 @@ class FlamingoPreTrainedModel(PreTrainedModel):
     def __init__(self, config: FlamingoConfig):
         super().__init__(config)
         vision_encoder, _, _ = open_clip.create_model_and_transforms(
-            config.vision_encoder_path,
-            pretrained=config.vision_encoder_pretrained,
+            config.vision_encoder_path, pretrained=config.vision_encoder_pretrained,
         )
         # set the vision encoder to output the visual features
         vision_encoder.visual.output_tokens = True
@@ -37,8 +36,7 @@ class FlamingoPreTrainedModel(PreTrainedModel):
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
 
         lang_encoder = AutoModelForCausalLM.from_pretrained(
-            config.lang_encoder_path,
-            local_files_only=bool(config.use_local_files),
+            config.lang_encoder_path, local_files_only=bool(config.use_local_files),
         )
         extend_instance(lang_encoder, FlamingoLMMixin)
 

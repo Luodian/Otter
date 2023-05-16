@@ -86,14 +86,14 @@ class ModelWorker:
     def load_model(self, lm_path, checkpoint_path, num_gpus, load_in_8bit, load_pt):
         if not load_pt:
             device_map = "auto" if num_gpus > 0 else None
-            if 'otter' in checkpoint_path:
+            if "otter" in checkpoint_path:
                 model = OtterForConditionalGeneration.from_pretrained(
-                checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit
-            )
+                    checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit
+                )
             else:
                 model = FlamingoForConditionalGeneration.from_pretrained(
-                checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit
-            )
+                    checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit
+                )
             tokenizer = model.text_tokenizer
         else:
             model, _, tokenizer = create_model_and_transforms(
@@ -239,10 +239,7 @@ class ModelWorker:
         streamer = TextIteratorStreamer(
             tokenizer, skip_prompt=True, skip_special_tokens=True
         )
-        inputs = tokenizer(
-            prompt,
-            return_tensors="pt",
-        ).to(self.device)
+        inputs = tokenizer(prompt, return_tensors="pt",).to(self.device)
         generation_kwargs = params.get("generation_kwargs", {})
         logger.info(f"generation_kwargs: {generation_kwargs}")
         generation_input = dict(
