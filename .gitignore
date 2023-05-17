@@ -188,7 +188,7 @@ train_*.sh
 gpt_playground/*
 
 #yuanhan
-tools
+# tools
 
 #liangyu
 checkpoint
