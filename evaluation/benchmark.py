@@ -6,13 +6,14 @@ from PIL import Image
 from otter.modeling_otter import OtterForConditionalGeneration
 import argparse
 
+
 def get_image(url: str) -> Image.Image:
     """
     Get image from url
-    
+
     Args:
         url (str): url of the image
-    
+
     Returns:
         Image.Image: PIL Image
     """
@@ -22,10 +23,10 @@ def get_image(url: str) -> Image.Image:
 def get_formatted_prompt(prompt: str) -> str:
     """
     Format prompt for GPT
-    
+
     Args:
         prompt (str): prompt to be formatted
-    
+
     Returns:
         str: formatted prompt
     """
@@ -35,19 +36,17 @@ def get_formatted_prompt(prompt: str) -> str:
 def get_response(url: str, prompt: str) -> str:
     """
     Get the response of single image and prompt from the model
-    
+
     Args:
         url (str): url of the image
         prompt (str): the prompt (no need to be formatted)
-    
+
     Returns:
         str: response of the model
     """
     query_image = get_image(url)
     vision_x = (
-        image_processor.preprocess(
-            [query_image], return_tensors="pt"
-        )["pixel_values"]
+        image_processor.preprocess([query_image], return_tensors="pt")["pixel_values"]
         .unsqueeze(1)
         .unsqueeze(0)
     )
@@ -65,13 +64,25 @@ def get_response(url: str, prompt: str) -> str:
         num_beams=3,
         no_repeat_ngram_size=3,
     )
-    parsed_output = model.text_tokenizer.decode(generated_text[0]).split("<answer>")[1].lstrip().rstrip().split("<|endofchunk|>")[0].lstrip().rstrip().lstrip('"').rstrip('"')
+    parsed_output = (
+        model.text_tokenizer.decode(generated_text[0])
+        .split("<answer>")[1]
+        .lstrip()
+        .rstrip()
+        .split("<|endofchunk|>")[0]
+        .lstrip()
+        .rstrip()
+        .lstrip('"')
+        .rstrip('"')
+    )
     return parsed_output
+
 
 def generate_html(output_file, model_version_or_tag):
     import json
+
     # Load the data from the JSON file
-    with open(output_file, 'r') as f:
+    with open(output_file, "r") as f:
         data = json.load(f)
 
     # Start the HTML file
@@ -117,7 +128,9 @@ def generate_html(output_file, model_version_or_tag):
                 {response}
             </div>
         </div>
-        """.format(**item)
+        """.format(
+            **item
+        )
 
     # Close the HTML tags
     html += """
@@ -126,15 +139,31 @@ def generate_html(output_file, model_version_or_tag):
     """
 
     # Write the HTML string to a file
-    output_html_path = output_file.replace('.json', '.html')
-    with open(output_html_path, 'w') as f:
+    output_html_path = output_file.replace(".json", ".html")
+    with open(output_html_path, "w") as f:
         f.write(html)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_path_or_name", type=str, default="luodian/otter-9b-hf", help="Path or name of the model (HF format)")
-    parser.add_argument("--model_version_or_tag", type=str, default="apr25_otter", help="Version or tag of the model")
-    parser.add_argument("--input_file", type=str, default="evaluation/sample_questions.json", help="Path of the input file")
+    parser.add_argument(
+        "--model_path_or_name",
+        type=str,
+        default="luodian/otter-9b-hf",
+        help="Path or name of the model (HF format)",
+    )
+    parser.add_argument(
+        "--model_version_or_tag",
+        type=str,
+        default="apr25_otter",
+        help="Version or tag of the model",
+    )
+    parser.add_argument(
+        "--input_file",
+        type=str,
+        default="evaluation/sample_questions.json",
+        help="Path of the input file",
+    )
     args = parser.parse_args()
 
     model = OtterForConditionalGeneration.from_pretrained(
@@ -151,11 +180,20 @@ if __name__ == "__main__":
             print(f"Processing {item['image']} with prompt {item['prompt']}")
             response = get_response(item["image"], item["prompt"])
             print(f"Response: {response}")
-            responses.append({
-                "image": item["image"],
-                "prompt": item["prompt"],
-                "response": get_response(item["image"], item["prompt"])
-            })
-    json.dump(responses, open(f"./evaluation/{args.model_version_or_tag}_outputs.json", "w"), indent=4)
+            responses.append(
+                {
+                    "image": item["image"],
+                    "prompt": item["prompt"],
+                    "response": get_response(item["image"], item["prompt"]),
+                }
+            )
+    json.dump(
+        responses,
+        open(f"./evaluation/{args.model_version_or_tag}_outputs.json", "w"),
+        indent=4,
+    )
 
-    generate_html(f"./evaluation/{args.model_version_or_tag}_outputs.json", args.model_version_or_tag)
+    generate_html(
+        f"./evaluation/{args.model_version_or_tag}_outputs.json",
+        args.model_version_or_tag,
+    )
