@@ -89,7 +89,7 @@ generated_text = model.generate(
     lang_x=lang_x["input_ids"].to(model.device),
     attention_mask=lang_x["attention_mask"].to(model.device),
     max_new_tokens=256,
-    num_beams=1,
+    num_beams=3,
     no_repeat_ngram_size=3,
 )
 
