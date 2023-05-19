@@ -5,6 +5,9 @@ import json
 from PIL import Image
 from otter.modeling_otter import OtterForConditionalGeneration
 import argparse
+from tqdm import tqdm
+
+requests.packages.urllib3.disable_warnings()
 
 
 def get_image(url: str) -> Image.Image:
@@ -17,7 +20,7 @@ def get_image(url: str) -> Image.Image:
     Returns:
         Image.Image: PIL Image
     """
-    return Image.open(requests.get(url, stream=True).raw)
+    return Image.open(requests.get(url, stream=True, verify=False).raw)
 
 
 def get_formatted_prompt(prompt: str) -> str:
@@ -96,6 +99,7 @@ def generate_html(output_file, model_version_or_tag):
                 float: left;
                 width: 33.33%;
                 padding: 5px;
+                box-sizing: border-box;
             }}
             .row::after {{
                 content: "";
@@ -103,7 +107,7 @@ def generate_html(output_file, model_version_or_tag):
                 display: table;
             }}
             img {{
-                width: 100%;
+                width: 338px;
                 height: auto;
             }}
         </style>
@@ -114,6 +118,21 @@ def generate_html(output_file, model_version_or_tag):
 
     html = html.format(model_version_or_tag)
 
+    # Add headers
+    html += """
+        <div class="row">
+            <div class="column">
+                <h2>Image</h2>
+            </div>
+            <div class="column">
+                <h2>Instruction</h2>
+            </div>
+            <div class="column">
+                <h2>Response</h2>
+            </div>
+        </div>
+    """
+
     # Add the data to the HTML
     for item in data:
         html += """
@@ -122,7 +141,7 @@ def generate_html(output_file, model_version_or_tag):
                 <img src="{image}" alt="Image">
             </div>
             <div class="column">
-                {prompt}
+                {instruction}
             </div>
             <div class="column">
                 {response}
@@ -176,17 +195,20 @@ if __name__ == "__main__":
     responses = []
     with open(args.input_file) as f:
         data = json.load(f)
-        for item in data:
-            print(f"Processing {item['image']} with prompt {item['prompt']}")
-            response = get_response(item["image"], item["prompt"])
+        progress_bar = tqdm(total=len(data["input"]))
+        for item in data["input"]:
+            print("=" * 50)
+            print(f"Processing {item['image']} with prompt {item['instruction']}")
+            response = get_response(item["image"], item["instruction"])
             print(f"Response: {response}")
             responses.append(
                 {
                     "image": item["image"],
-                    "prompt": item["prompt"],
-                    "response": get_response(item["image"], item["prompt"]),
+                    "instruction": item["instruction"],
+                    "response": get_response(item["image"], item["instruction"]),
                 }
             )
+            progress_bar.update(1)
     json.dump(
         responses,
         open(f"./evaluation/{args.model_version_or_tag}_outputs.json", "w"),
