@@ -36,7 +36,7 @@ def get_formatted_prompt(prompt: str) -> str:
     return f"<image> User: {prompt} GPT: <answer>"
 
 
-def get_response(url: str, prompt: str) -> str:
+def get_response(url: str, prompt: str, model=None, image_processor=None) -> str:
     """
     Get the response of single image and prompt from the model
 
@@ -199,13 +199,13 @@ if __name__ == "__main__":
         for item in data["input"]:
             print("=" * 50)
             print(f"Processing {item['image']} with prompt {item['instruction']}")
-            response = get_response(item["image"], item["instruction"])
+            response = get_response(item["image"], item["instruction"], model, image_processor)
             print(f"Response: {response}")
             responses.append(
                 {
                     "image": item["image"],
                     "instruction": item["instruction"],
-                    "response": get_response(item["image"], item["instruction"]),
+                    "response": response,
                 }
             )
             progress_bar.update(1)
