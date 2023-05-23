@@ -168,15 +168,11 @@ We are working on the following models with much stronger performance.
 
 If you found this repository useful, please consider citing:
 ```
-@software{li_bo_2023_7879884,
-  author       = {Li, Bo and Zhang, Yuanhan and Chen, Liangyu and Wang, Jinghao and Yang, Jingkang and Liu, Ziwei},
-  title        = {{Otter: Multi-Modal In-Context Learning Model with Instruction Tuning}},
-  month        = apr,
-  year         = 2023,
-  publisher    = {Zenodo},
-  version      = {0.1},
-  doi          = {10.5281/zenodo.7879884},
-  url          = {https://doi.org/10.5281/zenodo.7879884}
+@article{li2023otter,
+  title={Otter: A Multi-Modal Model with In-Context Instruction Tuning},
+  author={Li, Bo and Zhang, Yuanhan and Chen, Liangyu and Wang, Jinghao and Yang, Jingkang and Liu, Ziwei},
+  journal={arXiv preprint arXiv:2305.03726},
+  year={2023}
 }
 ```
 
