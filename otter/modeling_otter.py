@@ -109,7 +109,7 @@ def exists(val):
 class OtterPerceiverBlock(nn.Module):
     def __init__(self, *, dim: int, dim_head: int = 64, heads: int = 8, mult: int = 4):
         super().__init__()
-        self.scale = dim_head**-0.5
+        self.scale = dim_head ** -0.5
         self.heads = heads
         inner_dim = dim_head * heads
         ff_dim = dim * mult
@@ -244,7 +244,7 @@ class OtterMaskedCrossAttention(nn.Module):
         only_attend_previous: bool = True,
     ):
         super().__init__()
-        self.scale = dim_head**-0.5
+        self.scale = dim_head ** -0.5
         self.heads = heads
         inner_dim = dim_head * heads
 
