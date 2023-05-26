@@ -181,16 +181,7 @@ class UnifyDataset(MultiInstructDataset):
         self.epoch = epoch
 
     def process_image_text_pair(self, index):
-        (
-            uniq_id,
-            image,
-            caption,
-            question,
-            refs,
-            gt_objects,
-            dataset_name,
-            type,
-        ) = (
+        (uniq_id, image, caption, question, refs, gt_objects, dataset_name, type,) = (
             self.dataset[index].rstrip("\n").split(self.separator)
         )
         if type not in self.supported_data_types:
