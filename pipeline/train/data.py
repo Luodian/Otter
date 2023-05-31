@@ -676,16 +676,24 @@ def get_multi_instruction_dataset(args, tokenizer, epoch=0, floor=False):
     # dataset = FileDataset(multi_instruct_path, args.selected_cols)
     args.task = "pretrain"
     args.tokenizer = tokenizer
-    unified_dataset = UnifyDataset(args)
+    multi_instruct_paths = args.multi_instruct_path.split(",")
+    images_paths = args.images_path.split(",")
+    train_config_paths = args.train_config_path.split(",")
+    unified_datasets = []
+    for cur_multi_instruct_path, cur_images_path, cur_train_config_path in zip(multi_instruct_paths,images_paths, train_config_paths):
+        unified_dataset = UnifyDataset(args,cur_multi_instruct_path, cur_images_path, cur_train_config_path)
+        unified_datasets.append(unified_dataset)
     # unified_dataset = UnifyDataset(args, dataset)
 
-    # create a shared epoch store to sync epoch to dataloader worker proc
-    shared_epoch = SharedEpoch(epoch=epoch)
-
+    args.train_num_samples = (
+        sum(len(dataset) for dataset in unified_datasets) / len(unified_datasets)
+        if args.train_num_samples is None
+        else args.train_num_samples
+    )
     round_fn = math.floor if floor else math.ceil
     global_batch_size = args.batch_size * args.world_size
 
-    num_samples = len(unified_dataset)  # 8
+    num_samples = args.train_num_samples  # 8
     num_batches = round_fn(num_samples / global_batch_size)  # 2
     args.workers = max(1, args.workers)  # 1
     num_worker_batches = round_fn(
@@ -693,39 +701,27 @@ def get_multi_instruction_dataset(args, tokenizer, epoch=0, floor=False):
     )  # per dataloader worker #2
     num_batches = num_worker_batches * args.workers  # 2
     num_samples = num_batches * global_batch_size  # 8
-    # each worker is iterating over this
-    # dataset = dataset.with_epoch(num_worker_batches)
 
-    # dataloader = wds.WebLoader(
-    #     dataset,
-    #     batch_size=None,
-    #     shuffle=False,
-    #     num_workers=args.workers,
-    #     persistent_workers=True,
-    # )
-    # if args.world_size > 1:
-    #     sampler = DistributedSampler(unified_dataset)
-    # else:
-    sampler = RandomSampler(unified_dataset)
+    dataloaders = []
 
-    dataloader = torch.utils.data.DataLoader(
-        unified_dataset,
-        sampler=sampler,
-        batch_size=args.batch_size,
-        num_workers=args.workers,
-        pin_memory=True,
-        drop_last=True,
-        collate_fn=unified_dataset.collate,
-    )
+    for unified_dataset in unified_datasets:
+        sampler = RandomSampler(unified_dataset, replacement=True, num_samples=num_samples)
+        dataloader = torch.utils.data.DataLoader(
+            unified_dataset,
+            sampler=sampler,
+            batch_size=args.batch_size,
+            num_workers=args.workers,
+            pin_memory=True,
+            drop_last=True,
+            collate_fn=unified_dataset.collate,
+        )
 
-    # add meta-data to dataloader instance for convenience
-    dataloader.num_batches = num_batches
-    dataloader.num_samples = num_samples
+        # add meta-data to dataloader instance for convenience
+        # dataloader.num_batches = num_batches
+        # dataloader.num_samples = num_samples
 
-    return dataloader
-
-    # return DataInfo(dataloader=dataloader, sampler=sampler, shared_epoch=shared_epoch)
-
+        dataloaders.append(dataloader)
+    return dataloaders
 
 def get_dataset_fn(dataset_type):
     if dataset_type == "image_text":
