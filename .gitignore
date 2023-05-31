@@ -186,6 +186,8 @@ ofa_compress/*
 xformers_model/*
 train_*.sh
 gpt_playground/*
+evaluation/*.json
+evaluation/*.html
 
 #yuanhan
 # tools
