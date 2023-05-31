@@ -149,9 +149,7 @@ class FlamingoPerceiverResampler(nn.Module):
         #     if exists(max_num_frames)
         #     else None
         # )
-        self.frame_embs = (
-            nn.Parameter(torch.randn(max_num_frames, dim))
-        )
+        self.frame_embs = nn.Parameter(torch.randn(max_num_frames, dim))
 
         self.media_time_embs = (
             nn.Parameter(torch.randn(max_num_media, 1, dim))

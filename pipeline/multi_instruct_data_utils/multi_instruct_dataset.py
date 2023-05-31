@@ -8,6 +8,7 @@ from torch.utils.data import Dataset
 from PIL import Image, ImageFile
 
 import sys
+
 # sys.path.append("/mnt/lustre/yhzhang/Otter/pipeline/multi_instruct_data_utils")
 # from transforms import *
 from .transforms import *
@@ -113,7 +114,7 @@ def collate_fn(samples, pad_idx, eos_idx):
     # import pdb;pdb.set_trace()
     if samples[0].get("patch_images", None) is not None:
         batch["net_input"]["patch_images"] = torch.stack(
-            [sample["patch_images"] for sample in samples ], dim=0
+            [sample["patch_images"] for sample in samples], dim=0
         )
 
     return batch

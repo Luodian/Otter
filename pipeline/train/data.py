@@ -680,8 +680,12 @@ def get_multi_instruction_dataset(args, tokenizer, epoch=0, floor=False):
     images_paths = args.images_path.split(",")
     train_config_paths = args.train_config_path.split(",")
     unified_datasets = []
-    for cur_multi_instruct_path, cur_images_path, cur_train_config_path in zip(multi_instruct_paths,images_paths, train_config_paths):
-        unified_dataset = UnifyDataset(args,cur_multi_instruct_path, cur_images_path, cur_train_config_path)
+    for cur_multi_instruct_path, cur_images_path, cur_train_config_path in zip(
+        multi_instruct_paths, images_paths, train_config_paths
+    ):
+        unified_dataset = UnifyDataset(
+            args, cur_multi_instruct_path, cur_images_path, cur_train_config_path
+        )
         unified_datasets.append(unified_dataset)
     # unified_dataset = UnifyDataset(args, dataset)
 
@@ -705,7 +709,9 @@ def get_multi_instruction_dataset(args, tokenizer, epoch=0, floor=False):
     dataloaders = []
 
     for unified_dataset in unified_datasets:
-        sampler = RandomSampler(unified_dataset, replacement=True, num_samples=num_samples)
+        sampler = RandomSampler(
+            unified_dataset, replacement=True, num_samples=num_samples
+        )
         dataloader = torch.utils.data.DataLoader(
             unified_dataset,
             sampler=sampler,
@@ -722,6 +728,7 @@ def get_multi_instruction_dataset(args, tokenizer, epoch=0, floor=False):
 
         dataloaders.append(dataloader)
     return dataloaders
+
 
 def get_dataset_fn(dataset_type):
     if dataset_type == "image_text":

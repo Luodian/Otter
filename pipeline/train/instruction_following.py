@@ -33,7 +33,7 @@ from tqdm import tqdm
 import time
 
 from pipeline.multi_instruct_data_utils.arguments import add_data_args
-from accelerate import Accelerator,load_checkpoint_and_dispatch, init_empty_weights
+from accelerate import Accelerator, load_checkpoint_and_dispatch, init_empty_weights
 
 import sys
 
@@ -108,11 +108,12 @@ def train_one_epoch(
             for i in range(labels.shape[0]):
                 label_idx = 0
                 while (
-                    label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id
+                    label_idx < labels.shape[1]
+                    and labels[i][label_idx] != media_token_id
                 ):
                     labels[i][label_idx] = -100
                     label_idx += 1
-        
+
             # # remove loss for any token between <|endofchunk|> and <image>
             # endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
             # for endofchunk_idx in endofchunk_idxs:
@@ -124,8 +125,8 @@ def train_one_epoch(
             #         labels[i][token_idx] = -100
             #         token_idx += 1
 
-            #<image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
-            #<image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
+            # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
+            # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
 
             # remove loss for any token between first <image> and first <answer>
             endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
@@ -152,12 +153,11 @@ def train_one_epoch(
                         labels[i][token_idx] = -100
                     token_idx += 1
 
-
             labels[labels == answer_token_id] = -100
             labels[labels == media_token_id] = -100
 
             # with accelerator.accumulate(model):
-                # with autocast():
+            # with autocast():
             with accelerator.autocast():
                 loss_multi_instruct = model(
                     vision_x=images,
@@ -174,9 +174,7 @@ def train_one_epoch(
         def mask_embedding(m):
             if m.weight.requires_grad:
                 zero_mask = torch.zeros_like(m.weight.grad)
-                zero_mask[answer_token_id] = torch.ones_like(
-                    zero_mask[answer_token_id]
-                )
+                zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
                 m.weight.grad = m.weight.grad * zero_mask
 
         if args.mask_lm_head:
@@ -530,7 +528,6 @@ def main():
             name=args.run_name,
             config=vars(args),
         )
-
 
     model, optimizer, lr_scheduler, multi_instruct_loaders = accelerator.prepare(
         model, optimizer, lr_scheduler, multi_instruct_loaders
