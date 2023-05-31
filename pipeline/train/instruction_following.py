@@ -33,7 +33,7 @@ from tqdm import tqdm
 import time
 
 from pipeline.multi_instruct_data_utils.arguments import add_data_args
-from accelerate import Accelerator
+from accelerate import Accelerator,load_checkpoint_and_dispatch, init_empty_weights
 
 import sys
 
@@ -55,7 +55,7 @@ def train_one_epoch(
     args,
     model,
     epoch,
-    multi_instruct_loader,
+    multi_instruct_loaders,
     tokenizer,
     optimizer,
     lr_scheduler,
@@ -63,12 +63,8 @@ def train_one_epoch(
     accelerator,
     wandb,
 ):
-    # num_batches_per_epoch = multi_instruct_loader.num_batches
-    num_batches_per_epoch = len(multi_instruct_loader)
+    num_batches_per_epoch = len(multi_instruct_loaders[0])
     total_training_steps = num_batches_per_epoch * args.num_epochs
-
-    # autocast = get_autocast(args.precision)
-    # cast_dtype = get_cast_dtype(args.precision)
 
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
     endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)[
@@ -88,8 +84,8 @@ def train_one_epoch(
     end = time.time()
 
     # loop through dataloader
-    for num_steps, (batch_multi_instruct) in tqdm(
-        enumerate(multi_instruct_loader),
+    for num_steps, (batch_multi_instructs) in tqdm(
+        enumerate(zip(*multi_instruct_loaders)),
         disable=args.rank != 0,
         total=total_training_steps,
         initial=(epoch * num_batches_per_epoch),
@@ -98,153 +94,144 @@ def train_one_epoch(
 
         global_step = num_steps + epoch * num_batches_per_epoch
         #### MULTI_INSTRUCT FORWARD PASS ####
+        total_losses = []
+        for batch_multi_instruct in batch_multi_instructs:
+            images = batch_multi_instruct["net_input"]["patch_images"]
+            input_ids = batch_multi_instruct["net_input"]["input_ids"]
+            attention_mask = batch_multi_instruct["net_input"]["attention_masks"]
 
-        images = batch_multi_instruct["net_input"]["patch_images"]#.unsqueeze(1).unsqueeze(1)
-        input_ids = batch_multi_instruct["net_input"]["input_ids"]
-        attention_mask = batch_multi_instruct["net_input"]["attention_masks"]
+            labels = input_ids.clone()
+            labels[labels == tokenizer.pad_token_id] = -100
+            labels[:, 0] = -100
 
-        labels = input_ids.clone()
-        labels[labels == tokenizer.pad_token_id] = -100
-        labels[:, 0] = -100
+            # remove loss for any token before the first <image> token
+            for i in range(labels.shape[0]):
+                label_idx = 0
+                while (
+                    label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id
+                ):
+                    labels[i][label_idx] = -100
+                    label_idx += 1
+        
+            # # remove loss for any token between <|endofchunk|> and <image>
+            # endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
+            # for endofchunk_idx in endofchunk_idxs:
+            #     token_idx = endofchunk_idx + 1
+            #     while (
+            #         token_idx < labels.shape[1]
+            #         and labels[i][token_idx] != media_token_id
+            #     ):
+            #         labels[i][token_idx] = -100
+            #         token_idx += 1
 
-         # remove loss for any token before the first <image> token
-        for i in range(labels.shape[0]):
-            label_idx = 0
-            while (
-                label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id
-            ):
-                labels[i][label_idx] = -100
-                label_idx += 1
-    
-        # remove loss for any token between <|endofchunk|> and <image>
-        endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
-        for endofchunk_idx in endofchunk_idxs:
-            token_idx = endofchunk_idx + 1
-            while (
-                token_idx < labels.shape[1]
-                and labels[i][token_idx] != media_token_id
-            ):
-                labels[i][token_idx] = -100
-                token_idx += 1
+            #<image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
+            #<image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
 
-         # remove loss for any token between <image> and <answer>
-        media_idxs = torch.where(labels[i] == media_token_id)[0]
-        for media_idx in media_idxs:
-            token_idx = media_idx + 1
-            while (
-                token_idx < labels.shape[1]
-                and labels[i][token_idx] != answer_token_id
-            ):
-                labels[i][token_idx] = -100
-                token_idx += 1
+            # remove loss for any token between first <image> and first <answer>
+            endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
+            media_idxs = torch.where(labels[i] == media_token_id)[0]
+            for media_idx in media_idxs[:1]:
+                token_idx = media_idx + 1
+                while (
+                    token_idx < labels.shape[1]
+                    and labels[i][token_idx] != answer_token_id
+                ):
+                    labels[i][token_idx] = -100
+                    token_idx += 1
+
+            # remove loss for any token between <|endofchunk|> and <answer>, except <image>
+            for endofchunk_idx in endofchunk_idxs:
+                token_idx = endofchunk_idx + 1
+                while (
+                    token_idx < labels.shape[1]
+                    and labels[i][token_idx] != answer_token_id
+                ):
+                    if labels[i][token_idx] == media_token_id:
+                        pass
+                    else:
+                        labels[i][token_idx] = -100
+                    token_idx += 1
 
 
-        labels[labels == answer_token_id] = -100
-        labels[labels == media_token_id] = -100
+            labels[labels == answer_token_id] = -100
+            labels[labels == media_token_id] = -100
 
-        # labels.to(device_id, dtype=cast_dtype, non_blocking=True)
+            # with accelerator.accumulate(model):
+                # with autocast():
+            with accelerator.autocast():
+                loss_multi_instruct = model(
+                    vision_x=images,
+                    lang_x=input_ids,
+                    attention_mask=attention_mask,
+                    labels=labels,
+                )[0]
+            total_losses.append(loss_multi_instruct)
 
-        with accelerator.accumulate(model):
-            # with autocast():
-            # with accelerator.autocast():
-            loss_multi_instruct = model(
-                vision_x=images,
-                lang_x=input_ids,
-                attention_mask=attention_mask,
-                labels=labels,
-            )[0]
+        #### BACKWARD PASS ####
+        total_loss_sum = sum(total_losses)
+        accelerator.backward(total_loss_sum.to(device_id))
 
-            # divided_loss_multi_instruct = loss_multi_instruct
+        def mask_embedding(m):
+            if m.weight.requires_grad:
+                zero_mask = torch.zeros_like(m.weight.grad)
+                zero_mask[answer_token_id] = torch.ones_like(
+                    zero_mask[answer_token_id]
+                )
+                m.weight.grad = m.weight.grad * zero_mask
 
-            #### BACKWARD PASS ####
-            accelerator.backward(loss_multi_instruct)
+        if args.mask_lm_head:
+            model.module.lang_encoder.model.embed_tokens.apply(mask_embedding)
+            model.module.lang_encoder.lm_head.apply(mask_embedding)
 
-            #### MASK GRADIENTS FOR EMBEDDINGS ####
-            # Note (anas): Do not apply weight decay to embeddings as it will break this function.
-            # def mask_embedding(m):
-            #     if isinstance(m, torch.nn.Embedding) and m.weight.requires_grad:
-            #         zero_mask = torch.zeros_like(m.weight.grad)
-            #         zero_mask[media_token_id] = torch.ones_like(
-            #             zero_mask[media_token_id]
-            #         )
-            #         zero_mask[endofchunk_token_id] = torch.ones_like(
-            #             zero_mask[endofchunk_token_id]
-            #         )
-            #         zero_mask[answer_token_id] = torch.ones_like(
-            #             zero_mask[answer_token_id]
-            #         )
-            #         m.weight.grad = m.weight.grad * zero_mask
+        if accelerator.sync_gradients:
+            accelerator.clip_grad_norm_(model.parameters(), 1.0)
 
-            def mask_embedding(m):
-                if m.weight.requires_grad:
-                    zero_mask = torch.zeros_like(m.weight.grad)
-                    zero_mask[answer_token_id] = torch.ones_like(
-                        zero_mask[answer_token_id]
-                    )
-                    m.weight.grad = m.weight.grad * zero_mask
-
-            if args.mask_lm_head:
-                # model.apply(mask_embedding)
-                model.module.lang_encoder.model.embed_tokens.apply(mask_embedding)
-                model.module.lang_encoder.lm_head.apply(mask_embedding)
-
-            # torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            if accelerator.sync_gradients:
-                accelerator.clip_grad_norm_(model.parameters(), 1.0)
-
-            # step optimizer and log
-            # if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (
-            #     num_steps == num_batches_per_epoch - 1
-            # ):
-            optimizer.step()
-            lr_scheduler.step()
-            optimizer.zero_grad()
+        optimizer.step()
+        lr_scheduler.step()
+        optimizer.zero_grad()
 
         # step time and reset end outside of rank 0
-            step_time_m.update(time.time() - end)
-            end = time.time()
+        step_time_m.update(time.time() - end)
+        end = time.time()
 
-            # if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (
-            #     num_steps == num_batches_per_epoch - 1
-            # ):
-            if accelerator.sync_gradients:
-                if args.rank == 0 and args.report_to_wandb:
-                    # compute within rank 0
-                    multi_instruct_samples_per_second = (
-                        args.gradient_accumulation_steps
-                        * args.batch_size
-                        * args.world_size
-                        / step_time_m.val
-                    )
-                    multi_instruct_samples_per_second_per_gpu = (
-                        args.gradient_accumulation_steps * args.batch_size / step_time_m.val
-                    )
+        if accelerator.sync_gradients:
+            if args.rank == 0 and args.report_to_wandb:
+                # compute within rank 0
+                multi_instruct_samples_per_second = (
+                    args.gradient_accumulation_steps
+                    * args.batch_size
+                    * args.world_size
+                    / step_time_m.val
+                )
+                multi_instruct_samples_per_second_per_gpu = (
+                    args.gradient_accumulation_steps * args.batch_size / step_time_m.val
+                )
 
-                    wandb.log(
-                        {
-                            "data_time": data_time_m.avg,
-                            "step_time": step_time_m.avg,
-                            "multi_instruct_samples_per_second": multi_instruct_samples_per_second,
-                            "multi_instruct_samples_per_second_per_gpu": multi_instruct_samples_per_second_per_gpu,
-                            "lr": optimizer.param_groups[0]["lr"],
-                        },
-                        commit=False,
-                    )
-                    step_time_m.reset()
-                    data_time_m.reset()
+                wandb.log(
+                    {
+                        "data_time": data_time_m.avg,
+                        "step_time": step_time_m.avg,
+                        "multi_instruct_samples_per_second": multi_instruct_samples_per_second,
+                        "multi_instruct_samples_per_second_per_gpu": multi_instruct_samples_per_second_per_gpu,
+                        "lr": optimizer.param_groups[0]["lr"],
+                    },
+                    commit=False,
+                )
+                step_time_m.reset()
+                data_time_m.reset()
 
-                    wandb.log(
-                        {
-                            "loss_multi_instruct": loss_multi_instruct.item(),
-                            "global_step": global_step // args.gradient_accumulation_steps,
-                        },
-                        commit=True,
-                    )
+                wandb.log(
+                    {
+                        "loss_multi_instruct": total_loss_sum.item(),
+                        "global_step": global_step // args.gradient_accumulation_steps,
+                    },
+                    commit=True,
+                )
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
             print(
-                f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {loss_multi_instruct.item():.3f}"
+                f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {total_loss_sum.item():.3f}"
             )
 
 
@@ -276,6 +263,7 @@ def main():
     )
     # Sum of gradient optimization batch size
     parser.add_argument("--batch_size", type=int, default=128)
+
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
     parser.add_argument(
         "--pretrained_model_name_or_path",
@@ -394,10 +382,15 @@ def main():
 
     args.local_rank, args.rank, args.world_size = world_info_from_env()
 
-    if args.world_size > 1:
-        device_id = init_distributed_device(args)
-    else:
-        device_id = 0
+    # if args.world_size > 1:
+    #     device_id = init_distributed_device(args)
+    # else:
+    #     device_id = 0
+    accelerator = Accelerator(
+        gradient_accumulation_steps=args.gradient_accumulation_steps
+    )
+
+    device_id = accelerator.device
 
     random_seed(args.seed)
 
@@ -407,6 +400,10 @@ def main():
             device_map="auto",
             local_files_only=args.offline,
         )
+        # model.perceiver.frame_embs= (
+        #     torch.nn.Parameter(torch.randn(16, 1024))
+        # )
+        # model.save_pretrained(f"/mnt/petrelfs/share_data/zhangyuanhan/otter_9b_hf_mm")
     else:
         config = FlamingoConfig.from_json_file("./flamingo/config.json")
         model = FlamingoForConditionalGeneration(config=config)
@@ -438,9 +435,9 @@ def main():
 
     print(f"Start running training on rank {args.rank}.")
 
-    device_id = args.rank % torch.cuda.device_count()
+    # device_id = args.rank % torch.cuda.device_count()
 
-    multi_instruct_loader = get_data(args, tokenizer, "multi_instruct")
+    multi_instruct_loaders = get_data(args, tokenizer, "multi_instruct")
 
     def get_grouped_params(model):
         params_with_wd, params_without_wd = [], []
@@ -466,13 +463,7 @@ def main():
             {"params": params_without_wd, "weight_decay": 0.0},
         ]
 
-    args.train_num_samples = (
-        multi_instruct_loader.num_samples
-        if args.train_num_samples is None
-        else args.train_num_samples
-    )
-
-    total_training_steps = len(multi_instruct_loader) * args.num_epochs
+    total_training_steps = len(multi_instruct_loaders[0]) * args.num_epochs
 
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
@@ -540,15 +531,13 @@ def main():
             config=vars(args),
         )
 
-    accelerator = Accelerator(
-        gradient_accumulation_steps=args.gradient_accumulation_steps
-    )
-    model, optimizer, lr_scheduler, multi_instruct_loader = accelerator.prepare(
-        model, optimizer, lr_scheduler, multi_instruct_loader
+
+    model, optimizer, lr_scheduler, multi_instruct_loaders = accelerator.prepare(
+        model, optimizer, lr_scheduler, multi_instruct_loaders
     )
     model.train()
 
-    device_id = accelerator.device
+    # device_id = accelerator.device
 
     for epoch in range(resume_from_epoch, args.num_epochs):
         # multi_instruct_dataset.set_epoch(epoch)
@@ -560,7 +549,7 @@ def main():
             tokenizer=tokenizer,
             optimizer=optimizer,
             lr_scheduler=lr_scheduler,
-            multi_instruct_loader=multi_instruct_loader,
+            multi_instruct_loaders=multi_instruct_loaders,
             accelerator=accelerator,
             device_id=device_id,
             wandb=wandb,

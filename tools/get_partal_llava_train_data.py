@@ -1,20 +1,20 @@
 import json
 from tqdm import tqdm
 import csv
+import random
 
 
 rel_ins_ids_num = 2
 
-cur_file_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACONV_instructions.json"
 # cur_file_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json"
-# cur_file_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json"
-# cur_file_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
+cur_file_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json"
 
 
 with open(cur_file_path) as f:
     cur_file = json.load(f)
 
 cur_file = cur_file["data"]
+
 
 if "CONV" in cur_file_path:
     conversation_dict = {}
@@ -27,13 +27,14 @@ if "CONV" in cur_file_path:
 
 
 
-target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACONV_train.json"
-# target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json"
-# target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json"
-# target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
+# target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_half_train.json"
+target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_half_train.json"
 
 
 target_json = {}
+
+random.seed(0)
+
 for cur_id in tqdm(cur_file):
     if "CONV" in target_json_path:
         _,_,_, conversation_id, round_id = cur_id.split('_') 
@@ -49,8 +50,12 @@ for cur_id in tqdm(cur_file):
 
             target_json[instruction_id] = rel_ins_ids
     else:
+        if random.randint(0, 1) == 0:
+            continue
         instruction_id = cur_id
         if len(cur_file[cur_id]["rel_ins_ids"]) < rel_ins_ids_num:
+            if len(cur_file[cur_id]["rel_ins_ids"]) == 0:
+                continue
             rel_ins_ids = cur_file[cur_id]["rel_ins_ids"] * rel_ins_ids_num
             rel_ins_ids = rel_ins_ids[-rel_ins_ids_num:]
         else:
