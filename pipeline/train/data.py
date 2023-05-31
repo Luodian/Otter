@@ -656,7 +656,9 @@ def get_multi_instruction_dataset(args, tokenizer, epoch=0, floor=False):
     dataloaders = []
 
     for unified_dataset in unified_datasets:
-        sampler = RandomSampler(unified_dataset, replacement=True, num_samples=num_samples)
+        sampler = RandomSampler(
+            unified_dataset, replacement=True, num_samples=num_samples
+        )
         dataloader = torch.utils.data.DataLoader(
             unified_dataset,
             sampler=sampler,
