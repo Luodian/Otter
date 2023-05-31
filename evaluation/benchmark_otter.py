@@ -33,7 +33,7 @@ def get_formatted_prompt(prompt: str) -> str:
     Returns:
         str: formatted prompt
     """
-    return f"<image> User: {prompt} GPT: <answer>"
+    return f"<image> User: {prompt} GPT:<answer>"
 
 
 def get_response(url: str, prompt: str, model=None, image_processor=None) -> str:
