@@ -83,55 +83,54 @@ class ModelWorker:
             )
             self.heart_beat_thread.start()
 
-    def load_model(self, lm_path, checkpoint_path, num_gpus, load_in_8bit, load_pt):
-        if not load_pt:
-            device_map = "auto" if num_gpus > 0 else None
-            if "otter" in checkpoint_path:
-                model = OtterForConditionalGeneration.from_pretrained(
-                    checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit
-                )
-            else:
-                model = FlamingoForConditionalGeneration.from_pretrained(
-                    checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit
-                )
-            tokenizer = model.text_tokenizer
-        else:
-            model, _, tokenizer = create_model_and_transforms(
-                clip_vision_encoder_path="ViT-L-14",
-                clip_vision_encoder_pretrained="openai",
-                lang_encoder_path=lm_path,
-                tokenizer_path=lm_path,
-                cross_attn_every_n_layers=4,
+    def load_model(self, lm_path, checkpoint_path, num_gpus, load_in_8bit, load_pt=None):
+        # if not load_pt:
+        device_map = "auto" if num_gpus > 0 else None
+        if "otter" in checkpoint_path:
+            model = OtterForConditionalGeneration.from_pretrained(
+                checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit
             )
-            if (
-                checkpoint_path is not None and "openflamingo" not in checkpoint_path
-            ):  # our checkpoint adds special tokens
-                tokenizer.add_special_tokens(
-                    {
-                        "additional_special_tokens": [
-                            "<|endofchunk|>",
-                            "<image>",
-                            "<answer>",
-                        ]
-                    }
-                )
-                model.lang_encoder.resize_token_embeddings(len(tokenizer))
+        else:
+            model = FlamingoForConditionalGeneration.from_pretrained(
+                checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit
+            )
+        tokenizer = model.text_tokenizer
+        # else:
+        #     model, _, tokenizer = create_model_and_transforms(
+        #         clip_vision_encoder_path="ViT-L-14",
+        #         clip_vision_encoder_pretrained="openai",
+        #         lang_encoder_path=lm_path,
+        #         tokenizer_path=lm_path,
+        #         cross_attn_every_n_layers=4,
+        #     )
+        #     if (
+        #         checkpoint_path is not None and "openflamingo" not in checkpoint_path
+        #     ):  # our checkpoint adds special tokens
+        #         tokenizer.add_special_tokens(
+        #             {
+        #                 "additional_special_tokens": [
+        #                     "<|endofchunk|>",
+        #                     "<image>",
+        #                     "<answer>",
+        #                 ]
+        #             }
+        #         )
+        #         model.lang_encoder.resize_token_embeddings(len(tokenizer))
 
-            if checkpoint_path is None:
-                checkpoint_path = hf_hub_download(
-                    "openflamingo/OpenFlamingo-9B", "checkpoint.pt"
-                )
-                msg = model.load_state_dict(torch.load(checkpoint_path), strict=False)
-            else:
-                model_dict = torch.load(checkpoint_path)
-                if model_dict.get("model") is not None:
-                    model_dict = model_dict["model"]
-                msg = model.load_state_dict(model_dict, strict=False)
-                del model_dict
-            logger.info(msg)
+        #     if checkpoint_path is None:
+        #         checkpoint_path = hf_hub_download(
+        #             "openflamingo/OpenFlamingo-9B", "checkpoint.pt"
+        #         )
+        #         msg = model.load_state_dict(torch.load(checkpoint_path), strict=False)
+        #     else:
+        #         model_dict = torch.load(checkpoint_path)
+        #         if model_dict.get("model") is not None:
+        #             model_dict = model_dict["model"]
+        #         msg = model.load_state_dict(model_dict, strict=False)
+        #         del model_dict
 
-            if num_gpus > 0:
-                model.cuda()
+        if num_gpus > 0:
+            model.cuda()
 
         self.device = "cuda" if num_gpus > 0 else "cpu"
         logger.info(f"Loading the model to {self.device} ...")

@@ -201,12 +201,7 @@ def add_text(
         bot_role_label = ""
     text = text_3
     if conv_templates[template_name].copy().roles[1] is not None:
-        text += (
-            " "
-            + conv_templates[template_name].copy().roles[1]
-            + ":"
-            + DEFAULT_ANSWER_TOKEN
-        )
+        text += " " + conv_templates[template_name].copy().roles[1] + ":" + DEFAULT_ANSWER_TOKEN
     logger.info(f"add_text. ip: {request.client.host}. len: {len(text)}")
     if state is None:
         state = conv_templates[template_name].copy()
@@ -327,9 +322,7 @@ def http_bot(
 
     # Query worker address
     controller_url = args.controller_url
-    ret = requests.post(
-        controller_url + "/get_worker_address", json={"model": model_name}
-    )
+    ret = requests.post(controller_url + "/get_worker_address", json={"model": model_name})
     worker_addr = ret.json()["address"]
     logger.info(f"model_name: {model_name}, worker_addr: {worker_addr}")
 
@@ -528,9 +521,7 @@ def build_demo(embed_mode):
                 imagebox_3 = gr.Image(label="Image", type="pil")
 
                 with gr.Row():
-                    imagebox_demo_1 = gr.Image(
-                        label="Demo Image 1 (optional)", type="pil"
-                    )
+                    imagebox_demo_1 = gr.Image(label="Demo Image 1 (optional)", type="pil")
                     textbox_demo_question_1 = gr.Textbox(
                         label="Demo Text Query 1 (optional)",
                         show_label=True,
@@ -542,9 +533,7 @@ def build_demo(embed_mode):
                         placeholder="<Describe Demo Image 1>",
                     ).style(container=True)
                 with gr.Row():
-                    imagebox_demo_2 = gr.Image(
-                        label="Demo Image 2 (optional)", type="pil"
-                    )
+                    imagebox_demo_2 = gr.Image(label="Demo Image 2 (optional)", type="pil")
                     textbox_demo_question_2 = gr.Textbox(
                         label="Demo Text Query 2 (optional)",
                         show_label=True,
@@ -556,9 +545,7 @@ def build_demo(embed_mode):
                         placeholder="<Describe Demo Image 2>",
                     ).style(container=True)
 
-                with gr.Accordion(
-                    "Parameters", open=False, visible=False
-                ) as parameter_row:
+                with gr.Accordion("Parameters", open=False, visible=False) as parameter_row:
                     with gr.Row():
                         max_new_tokens = gr.Slider(
                             minimum=20,
@@ -609,9 +596,7 @@ def build_demo(embed_mode):
                             label="length_penalty",
                         )
                         do_sample = gr.Checkbox(interactive=True, label="do_sample")
-                        early_stopping = gr.Checkbox(
-                            interactive=True, label="early_stopping"
-                        )
+                        early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
 
             with gr.Column(scale=6):
                 chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=720)
@@ -848,9 +833,7 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default="7861")
     parser.add_argument("--controller_url", type=str, default="http://localhost:21001")
     parser.add_argument("--concurrency_count", type=int, default=16)
-    parser.add_argument(
-        "--model_list_mode", type=str, default="once", choices=["once", "reload"]
-    )
+    parser.add_argument("--model_list_mode", type=str, default="once", choices=["once", "reload"])
     parser.add_argument("--share", action="store_true")
     parser.add_argument("--moderate", action="store_true")
     parser.add_argument("--embed", action="store_true")
@@ -859,7 +842,7 @@ if __name__ == "__main__":
     models = get_model_list()
     logger.info(args)
     demo = build_demo(args.embed)
-    demo.queue(
-        concurrency_count=args.concurrency_count, status_update_rate=10, api_open=False
-    ).launch(server_name=args.host, server_port=args.port, share=args.share)
+    demo.queue(concurrency_count=args.concurrency_count, status_update_rate=10, api_open=False).launch(
+        server_name=args.host, server_port=args.port, share=args.share
+    )
     gr.close_all()
