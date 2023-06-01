@@ -156,6 +156,7 @@ def train_one_epoch(
             labels[labels == answer_token_id] = -100
             labels[labels == media_token_id] = -100
 
+            # import pdb;pdb.set_trace()
             # with accelerator.accumulate(model):
             # with autocast():
             with accelerator.autocast():
@@ -165,8 +166,14 @@ def train_one_epoch(
                     attention_mask=attention_mask,
                     labels=labels,
                 )[0]
+                # loss_multi_instruct = model.generate(
+                #     vision_x=images.to(device_id),
+                #     lang_x=input_ids.to(device_id),
+                #     attention_mask=attention_mask.to(device_id),
+                #     max_length=256,
+                # )
             total_losses.append(loss_multi_instruct)
-
+        # import pdb;pdb.set_trace()
         #### BACKWARD PASS ####
         total_loss_sum = sum(total_losses)
         accelerator.backward(total_loss_sum.to(device_id))
@@ -399,9 +406,10 @@ def main():
             local_files_only=args.offline,
         )
         # model.perceiver.frame_embs= (
-        #     torch.nn.Parameter(torch.randn(16, 1024))
+        #     torch.nn.Parameter(torch.randn(128, 1024))
         # )
         # model.save_pretrained(f"/mnt/petrelfs/share_data/zhangyuanhan/otter_9b_hf_mm")
+        # import pdb;pdb.set_trace()
     else:
         config = FlamingoConfig.from_json_file("./flamingo/config.json")
         model = FlamingoForConditionalGeneration(config=config)
