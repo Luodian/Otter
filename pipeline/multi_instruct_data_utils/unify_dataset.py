@@ -86,7 +86,6 @@ class UnifyDataset(MultiInstructDataset):
 
         scales = [(args.patch_image_size, args.patch_image_size)]
 
-        # TODO: check if random augment is correct, especially for some questions related to colors.
         self.patch_resize_transform = transforms.Compose(
             [
                 RandomResize(scales),
