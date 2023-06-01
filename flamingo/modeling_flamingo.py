@@ -137,7 +137,7 @@ class FlamingoPerceiverResampler(nn.Module):
         dim_head: int = 64,
         heads: int = 8,
         num_latents: int = 64,
-        max_num_frames: int = 16,
+        max_num_frames: int = 128,
         max_num_media: Optional[int] = None,
         # max_num_frames: Optional[int] = None,
         ff_mult: int = 4,

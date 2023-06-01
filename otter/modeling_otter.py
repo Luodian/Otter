@@ -159,6 +159,7 @@ class OtterPerceiverResampler(nn.Module):
         dim_head: int = 64,
         heads: int = 8,
         num_latents: int = 64,
+        # max_num_frames: int = 16,
         max_num_media: Optional[int] = None,
         max_num_frames: Optional[int] = None,
         ff_mult: int = 4,
@@ -170,6 +171,10 @@ class OtterPerceiverResampler(nn.Module):
             if exists(max_num_frames)
             else None
         )
+        # self.frame_embs = (
+        #     nn.Parameter(torch.randn(max_num_frames, dim))
+        # )
+
         self.media_time_embs = (
             nn.Parameter(torch.randn(max_num_media, 1, dim))
             if exists(max_num_media)

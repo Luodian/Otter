@@ -205,7 +205,7 @@ class UnifyDataset(MultiInstructDataset):
     def process_llava(self, instruction_id, instruction,answer,image_ids, in_context_example_ids):
         patch_images = torch.tensor([])
         incontext_text = ""
-        for cur_incontext_id in in_context_example_ids:
+        for cur_incontext_id in in_context_example_ids[:]:
             cur_incontext_image_id = self.dataset[cur_incontext_id]["image_ids"][0]
             cur_incontext_instruction = self.dataset[cur_incontext_id]["instruction"]
             cur_incontext_answer = self.dataset[cur_incontext_id]["answer"]
@@ -230,7 +230,10 @@ class UnifyDataset(MultiInstructDataset):
         instruction = self.pre_question(instruction, self.max_src_length)
         answer = self.pre_answer(answer, self.max_tgt_length)
         query_text = f"<image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>"
-
+        # incontext_text = "<image>User: What does this image descibe? GPT:<answer>The children in the image, along with the rest of the family. They are Skiing. <|endofchunk|>"
+        # query_text = f"<image>User: What does this image descibe? GPT:<answer>"
+        # query_text = f"<image>User: {instruction} GPT:<answer>"
+        # print(instruction_id, query_text, answer)
         return patch_images, incontext_text, query_text
 
 
@@ -260,9 +263,54 @@ class UnifyDataset(MultiInstructDataset):
         instruction = self.pre_question(instruction, self.max_src_length)
         answer = self.pre_answer(answer, self.max_tgt_length)
         query_text = f"User: {instruction} GPT:<answer> {answer}<|endofchunk|>"
-
         return patch_images, incontext_text, query_text
 
+    def process_spot_the_difference(self, instruction_id, instruction,answer,image_ids, in_context_example_ids):
+        patch_images = torch.tensor([])
+        incontext_text = ""
+        #<image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
+        for cur_image_id in image_ids:
+            cur_image = self.images[cur_image_id]
+            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
+            cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
+            if len(patch_images) == 0:
+                patch_images = cur_patch_image
+            else:
+                patch_images = torch.cat((patch_images,cur_patch_image))
+        
+        patch_images = patch_images.unsqueeze(0)
+        instruction = self.pre_question(instruction, self.max_src_length)
+        answer = self.pre_answer(answer, self.max_tgt_length)
+        query_text = f"<image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>"
+        return patch_images, incontext_text, query_text
+
+    def process_scene_navigation(self, instruction_id, instruction,answer,image_ids, in_context_example_ids):
+        patch_images = torch.tensor([])
+        incontext_text = ""
+        for cur_incontext_id in in_context_example_ids:
+            cur_incontext_instruction = self.dataset[cur_incontext_id]["instruction"]
+            cur_incontext_instruction = self.pre_question(cur_incontext_instruction, self.max_src_length)
+            cur_incontext_answer = self.dataset[cur_incontext_id]["answer"]
+            cur_incontext_answer = self.pre_answer(cur_incontext_answer, self.max_tgt_length)
+            cur_incontext_text = f"User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>"
+            incontext_text += cur_incontext_text
+
+        incontext_text = f"<image>{incontext_text}"
+        #<image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
+        for cur_image_id in image_ids:
+            cur_image = self.images[cur_image_id]
+            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
+            cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
+            if len(patch_images) == 0:
+                patch_images = cur_patch_image
+            else:
+                patch_images = torch.cat((patch_images,cur_patch_image))
+        
+        patch_images = patch_images.unsqueeze(0)
+        instruction = self.pre_question(instruction, self.max_src_length)
+        answer = self.pre_answer(answer, self.max_tgt_length)
+        query_text = f"User: {instruction} GPT:<answer> {answer}<|endofchunk|>"
+        return patch_images, incontext_text, query_text
 
     def process_image_text_pair(self, index):
         cur_train_id = self.train_data_list[index]
@@ -286,20 +334,26 @@ class UnifyDataset(MultiInstructDataset):
             patch_images, incontext_text, query_text = self.process_llava(instruction_id, instruction,answer,image_ids, in_context_example_ids)
         elif cur_train_id.startswith("DC"):
             patch_images, incontext_text, query_text = self.process_dense_caption(instruction_id, instruction,answer,image_ids, in_context_example_ids)
+        elif cur_train_id.startswith("SD"):
+            patch_images, incontext_text, query_text = self.process_spot_the_difference(instruction_id, instruction,answer,image_ids, in_context_example_ids)
+        elif cur_train_id.startswith("SN"):
+            patch_images, incontext_text, query_text = self.process_scene_navigation(instruction_id, instruction,answer,image_ids, in_context_example_ids)
 
-        # print(f"{instruction_id} {incontext_text}{query_text}",)
+        # print(instruction_id, incontext_text, query_text)
+
         src_text = self.tokenizer(
             f"{incontext_text}{query_text}",
             return_tensors="pt",
             add_special_tokens=False,
         )
 
-
         src_item = src_text["input_ids"].squeeze(0)
         src_item_mask = src_text["attention_mask"].squeeze(0)
 
         src_item = torch.cat([self.bos_item, src_item, self.eos_item])
         src_item_mask = torch.cat([self.bos_mask, src_item_mask, self.eos_mask])
+        # src_item = torch.cat([self.bos_item, src_item])
+        # src_item_mask = torch.cat([self.bos_mask, src_item_mask])
 
         example = {
             "id": instruction_id,
