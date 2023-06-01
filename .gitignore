@@ -203,3 +203,5 @@ flamingo9B-lora-vqa_train_gqa_train_balanced
 .deepspeed_env
 run_train_3B.sh
 run_train_9B.sh
+
+*.mp4
