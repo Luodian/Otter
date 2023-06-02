@@ -202,7 +202,9 @@ class UnifyDataset(MultiInstructDataset):
     def set_epoch(self, epoch, **unused):
         self.epoch = epoch
 
-    def process_llava(self, instruction_id, instruction,answer,image_ids, in_context_example_ids):
+    def process_llava(
+        self, instruction_id, instruction, answer, image_ids, in_context_example_ids
+    ):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -212,25 +214,31 @@ class UnifyDataset(MultiInstructDataset):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_image = self.images[cur_instruction_image_id]
-            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
-            cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0).unsqueeze(0)
+            cur_image = Image.open(
+                BytesIO(base64.urlsafe_b64decode(cur_image))
+            ).convert("RGB")
+            cur_patch_image = (
+                self.patch_resize_transform(cur_image).unsqueeze(0).unsqueeze(0)
+            )
             if len(patch_images) == 0:
                 patch_images = cur_patch_image
             else:
-                patch_images = torch.cat((patch_images,cur_patch_image))
+                patch_images = torch.cat((patch_images, cur_patch_image))
 
             cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
             cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
             cur_text = f"<image>User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
             all_texts += cur_text
-        #<image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
+        # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
         # incontext_text = "<image>User: What does this image descibe? GPT:<answer>The children in the image, along with the rest of the family. They are Skiing. <|endofchunk|>"
         # query_text = f"<image>User: What does this image descibe? GPT:<answer>"
         # query_text = f"<image>User: {instruction} GPT:<answer>"
         # print(instruction_id, query_text, answer)
-        return patch_images, all_texts #incontext_text, query_text
+        return patch_images, all_texts  # incontext_text, query_text
 
-    def process_dense_caption(self, instruction_id, instruction,answer,image_ids, in_context_example_ids):
+    def process_dense_caption(
+        self, instruction_id, instruction, answer, image_ids, in_context_example_ids
+    ):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -240,12 +248,14 @@ class UnifyDataset(MultiInstructDataset):
             cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
-            cur_text = f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+            cur_text = (
+                f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+            )
             all_texts += cur_text
 
         all_texts = f"<image>{all_texts}"
-        #<image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
-        #<image>User: what does the image describe? GPT: XXX <|endofchunk|>User: Do you think this image is funny GPT:<answer> YYY <|endofchunk|>
+        # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
+        # <image>User: what does the image describe? GPT: XXX <|endofchunk|>User: Do you think this image is funny GPT:<answer> YYY <|endofchunk|>
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
             cur_image = Image.open(
@@ -321,7 +331,9 @@ class UnifyDataset(MultiInstructDataset):
         all_texts = f"{incontext_text}{all_texts}"
         return patch_images, all_texts
 
-    def process_funqa(self, instruction_id, instruction,answer,image_ids, in_context_example_ids):
+    def process_funqa(
+        self, instruction_id, instruction, answer, image_ids, in_context_example_ids
+    ):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -331,27 +343,37 @@ class UnifyDataset(MultiInstructDataset):
             cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
-            cur_text = f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+            cur_text = (
+                f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+            )
             all_texts += cur_text
 
         all_texts = f"<image>{all_texts}"
-        #<image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
-        #<image>User: what does the image describe? GPT: XXX <|endofchunk|>User: Do you think this image is funny GPT:<answer> YYY <|endofchunk|>
+        # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
+        # <image>User: what does the image describe? GPT: XXX <|endofchunk|>User: Do you think this image is funny GPT:<answer> YYY <|endofchunk|>
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
-            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
+            cur_image = Image.open(
+                BytesIO(base64.urlsafe_b64decode(cur_image))
+            ).convert("RGB")
             cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
             if len(patch_images) == 0:
                 patch_images = cur_patch_image
             else:
-                patch_images = torch.cat((patch_images,cur_patch_image))
-        
+                patch_images = torch.cat((patch_images, cur_patch_image))
+
         patch_images = patch_images.unsqueeze(0)
         return patch_images, all_texts
 
     def process_image_text_pair(self, index):
         cur_train_id = self.train_data_list[index]
-        (instruction_id, instruction, answer, image_ids, in_context_example_ids,) = (
+        (
+            instruction_id,
+            instruction,
+            answer,
+            image_ids,
+            in_context_example_ids,
+        ) = (
             cur_train_id,
             self.dataset[cur_train_id]["instruction"],
             self.dataset[cur_train_id]["answer"],
@@ -362,16 +384,26 @@ class UnifyDataset(MultiInstructDataset):
         self.max_src_length = self.max_tgt_length = 256
 
         if cur_train_id.startswith("LA"):
-            patch_images, all_texts = self.process_llava(instruction_id, instruction,answer,image_ids, in_context_example_ids)
+            patch_images, all_texts = self.process_llava(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids
+            )
         elif cur_train_id.startswith("DC"):
-            patch_images, all_texts = self.process_dense_caption(instruction_id, instruction,answer,image_ids, in_context_example_ids)
+            patch_images, all_texts = self.process_dense_caption(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids
+            )
         elif cur_train_id.startswith("SD"):
-            patch_images, all_texts = self.process_spot_the_difference(instruction_id, instruction,answer,image_ids, in_context_example_ids)
+            patch_images, all_texts = self.process_spot_the_difference(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids
+            )
         elif cur_train_id.startswith("SN"):
-            patch_images, all_texts = self.process_scene_navigation(instruction_id, instruction,answer,image_ids, in_context_example_ids)
+            patch_images, all_texts = self.process_scene_navigation(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids
+            )
         elif cur_train_id.startswith("FunQA"):
-            patch_images, all_texts = self.process_funqa(instruction_id, instruction,answer,image_ids, in_context_example_ids)
-            
+            patch_images, all_texts = self.process_funqa(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids
+            )
+
         # print(instruction_id, incontext_text, query_text)
 
         src_text = self.tokenizer(

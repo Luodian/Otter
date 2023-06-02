@@ -85,7 +85,6 @@ for start_idx in tqdm(range(0, len(source_features), 1000)):
     similarity_idx = torch.cat((similarity_idx, cur_similarity_idx))
 
 for _, (cur_example, cur_similarity) in enumerate(zip(source_examples, similarity_idx)):
-
     img_name = cur_example
     cur_similarity = cur_similarity.cpu().numpy().astype(np.int32)
     cur_similar_name = list(
