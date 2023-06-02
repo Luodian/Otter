@@ -21,7 +21,5 @@ for cur_id in tqdm(cur_file):
     target_json[instruction_id] = []
 
 
-with open(target_json_path,"w") as f:
-    json.dump(target_json,f)
-
-
+with open(target_json_path, "w") as f:
+    json.dump(target_json, f)

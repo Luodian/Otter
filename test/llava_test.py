@@ -10,6 +10,7 @@ from PIL import Image
 from torchvision.transforms import Compose, Resize, ToTensor
 from tqdm import tqdm
 import sys
+
 sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter")
 from otter.modeling_otter import OtterForConditionalGeneration
 
@@ -50,7 +51,9 @@ def get_image(url: str) -> Union[Image.Image, list]:
     if "://" not in url:  # Local file
         content_type = get_content_type(url)
     else:  # Remote URL
-        content_type = requests.head(url, stream=True, verify=False).headers.get("Content-Type")
+        content_type = requests.head(url, stream=True, verify=False).headers.get(
+            "Content-Type"
+        )
 
     if "image" in content_type:
         if "://" not in url:  # Local file
@@ -81,27 +84,42 @@ def get_formatted_prompt(prompt: str, in_context_prompts: list = []) -> str:
         in_context_string += f"<image>User: {in_context_prompt} GPT:<answer> {in_context_answer}<|endofchunk|>"
     return f"{in_context_string}<image>User: {prompt} GPT:<answer>"
 
+
 # def get_response(
 #     encoded_frames: torch.Tensor, prompt: str, model=None, image_processor=None, in_context_prompts: list = []
 # ) -> str:
-def get_response(image_list, prompt: str, model=None, image_processor=None, in_context_prompts: list = []) -> str:
+def get_response(
+    image_list,
+    prompt: str,
+    model=None,
+    image_processor=None,
+    in_context_prompts: list = [],
+) -> str:
     input_data = image_list
 
     if isinstance(input_data, Image.Image):
         vision_x = (
-            image_processor.preprocess([input_data], return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)
+            image_processor.preprocess([input_data], return_tensors="pt")[
+                "pixel_values"
+            ]
+            .unsqueeze(1)
+            .unsqueeze(0)
         )
     elif isinstance(input_data, list):  # list of video frames
         patch_images = torch.tensor([])
         for cur_image in input_data:
-            cur_vision_x = image_processor.preprocess([cur_image], return_tensors="pt")["pixel_values"]
+            cur_vision_x = image_processor.preprocess([cur_image], return_tensors="pt")[
+                "pixel_values"
+            ]
             if len(patch_images) == 0:
                 patch_images = cur_vision_x
             else:
-                patch_images = torch.cat((patch_images,cur_vision_x))
+                patch_images = torch.cat((patch_images, cur_vision_x))
         vision_x = patch_images.unsqueeze(1).unsqueeze(0)
     else:
-        raise ValueError("Invalid input data. Expected PIL Image or list of video frames.")
+        raise ValueError(
+            "Invalid input data. Expected PIL Image or list of video frames."
+        )
 
     lang_x = model.text_tokenizer(
         [
@@ -109,7 +127,7 @@ def get_response(image_list, prompt: str, model=None, image_processor=None, in_c
         ],
         return_tensors="pt",
     )
-    
+
     generated_text = model.generate(
         vision_x=vision_x.to(model.device),
         lang_x=lang_x["input_ids"].to(model.device),
@@ -167,7 +185,9 @@ if __name__ == "__main__":
         ]
         for in_context_input in in_context_examples:
             in_context_prompt, in_context_answer = in_context_input.split("::")
-            in_context_prompts.append((in_context_prompt.strip(), in_context_answer.strip()))
+            in_context_prompts.append(
+                (in_context_prompt.strip(), in_context_answer.strip())
+            )
 
         # prompts_input = input("Enter the prompts separated by commas (or type 'quit' to exit): ")
         prompts_input = "how might the children benefit from such a skiing activity?"
@@ -176,7 +196,9 @@ if __name__ == "__main__":
 
         for prompt in prompts:
             print(f"\nPrompt: {prompt}")
-            response = get_response(encoded_frames_list, prompt, model, image_processor, in_context_prompts)
+            response = get_response(
+                encoded_frames_list, prompt, model, image_processor, in_context_prompts
+            )
             print(f"Response: {response}")
 
         if prompts_input.lower() == "quit":
