@@ -9,14 +9,13 @@ from io import BytesIO
 import re
 import contextlib
 import os
-
+import json
 from PIL import ImageFile
 from torchvision import transforms
+import random
 
 import sys
 
-# sys.path.append("/mnt/lustre/yhzhang/Otter/pipeline/multi_instruct_data_utils")
-# from transforms import *
 from .transforms import *
 
 
@@ -25,14 +24,6 @@ from .multi_instruct_dataset import (
     collate_fn,
 )
 
-# from multi_instruct_dataset import (
-#     MultiInstructDataset,
-#     collate_fn,
-# )
-
-import os
-
-import json
 
 label_map = {"entailment": 0, "not_entailment": 1}
 
@@ -48,7 +39,7 @@ Image.MAX_IMAGE_PIXELS = None
 
 
 @contextlib.contextmanager
-def numpy_seed(seed, *addl_seeds):
+def random_seed(seed, *addl_seeds):
     """Context manager which seeds the NumPy PRNG with the specified seed and
     restores the state afterward"""
     if seed is None:
@@ -56,12 +47,15 @@ def numpy_seed(seed, *addl_seeds):
         return
     if len(addl_seeds) > 0:
         seed = int(hash((seed, *addl_seeds)) % 1e6)
-    state = np.random.get_state()
+    numpy_state = np.random.get_state()
+    random_state = random.getstate()
     np.random.seed(seed)
+    random.seed(seed)
     try:
         yield
     finally:
-        np.random.set_state(state)
+        np.random.set_state(numpy_state)
+        random.setstate(random_state)
 
 
 class UnifyDataset(MultiInstructDataset):
@@ -207,73 +201,50 @@ class UnifyDataset(MultiInstructDataset):
     def set_epoch(self, epoch, **unused):
         self.epoch = epoch
 
-    def process_llava(
-        self, instruction_id, instruction, answer, image_ids, in_context_example_ids
-    ):
+    def process_llava(self, instruction_id, instruction,answer,image_ids, in_context_example_ids):
         patch_images = torch.tensor([])
-        incontext_text = ""
-        for cur_incontext_id in in_context_example_ids[:]:
-            cur_incontext_image_id = self.dataset[cur_incontext_id]["image_ids"][0]
-            cur_incontext_instruction = self.dataset[cur_incontext_id]["instruction"]
-            cur_incontext_answer = self.dataset[cur_incontext_id]["answer"]
-            cur_incontext_image = self.images[cur_incontext_image_id]
-            cur_incontext_image = Image.open(
-                BytesIO(base64.urlsafe_b64decode(cur_incontext_image))
-            ).convert("RGB")
-            cur_incontext_patch_image = (
-                self.patch_resize_transform(cur_incontext_image)
-                .unsqueeze(0)
-                .unsqueeze(0)
-            )
+        all_texts = ""
+        all_instruction_ids = in_context_example_ids + [instruction_id]
+        random.shuffle(all_instruction_ids)
+        for cur_instruction_id in all_instruction_ids[:]:
+            cur_instruction_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
+            cur_instruction = self.dataset[cur_instruction_id]["instruction"]
+            cur_answer = self.dataset[cur_instruction_id]["answer"]
+            cur_image = self.images[cur_instruction_image_id]
+            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
+            cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0).unsqueeze(0)
             if len(patch_images) == 0:
-                patch_images = cur_incontext_patch_image
+                patch_images = cur_patch_image
             else:
-                patch_images = torch.cat((patch_images, cur_incontext_patch_image))
+                patch_images = torch.cat((patch_images,cur_patch_image))
 
-            cur_incontext_instruction = self.pre_question(
-                cur_incontext_instruction, self.max_src_length
-            )
-            cur_incontext_answer = self.pre_answer(
-                cur_incontext_answer, self.max_tgt_length
-            )
-            cur_incontext_text = f"<image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>"
-            incontext_text += cur_incontext_text
-        # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
-        query_image = self.images[image_ids[0]]
-        query_image = Image.open(
-            BytesIO(base64.urlsafe_b64decode(query_image))
-        ).convert("RGB")
-        query_image = self.patch_resize_transform(query_image).unsqueeze(0).unsqueeze(0)
-        patch_images = torch.cat((patch_images, query_image))
-
-        instruction = self.pre_question(instruction, self.max_src_length)
-        answer = self.pre_answer(answer, self.max_tgt_length)
-        query_text = f"<image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>"
+            cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
+            cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+            cur_text = f"<image>User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+            all_texts += cur_text
+        #<image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
         # incontext_text = "<image>User: What does this image descibe? GPT:<answer>The children in the image, along with the rest of the family. They are Skiing. <|endofchunk|>"
         # query_text = f"<image>User: What does this image descibe? GPT:<answer>"
         # query_text = f"<image>User: {instruction} GPT:<answer>"
         # print(instruction_id, query_text, answer)
-        return patch_images, incontext_text, query_text
+        return patch_images, all_texts #incontext_text, query_text
 
-    def process_dense_caption(
-        self, instruction_id, instruction, answer, image_ids, in_context_example_ids
-    ):
+    def process_dense_caption(self, instruction_id, instruction,answer,image_ids, in_context_example_ids):
         patch_images = torch.tensor([])
-        incontext_text = ""
-        for cur_incontext_id in in_context_example_ids:
-            cur_incontext_instruction = self.dataset[cur_incontext_id]["instruction"]
-            cur_incontext_instruction = self.pre_question(
-                cur_incontext_instruction, self.max_src_length
-            )
-            cur_incontext_answer = self.dataset[cur_incontext_id]["answer"]
-            cur_incontext_answer = self.pre_answer(
-                cur_incontext_answer, self.max_tgt_length
-            )
-            cur_incontext_text = f"User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>"
-            incontext_text += cur_incontext_text
+        all_texts = ""
+        all_instruction_ids = in_context_example_ids + [instruction_id]
+        random.shuffle(all_instruction_ids)
+        for cur_instruction_id in all_instruction_ids[:]:
+            cur_instruction = self.dataset[cur_instruction_id]["instruction"]
+            cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
+            cur_answer = self.dataset[cur_instruction_id]["answer"]
+            cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+            cur_text = f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+            all_texts += cur_text
 
-        incontext_text = f"<image>{incontext_text}"
-        # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
+        all_texts = f"<image>{all_texts}"
+        #<image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
+        #<image>User: what does the image describe? GPT: XXX <|endofchunk|>User: Do you think this image is funny GPT:<answer> YYY <|endofchunk|>
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
             cur_image = Image.open(
@@ -286,10 +257,7 @@ class UnifyDataset(MultiInstructDataset):
                 patch_images = torch.cat((patch_images, cur_patch_image))
 
         patch_images = patch_images.unsqueeze(0)
-        instruction = self.pre_question(instruction, self.max_src_length)
-        answer = self.pre_answer(answer, self.max_tgt_length)
-        query_text = f"User: {instruction} GPT:<answer> {answer}<|endofchunk|>"
-        return patch_images, incontext_text, query_text
+        return patch_images, all_texts
 
     def process_spot_the_difference(
         self, instruction_id, instruction, answer, image_ids, in_context_example_ids
@@ -312,7 +280,8 @@ class UnifyDataset(MultiInstructDataset):
         instruction = self.pre_question(instruction, self.max_src_length)
         answer = self.pre_answer(answer, self.max_tgt_length)
         query_text = f"<image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>"
-        return patch_images, incontext_text, query_text
+        all_texts = f"{incontext_text}{query_text}"
+        return patch_images, all_texts
 
     def process_scene_navigation(
         self, instruction_id, instruction, answer, image_ids, in_context_example_ids
@@ -348,7 +317,36 @@ class UnifyDataset(MultiInstructDataset):
         instruction = self.pre_question(instruction, self.max_src_length)
         answer = self.pre_answer(answer, self.max_tgt_length)
         query_text = f"User: {instruction} GPT:<answer> {answer}<|endofchunk|>"
-        return patch_images, incontext_text, query_text
+        all_texts = f"{incontext_text}{all_texts}"
+        return patch_images, all_texts
+
+    def process_funqa(self, instruction_id, instruction,answer,image_ids, in_context_example_ids):
+        patch_images = torch.tensor([])
+        all_texts = ""
+        all_instruction_ids = in_context_example_ids + [instruction_id]
+        random.shuffle(all_instruction_ids)
+        for cur_instruction_id in all_instruction_ids[:]:
+            cur_instruction = self.dataset[cur_instruction_id]["instruction"]
+            cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
+            cur_answer = self.dataset[cur_instruction_id]["answer"]
+            cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+            cur_text = f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+            all_texts += cur_text
+
+        all_texts = f"<image>{all_texts}"
+        #<image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
+        #<image>User: what does the image describe? GPT: XXX <|endofchunk|>User: Do you think this image is funny GPT:<answer> YYY <|endofchunk|>
+        for cur_image_id in image_ids:
+            cur_image = self.images[cur_image_id]
+            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
+            cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
+            if len(patch_images) == 0:
+                patch_images = cur_patch_image
+            else:
+                patch_images = torch.cat((patch_images,cur_patch_image))
+        
+        patch_images = patch_images.unsqueeze(0)
+        return patch_images, all_texts
 
     def process_image_text_pair(self, index):
         cur_train_id = self.train_data_list[index]
@@ -363,26 +361,20 @@ class UnifyDataset(MultiInstructDataset):
         self.max_src_length = self.max_tgt_length = 256
 
         if cur_train_id.startswith("LA"):
-            patch_images, incontext_text, query_text = self.process_llava(
-                instruction_id, instruction, answer, image_ids, in_context_example_ids
-            )
+            patch_images, all_texts = self.process_llava(instruction_id, instruction,answer,image_ids, in_context_example_ids)
         elif cur_train_id.startswith("DC"):
-            patch_images, incontext_text, query_text = self.process_dense_caption(
-                instruction_id, instruction, answer, image_ids, in_context_example_ids
-            )
+            patch_images, all_texts = self.process_dense_caption(instruction_id, instruction,answer,image_ids, in_context_example_ids)
         elif cur_train_id.startswith("SD"):
-            patch_images, incontext_text, query_text = self.process_spot_the_difference(
-                instruction_id, instruction, answer, image_ids, in_context_example_ids
-            )
+            patch_images, all_texts = self.process_spot_the_difference(instruction_id, instruction,answer,image_ids, in_context_example_ids)
         elif cur_train_id.startswith("SN"):
-            patch_images, incontext_text, query_text = self.process_scene_navigation(
-                instruction_id, instruction, answer, image_ids, in_context_example_ids
-            )
-
+            patch_images, all_texts = self.process_scene_navigation(instruction_id, instruction,answer,image_ids, in_context_example_ids)
+        elif cur_train_id.startswith("FunQA"):
+            patch_images, all_texts = self.process_funqa(instruction_id, instruction,answer,image_ids, in_context_example_ids)
+            
         # print(instruction_id, incontext_text, query_text)
 
         src_text = self.tokenizer(
-            f"{incontext_text}{query_text}",
+            f"{all_texts}",
             return_tensors="pt",
             add_special_tokens=False,
         )
@@ -408,7 +400,7 @@ class UnifyDataset(MultiInstructDataset):
         return len(self.train_data_list)
 
     def __getitem__(self, index):
-        with numpy_seed(self.seed, self.epoch):
+        with random_seed(self.seed, self.epoch):
             pair_sample = self.process_image_text_pair(index)
             # if dataset is not supported
             if pair_sample is None:
@@ -504,15 +496,3 @@ if __name__ == "__main__":
         counter += 1
         samples.append(_)
     cur_data = test_dataset.collate(samples)
-    import pdb
-
-    pdb.set_trace()
-    # import pdb;pdb.set_trace()
-    # uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
-    # # index = random.choice(positive_caption_dict[uniq_id])
-    # # prompt_uniq_id, prompt_image, prompt_caption, prompt_question, prompt_refs, prompt_gt_objects, prompt_dataset_name, prompt_type = test_dataset.get_prompt_item(int(index))
-    # uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
-    # if uniq_id not in uniq_id_dict:
-    #     uniq_id_dict[uniq_id] = 0
-
-    # print(uniq_id, image, caption, question, refs, gt_objects, dataset_name, type)
