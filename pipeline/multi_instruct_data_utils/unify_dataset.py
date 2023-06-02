@@ -377,92 +377,9 @@ class UnifyDataset(MultiInstructDataset):
         for sample_tuple in samples:
             samples_v1.append(sample_tuple)
 
-        # import pdb;pdb.set_trace()
         res_v1 = collate_fn(
             samples_v1,
             pad_idx=self.tokenizer.pad_token_id,
             eos_idx=self.tokenizer.eos_token_id,
         )
         return res_v1
-
-
-if __name__ == "__main__":
-    from PIL import Image, ImageFile
-    from io import BytesIO
-    import base64
-    from tqdm import tqdm
-    import json
-    import argparse
-    import sys
-
-    sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/")
-    from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--multi_instruct_path",
-        type=str,
-        help="path to multi_instruct dataset, this should be a glob pattern such as vision_language_examples.tsv",
-    )
-    parser.add_argument("--offline", action="store_true")
-
-    args = parser.parse_args()
-
-    args.multi_instruct_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/DC/DC_instructions_subset.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
-    args.images_path = (
-        "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/DC/DC_00.json"
-    )
-    args.train_config_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/DC/DC_train.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
-    args.max_src_length = 256
-    args.max_tgt_length = 256
-    args.task = "pretrain"
-    args.pretrain_seed = 0
-    args.patch_image_size = 224
-
-    from transformers import LlamaTokenizer
-
-    with open("/mnt/petrelfs/zhangyuanhan/weights/flamingo_9b_hf/config.json") as f:
-        config = json.load(f)
-
-    tokenizer = LlamaTokenizer.from_pretrained("luodian/llama-7b-hf")
-
-    # add <answer> token to tokenizer
-    tokenizer.add_special_tokens(
-        {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
-    )
-
-    tokenizer.add_special_tokens({"pad_token": "<PAD>"})
-
-    args.tokenizer = tokenizer
-
-    cur_multi_instruct_path, cur_images_path, cur_train_config_path = (
-        args.multi_instruct_path,
-        args.images_path,
-        args.train_config_path,
-    )
-
-    test_dataset = UnifyDataset(
-        args, cur_multi_instruct_path, cur_images_path, cur_train_config_path
-    )
-
-    uniq_id_dict = {}
-    samples = []
-    counter = 0
-    for _ in tqdm(test_dataset):
-        if counter > 2:
-            break
-        counter += 1
-        samples.append(_)
-    cur_data = test_dataset.collate(samples)
-    import pdb
-
-    pdb.set_trace()
-    # import pdb;pdb.set_trace()
-    # uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
-    # # index = random.choice(positive_caption_dict[uniq_id])
-    # # prompt_uniq_id, prompt_image, prompt_caption, prompt_question, prompt_refs, prompt_gt_objects, prompt_dataset_name, prompt_type = test_dataset.get_prompt_item(int(index))
-    # uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
-    # if uniq_id not in uniq_id_dict:
-    #     uniq_id_dict[uniq_id] = 0
-
-    # print(uniq_id, image, caption, question, refs, gt_objects, dataset_name, type)

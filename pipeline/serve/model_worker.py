@@ -83,7 +83,9 @@ class ModelWorker:
             )
             self.heart_beat_thread.start()
 
-    def load_model(self, lm_path, checkpoint_path, num_gpus, load_in_8bit, load_pt=None):
+    def load_model(
+        self, lm_path, checkpoint_path, num_gpus, load_in_8bit, load_pt=None
+    ):
         # if not load_pt:
         device_map = "auto" if num_gpus > 0 else None
         if "otter" in checkpoint_path:
