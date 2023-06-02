@@ -34,7 +34,6 @@ for cur_id in tqdm(cur_file):
     conversation_id = f"{scene_id}_00_{activity_id}_round"
 
     if cur_id == f"SN_00_INS_{conversation_id}{conversation_dict[conversation_id]}":
-
         target_json[instruction_id] = cur_file[cur_id]["rel_ins_ids"]
 
         max_frame = max(len(cur_file[cur_id]["image_ids"]), max_frame)

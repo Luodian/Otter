@@ -202,7 +202,9 @@ class UnifyDataset(MultiInstructDataset):
     def set_epoch(self, epoch, **unused):
         self.epoch = epoch
 
-    def process_llava(self, instruction_id, instruction,answer,image_ids, in_context_example_ids):
+    def process_llava(
+        self, instruction_id, instruction, answer, image_ids, in_context_example_ids
+    ):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -234,7 +236,9 @@ class UnifyDataset(MultiInstructDataset):
         # print(instruction_id, query_text, answer)
         return patch_images, all_texts  # incontext_text, query_text
 
-    def process_dense_caption(self, instruction_id, instruction,answer,image_ids, in_context_example_ids):
+    def process_dense_caption(
+        self, instruction_id, instruction, answer, image_ids, in_context_example_ids
+    ):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
