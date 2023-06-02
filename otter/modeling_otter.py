@@ -25,9 +25,9 @@ try:
 
     _xformers_version = importlib_metadata.version("xformers")
     print(f"Successfully imported xformers version {_xformers_version}")
-except ImportError:
+except ImportError as e:
     from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
-
+    print(f"Failed to import xformers: {e}")
     XFORMERS_AVAIL = False
     print(
         "No xformers found. You are recommended to install xformers via `pip install xformers` or `conda install -c xformers xformers`"
@@ -95,7 +95,7 @@ def exists(val):
 class OtterPerceiverBlock(nn.Module):
     def __init__(self, *, dim: int, dim_head: int = 64, heads: int = 8, mult: int = 4):
         super().__init__()
-        self.scale = dim_head ** -0.5
+        self.scale = dim_head**-0.5
         self.heads = heads
         inner_dim = dim_head * heads
         ff_dim = dim * mult
@@ -227,7 +227,7 @@ class OtterMaskedCrossAttention(nn.Module):
         only_attend_previous: bool = True,
     ):
         super().__init__()
-        self.scale = dim_head ** -0.5
+        self.scale = dim_head**-0.5
         self.heads = heads
         inner_dim = dim_head * heads
 
