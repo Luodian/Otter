@@ -545,7 +545,8 @@ def main():
     # device_id = accelerator.device
 
     for epoch in range(resume_from_epoch, args.num_epochs):
-        # multi_instruct_dataset.set_epoch(epoch)
+        for cur_data_loader in multi_instruct_loaders:
+            cur_data_loader.dataset.set_epoch(epoch)
 
         train_one_epoch(
             args=args,
