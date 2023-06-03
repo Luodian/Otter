@@ -169,7 +169,7 @@ class UnifyDataset(MultiInstructDataset):
         if return_answer == "":
             import pdb; pdb.set_trace()
             answer_words = answer.split(" ")
-            return_answer = " ".join(answer_words[:max_ques_words])
+            return_answer = " ".join(answer_words[:max_ans_words])
         else:
             if return_answer[-1] != "." and return_answer != answers:
                 return_answer += "."
