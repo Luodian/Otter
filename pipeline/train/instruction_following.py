@@ -433,7 +433,7 @@ def main():
 
     model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
     args.tokenizer = model.text_tokenizer
-
+    tokenizer = model.text_tokenizer
     random_seed(args.seed, args.rank)
 
     print(f"Start running training on rank {args.rank}.")
