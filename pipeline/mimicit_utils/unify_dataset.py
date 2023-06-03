@@ -167,7 +167,6 @@ class UnifyDataset(MultiInstructDataset):
                 break
 
         if return_answer == "":
-            import pdb; pdb.set_trace()
             answer_words = answer.split(" ")
             return_answer = " ".join(answer_words[:max_ans_words])
         else:
