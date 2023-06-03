@@ -400,16 +400,21 @@ def main():
     random_seed(args.seed)
 
     if args.pretrained_model_name_or_path is not None:
-        model = FlamingoForConditionalGeneration.from_pretrained(
-            args.pretrained_model_name_or_path,
-            device_map="auto",
-            local_files_only=args.offline,
-        )
-        # model.perceiver.frame_embs= (
-        #     torch.nn.Parameter(torch.randn(128, 1024))
-        # )
-        # model.save_pretrained(f"/mnt/petrelfs/share_data/zhangyuanhan/otter_9b_hf_mm")
-        # import pdb;pdb.set_trace()
+        if "otter" in args.pretrained_model_name_or_path:
+            model = OtterForConditionalGeneration.from_pretrained(
+                args.pretrained_model_name_or_path,
+                device_map="auto",
+                local_files_only=args.offline,
+            )
+        elif "flamingo" in args.pretrained_model_name:
+            model = FlamingoForConditionalGeneration.from_pretrained(
+                args.pretrained_model_name_or_path,
+                device_map="auto",
+                local_files_only=args.offline,
+            )
+            model.text_tokenizer.add_special_tokens(
+                {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
+            )
     else:
         config = FlamingoConfig.from_json_file("./flamingo/config.json")
         model = FlamingoForConditionalGeneration(config=config)
@@ -426,16 +431,8 @@ def main():
                 False,
             )
 
-    tokenizer = model.text_tokenizer
-
-    # add <answer> token to tokenizer
-    tokenizer.add_special_tokens(
-        {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
-    )
-
-    model.lang_encoder.resize_token_embeddings(len(tokenizer))
-
-    args.tokenizer = tokenizer
+    model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
+    args.tokenizer = model.text_tokenizer
 
     random_seed(args.seed, args.rank)
 
