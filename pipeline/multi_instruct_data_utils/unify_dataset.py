@@ -167,6 +167,7 @@ class UnifyDataset(MultiInstructDataset):
                 break
 
         if return_answer == "":
+            import pdb; pdb.set_trace()
             answer_words = answer.split(" ")
             return_answer = " ".join(answer_words[:max_ques_words])
         else:
@@ -237,6 +238,40 @@ class UnifyDataset(MultiInstructDataset):
         return patch_images, all_texts  # incontext_text, query_text
 
     def process_dense_caption(
+        self, instruction_id, instruction, answer, image_ids, in_context_example_ids
+    ):
+        patch_images = torch.tensor([])
+        all_texts = ""
+        all_instruction_ids = in_context_example_ids + [instruction_id]
+        random.shuffle(all_instruction_ids)
+        for cur_instruction_id in all_instruction_ids[:]:
+            cur_instruction = self.dataset[cur_instruction_id]["instruction"]
+            cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
+            cur_answer = self.dataset[cur_instruction_id]["answer"]
+            cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+            cur_text = (
+                f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+            )
+            all_texts += cur_text
+
+        all_texts = f"<image>{all_texts}"
+        # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
+        # <image>User: what does the image describe? GPT: XXX <|endofchunk|>User: Do you think this image is funny GPT:<answer> YYY <|endofchunk|>
+        for cur_image_id in image_ids:
+            cur_image = self.images[cur_image_id]
+            cur_image = Image.open(
+                BytesIO(base64.urlsafe_b64decode(cur_image))
+            ).convert("RGB")
+            cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
+            if len(patch_images) == 0:
+                patch_images = cur_patch_image
+            else:
+                patch_images = torch.cat((patch_images, cur_patch_image))
+
+        patch_images = patch_images.unsqueeze(0)
+        return patch_images, all_texts
+
+    def process_e4d(
         self, instruction_id, instruction, answer, image_ids, in_context_example_ids
     ):
         patch_images = torch.tensor([])
@@ -389,6 +424,10 @@ class UnifyDataset(MultiInstructDataset):
             )
         elif cur_train_id.startswith("DC"):
             patch_images, all_texts = self.process_dense_caption(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids
+            )
+        elif cur_train_id.startswith("E4D"):
+            patch_images, all_texts = self.process_e4d(
                 instruction_id, instruction, answer, image_ids, in_context_example_ids
             )
         elif cur_train_id.startswith("SD"):
