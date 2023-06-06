@@ -401,13 +401,7 @@ class UnifyDataset(MultiInstructDataset):
 
     def process_image_text_pair(self, index):
         cur_train_id = self.train_data_list[index]
-        (
-            instruction_id,
-            instruction,
-            answer,
-            image_ids,
-            in_context_example_ids,
-        ) = (
+        (instruction_id, instruction, answer, image_ids, in_context_example_ids,) = (
             cur_train_id,
             self.dataset[cur_train_id]["instruction"],
             self.dataset[cur_train_id]["answer"],
