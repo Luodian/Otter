@@ -17,7 +17,13 @@ if sys.version_info < (3, 8):
 else:
     import importlib.metadata as importlib_metadata
 
+import torch.distributed as dist
+
+# Add this line at the beginning of your script or in your main function
+# dist.init_process_group(backend='nccl')
+
 XFORMERS_AVAIL = False
+XFORMERS_MSG_PRINTED = False  # Add this global variable
 try:
     import xformers.ops as xops
     from xformers_model import CLIPVisionModel, LlamaForCausalLM
@@ -26,13 +32,20 @@ try:
     _xformers_version = importlib_metadata.version("xformers")
     print(f"Successfully imported xformers version {_xformers_version}")
 except ImportError as e:
-    from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
+    if not XFORMERS_MSG_PRINTED:  # Check if the message has been printed before
+        from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 
-    print(f"Failed to import xformers: {e}")
-    XFORMERS_AVAIL = False
-    print(
-        "No xformers found. You are recommended to install xformers via `pip install xformers` or `conda install -c xformers xformers`"
-    )
+        if (
+            dist.is_initialized() and dist.get_rank() == 0
+        ):  # Check if the current process rank is 0
+            print(f"Failed to import xformers: {e}")
+            XFORMERS_AVAIL = False
+            print(
+                "No xformers found. You are recommended to install xformers via `pip install xformers` or `conda install -c xformers xformers`"
+            )
+            XFORMERS_MSG_PRINTED = (
+                True  # Set the variable to True after printing the message
+            )
 
 # from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 
