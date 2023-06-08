@@ -1,0 +1,39 @@
+{
+    "system_message": "You are now my dialogue generation assistant, you have done a lot of video understanding and mastered this ability, I will give you a 'description' of the counter-intuitive video and a 'counter-intuitive reason' of why it is counter-intuitive.\nWhere 'description' is an objective description of a video, including what happens in the video and 'counter-intuitive reason' is an explanation of why the video is counter-intuitive.\nYou're going to use that information to generate a question and answer for me, using the text that I give you, start with descriptive questions like what, when, which, who, where, and then start with why, how, and then you're going to give some open questions,\nThat is to say, the question is gradual, and you should try to use the previous information later. All of the above answers are short sentences, and try not to exceed 30 words"
+,
+    "in_context": [
+        {
+            "role": "user",
+            "content": "description: The barber gave the woman a haircut. After the woman cut her hair, her hair stood on end. Next to her appeared a parrot with the same hairstyle as the woman\n why counter-intuitive: Women look funny when they get their hair cut and look like parrot hair."
+        },
+        {
+            "role": "assistant",
+            "content":  [
+                {
+                  "question": "What is happening in the video?",
+                  "answer": "A girl is getting her hair cut by a hairdresser. After the haircut, her hair stands up and a parrot appears next to her with the same hairstyle."
+                },
+                {
+                  "question": "Why is the video humorous?",
+                  "answer": "The girl's hair standing up and matching the parrot's hairstyle is unexpected and funny."
+                },
+                {
+                  "question": "What this girl's mood might be like?",
+                  "answer": "She may be dissatisfied because generally speaking, a human's hair does not look like a parrot, which is not considered aesthetically pleasing."
+                },
+                {
+                  "question": "Does this parrot feel humor because the girl's hair?",
+                  "answer": "Probably not, it does not feel this, probably because its intelligence can not understand the relationship between the girl's hair and its hair."
+                },
+                {
+                  "question": "Do you think the parrot intentionally matched the girl's hairstyle?",
+                  "answer": "It's unlikely that the parrot intentionally matched the girl's hairstyle. It's more likely a coincidence or the result of the parrot's natural feathers."
+                },
+                {
+                  "question": "What do you think the girl will do afterwards?",
+                  "answer": "It's unlikely that the parrot intentionally matched the girl's hairstyle. It's more likely a coincidence or the result of the parrot's natural feathers."
+                }
+            ]
+        }
+    ]
+}
