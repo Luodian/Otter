@@ -1,5 +1,5 @@
 <p align="center" width="100%">
-<img src="https://i.postimg.cc/CLPnPvZW/title.png"  width="80%" height="80%">
+<img src="https://i.postimg.cc/MKmyP9wH/new-banner.png"  width="80%" height="80%">
 </p>
 
 
@@ -29,6 +29,9 @@
 [Demo](https://otter.cliangyu.com/) | [Multi-Modal Arena](http://vlarena.opengvlab.com/) | [Otter-9B Checkpoints](https://huggingface.co/luodian/otter-9b-hf) | [MIMIC-IT Dataset(coming soon)]() | [Youtube Video](https://youtu.be/r-YM4DGGAdE) | [Bilibili Video](https://www.bilibili.com/video/BV1iL411h7HZ/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) |  [Paper](https://arxiv.org/abs/2305.03726)
 
 ## 🦾 Update
+
+- [2023-06-08]
+  1. Introducing [MIMIC-IT dataset](), the first multimodal in-context instruction tuning dataset! Comprising a staggering 2.8 million instructions, MIMIC-IT covers a vast array of real-life scenarios that empower Vision-Language Models (VLMs) to not only comprehend general scenes, but also to reason about context and astutely differentiate between observations. MIMIC-IT also enables the application of egocentric visual assistant model that can serve that can answer your questions like **Hey, Do you think I left my keys on the table?**. In addition to English, MIMIC-IT is also multilingual, supporting Chinese, Korean, Japanese, German, French, Spanish, and Arabic, thereby allowing a larger global audience to altoghther enjoy from the convenience brought about by advancements in artificial intelligence.
     
 - [2023-05-14]
   1. Otter battles with Owl? the Pokémon Arena is here! Our model is selected into [Multi-Modal Arena](http://vlarena.opengvlab.com/). This is an interesting Multi-Modal Foundation Models competition arena that let you see different models reaction to the same question.
