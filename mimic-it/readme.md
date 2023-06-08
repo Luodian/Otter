@@ -85,8 +85,14 @@ export OPENAI_API_ENGINE="chatgpt0301"
 1. Create a new file in `datasets` folder and name it as `your_dataset.py`.
 2. Create a class named `YourDataset` in `your_dataset.py` and inherit from `abstract_dataset.AbstractDataset` class.
 3. Implement `_load_query_inputs` methods in `YourDataset` class. This method should return a list of dict, each dict contains `id` and `sentences` keys.
-4. `id` is the unique id of each query, `sentences` is a string for each query input.
-5. You are done! Run the following command to generate instruction-response pairs on your own dataset.
+   1. `id` is the unique id of each query
+   2.  `sentences` is a string for each query input.
+4.  Define `system_message`, `in-context example` in `prompts` folder.
+5.  Define `_load_prefix` methods in `YourDataset` class. 
+    1.  This method should return a dictionary. The keys of the dictionary are `system_message`, `in_context`.
+    2.  The value of `system_message` is a string.
+    3.  The value of `in_context` is a list of `{"role": role, "content": content_string}`.
+6. You are done! Run the following command to generate instruction-response pairs on your own dataset.
 
 ``` bash
 python  main.py --name YourDataset.your_dataset --num_threads 4
