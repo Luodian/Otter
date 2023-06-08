@@ -170,17 +170,17 @@ cache/
 
 *.zip
 *.pt
-wandb/*
-archived/*
-amlt/*
-scripts/*
+wandb
+archived
+amlt
+scripts
 .amltignore
 .amltconfig
-nginx/*
-logs/*
-ofa_compress/*
+nginx
+logs
+ofa_compress
 train_*.sh
-gpt_playground/*
+gpt_playground
 evaluation/*.json
 evaluation/*.html
 
