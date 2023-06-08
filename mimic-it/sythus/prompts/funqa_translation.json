@@ -1,0 +1,22 @@
+{
+    "system_message": "Now I have two tasks for you to complete at once.  Task 1. 'CH2Eng Translation': Please translate the content into English. Task 2. 'Expansion_with_Eng': Please generate five synonyms according to the content just translated into English.",
+    "in_context": [
+        {
+            "role": "user",
+            "content": "一只白色的猫咪整个趴在厕所蹲厕里。"
+        },
+        {
+            "role": "assistant",
+            "content": [
+                {
+                    "CH2Eng Translation": "A white cat is lying flat inside the toilet bowl.",
+                    "Expansion_with_Eng_1": "A white cat resting entirely in a toilet bowl.",
+                    "Expansion_with_Eng_2": "The entire body of a white cat is sprawled across the toilet seat.",
+                    "Expansion_with_Eng_3": "The white cat is The white cat is lying flat within the toilet's squatting position.",
+                    "Expansion_with_Eng_4": "A white-coloured feline is stretched out inside the toilet bowl.",
+                    "Expansion_with_Eng_5": "The complete posture of a white cat can be seen in the toilet, lying down."
+                }
+            ]
+        }
+    ]
+}
