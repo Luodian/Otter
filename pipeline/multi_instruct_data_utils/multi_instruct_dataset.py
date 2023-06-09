@@ -7,6 +7,9 @@ import contextlib
 from torch.utils.data import Dataset
 from PIL import Image, ImageFile
 
+import sys
+# sys.path.append("/mnt/lustre/yhzhang/Otter/pipeline/multi_instruct_data_utils")
+# from transforms import *
 from .transforms import *
 
 
@@ -105,13 +108,14 @@ def collate_fn(samples, pad_idx, eos_idx):
             "attention_masks": src_tokens_masks,
         },
     }
-    if samples[0].get("patch_image", None) is not None:
+    # import pdb;pdb.set_trace()
+    if samples[0].get("patch_images", None) is not None:
         batch["net_input"]["patch_images"] = torch.stack(
-            [sample["patch_image"] for sample in samples], dim=0
+            [sample["patch_images"] for sample in samples], dim=0
         )
-    if samples[0].get("patch_mask", None) is not None:
+    if samples[0].get("patch_masks", None) is not None:
         batch["net_input"]["patch_masks"] = torch.cat(
-            [sample["patch_mask"] for sample in samples]
+            [sample["patch_masks"] for sample in samples]
         )
     # image generation
     if samples[0].get("code_mask", None) is not None:
