@@ -137,17 +137,20 @@ class FlamingoPerceiverResampler(nn.Module):
         dim_head: int = 64,
         heads: int = 8,
         num_latents: int = 64,
+        max_num_frames: int = 128,
         max_num_media: Optional[int] = None,
-        max_num_frames: Optional[int] = None,
+        # max_num_frames: Optional[int] = None,
         ff_mult: int = 4,
     ):
         super().__init__()
         self.latents = nn.Parameter(torch.randn(num_latents, dim))
-        self.frame_embs = (
-            nn.Parameter(torch.randn(max_num_frames, dim))
-            if exists(max_num_frames)
-            else None
-        )
+        # self.frame_embs = (
+        #     nn.Parameter(torch.randn(max_num_frames, dim))
+        #     if exists(max_num_frames)
+        #     else None
+        # )
+        self.frame_embs = nn.Parameter(torch.randn(max_num_frames, dim))
+
         self.media_time_embs = (
             nn.Parameter(torch.randn(max_num_media, 1, dim))
             if exists(max_num_media)
@@ -851,7 +854,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
 
         assert vision_x.ndim == 6, "vision_x should be of shape (b, T_img, F, C, H, W)"
         b, T, F = vision_x.shape[:3]
-        assert F == 1, "Only single frame supported"
+        # assert F == 1, "Only single frame supported"
 
         vision_x = rearrange(vision_x, "b T F c h w -> (b T F) c h w")
         with torch.no_grad():

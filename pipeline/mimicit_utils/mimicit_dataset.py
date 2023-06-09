@@ -1,4 +1,4 @@
-# Copyright 2022 The Otter Team.
+# Copyright 2023 The Otter Team.
 # All rights reserved.
 # This source code is licensed under the Apache 2.0 license
 # found in the LICENSE file in the root directory.
@@ -6,6 +6,8 @@ import contextlib
 
 from torch.utils.data import Dataset
 from PIL import Image, ImageFile
+
+import sys
 
 from .transforms import *
 
@@ -105,44 +107,12 @@ def collate_fn(samples, pad_idx, eos_idx):
             "attention_masks": src_tokens_masks,
         },
     }
-    if samples[0].get("patch_image", None) is not None:
+    # import pdb;pdb.set_trace()
+    larger_incontext_num = max([s["patch_images"].size(0) for s in samples])
+    # import pdb;pdb.set_trace()
+    if samples[0].get("patch_images", None) is not None:
         batch["net_input"]["patch_images"] = torch.stack(
-            [sample["patch_image"] for sample in samples], dim=0
-        )
-    if samples[0].get("patch_mask", None) is not None:
-        batch["net_input"]["patch_masks"] = torch.cat(
-            [sample["patch_mask"] for sample in samples]
-        )
-    # image generation
-    if samples[0].get("code_mask", None) is not None:
-        batch["net_input"]["code_masks"] = torch.cat(
-            [sample["code_mask"] for sample in samples]
-        )
-    if samples[0].get("code_image", None) is not None:
-        batch["code_images"] = torch.cat([sample["code_image"] for sample in samples])
-    # For classification tasks (i.e., VQA, SNLI-VE, GLUE)
-    if samples[0].get("conf", None) is not None:
-        batch["conf"] = torch.cat([s["conf"] for s in samples], dim=0)
-    if samples[0].get("ref_dict", None) is not None:
-        batch["ref_dict"] = np.array([s["ref_dict"] for s in samples])
-    if samples[0].get("constraint_mask", None) is not None:
-        batch["constraint_masks"] = merge("constraint_mask")
-    if samples[0].get("decoder_prompt", None) is not None:
-        batch["decoder_prompts"] = np.array(
-            [s["decoder_prompt"].tolist() for s in samples]
-        )
-    # For detection and visual grounding
-    if samples[0].get("w_resize_ratio", None) is not None:
-        batch["w_resize_ratios"] = torch.stack(
-            [s["w_resize_ratio"] for s in samples], dim=0
-        )
-    if samples[0].get("h_resize_ratio", None) is not None:
-        batch["h_resize_ratios"] = torch.stack(
-            [s["h_resize_ratio"] for s in samples], dim=0
-        )
-    if samples[0].get("region_coord", None) is not None:
-        batch["region_coords"] = torch.stack(
-            [s["region_coord"] for s in samples], dim=0
+            [sample["patch_images"] for sample in samples], dim=0
         )
 
     return batch

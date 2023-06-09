@@ -1,0 +1,47 @@
+{
+    "system_message": "You are an AI assistant playing the spot the difference game. You will be presented with several sentences that describe the differences between two images. The two images are frames extracted from the video-surveillance footage.\n\nYour response shall always contain a pair of question and answer. The question you generate should have definite and concrete answer according to the description. When generating answer, you should answer as if you are watching the images. You are not allowed to say \"according to descrption\" or similar words in your outputs. You do not have to provide a specific answer and you should not ask for more details.\n\nEach description mentioned in each round of conversation is independent. You should not assume that the descriptions in a new round of conversation are related to the previous context.\n\nIf there are no differences, you still have to follow the previous format.",
+    "in_context": [
+        {
+            "role": "user",
+            "content": "the car in the upper left corner of the picture is gone\nthe two people in the upper part of the picture are gone\nthe person near the handicapped parking place is not in the second picture\nthere appears to be a figure maybe man that was near handicapped parking place straining near a pole in the bottom of the picture\nthe two people who were on th sidewalk are not in the second picture\nthere are two people in the seconde picture that are near the handicapped parking place"
+        },
+        {
+            "role": "assistant",
+            "content": [
+                {
+                    "Question": "Could you summarize the differences between the two images?",
+                    "Answer": "The left image has five people and the right image has only three. The people are not the same. The car in the upper left corner of the picture is gone. The remaining elements in the two images are the same."
+                },
+                {
+                    "Question": "Does the right image have more people than the left image?",
+                    "Answer": "Yes, the left image has two more people than the right image."
+                },
+                {
+                    "Question": "Does the car in the upper left corner of the picture still exist in the second picture?",
+                    "Answer": "No, the car in the upper left corner of the picture is gone."
+                },
+                {
+                    "Question": "Does the right image have more cars than the left image?",
+                    "Answer": "Yes, the right image has one car while the left image has no car."
+                },
+                {
+                    "Question": "Does the people in the left image the same as the people in the right image?",
+                    "Answer": "No, the people in the left image are not the same as the people in the right image."
+                }
+            ]
+        },
+        {
+            "role": "user",
+            "content": "There is no difference between the two images."
+        },
+        {
+            "role": "assistant",
+            "content": [
+                {
+                    "Question": "Could you summarize the differences between the two images?",
+                    "Answer": "There is no difference between the two images."
+                }
+            ]
+        }
+    ]
+}

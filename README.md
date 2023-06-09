@@ -1,5 +1,5 @@
 <p align="center" width="100%">
-<img src="https://i.postimg.cc/CLPnPvZW/title.png"  width="80%" height="80%">
+<img src="https://i.postimg.cc/MKmyP9wH/new-banner.png"  width="80%" height="80%">
 </p>
 
 
@@ -23,16 +23,21 @@
  
  -----------------
 
-![](https://img.shields.io/badge/otter-v0.1-darkcyan)
+![](https://img.shields.io/badge/otter-v0.2-darkcyan)
 ![](https://img.shields.io/github/stars/luodian/otter?style=social)
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FLuodian%2Fotter&count_bg=%23FFA500&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false)](https://hits.seeyoufarm.com)
 ![](https://black.readthedocs.io/en/stable/_static/license.svg)
 ![](https://img.shields.io/badge/code%20style-black-000000.svg)
 
-[Main Page](https://otter-ntu.github.io) | [Demo](https://otter.cliangyu.com/) | [Multi-Modal Arena](http://vlarena.opengvlab.com/) | [Otter-9B Checkpoints](https://huggingface.co/luodian/otter-9b-hf) | [MIMIC-IT Dataset(coming soon)]() | [Youtube Video](https://youtu.be/r-YM4DGGAdE) | [Bilibili Video](https://www.bilibili.com/video/BV1iL411h7HZ/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) |  [Paper](https://arxiv.org/abs/2305.03726)
+[Multi-Modal Arena](http://vlarena.opengvlab.com/) | [Otter-9B Checkpoints](https://huggingface.co/luodian/otter-9b-hf) | [MIMIC-IT Dataset](mimic-it/readme.md) | [Youtube Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili Video](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) |  [Paper](https://arxiv.org/abs/2306.05425)
 
+<!-- [Youtube Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili Video](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) | 📝[Paper]() -->
 ## 🦾 Update
-    
+
+- [2023-06-08]
+  1. Releasing MIMIC-IT dataset, the first multimodal in-context instruction tuning dataset! Comprising a staggering 2.8 million instructions! Please check the [MIMIC-IT dataset](mimic-it/README.md) for more details.
+  2. Releasing Otter Model 0.2.
+
 - [2023-05-14]
   1. Otter battles with Owl? the Pokémon Arena is here! Our model is selected into [Multi-Modal Arena](http://vlarena.opengvlab.com/). This is an interesting Multi-Modal Foundation Models competition arena that let you see different models reaction to the same question.
 
@@ -99,23 +104,9 @@ Our Otter model is also developed in this way and it's deployed on the 🤗 Hugg
 
 
 
-## 🗄 Dataset Preparation
+## 🗄 Dataset
 
-### MultI-Modal In-Context Instruction Tuning (MIMIC-IT) dataset
-
-The OpenFlamingo framework leverages the interleaved multi-modal MMC4 dataset to emerge in its few-shot, in-context learning capabilities. The MMC4 dataset is composed of image-text pairs derived from individual HTML files, with significant contextual relationships between different pairs, as depicted in below Figure (a). An MMC4 training data sample contains (i) a queried image-text pair, where the text typically describes the image, and (ii) context, which includes the remaining image-text pairs from the same HTML file. The primary training objective of OpenFlamingo is to generate text for the queried image-text pair, and the paradigm of generating query text conditioned on in-context examples ensures OpenFlamingo's in-context learning capacity during the inference phase.
-
-Our Multi-Modal In-Context Instruction Tuning (MIMIC-IT) dataset aims to augment OpenFlamingo's instruction comprehension capabilities while preserving its in-context learning capacity. To unleash OpenFlamingo's instruction-following potential, we compile data from visual-language tasks into image-instruction-answer triplets. Concurrently, to maintain OpenFlamingo's in-context learning capacity, we retrieve in-context examples for each triplet, which often lack correlated context, such as a visual question-answer data sample in VQAv2. Specifically, each MIMIC-IT data sample consists of (i) a queried image-instruction-answer triplet, with the instruction-answer tailored to the image, and (ii) context. The context contains a series of image-instruction-answer triplets that contextually correlate with the queried triplet, emulating the relationship between the context and the queried image-text pair found in the MMC4 dataset. The training objective for MIMIC-IT is to generate the answer within the queried image-instruction-answer triplet. The image-instruction-answer triplets are derived from (i) visual question-answer datasets, namely, VQAv2 and GQA, (ii) visual instruction datasets, such as LLaVA, (iii) an in-progress, high-quality panoptic video scene graph dataset from the PVSG repository. For each video, we select 4-8 frames for instruction-following annotation, using the LLaVA dataset as a reference. We have developed three heuristics to construct the context for each image-instruction-answer triplet, as illustrated in Figure (b).
-
-### Example
-
-<div style="text-align:center">
-<img src="https://s2.loli.net/2023/05/08/Vyp2eXNtW3xC1Ji.png"  width="100%" height="100%">
-</div>
-
-### Preparation
-
-We unify different instructing data into a single dataset [class](pipeline/multi_instruct_data_utils/unify_dataset.py). The full dataset is coming soon! 
+Please refer to [MIMIC-IT](mimic-it/README.md) for more details.
 
 ## ☄️ Training
 
@@ -130,18 +121,25 @@ accelerate config
 Then run the training script.
 
 ```bash
-accelerate launch pipeline/train/instruction_following.py \
---pretrained_model_name_or_path=luodian/openflamingo-9b-hf \
+accelerate launch --config_file=./accelerate_configs/accelerate_config_fsdp.yaml \
+pipeline/train/instruction_following.py \
+--pretrained_model_name_or_path=path/to/otter_9b_hf  \
 --dataset_resampled \
---multi_instruct_path=./in_context_instruct.tsv \
---run_name=otter-9b \
---batch_size=1 \
---num_epochs=6 \
+--multi_instruct_path="path/to/instruction.json" \
+--images_path="path/to/image.json" \
+--train_config_path="/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/DC/DC_train.json" \
+--batch_size=4 \
+--num_epochs=3 \
 --report_to_wandb \
+--wandb_entity=ntu-slab \
+--run_name=otter9B_DC_frame16 \
+--wandb_project=otter9B \
+--workers=1 \
 --cross_attn_every_n_layers=4 \
 --lr_scheduler=cosine \
 --delete_previous_checkpoint \
 --learning_rate=1e-5 \
+--warmup_steps_ratio=0.01 \
 ```
 
 ## 💎 Checkpoints
@@ -158,14 +156,6 @@ We are working towards offering these features to our users. However, we have en
 
 - [x]  `xformers` support: for saving GPU memory and training speedup. issue [#35](https://github.com/Luodian/PET-VLM/issues/35)
 - [ ]  `load_in_8bit` support: for saving GPU memory and training speedup. [[issue]()]
-
-### Models
-
-We are working on the following models with much stronger performance.
-
-- [ ] Otter-9B for Videos
-- [ ] Otter-15B
-
 
 ## 📑 Citation
 
