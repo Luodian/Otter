@@ -666,14 +666,12 @@ def get_coco_vqa_dataset(args, image_processor, tokenizer, epoch=0, floor=False)
 
 from PIL import Image, ImageFile
 import json
-from pipeline.multi_instruct_data_utils.input_dataset import FileDataset
-from pipeline.multi_instruct_data_utils.unify_dataset import UnifyDataset
+from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
 
 
 def get_multi_instruction_dataset(args, tokenizer, epoch=0, floor=False):
     multi_instruct_path = args.multi_instruct_path
     ImageFile.LOAD_TRUNCATED_IMAGES = True
-    # dataset = FileDataset(multi_instruct_path, args.selected_cols)
     args.task = "pretrain"
     args.tokenizer = tokenizer
     multi_instruct_paths = args.multi_instruct_path.split(",")
@@ -683,11 +681,10 @@ def get_multi_instruction_dataset(args, tokenizer, epoch=0, floor=False):
     for cur_multi_instruct_path, cur_images_path, cur_train_config_path in zip(
         multi_instruct_paths, images_paths, train_config_paths
     ):
-        unified_dataset = UnifyDataset(
+        unified_dataset = MimicitDataset(
             args, cur_multi_instruct_path, cur_images_path, cur_train_config_path
         )
         unified_datasets.append(unified_dataset)
-    # unified_dataset = UnifyDataset(args, dataset)
 
     args.train_num_samples = (
         sum(len(dataset) for dataset in unified_datasets) / len(unified_datasets)
