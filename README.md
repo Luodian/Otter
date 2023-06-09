@@ -40,8 +40,9 @@
 ## 🦾 Update
 
 - [2023-06-08]
-  1. Releasing MIMIC-IT dataset, the first multimodal in-context instruction tuning dataset! Comprising a staggering 2.8 million instructions! Please check the [MIMIC-IT dataset](mimic-it/README.md) for more details.
-  2. Releasing Otter Model 0.2.
+1. Introducing Project Otter's brand new homepage: https://otter-ntu.github.io/. Check it out now!
+2. Meet MIMIC-IT, the first-ever multimodal in-context instruction tuning dataset with a whopping 2.8 million instructions! Designed to create diverse vision-language instructions that align with real-world visual content, MIMIC-IT spans across seven image and video datasets covering a vast array of scenes. From general scene understanding to spotting subtle differences and enhancing egocentric view comprehension for AR headsets, our MIMIC-IT dataset has it all. Discover more about the MIMIC-IT dataset now!
+3. Stay tuned for our upcoming Otter Model v0.2, trained on the MIMIC-IT dataset! With the ability to understand daily scenes, reason in context, spot differences in observations, and act as an egocentric assistant, Otter Model v0.2 is your ideal companion. Checkout conceptual demo video at [Youtube](https://www.youtube.com/watch?v=K8o_LKGQJhs) or [Bilibili](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)!
 
 - [2023-05-14]
   1. Otter battles with Owl? the Pokémon Arena is here! Our model is selected into [Multi-Modal Arena](http://vlarena.opengvlab.com/). This is an interesting Multi-Modal Foundation Models competition arena that let you see different models reaction to the same question.
