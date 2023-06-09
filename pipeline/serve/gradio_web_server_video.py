@@ -42,6 +42,7 @@ priority = {
     "open_flamingo": "aaaaaac",
 }
 
+
 def extract_frames(video_path, num_frames=128):
     video = cv2.VideoCapture(video_path)
     total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -59,15 +60,19 @@ def extract_frames(video_path, num_frames=128):
     video.release()
     return frames
 
+
 def get_content_type(file_path):
     content_type, _ = mimetypes.guess_type(file_path)
     return content_type
+
 
 def get_image(url: str) -> Union[Image.Image, list]:
     if "://" not in url:  # Local file
         content_type = get_content_type(url)
     else:  # Remote URL
-        content_type = requests.head(url, stream=True, verify=False).headers.get("Content-Type")
+        content_type = requests.head(url, stream=True, verify=False).headers.get(
+            "Content-Type"
+        )
 
     if "image" in content_type:
         if "://" not in url:  # Local file
@@ -87,7 +92,8 @@ def get_image(url: str) -> Union[Image.Image, list]:
         return frames
     else:
         raise ValueError("Invalid content type. Expected image or video.")
-    
+
+
 def get_conv_log_filename():
     t = datetime.datetime.now()
     name = os.path.join(LOGDIR, f"{t.year}-{t.month:02d}-{t.day:02d}-conv.json")
@@ -282,25 +288,33 @@ def add_text(
         image_3 = get_image(image_3)
     if text_demo_answer_2 != "":
         if text.startswith(DEFAULT_IMAGE_TOKEN):
-            text = DEFAULT_IMAGE_TOKEN + (
+            text = (
+                DEFAULT_IMAGE_TOKEN
+                + (
                     human_role_label
                     + text_demo_question_2
                     + bot_role_label
                     + DEFAULT_ANSWER_TOKEN
                     + text_demo_answer_2
                     + DEFAULT_DEMO_END_TOKEN
-                ) + text[len(DEFAULT_IMAGE_TOKEN):]
+                )
+                + text[len(DEFAULT_IMAGE_TOKEN) :]
+            )
 
     if text_demo_answer_1 != "":
         if text.startswith(DEFAULT_IMAGE_TOKEN):
-            text = DEFAULT_IMAGE_TOKEN + (
+            text = (
+                DEFAULT_IMAGE_TOKEN
+                + (
                     human_role_label
                     + text_demo_question_1
                     + bot_role_label
                     + DEFAULT_ANSWER_TOKEN
                     + text_demo_answer_1
                     + DEFAULT_DEMO_END_TOKEN
-                ) + text[len(DEFAULT_IMAGE_TOKEN):]
+                )
+                + text[len(DEFAULT_IMAGE_TOKEN) :]
+            )
     input = (text, image_3)
     state.append_message(state.roles[0], input)
     state.append_message(state.roles[1], None)

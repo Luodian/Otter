@@ -187,7 +187,7 @@ class ModelWorker:
         if images is not None:
             assert type(images) is list
             if len(images) > 0:
-                if type(images[0]) is list: # current support single video
+                if type(images[0]) is list:  # current support single video
                     images = images[0]
                 images = [
                     Image.open(BytesIO(base64.b64decode(image))) for image in images

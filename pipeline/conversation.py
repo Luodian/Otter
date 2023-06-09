@@ -5,6 +5,7 @@ import base64
 from io import BytesIO
 from PIL import Image
 
+
 class SeparatorStyle(Enum):
     """Different separator style."""
 
@@ -106,7 +107,9 @@ class Conversation:
                                 image = frame.resize((H, W))
                                 buffered = BytesIO()
                                 image.save(buffered, format="JPEG")
-                                img_b64_str = base64.b64encode(buffered.getvalue()).decode()
+                                img_b64_str = base64.b64encode(
+                                    buffered.getvalue()
+                                ).decode()
                                 frames.append(img_b64_str)
                             images.append(frames)
         return images
