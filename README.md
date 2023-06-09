@@ -33,7 +33,11 @@
 
 **Video Demo:** [Otter's Conceptual Demo Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)
 
-**Interactive Demo/Checkpoints:** [Otter Demo (In-context | Video version)]() | [Checkpoints](https://huggingface.co/luodian/otter-9b-hf)
+**Interactive Demo:** [Otter Demo (video version, upcoming)]()
+
+**Checkpoints:** [Checkpoints v0.1](https://huggingface.co/luodian/otter-9b-hf) | [Checkpoints v0.2 upcoming)]()
+
+Otter v0.2 supports videos inputs (frames are arranged as original Flamingo's implementation) and multiple images inputs (they serve as in-context examples for each other). 
 
 **Eval Results:** [Multi-Modal Arena](http://vlarena.opengvlab.com/) | [Multi-Modal AGI Benchmark (Upcoming)]()
 
@@ -205,6 +209,21 @@ If you found this repository useful, please consider citing:
   year={2023}
 }
 
+@article{li2023mimicit,
+  title={Otter: A Multi-Modal Model with In-Context Instruction Tuning},
+  author={Li, Bo and Zhang, Yuanhan and Chen, Liangyu and Wang, Jinghao and Yang, Jingkang and Liu, Ziwei},
+  journal={arXiv preprint arXiv:2305.03726},
+  year={2023}
+}
+
+@article{li2023mimicit,
+    title={MIMIC-IT: Multi-Modal In-Context Instruction Tuning},
+    author={Bo Li and Yuanhan Zhang and Liangyu Chen and Jinghao Wang and Fanyi Pu and Jingkang Yang and Chunyuan Li and Ziwei Liu},
+    year={2023},
+    eprint={2306.05425},
+    archivePrefix={arXiv},
+    primaryClass={cs.CV}
+}
 
 ```
 
