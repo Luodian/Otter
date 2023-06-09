@@ -82,6 +82,14 @@ The MIMIC-IT dataset is stored in the following format:
 
 This JSON file includes a meta object with version, time, and author information. The data object contains instruction-response pairs, each with a unique identifier (e.g., "DC_04_INS_00001"). Each pair consists of an instruction, an answer, an array of associated image IDs, and an array of related instruction IDs (which can be arranged as in-context examples).
 
+## Multilingual Instruction-Response Pairs
+
+We will release  multilingual instruction-response pairs in the following languages:
+
+<p align="center" width="100%">
+<img src="https://i.postimg.cc/nLwQtfZ1/multilingual.png"  width="80%" height="80%">
+</p>
+
 ## Syphus Overview
 
 <p align="center" width="100%">

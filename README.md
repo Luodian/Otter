@@ -31,7 +31,7 @@
 
 [Project Page](https://otter-ntu.github.io/) | [Otter Paper](https://arxiv.org/abs/2305.03726) | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425) | [MIMIC-IT Dataset](mimic-it/readme.md)
 
-**Video Demo:** [Otter's Conceptual Demo Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)
+**Video Demo:** [Otter's Conceptual Demo Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili 哔哩哔哩](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)
 
 **Interactive Demo:** [Otter Demo (video version, upcoming)]()
 
@@ -203,13 +203,6 @@ We are working towards offering these features to our users. However, we have en
 If you found this repository useful, please consider citing:
 ```
 @article{li2023otter,
-  title={Otter: A Multi-Modal Model with In-Context Instruction Tuning},
-  author={Li, Bo and Zhang, Yuanhan and Chen, Liangyu and Wang, Jinghao and Yang, Jingkang and Liu, Ziwei},
-  journal={arXiv preprint arXiv:2305.03726},
-  year={2023}
-}
-
-@article{li2023mimicit,
   title={Otter: A Multi-Modal Model with In-Context Instruction Tuning},
   author={Li, Bo and Zhang, Yuanhan and Chen, Liangyu and Wang, Jinghao and Yang, Jingkang and Liu, Ziwei},
   journal={arXiv preprint arXiv:2305.03726},
