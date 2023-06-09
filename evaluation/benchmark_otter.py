@@ -199,7 +199,9 @@ if __name__ == "__main__":
         for item in data["input"]:
             print("=" * 50)
             print(f"Processing {item['image']} with prompt {item['instruction']}")
-            response = get_response(item["image"], item["instruction"], model, image_processor)
+            response = get_response(
+                item["image"], item["instruction"], model, image_processor
+            )
             print(f"Response: {response}")
             responses.append(
                 {
