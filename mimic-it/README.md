@@ -36,8 +36,8 @@ Additionally, we are in the process of cleaning the scripts used to convert publ
 
 | Scenes | Images/Videos | Size | Annotations | Size |
 | :--- | :---: | :---: | :---: | :---: |
-| **LA In-context** | Processing | 5.2GB |[link]() | 269.3MB |
-| **Dense Caption** | Processing | 86.4GB |[link]() | | 269.1MB | 
+| **LA In-context** | Processing | 5.2GB |[link](https://entuedu-my.sharepoint.com/:u:/r/personal/libo0013_e_ntu_edu_sg/Documents/MIMIC-IT-Release/LA_instructions.json.zip?csf=1&web=1&e=SvaKh3) | 269.3MB |
+| **Dense Caption** | Processing | 86.4GB |[link](https://entuedu-my.sharepoint.com/:u:/r/personal/libo0013_e_ntu_edu_sg/Documents/MIMIC-IT-Release/DC_instructions.json.zip?csf=1&web=1&e=jM4gGB) | 269.1MB | 
 | **TV Caption** | Processing | 17.0GB | Cleaning | 55.6MB |
 | **Visual Story Telling** | Processing | 16.2GB |Cleaning | 33.4MB |
 | **Scene Navigation (Indoor Event Planning)** | Processing | 2.3GB |Cleaning | 7.6MB |
