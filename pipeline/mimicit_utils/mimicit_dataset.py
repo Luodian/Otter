@@ -62,7 +62,7 @@ class MimicitDataset(Dataset):
         is_test=False,
         supported_data_types=["caption", "qa"],
     ):
-        # super().__init__(args, is_test) 
+        # super().__init__(args, is_test)
 
         self.args = args
         self.task_name = args.task
@@ -465,6 +465,7 @@ class MimicitDataset(Dataset):
         }
 
         return example
+
     def __str__(self):
         return f"type: {type(self)}, length: {len(self)}"
 
