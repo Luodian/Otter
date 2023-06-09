@@ -32,7 +32,7 @@ from otter.configuration_otter import OtterConfig
 from tqdm import tqdm
 import time
 
-from pipeline.multi_instruct_data_utils.arguments import add_data_args
+from pipeline.mimicit_utils.arguments import add_data_args
 from accelerate import Accelerator, load_checkpoint_and_dispatch, init_empty_weights
 
 import sys
