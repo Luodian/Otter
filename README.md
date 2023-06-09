@@ -29,12 +29,13 @@
 ![](https://black.readthedocs.io/en/stable/_static/license.svg)
 ![](https://img.shields.io/badge/code%20style-black-000000.svg)
 
-[Demo](https://otter.cliangyu.com/) | [Multi-Modal Arena](http://vlarena.opengvlab.com/) | [Otter-9B Checkpoints](https://huggingface.co/luodian/otter-9b-hf) | [MIMIC-IT Dataset](mimic-it/readme.md) | [Youtube Video](https://youtu.be/r-YM4DGGAdE) | [Bilibili Video](https://www.bilibili.com/video/BV1iL411h7HZ/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) |  [Paper](https://arxiv.org/abs/2305.03726)
+[Multi-Modal Arena](http://vlarena.opengvlab.com/) | [Otter-9B Checkpoints](https://huggingface.co/luodian/otter-9b-hf) | [MIMIC-IT Dataset](mimic-it/readme.md) | [Youtube Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili Video](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) |  [Paper](https://arxiv.org/abs/2306.05425)
 
+<!-- [Youtube Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili Video](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) | 📝[Paper]() -->
 ## 🦾 Update
 
 - [2023-06-08]
-  1. Releasing [MIMIC-IT dataset](), the first multimodal in-context instruction tuning dataset! Comprising a staggering 2.8 million instructions! Please check the [MIMIC-IT dataset](mimic-it/readme.md) for more details.
+  1. Releasing MIMIC-IT dataset, the first multimodal in-context instruction tuning dataset! Comprising a staggering 2.8 million instructions! Please check the [MIMIC-IT dataset](mimic-it/README.md) for more details.
   2. Releasing Otter Model 0.2.
 
 - [2023-05-14]
