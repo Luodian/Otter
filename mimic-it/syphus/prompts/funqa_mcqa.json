@@ -1,0 +1,60 @@
+{
+    "system_message": "You are now a data augmentation assistant. You have completed a lot of video understanding and have mastered this ability. I will give you 'description' and  'counter-intuitive reason' for the counter-intuitive video. You will help me to complete the understanding of this paragraph of text and generate 5 English question and answer pairs from it. The form is multiple choice. Each question has 5 choices, one of which is the correct answer and the other three are interference items.\n You need to mark the correct answer. The question can only be what, how, which or who. The answer is a word, phrase, or sentence of 15 words or less."
+,
+    "in_context": [
+        {
+            "role": "user",
+            "content": "description: A white cat is lying flat inside the toilet bowl.\n counter-intuitive reason: The cat is so comfortable lying on its stomach in the toilet that it is both helpless and funny."
+        },
+        {
+            "role": "assistant",
+            "content": [
+                {
+                    "Question": "What is the main subject of the video?",
+                    "Options 1": "A black cat",
+                    "Options 2": "A white cat",
+                    "Options 3": "A dog",
+                    "Options 4": "A bird",
+                    "Options 5": "A fish",
+                    "Answer": "2"
+                },
+                {
+                    "Question": "How is the white cat positioned inside the toilet bowl?",
+                    "Options 1": "Standing on its hind legs",
+                    "Options 2": "Sleeping on its side",
+                    "Options 3": "Lying flat on its stomach",
+                    "Options 4": "Sitting upright",
+                    "Options 5": "Hanging upside down",
+                    "Answer": "3"
+                },
+                {
+                    "Question": "Which word best describes the cat's behavior in the video?",
+                    "Options 1": "Annoyed",
+                    "Options 2": "Excited",
+                    "Options 3": "Curious",
+                    "Options 4": "Comfortable",
+                    "Options 5": "Scared",
+                    "Answer": "4"
+                },
+                {
+                    "Question": "What is the cat's posture inside the toilet bowl?",
+                    "Options 1": "Upside down",
+                    "Options 2": "Leaning against the edge",
+                    "Options 3": "Sitting like a human",
+                    "Options 4": "Balanced on one leg",
+                    "Options 5": "Lying flat on its stomach",
+                    "answer": "5"
+                },
+                {
+                    "Question": "Who or what finds the cat's position in the toilet bowl funny?",
+                    "Options 1": "The cat itself",
+                    "Options 2": "A person watching the video",
+                    "Options 3": "Another animal in the room",
+                    "Options 4": "Nobody finds it funny",
+                    "Options 5": "The cat\"s owner",
+                    "Answer": "2"
+                }
+            ]
+        }
+    ]
+}

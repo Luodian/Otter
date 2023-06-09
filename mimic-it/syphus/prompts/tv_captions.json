@@ -1,0 +1,80 @@
+{
+    "system_message": "You are an AI assistant that can understand video and reason about what happens in provided video, you can observe multiple frames in a video with the provided descriptions.\n\nDesign a conversation between you and a person asking about this video. The answers should be in a tone that a visual AI assistant is seeing the video and answering the question.\n\nAsk mutiple diverse questions and give each question a corresponding answer.\n\nIn the questions you ask, try to incorporate speculations about the relationships between the characters and their motivations. You need to design questions that require a certain degree of reasoning to answer, prompting the need for logical deduction before arriving at a response.\n\nWhen using the information from the description, directly explain the scene, and do not mention anything about the descriptions. When you unsure about the answer, you can say you are not certain and provide a reasonable guess.\n\nPlease always use pronouns when referring to individuals and avoid directly using the names mentioned in the description. For example, Monica should be \"the female character\". Ross should be \"the male character\"\n\nAnswer yes if you understand above instructions.",
+    "in_context": [
+        {
+            "role": "user",
+            "content": "1. Monica says something to Ross, who is standing next to the door, sadly look down.\n2. Monica is talking to Ross then Rachel look at him.\n3. Rachel says she is surprised by Ross' actions.\n4. Monica kneels on the floor and talks to Ross who's standing by the door."
+        },
+        {
+            "role": "assistant",
+            "content": [
+                {
+                    "Question": "How does the male character appear when the female character talks to him by the door?",
+                    "Answer": "The male character appears to be feeling sad, as he is looking down while the female character speaks to him."
+                },
+                {
+                    "Question": "What is another character's reaction to the conversation between the female character and the male character?",
+                    "Answer": "The other character seems to be observing the conversation, as they look at the male character while the female character is talking to him."
+                },
+                {
+                    "Question": "How does the other character express their feelings about the male character's actions?",
+                    "Answer": "The other character expresses surprise at the male character's actions, indicating that his behavior might have been unexpected or out of character."
+                },
+                {
+                    "Question": "What change in position does the female character make while speaking to the male character near the door?",
+                    "Answer": "The female character kneels on the floor while talking to the male character, possibly to create a more intimate or empathetic connection with him during their conversation."
+                }
+            ]
+        },
+        {
+            "role": "user",
+            "content": "1. Monica and Chandler touch their babies together in the hospital.\n2. Monica is trying to reposition the baby in her arms.\n3. Chandler and Monica hold their babies close by then decide to keep them.\n4. Monica and Chandler try to figure out how to swap holding babies."
+        },
+        {
+            "role": "assistant",
+            "content": [
+                {
+                    "Question": "What are the female and male characters doing with their babies in the hospital?",
+                    "Answer": "The female and male characters are cuddling their babies together, possibly celebrating the birth of their newborns or sharing a tender moment."
+                },
+                {
+                    "Question": "What is the female character attempting to do with the baby in her arms?",
+                    "Answer": "The female character is trying to reposition the baby, possibly to make them more comfortable or to adjust her hold on the baby."
+                },
+                {
+                    "Question": "What decision do the female and male characters make about their babies after holding them close?",
+                    "Answer": "After holding their babies close, the characters decide to keep them, suggesting a strong emotional attachment and commitment to their newborns."
+                },
+                {
+                    "Question": "What are the characters trying to figure out in regards to handling their babies?",
+                    "Answer": "The characters are trying to figure out how to swap the babies in their arms, possibly to become more comfortable with handling each other's child or to share the experience of holding both babies."
+                }
+            ]
+        },
+        {
+            "role": "user",
+            "content": "1. Monica is talking to the others about breaking up with her boyfriend and they're all upset about it.  \n2. Monica is in the center of the living room talking to others who are seated.  \n3. Monica is letting the rest of the friends know that shes going to be dumping her boyfriend.  \n4. The friends talk to Monica about her relationship with Alan."
+        },
+        {
+            "role": "assistant",
+            "content": [
+                {
+                    "Question": "In what setting is the female character discussing her decision to end her relationship?",
+                    "Answer": "The female character is discussing her decision in the center of the living room, with the other characters seated around her."
+                },
+                {
+                    "Question": "What is the main topic of the female character's conversation with her friends?",
+                    "Answer": "The main topic of the conversation is the female character's plan to break up with her boyfriend, which seems to be causing some distress among the group."
+                },
+                {
+                    "Question": "How does the female character inform her friends about her intentions regarding her boyfriend?",
+                    "Answer": "She lets her friends know that she is going to be ending her relationship with her boyfriend, which might indicate that she values their opinions or wants their support during this difficult time."
+                },
+                {
+                    "Question": "What aspect of the female character's relationship is being discussed among the friends?",
+                    "Answer": "The friends are talking about the female character's relationship with a person named Alan, possibly trying to understand her reasons for wanting to break up or offering advice on how to handle the situation."
+                }
+            ]
+        }
+    ]
+}
