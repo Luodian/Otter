@@ -7,6 +7,10 @@ import json
 import time
 import threading
 import uuid
+from PIL import Image
+from io import BytesIO
+import base64
+
 
 from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.responses import StreamingResponse
@@ -97,39 +101,6 @@ class ModelWorker:
                 checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit
             )
         tokenizer = model.text_tokenizer
-        # else:
-        #     model, _, tokenizer = create_model_and_transforms(
-        #         clip_vision_encoder_path="ViT-L-14",
-        #         clip_vision_encoder_pretrained="openai",
-        #         lang_encoder_path=lm_path,
-        #         tokenizer_path=lm_path,
-        #         cross_attn_every_n_layers=4,
-        #     )
-        #     if (
-        #         checkpoint_path is not None and "openflamingo" not in checkpoint_path
-        #     ):  # our checkpoint adds special tokens
-        #         tokenizer.add_special_tokens(
-        #             {
-        #                 "additional_special_tokens": [
-        #                     "<|endofchunk|>",
-        #                     "<image>",
-        #                     "<answer>",
-        #                 ]
-        #             }
-        #         )
-        #         model.lang_encoder.resize_token_embeddings(len(tokenizer))
-
-        #     if checkpoint_path is None:
-        #         checkpoint_path = hf_hub_download(
-        #             "openflamingo/OpenFlamingo-9B", "checkpoint.pt"
-        #         )
-        #         msg = model.load_state_dict(torch.load(checkpoint_path), strict=False)
-        #     else:
-        #         model_dict = torch.load(checkpoint_path)
-        #         if model_dict.get("model") is not None:
-        #             model_dict = model_dict["model"]
-        #         msg = model.load_state_dict(model_dict, strict=False)
-        #         del model_dict
 
         if num_gpus > 0:
             model.cuda()
@@ -214,19 +185,14 @@ class ModelWorker:
         logger.info(f"Prompt:::{prompt}")
         images = params.get("images", None)
         if images is not None:
-            from PIL import Image
-            from io import BytesIO
-            import base64
-
             assert type(images) is list
             if len(images) > 0:
+                if type(images[0]) is list: # current support single video
+                    images = images[0]
                 images = [
                     Image.open(BytesIO(base64.b64decode(image))) for image in images
                 ]
-                assert len(images) == prompt.count(
-                    DEFAULT_IMAGE_TOKEN
-                ), "Number of images does not match number of <image> tokens in prompt"
-
+                logger.info(f"{len(images)} images conditioned.")
                 vision_x = (
                     image_processor.preprocess(images, return_tensors="pt")[
                         "pixel_values"

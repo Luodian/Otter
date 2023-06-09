@@ -3,7 +3,7 @@ from enum import auto, Enum
 from typing import List, Any
 import base64
 from io import BytesIO
-
+from PIL import Image
 
 class SeparatorStyle(Enum):
     """Different separator style."""
@@ -70,23 +70,45 @@ class Conversation:
                 msg, image_list = msg[0], msg[1:]
                 for image in image_list:
                     if image is not None:
-                        max_hw, min_hw = max(image.size), min(image.size)
-                        aspect_ratio = max_hw / min_hw
-                        max_len, min_len = 800, 400
-                        shortest_edge = int(
-                            min(max_len / aspect_ratio, min_len, min_hw)
-                        )
-                        longest_edge = int(shortest_edge * aspect_ratio)
-                        H, W = image.size
-                        if H > W:
-                            H, W = longest_edge, shortest_edge
-                        else:
-                            H, W = shortest_edge, longest_edge
-                        image = image.resize((H, W))
-                        buffered = BytesIO()
-                        image.save(buffered, format="JPEG")
-                        img_b64_str = base64.b64encode(buffered.getvalue()).decode()
-                        images.append(img_b64_str)
+                        if isinstance(image, Image.Image):
+                            max_hw, min_hw = max(image.size), min(image.size)
+                            aspect_ratio = max_hw / min_hw
+                            max_len, min_len = 800, 400
+                            shortest_edge = int(
+                                min(max_len / aspect_ratio, min_len, min_hw)
+                            )
+                            longest_edge = int(shortest_edge * aspect_ratio)
+                            H, W = image.size
+                            if H > W:
+                                H, W = longest_edge, shortest_edge
+                            else:
+                                H, W = shortest_edge, longest_edge
+                            image = image.resize((H, W))
+                            buffered = BytesIO()
+                            image.save(buffered, format="JPEG")
+                            img_b64_str = base64.b64encode(buffered.getvalue()).decode()
+                            images.append(img_b64_str)
+                        elif isinstance(image, list):
+                            frames = []
+                            for frame in image:
+                                max_hw, min_hw = max(frame.size), min(frame.size)
+                                aspect_ratio = max_hw / min_hw
+                                max_len, min_len = 800, 400
+                                shortest_edge = int(
+                                    min(max_len / aspect_ratio, min_len, min_hw)
+                                )
+                                longest_edge = int(shortest_edge * aspect_ratio)
+                                H, W = frame.size
+                                if H > W:
+                                    H, W = longest_edge, shortest_edge
+                                else:
+                                    H, W = shortest_edge, longest_edge
+                                image = frame.resize((H, W))
+                                buffered = BytesIO()
+                                image.save(buffered, format="JPEG")
+                                img_b64_str = base64.b64encode(buffered.getvalue()).decode()
+                                frames.append(img_b64_str)
+                            images.append(frames)
         return images
 
     def to_gradio_chatbot(self):
@@ -97,6 +119,8 @@ class Conversation:
                 msg, images = msg[0], msg[1:]
                 for image in images:
                     if image is not None:
+                        if isinstance(image, list):
+                            image = image[0]
                         max_hw, min_hw = max(image.size), min(image.size)
                         aspect_ratio = max_hw / min_hw
                         max_len, min_len = 800, 400

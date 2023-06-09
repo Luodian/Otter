@@ -1,5 +1,6 @@
 import argparse
 from collections import defaultdict
+import mimetypes
 import datetime
 import json
 import os
@@ -7,6 +8,9 @@ import time
 import uuid
 import gradio as gr
 import requests
+from typing import Union
+from PIL import Image
+import cv2
 
 from pipeline.conversation import default_conversation, conv_templates, SeparatorStyle
 from pipeline.constants import LOGDIR
@@ -33,12 +37,57 @@ enable_btn = gr.Button.update(interactive=True)
 disable_btn = gr.Button.update(interactive=False)
 
 priority = {
-    "otter": "aaaaaaa",
-    "open_flamingo": "aaaaaab",
-    "otter_video": "aaaaaac",
+    "otter_video": "aaaaaaa",
+    "otter": "aaaaaab",
+    "open_flamingo": "aaaaaac",
 }
 
+def extract_frames(video_path, num_frames=128):
+    video = cv2.VideoCapture(video_path)
+    total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+    frame_step = total_frames // num_frames
+    frames = []
 
+    for i in range(num_frames):
+        video.set(cv2.CAP_PROP_POS_FRAMES, i * frame_step)
+        ret, frame = video.read()
+        if ret:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = Image.fromarray(frame).convert("RGB")
+            frames.append(frame)
+
+    video.release()
+    return frames
+
+def get_content_type(file_path):
+    content_type, _ = mimetypes.guess_type(file_path)
+    return content_type
+
+def get_image(url: str) -> Union[Image.Image, list]:
+    if "://" not in url:  # Local file
+        content_type = get_content_type(url)
+    else:  # Remote URL
+        content_type = requests.head(url, stream=True, verify=False).headers.get("Content-Type")
+
+    if "image" in content_type:
+        if "://" not in url:  # Local file
+            return Image.open(url)
+        else:  # Remote URL
+            return Image.open(requests.get(url, stream=True, verify=False).raw)
+    elif "video" in content_type:
+        video_path = "temp_video.mp4"
+        if "://" not in url:  # Local file
+            video_path = url
+        else:  # Remote URL
+            with open(video_path, "wb") as f:
+                f.write(requests.get(url, stream=True, verify=False).content)
+        frames = extract_frames(video_path)
+        if "://" in url:  # Only remove the temporary video file if it was downloaded
+            os.remove(video_path)
+        return frames
+    else:
+        raise ValueError("Invalid content type. Expected image or video.")
+    
 def get_conv_log_filename():
     t = datetime.datetime.now()
     name = os.path.join(LOGDIR, f"{t.year}-{t.month:02d}-{t.day:02d}-conv.json")
@@ -143,7 +192,6 @@ def regenerate(state, request: gr.Request):
         + (
             "",
             "",
-            None,
         )
         * 2
         + (
@@ -166,7 +214,6 @@ def clear_history(request: gr.Request):
         + (
             "",
             "",
-            None,
         )
         * 2
         + (
@@ -183,10 +230,8 @@ def add_text(
     model_selector,
     text_demo_question_1,
     text_demo_answer_1,
-    image_demo_1,
     text_demo_question_2,
     text_demo_answer_2,
-    image_demo_2,
     text_3,
     image_3,
     request: gr.Request,
@@ -225,7 +270,6 @@ def add_text(
                 + (
                     "",
                     "",
-                    None,
                 )
                 * 2
                 + (moderation_msg, None)
@@ -235,32 +279,29 @@ def add_text(
     text = text[:1536]  # Hard cut-off
     if image_3 is not None:
         text = DEFAULT_IMAGE_TOKEN + human_role_label + text
+        image_3 = get_image(image_3)
     if text_demo_answer_2 != "":
-        assert image_demo_2 is not None
-        text = (
-            DEFAULT_IMAGE_TOKEN
-            + human_role_label
-            + text_demo_question_2
-            + bot_role_label
-            + DEFAULT_ANSWER_TOKEN
-            + text_demo_answer_2
-            + DEFAULT_DEMO_END_TOKEN
-            + text
-        )
-    if text_demo_answer_1 != "":
-        assert image_demo_1 is not None
-        text = (
-            DEFAULT_IMAGE_TOKEN
-            + human_role_label
-            + text_demo_question_1
-            + bot_role_label
-            + DEFAULT_ANSWER_TOKEN
-            + text_demo_answer_1
-            + DEFAULT_DEMO_END_TOKEN
-            + text
-        )
+        if text.startswith(DEFAULT_IMAGE_TOKEN):
+            text = DEFAULT_IMAGE_TOKEN + (
+                    human_role_label
+                    + text_demo_question_2
+                    + bot_role_label
+                    + DEFAULT_ANSWER_TOKEN
+                    + text_demo_answer_2
+                    + DEFAULT_DEMO_END_TOKEN
+                ) + text[len(DEFAULT_IMAGE_TOKEN):]
 
-    input = (text, image_demo_1, image_demo_2, image_3)
+    if text_demo_answer_1 != "":
+        if text.startswith(DEFAULT_IMAGE_TOKEN):
+            text = DEFAULT_IMAGE_TOKEN + (
+                    human_role_label
+                    + text_demo_question_1
+                    + bot_role_label
+                    + DEFAULT_ANSWER_TOKEN
+                    + text_demo_answer_1
+                    + DEFAULT_DEMO_END_TOKEN
+                ) + text[len(DEFAULT_IMAGE_TOKEN):]
+    input = (text, image_3)
     state.append_message(state.roles[0], input)
     state.append_message(state.roles[1], None)
     state.skip_next = False
@@ -272,7 +313,6 @@ def add_text(
         + (
             "",
             "",
-            None,
         )
         * 2
         + (
@@ -464,7 +504,7 @@ a:link {
 &nbsp;&nbsp;&nbsp;
 <a href="https://youtu.be/K8o_LKGQJhs"><img src="https://www.svgrepo.com/show/13671/youtube.svg" style="height: 15px; display:inline;" class="icon" alt="video demo">Video</a>
 &nbsp;&nbsp;&nbsp;
-<a href="https://ottervideo.cliangyu.com/"><img src="https://www.svgrepo.com/show/2065/chat.svg" style="height: 15px; display:inline;" class="icon" alt="live demo">Live Demo (Video Otter)</a>
+<a href="https://otter.cliangyu.com/"><img src="https://www.svgrepo.com/show/2065/chat.svg" style="height: 15px; display:inline;" class="icon" alt="live demo">Live Demo (Image Otter)</a>
 &nbsp;&nbsp;&nbsp;
 <img style="height: 20px; display:inline;" src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fotter.cliangyu.com&count_bg=%23FFA500&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false"/>
 
@@ -475,8 +515,7 @@ a:link {
 
 
 ### Note: 
-Following OpenFlamingo, you need to input at least one image in the first round of conversation with both Otter and OpenFlamingo.
-Current Otter model (ver. Apr 25) is under development. A model supporting better conversations will be released soon. If model repeatedly describes previous images, please click "clear history" to clean all image caches to make sure the model perform correctly.
+Current Otter model (ver. Jun 8) is under development. A model supporting better conversations will be released soon. If model repeatedly describes previous images, please click "clear history" to clean all image caches to make sure the model perform correctly.
 </span>
 
 | Choose a model to chat with | |
@@ -528,12 +567,9 @@ def build_demo(embed_mode):
                         show_label=False,
                     ).style(container=False)
 
-                imagebox_3 = gr.Image(label="Image", type="pil")
+                videobox_3 = gr.Video(label="Video")
 
                 with gr.Row():
-                    imagebox_demo_1 = gr.Image(
-                        label="Demo Image 1 (optional)", type="pil"
-                    )
                     textbox_demo_question_1 = gr.Textbox(
                         label="Demo Text Query 1 (optional)",
                         show_label=True,
@@ -545,9 +581,6 @@ def build_demo(embed_mode):
                         placeholder="<Describe Demo Image 1>",
                     ).style(container=True)
                 with gr.Row():
-                    imagebox_demo_2 = gr.Image(
-                        label="Demo Image 2 (optional)", type="pil"
-                    )
                     textbox_demo_question_2 = gr.Textbox(
                         label="Demo Text Query 2 (optional)",
                         show_label=True,
@@ -639,34 +672,36 @@ def build_demo(embed_mode):
         gr.Examples(
             examples=[
                 [
-                    f"{cur_dir}/examples/cat.jpg",
-                    "An image of",
-                    "two cats.",
-                    f"{cur_dir}/examples/bathroom.jpg",
-                    "An image of",
-                    "a bathroom sink.",
-                    f"{cur_dir}/examples/dinner.jpg",
-                    "An image of",
+                    "Is there a person in this video?",
+                    "Yes, a woman.",
+                    "",
+                    "",
+                    f"{cur_dir}/examples/dc_demo.mp4",
+                    "What does the video describe?",
                 ],
                 [
-                    f"{cur_dir}/examples/tennis.jpg",
-                    "What is the danger of this sport?",
-                    "The player may get hitted by the tennis ball.",
-                    f"{cur_dir}/examples/baseball.jpg",
-                    "What is the danger of this sport?",
-                    "While chasing the baseball, the player may inadvertently collide with other players.",
-                    f"{cur_dir}/examples/soccer.png",
-                    "What is the danger of this sport?",
+                    "Is there a man in this video?",
+                    "Yes, he is riding a horse.",
+                    "What are the transports in this video?",
+                    "Tram, cars, and horse.",
+                    f"{cur_dir}/examples/dc_demo2.mp4",
+                    "What does the video describe?",
+                ],
+                [
+                    "",
+                    "",
+                    "",
+                    "",
+                    f"{cur_dir}/examples/example.mp4",
+                    "What does the video describe?",
                 ],
             ],
             inputs=[
-                imagebox_demo_1,
                 textbox_demo_question_1,
                 textbox_demo_answer_1,
-                imagebox_demo_2,
                 textbox_demo_question_2,
                 textbox_demo_answer_2,
-                imagebox_3,
+                videobox_3,
                 textbox_3,
             ],
         )
@@ -681,10 +716,8 @@ def build_demo(embed_mode):
         demo_list = [
             textbox_demo_question_1,
             textbox_demo_answer_1,
-            imagebox_demo_1,
             textbox_demo_question_2,
             textbox_demo_answer_2,
-            imagebox_demo_2,
         ]
         prarameter_list = [
             max_new_tokens,
@@ -721,7 +754,7 @@ def build_demo(embed_mode):
             + demo_list
             + [
                 textbox_3,
-                imagebox_3,
+                videobox_3,
             ]
             + btn_list,
         ).then(
@@ -743,7 +776,7 @@ def build_demo(embed_mode):
             + demo_list
             + [
                 textbox_3,
-                imagebox_3,
+                videobox_3,
             ]
             + btn_list,
         )
@@ -757,7 +790,7 @@ def build_demo(embed_mode):
             + demo_list
             + [
                 textbox_3,
-                imagebox_3,
+                videobox_3,
             ],
             [
                 state,
@@ -766,7 +799,7 @@ def build_demo(embed_mode):
             + demo_list
             + [
                 textbox_3,
-                imagebox_3,
+                videobox_3,
             ]
             + btn_list,
         ).then(
@@ -787,7 +820,7 @@ def build_demo(embed_mode):
             + demo_list
             + [
                 textbox_3,
-                imagebox_3,
+                videobox_3,
             ],
             [
                 state,
@@ -796,7 +829,7 @@ def build_demo(embed_mode):
             + demo_list
             + [
                 textbox_3,
-                imagebox_3,
+                videobox_3,
             ]
             + btn_list,
         ).then(
