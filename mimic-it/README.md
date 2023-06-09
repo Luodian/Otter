@@ -22,12 +22,6 @@
 
 -----------------
 
-<!-- ![](https://img.shields.io/badge/otter-v0.1-darkcyan)
-![](https://img.shields.io/github/stars/luodian/otter?style=social)
-[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FLuodian%2Fotter&count_bg=%23FFA500&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false)](https://hits.seeyoufarm.com)
-![](https://black.readthedocs.io/en/stable/_static/license.svg)
-![](https://img.shields.io/badge/code%20style-black-000000.svg) -->
-
 [Project Page](https://otter-ntu.github.io/) | [Youtube Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili Video](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) | 📝[Paper]()
 
 ## 🌳 MIMIC-IT Overview
@@ -39,28 +33,28 @@ High-quality instructions are essential for the zero-shot performance of large l
 <p align="center" width="100%">
 <img src="https://i.postimg.cc/k406BN26/mimic-it.png"  width="80%" height="80%">
 </p>
+
 ## Dataset Statistics
 
-<!-- <img src="docs/teaser.pdf"  width="80%" height="80%"> -->
-
-Dataset | # Image |# Instruction| Abbr.
--- | -- | -- | --
-LLAVA-Complex Reasoning | 81,398 | 76,643 | LACR
-LLAVA-Detailed Description | 81,398 | 23,240 | LADD
-LLAVA-Conversation | 81,398 | 56,681 | LACONV
-SpotTheDifference | 9,524 | 15,989 | SD
-SceneNavigation | 562 | 6,640 | SN
-DenseCaption | 10,009 | 62,536 | DC
-TVCaption | 86,603 | 92,828 | TVC
-VisualStoryTelling | 16,752 | 33,794 | VST
-Ego4D | xxx | xxx | E4D
-CocoSpotTheDifference| coming soon | coming soon | CSD
+| **Visual Sources (Scenes)** | **In-context** | **#Clips/Images** | **#Uni. Inst.** | **#Instances** |  
+|---------------------------|----------------|------------------|-----------------|----------------|  
+| COCO (General) | lang./vis. | - / 81K | 261K | 345K |  
+| SD~(Surveillance) | lang./vis. | - / 9K | 10K | 15K  |  
+| SN~(Indoor Ego.) | lang./vis. | - / 0.5K | 4.8K | 6K  |  
+| DC~(General) | lang./vis. | 16K / 1M | 40K | 62K  |  
+| VIST~(Story) | lang./vis. | - / 16K | 32K | 33K  |  
+| TVC~(TV) | lang./vis. | 86K / 577K | 86K | 92K  |  
+| E4D~(General Ego.) | lang./vis. | 400K / 6.4M | 1.8M | 2.4M  |  
+| Total | lang./vis. | 502K / 8.1M | 2.2M | 2.8M |  
 
 ## Download Links
 
-| Dataset | Download Link |
-| :--- | :--- |
-| coreset | |
+We are organizing the conversion of public dataset images (as well as extracting specific frames from the corresponding videos) to the MIMIC-IT input format. Below are the initial released LA and DC, instruction-response pairs for the MIMIC-IT dataset. Instruction pairs on other datasets are larger and contain more information that may need further examination. We will release this data as soon as possible.
+
+| Scenes | Images/Videos | Annotations |
+| :--- | :--- | :--- |
+| **LA In-context** | Processing | |
+| **Dense Caption** | Processing | |
 
 ## Syphus Overview
 
