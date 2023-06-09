@@ -29,9 +29,14 @@
 ![](https://black.readthedocs.io/en/stable/_static/license.svg)
 ![](https://img.shields.io/badge/code%20style-black-000000.svg)
 
-[Multi-Modal Arena](http://vlarena.opengvlab.com/) | [Otter-9B Checkpoints](https://huggingface.co/luodian/otter-9b-hf) | [MIMIC-IT Dataset](mimic-it/readme.md) | [Youtube Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili Video](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) |  [Paper](https://arxiv.org/abs/2306.05425)
+[Project Page](https://otter-ntu.github.io/) | [Paper](https://arxiv.org/abs/2306.05425) | [MIMIC-IT Dataset](mimic-it/readme.md) | [Youtube Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili Video](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) | [Multi-Modal Arena](http://vlarena.opengvlab.com/) | [Otter-9B Checkpoints](https://huggingface.co/luodian/otter-9b-hf)
 
 <!-- [Youtube Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili Video](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) | 📝[Paper]() -->
+
+<div style="text-align:center">
+<img src="https://i.postimg.cc/Tw1Z0BCW/otterv0-2-demo.png"  width="100%" height="100%">
+</div>
+
 ## 🦾 Update
 
 - [2023-06-08]
@@ -47,30 +52,61 @@
 
 ## 🦦 Overview
 
+Large Language Models (LLMs) have exhibited exceptional universal aptitude as few/zero-shot learners for numerous tasks, thanks to their pre-training on large-scale text data. GPT-3 is a prominent LLM that has showcased significant capabilities in this regard. Furthermore, variants of GPT-3, namely InstrctGPT and ChatGPT, equipped with instruction tuning, have proven effective in interpreting natural language instructions to perform complex real-world tasks. In this paper, we propose to introduce instruction tuning into multi-modal models, motivated by the Flamingo model's upstream interleaved format pretraining dataset. We adopt a similar approach to construct our **MI**-**M**odal **I**n-**C**ontext **I**nstruction **T**uning (**MIMIC-IT**) dataset. We then introduce 🦦 Otter, a multi-modal model based on OpenFlamingo (open-sourced version of DeepMind's Flamingo), trained on MIMIC-IT and showcasing improved instruction-following ability and in-context learning. We integrate both OpenFlamingo and Otter into Hugging Face Transformers for more researchers to incorporate the models into their customized training and inference pipelines.
+
+## 🗄 MIMIC-IT Dataset Details
+
+<p align="center" width="100%">
+<img src="https://i.postimg.cc/yYMm1G5X/mimicit-logo.png"  width="80%" height="80%">
+</p>
+
+MIMIC-IT covers a vast array of real-life scenarios that empower Vision-Language Models (VLMs) to not only comprehend general scenes, but also to reason about context and astutely differentiate between observations. MIMIC-IT also enables the application of egocentric visual assistant model that can serve that can answer your questions like **Hey, Do you think I left my keys on the table?**. In addition to English, MIMIC-IT is also multilingual, supporting Chinese, Korean, Japanese, German, French, Spanish, and Arabic, thereby allowing a larger global audience to altogether enjoy from the convenience brought about by advancements in artificial intelligence.
+
+<p align="center" width="100%">
+<img src="https://i.postimg.cc/RCGp0vQ1/syphus.png"  width="80%" height="80%">
+</p>
+
+We also introduce **Syphus**, an automated pipeline for generating high-quality instruction-response pairs in multiple languages. Building upon the framework proposed by LLaVA, we utilize ChatGPT to generate instruction-response pairs based on visual content. To ensure the quality of the generated instruction-response pairs, our pipeline incorporates system messages, visual annotations, and in-context examples as prompts for ChatGPT. 
+
+<!-- System messages define the desired tone and style of the generated instruction-response pairs, while visual annotations provide essential image information such as bounding boxes and image descriptions. In-context examples assist ChatGPT in learning within the context.  During cold-start stage, in-context examples are collected by prompting ChatGPT solely through system messages and visual annotations, employing a heuristic approach. This stage concludes only when a satisfactory in-context examples are identified. In step 4, once the instruction-response pairs are obtained, the pipeline expands them into Chinese (zh), Japanese (ja), Spanish (es), German (de), French (fr), Korean (ko), and Arabic (ar). -->
+
+For more details, please check the [MIMIC-IT dataset](mimic-it/README.md).
+
+
+## 🤖 Otter Model Details
+
 <div style="text-align:center">
 <img src="https://i.postimg.cc/CKgQ2PP7/otter-teaser.png"  width="100%" height="100%">
 </div>
 
-Large Language Models (LLMs) have exhibited exceptional universal aptitude as few/zero-shot learners for numerous tasks, thanks to their pre-training on large-scale text data. GPT-3 is a prominent LLM that has showcased significant capabilities in this regard. Furthermore, variants of GPT-3, namely InstrctGPT and ChatGPT, equipped with instruction tuning, have proven effective in interpreting natural language instructions to perform complex real-world tasks. In this paper, we propose to introduce instruction tuning into multi-modal models, motivated by the Flamingo model's upstream interleaved format pretraining dataset. We adopt a similar approach to construct our **MI**-**M**odal **I**n-**C**ontext **I**nstruction **T**uning (**MIMIC-IT**) dataset. We then introduce 🦦 Otter, a multi-modal model based on OpenFlamingo (open-sourced version of DeepMind's Flamingo), trained on MIMIC-IT and showcasing improved instruction-following ability and in-context learning. We also optimize OpenFlamingo's implementation for researchers, democratizing the required training resources from 1x A100 GPU to 4x RTX-3090 GPUs, and integrate both OpenFlamingo and Otter into Hugging Face Transformers for more researchers to incorporate the models into their customized training and inference pipelines.
+Otter is designed to support multi-modal in-context instruction tuning based on the OpenFlamingo model, which involves conditioning the language model on the corresponding media, such as an image that corresponds to a caption or an instruction-response pair. 
 
-## 🦦 Examples
+We train Otter on MIMIC-IT dataset with approximately 2.8 million in-context instruction-response pairs, which are structured into a cohesive template to facilitate various tasks.
 
-<div style="text-align:center">
-<img src="https://s2.loli.net/2023/05/08/LIk1SOaKWw73Gz4.png"  width="100%" height="100%">
-</div>
+The following template encompasses images, user instructions, and model-generated responses, utilizing the \texttt{Human} and \texttt{Assistant} role labels to enable seamless user-assistant interactions.
 
----
+```
+<image>Human:{instruction} Assistant:<answer>{response}<endofchunk>
+```
 
-<div style="text-align:center">
-<img src="https://s2.loli.net/2023/05/08/dj8NJeYh9EMtkWb.png"  width="100%" height="100%">
-</div>
+Training the Otter model on the MIMIC-IT dataset allows it to acquire different capacities, as demonstrated by the LA and SD tasks. Trained on the LA task, the model exhibits exceptional scene comprehension, reasoning abilities, and multi-round conversation capabilities. 
 
----
+```python
+<image>Human:{instruction} Assistant:<answer>{response}<endofchunk>
+```
 
-<div style="text-align:center">
-<img src="https://s2.loli.net/2023/05/08/rpPX39icK7lVNnF.png"  width="100%" height="100%">
-</div>
+Regarding the concept of organizing visual-language in-context examples, we demonstrate here the acquired ability of the Otter model to follow inter-contextual instructions after training on the LA-T2T task. The organized input data format is as follows:
 
+```python
+# Multiple in-context example with similar instructions
+<image>Human:{instruction} Assistant:<answer>{response}<|endofchunk|>
+# ....
+<image>Human:{instruction} Assistant:<answer>{response}<|endofchunk|>
+# Query example
+<image>Human:{instruction} Assistant:<answer>
+```
+
+For more details, please refer to our [paper](https://arxiv.org/abs/2306.05425)'s appendix for other tasks.
 ## 🗂️ Environments
 
 You may install via `conda env create -f environment.yml`. Especially to make sure the `transformers>=4.28.0`, `accelerate>=0.18.0`.
@@ -95,18 +131,12 @@ In order to allow more researchers without access to A100 machines to try traini
 <img src="https://i.postimg.cc/LsNs55zG/table.png"  width="100%" height="100%">
 </div>
 
----
+<!-- ---
 <div style="text-align:center">
 <img src="https://i.postimg.cc/tTcCdcv5/efficiency.png"  width="100%" height="100%">
-</div>
+</div> -->
 
 Our Otter model is also developed in this way and it's deployed on the 🤗 Hugging Face model hub. Our model can be hosted on two RTX-3090-24G GPUs and achieve a similar speed to one A100-80G machine.
-
-
-
-## 🗄 Dataset
-
-Please refer to [MIMIC-IT](mimic-it/README.md) for more details.
 
 ## ☄️ Training
 
@@ -167,6 +197,8 @@ If you found this repository useful, please consider citing:
   journal={arXiv preprint arXiv:2305.03726},
   year={2023}
 }
+
+
 ```
 
 ### 👨‍🏫 Acknowledgements
