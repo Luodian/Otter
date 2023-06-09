@@ -33,13 +33,13 @@
 
 **Video Demo:** [Otter's Conceptual Demo Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili 哔哩哔哩](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)
 
-**Interactive Demo:** [Otter Demo (video version, upcoming)]()
+**Interactive Demo:** [Otter Demo (image version only, video version upcoming)](https://otter.cliangyu.com/)
 
-**Checkpoints:** [Checkpoints v0.1](https://huggingface.co/luodian/otter-9b-hf) | [Checkpoints v0.2 upcoming)]()
+**Checkpoints:** [Checkpoints v0.1](https://huggingface.co/luodian/otter-9b-hf) | Checkpoints v0.2 (upcoming)
 
 Otter v0.2 supports videos inputs (frames are arranged as original Flamingo's implementation) and multiple images inputs (they serve as in-context examples for each other). 
 
-**Eval Results:** [Multi-Modal Arena](http://vlarena.opengvlab.com/) | [Multi-Modal AGI Benchmark (Upcoming)]()
+**Eval Results:** [Multi-Modal Arena](http://vlarena.opengvlab.com/) | Multi-Modal AGI Benchmark (Upcoming)
 
 <!-- [Youtube Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili Video](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) | 📝[Paper]() -->
 
@@ -196,7 +196,7 @@ We host our [Otter-9B Demo](https://otter.cliangyu.com/) via dual RTX-3090-24G G
 We are working towards offering these features to our users. However, we have encountered some issues in the process. If you have the solutions to these issues, we would be grateful if you could submit a pull request with your code. Your contribution would be highly appreciated.
 
 - [x]  `xformers` support: for saving GPU memory and training speedup. issue [#35](https://github.com/Luodian/PET-VLM/issues/35)
-- [ ]  `load_in_8bit` support: for saving GPU memory and training speedup. [[issue]()]
+- [ ]  `load_in_8bit` support: for saving GPU memory and training speedup.
 
 ## 📑 Citation
 
@@ -217,7 +217,6 @@ If you found this repository useful, please consider citing:
     archivePrefix={arXiv},
     primaryClass={cs.CV}
 }
-
 ```
 
 ### 👨‍🏫 Acknowledgements
