@@ -29,7 +29,13 @@
 ![](https://black.readthedocs.io/en/stable/_static/license.svg)
 ![](https://img.shields.io/badge/code%20style-black-000000.svg)
 
-[Project Page](https://otter-ntu.github.io/) | [Paper](https://arxiv.org/abs/2306.05425) | [MIMIC-IT Dataset](mimic-it/readme.md) | [Youtube Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili Video](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) | [Multi-Modal Arena](http://vlarena.opengvlab.com/) | [Otter-9B Checkpoints](https://huggingface.co/luodian/otter-9b-hf)
+[Project Page](https://otter-ntu.github.io/) | [Otter Paper](https://arxiv.org/abs/2305.03726) | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425) | [MIMIC-IT Dataset](mimic-it/readme.md)
+
+**Video Demo:** [Otter's Conceptual Demo Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)
+
+**Interactive Demo/Checkpoints:** [Otter Demo (In-context | Video version)]() | [Checkpoints](https://huggingface.co/luodian/otter-9b-hf)
+
+**Eval Results:** [Multi-Modal Arena](http://vlarena.opengvlab.com/) | [Multi-Modal AGI Benchmark (Upcoming)]()
 
 <!-- [Youtube Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili Video](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) | 📝[Paper]() -->
 
@@ -40,8 +46,9 @@
 ## 🦾 Update
 
 - [2023-06-08]
-  1. Releasing MIMIC-IT dataset, the first multimodal in-context instruction tuning dataset! Comprising a staggering 2.8 million instructions! Please check the [MIMIC-IT dataset](mimic-it/README.md) for more details.
-  2. Releasing Otter Model 0.2.
+1. Introducing Project Otter's brand new homepage: https://otter-ntu.github.io/. Check it out now!
+2. Check our [paper](https://arxiv.org/abs/2306.05425) introducing MIMIC-IT in details. Meet MIMIC-IT, the first multimodal in-context instruction tuning dataset with 2.8M instructions! Designed to create diverse vision-language instructions that align with real-world visual content, MIMIC-IT spans across seven image and video datasets covering a vast array of scenes. From general scene understanding to spotting subtle differences and enhancing egocentric view comprehension for AR headsets, our MIMIC-IT dataset has it all. Discover more about the MIMIC-IT dataset now!
+3. Stay tuned for our upcoming Otter Model v0.2, trained on the MIMIC-IT dataset! With the ability to understand daily scenes, reason in context, spot differences in observations, and act as an egocentric assistant. Checkout conceptual demo video at [Youtube](https://www.youtube.com/watch?v=K8o_LKGQJhs) or [Bilibili](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)!
 
 - [2023-05-14]
   1. Otter battles with Owl? the Pokémon Arena is here! Our model is selected into [Multi-Modal Arena](http://vlarena.opengvlab.com/). This is an interesting Multi-Modal Foundation Models competition arena that let you see different models reaction to the same question.
@@ -83,7 +90,7 @@ Otter is designed to support multi-modal in-context instruction tuning based on 
 
 We train Otter on MIMIC-IT dataset with approximately 2.8 million in-context instruction-response pairs, which are structured into a cohesive template to facilitate various tasks.
 
-The following template encompasses images, user instructions, and model-generated responses, utilizing the \texttt{Human} and \texttt{Assistant} role labels to enable seamless user-assistant interactions.
+The following template encompasses images, user instructions, and model-generated responses, utilizing the `Human` and `Assistant` role labels to enable seamless user-assistant interactions.
 
 ```
 <image>Human:{instruction} Assistant:<answer>{response}<endofchunk>

@@ -2,28 +2,6 @@
 <img src="./docs/mimicit_logo.png"  width="80%" height="80%">
 </p>
 
-<div>
-<div align="center">
-    <a href='https://brianboli.com/' target='_blank'>Bo Li*<sup>,1</sup></a>&emsp;
-    <a href='https://zhangyuanhan-ai.github.io/' target='_blank'>Yuanhan Zhang*<sup>,1</sup></a>&emsp;
-    <a href='https://cliangyu.com/' target='_blank'>Liangyu Chen*<sup>,1</sup></a>&emsp;
-    <a href='https://king159.github.io/' target='_blank'>Jinghao Wang*<sup>,1</sup></a>&emsp;
-    <a href='https://pufanyi.github.io/' target='_blank'>Fanyi Pu*<sup>,1</sup></a>&emsp;
-    </br>
-    <a href='https://jingkang50.github.io/' target='_blank'>Jingkang Yang<sup>1</sup></a>&emsp;
-    <a href='https://chunyuan.li/' target='_blank'>Chunyuan Li<sup>2</sup></a>&emsp;
-    <a href='https://liuziwei7.github.io/' target='_blank'>Ziwei Liu<sup>1</sup></a>
-</div>
-<div>
-<div align="center">
-    <sup>1</sup>S-Lab, Nanyang Technological University&emsp;
-    <sup>2</sup>Microsoft Research, Redmond
-</div>
-
------------------
-
-[Project Page](https://otter-ntu.github.io/) | [Youtube Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili Video](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad) | 📝[Paper]()
-
 ## 🌳 MIMIC-IT Overview
 
 High-quality instructions are essential for the zero-shot performance of large language models on interactive natural language tasks. For interactive vision-language tasks involving intricate visual scenes, a large quantity of diverse and creative instructions should be imperative to tune vision-language models (VLMs). Nevertheless, the current availability of vision-language instructions in terms of quantity, diversity, and creativity remains limited, posing challenges to the generalization of interactive VLMs. Here we present **MIMIC-IT**, a dataset comprising 2.8M multi-modal instructions-response pairs based on images and videos. Each instruction-response pair is accompanied by multi-modal in-context information, forming conversational contexts aimed at empowering VLMs in perception, reasoning, and planning. The instruction-response collection process, dubbed as **Syphus**, is scaled using an automatic annotation pipeline that combines human expertise with GPT's capabilities.
@@ -49,12 +27,60 @@ MIMIC-IT covers a vast array of real-life scenarios that empower Vision-Language
 
 ## Download Links
 
-We are organizing the conversion of public dataset images (as well as extracting specific frames from the corresponding videos) to the MIMIC-IT input format. Below are the initial released LA and DC, instruction-response pairs for the MIMIC-IT dataset. Instruction pairs on other datasets are larger and contain more information that may need further examination. We will release this data as soon as possible.
+The initial release includes LA and DC instruction-response pairs for the MIMIC-IT dataset. We plan to release additional datasets with a larger number of instruction pairs and more information after further examination.
 
-| Scenes | Images/Videos | Annotations |
-| :--- | :--- | :--- |
-| **LA In-context** | Processing | |
-| **Dense Caption** | Processing | |
+We are addressing potential issues related to directly releasing image/video data in our Otter training format, which involves storing images/video frames in base64 format within a large JSON file. This process may take some time. If you are interested in using this data, please leave an issue in this repository or email drluodian@gmail.com, and we will keep you updated.
+
+Additionally, we are in the process of cleaning the scripts used to convert public dataset images and extract specific frames from corresponding videos into the MIMIC-IT input format. This will help map the original dataset to our annotations UUIDs (e.g. from COCO's `000000215677.jpg` -> ours `LA_00_IMG_000000215677`).
+
+
+| Scenes | Images/Videos | Size | Annotations | Size |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **LA In-context** | Processing | 5.2GB |[link]() | 269.3MB |
+| **Dense Caption** | Processing | 86.4GB |[link]() | | 269.1MB | 
+| **TV Caption** | Processing | 17.0GB | Cleaning | 55.6MB |
+| **Visual Story Telling** | Processing | 16.2GB |Cleaning | 33.4MB |
+| **Scene Navigation (Indoor Event Planning)** | Processing | 2.3GB |Cleaning | 7.6MB |
+| **Spot The Difference (COCO's General Difference)** | Processing | 5.2GB |Cleaning | 80.5MB |
+| **Spot The Difference (Subtle Difference)** | Processing | 3.1GB |Cleaning | 5.0MB |
+| **EGO4D** | Processing | ~500GB |Cleaning | 3.2GB |
+
+The data is available on [NTU-Onedrive](https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/Eo9bgNV5cjtEswfA-HfjNNABL6Eazh7Fm1dX5VlI0Bqsrg?e=cMvZ1a). The JSON files are compressed into ZIP files to save space. After downloading, unzip the files and verify the MD5 checksums to ensure their integrity. The MD5 Checksums for the released annotations are:
+
+1. LA_instructions.json (json not the zip file) -> f9bc559391d15727b35f3df306b12e31
+2. DC_instructions.json -> bb0d1f9f7d100c99869f79d13b3a3beb
+
+The MIMIC-IT dataset is stored in the following format:
+```json
+{  
+  "meta": {  
+    "version": "0.0.1",  
+    "time": "2023-06",  
+    "author": "ntu"  
+  },  
+  "data": {  
+    "DC_04_INS_00001": {  
+      "instruction": "Who is the main focus of the video?",  
+      "answer": "The main focus of the video is a police officer riding a horse down the street.",  
+      "image_ids": [  
+        "DC_04_IMG_v_N1c3C_Npr-E_0000",  
+        "DC_04_IMG_v_N1c3C_Npr-E_0001",  
+        ...  
+        "DC_04_IMG_v_N1c3C_Npr-E_0067"  
+      ],  
+      "rel_ins_ids": [  
+        "DC_04_INS_00002",  
+        "DC_04_INS_00003",  
+        ...  
+        "DC_04_INS_00008"  
+      ]  
+    },  
+    ...  
+  }  
+}  
+```
+
+This JSON file includes a meta object with version, time, and author information. The data object contains instruction-response pairs, each with a unique identifier (e.g., "DC_04_INS_00001"). Each pair consists of an instruction, an answer, an array of associated image IDs, and an array of related instruction IDs (which can be arranged as in-context examples).
 
 ## Syphus Overview
 
