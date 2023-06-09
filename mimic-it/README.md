@@ -9,7 +9,7 @@ High-quality instructions are essential for the zero-shot performance of large l
 MIMIC-IT covers a vast array of real-life scenarios that empower Vision-Language Models (VLMs) to not only comprehend general scenes, but also to reason about context and astutely differentiate between observations. MIMIC-IT also enables the application of egocentric visual assistant model that can serve that can answer your questions like **Hey, Do you think I left my keys on the table?**. In addition to English, MIMIC-IT is also multilingual, supporting Chinese, Korean, Japanese, German, French, Spanish, and Arabic, thereby allowing a larger global audience to altogether enjoy from the convenience brought about by advancements in artificial intelligence.
 
 <p align="center" width="100%">
-<img src="https://i.postimg.cc/k406BN26/mimic-it.png"  width="80%" height="80%">
+<img src="https://i.postimg.cc/4x66gHhw/mimic-it.jpg"  width="80%" height="80%">
 </p>
 
 ## Dataset Statistics
@@ -35,7 +35,7 @@ Additionally, we are in the process of cleaning the scripts used to convert publ
 
 
 | Scenes | Images/Videos | Size | Annotations | Size |
-| :--- | :---: | :---: | :---: | :---: | :---: |
+| :--- | :---: | :---: | :---: | :---: |
 | **LA In-context** | Processing | 5.2GB |[link]() | 269.3MB |
 | **Dense Caption** | Processing | 86.4GB |[link]() | | 269.1MB | 
 | **TV Caption** | Processing | 17.0GB | Cleaning | 55.6MB |
