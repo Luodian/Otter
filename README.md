@@ -205,6 +205,21 @@ If you found this repository useful, please consider citing:
   year={2023}
 }
 
+@article{li2023mimicit,
+  title={Otter: A Multi-Modal Model with In-Context Instruction Tuning},
+  author={Li, Bo and Zhang, Yuanhan and Chen, Liangyu and Wang, Jinghao and Yang, Jingkang and Liu, Ziwei},
+  journal={arXiv preprint arXiv:2305.03726},
+  year={2023}
+}
+
+@article{li2023mimicit,
+    title={MIMIC-IT: Multi-Modal In-Context Instruction Tuning},
+    author={Bo Li and Yuanhan Zhang and Liangyu Chen and Jinghao Wang and Fanyi Pu and Jingkang Yang and Chunyuan Li and Ziwei Liu},
+    year={2023},
+    eprint={2306.05425},
+    archivePrefix={arXiv},
+    primaryClass={cs.CV}
+}
 
 ```
 
