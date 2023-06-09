@@ -190,7 +190,7 @@ evaluation/*.json
 evaluation/*.html
 
 #yuanhan
-tools
+# tools
 
 #liangyu
 checkpoint
