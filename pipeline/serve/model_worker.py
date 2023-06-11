@@ -184,7 +184,7 @@ class ModelWorker:
         prompt = params["prompt"]
         logger.info(f"Prompt:::{prompt}")
         images = params.get("images", None)
-        
+
         if images is not None:
             assert type(images) is list
             if len(images) > 0:
@@ -217,7 +217,7 @@ class ModelWorker:
             else:
                 images = None
                 vision_x = None
-        
+
         streamer = TextIteratorStreamer(
             tokenizer, skip_prompt=True, skip_special_tokens=True
         )
