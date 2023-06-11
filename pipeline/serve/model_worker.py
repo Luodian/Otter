@@ -99,7 +99,7 @@ class ModelWorker:
             model = FlamingoForConditionalGeneration.from_pretrained(
                 checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit
             )
-        model.text_tokenizer.padding_side = "left" # otter video
+        model.text_tokenizer.padding_side = "left"  # otter video
         tokenizer = model.text_tokenizer
 
         if num_gpus > 0:
