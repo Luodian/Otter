@@ -11,9 +11,7 @@ from pipeline.conversation import conv_templates, SeparatorStyle
 
 
 @torch.inference_mode()
-def generate_stream(
-    tokenizer, model, params, device, context_len=2048, stream_interval=2
-):
+def generate_stream(tokenizer, model, params, device, context_len=2048, stream_interval=2):
     """Adapted from fastchat/serve/model_worker.py::generate_stream"""
 
     prompt = params["prompt"]
@@ -34,9 +32,7 @@ def generate_stream(
             logits = out.logits
             past_key_values = out.past_key_values
         else:
-            attention_mask = torch.ones(
-                1, past_key_values[0][0].shape[-2] + 1, device=device
-            )
+            attention_mask = torch.ones(1, past_key_values[0][0].shape[-2] + 1, device=device)
             out = model(
                 input_ids=torch.as_tensor([[token]], device=device),
                 use_cache=True,
@@ -98,9 +94,7 @@ def main(args):
         raise ValueError(f"Invalid device: {args.device}")
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name, low_cpu_mem_usage=True, **kwargs
-    )
+    model = AutoModelForCausalLM.from_pretrained(model_name, low_cpu_mem_usage=True, **kwargs)
 
     if args.device == "cuda" and num_gpus == 1:
         model.cuda()

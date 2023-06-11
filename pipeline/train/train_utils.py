@@ -50,19 +50,13 @@ def train_one_epoch(
     cast_dtype = get_cast_dtype(args.precision)
 
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
-    endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)[
-        "input_ids"
-    ][-1]
+    endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)["input_ids"][-1]
 
     model.train()
 
     # setup logging
-    step_time_m = (
-        AverageMeter()
-    )  # time for one optimizer step (> 1 batch if using gradient accum)
-    data_time_m = (
-        AverageMeter()
-    )  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
+    step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
+    data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
 
     # loop through dataloader
@@ -106,11 +100,7 @@ def train_one_epoch(
         divided_loss_laion = loss_laion / args.gradient_accumulation_steps
 
         #### C4 FORWARD PASS ####
-        images = (
-            batch_mmc4[0]
-            .to(device_id, dtype=cast_dtype, non_blocking=True)
-            .unsqueeze(2)
-        )
+        images = batch_mmc4[0].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(2)
         input_ids = torch.stack([x[0] for x in batch_mmc4[1]]).squeeze(1)
         attention_mask = torch.stack([x[1] for x in batch_mmc4[1]]).squeeze(1)
 
@@ -122,9 +112,7 @@ def train_one_epoch(
         for i in range(labels.shape[0]):
             # remove loss for any token before the first <image> token
             label_idx = 0
-            while (
-                label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id
-            ):
+            while label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id:
                 labels[i][label_idx] = -100
                 label_idx += 1
 
@@ -132,10 +120,7 @@ def train_one_epoch(
             endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
             for endofchunk_idx in endofchunk_idxs:
                 token_idx = endofchunk_idx + 1
-                while (
-                    token_idx < labels.shape[1]
-                    and labels[i][token_idx] != media_token_id
-                ):
+                while token_idx < labels.shape[1] and labels[i][token_idx] != media_token_id:
                     labels[i][token_idx] = -100
                     token_idx += 1
 
@@ -162,10 +147,7 @@ def train_one_epoch(
         divided_loss_mmc4 = loss_mmc4 / args.gradient_accumulation_steps
 
         #### BACKWARD PASS ####
-        loss = (
-            divided_loss_laion * args.loss_multiplier_laion
-            + divided_loss_mmc4 * args.loss_multiplier_mmc4
-        )
+        loss = divided_loss_laion * args.loss_multiplier_laion + divided_loss_mmc4 * args.loss_multiplier_mmc4
         loss.backward()
 
         #### MASK GRADIENTS FOR EMBEDDINGS ####
@@ -174,9 +156,7 @@ def train_one_epoch(
             if isinstance(m, torch.nn.Embedding) and m.weight.requires_grad:
                 zero_mask = torch.zeros_like(m.weight.grad)
                 zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
-                zero_mask[endofchunk_token_id] = torch.ones_like(
-                    zero_mask[endofchunk_token_id]
-                )
+                zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
                 m.weight.grad = m.weight.grad * zero_mask
 
         model.apply(mask_embedding)
@@ -184,9 +164,7 @@ def train_one_epoch(
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
         # step optimizer and log
-        if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (
-            num_steps == num_batches_per_epoch - 1
-        ):
+        if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (num_steps == num_batches_per_epoch - 1):
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()
@@ -197,29 +175,11 @@ def train_one_epoch(
 
             if args.rank == 0 and args.report_to_wandb:
                 # compute within rank 0
-                laion_samples_per_second = (
-                    args.gradient_accumulation_steps
-                    * args.batch_size_laion
-                    * args.world_size
-                    / step_time_m.val
-                )
-                laion_samples_per_second_per_gpu = (
-                    args.gradient_accumulation_steps
-                    * args.batch_size_laion
-                    / step_time_m.val
-                )
+                laion_samples_per_second = args.gradient_accumulation_steps * args.batch_size_laion * args.world_size / step_time_m.val
+                laion_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_laion / step_time_m.val
 
-                c4_samples_per_second = (
-                    args.gradient_accumulation_steps
-                    * args.batch_size_mmc4
-                    * args.world_size
-                    / step_time_m.val
-                )
-                c4_samples_per_second_per_gpu = (
-                    args.gradient_accumulation_steps
-                    * args.batch_size_mmc4
-                    / step_time_m.val
-                )
+                c4_samples_per_second = args.gradient_accumulation_steps * args.batch_size_mmc4 * args.world_size / step_time_m.val
+                c4_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_mmc4 / step_time_m.val
 
                 wandb.log(
                     {

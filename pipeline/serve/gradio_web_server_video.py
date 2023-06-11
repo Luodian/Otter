@@ -247,14 +247,7 @@ def add_text(
         if text.startswith(DEFAULT_IMAGE_TOKEN):
             text = (
                 DEFAULT_IMAGE_TOKEN
-                + (
-                    human_role_label
-                    + text_demo_question_2
-                    + bot_role_label
-                    + DEFAULT_ANSWER_TOKEN
-                    + text_demo_answer_2
-                    + DEFAULT_DEMO_END_TOKEN
-                )
+                + (human_role_label + text_demo_question_2 + bot_role_label + DEFAULT_ANSWER_TOKEN + text_demo_answer_2 + DEFAULT_DEMO_END_TOKEN)
                 + text[len(DEFAULT_IMAGE_TOKEN) :]
             )
 
@@ -262,14 +255,7 @@ def add_text(
         if text.startswith(DEFAULT_IMAGE_TOKEN):
             text = (
                 DEFAULT_IMAGE_TOKEN
-                + (
-                    human_role_label
-                    + text_demo_question_1
-                    + bot_role_label
-                    + DEFAULT_ANSWER_TOKEN
-                    + text_demo_answer_1
-                    + DEFAULT_DEMO_END_TOKEN
-                )
+                + (human_role_label + text_demo_question_1 + bot_role_label + DEFAULT_ANSWER_TOKEN + text_demo_answer_1 + DEFAULT_DEMO_END_TOKEN)
                 + text[len(DEFAULT_IMAGE_TOKEN) :]
             )
 
@@ -512,9 +498,9 @@ def build_demo(embed_mode):
         with gr.Row():
             with gr.Column(scale=3):
                 with gr.Row(elem_id="model_selector_row"):
-                    model_selector = gr.Dropdown(
-                        choices=models, value=models[0] if len(models) > 0 else "", interactive=True, show_label=False
-                    ).style(container=False)
+                    model_selector = gr.Dropdown(choices=models, value=models[0] if len(models) > 0 else "", interactive=True, show_label=False).style(
+                        container=False
+                    )
 
                 videobox_3 = gr.Video(label="Video")
 
@@ -524,35 +510,27 @@ def build_demo(embed_mode):
                         show_label=True,
                         placeholder="Example: What is in the image?",
                     ).style(container=True)
-                    textbox_demo_answer_1 = gr.Textbox(
-                        label="Demo Text Answer 1 (optional)", show_label=True, placeholder="<Describe Demo Image 1>"
-                    ).style(container=True)
+                    textbox_demo_answer_1 = gr.Textbox(label="Demo Text Answer 1 (optional)", show_label=True, placeholder="<Describe Demo Image 1>").style(
+                        container=True
+                    )
                 with gr.Row():
                     textbox_demo_question_2 = gr.Textbox(
                         label="Demo Text Query 2 (optional)",
                         show_label=True,
                         placeholder="Example: What is in the image?",
                     ).style(container=True)
-                    textbox_demo_answer_2 = gr.Textbox(
-                        label="Demo Text Answer 2 (optional)", show_label=True, placeholder="<Describe Demo Image 2>"
-                    ).style(container=True)
+                    textbox_demo_answer_2 = gr.Textbox(label="Demo Text Answer 2 (optional)", show_label=True, placeholder="<Describe Demo Image 2>").style(
+                        container=True
+                    )
 
                 with gr.Accordion("Parameters", open=False, visible=False) as parameter_row:
                     with gr.Row():
-                        max_new_tokens = gr.Slider(
-                            minimum=16, maximum=512, value=256, step=10, interactive=True, label="# generation tokens"
-                        )
-                        temperature = gr.Slider(
-                            minimum=0, maximum=1, value=0.7, step=0.1, interactive=True, label="temperature"
-                        )
+                        max_new_tokens = gr.Slider(minimum=16, maximum=512, value=256, step=10, interactive=True, label="# generation tokens")
+                        temperature = gr.Slider(minimum=0, maximum=1, value=0.7, step=0.1, interactive=True, label="temperature")
                         top_k = gr.Slider(minimum=0, maximum=10, value=0, step=1, interactive=True, label="top_k")
                         top_p = gr.Slider(minimum=0, maximum=1, value=0.95, step=0.01, interactive=True, label="top_p")
-                        no_repeat_ngram_size = gr.Slider(
-                            minimum=1, maximum=10, value=3, step=1, interactive=True, label="no_repeat_ngram_size"
-                        )
-                        length_penalty = gr.Slider(
-                            minimum=1, maximum=5, value=1, step=0.1, interactive=True, label="length_penalty"
-                        )
+                        no_repeat_ngram_size = gr.Slider(minimum=1, maximum=10, value=3, step=1, interactive=True, label="no_repeat_ngram_size")
+                        length_penalty = gr.Slider(minimum=1, maximum=5, value=1, step=0.1, interactive=True, label="length_penalty")
                         do_sample = gr.Checkbox(interactive=True, label="do_sample")
                         early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
 
@@ -560,9 +538,7 @@ def build_demo(embed_mode):
                 chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=720)
                 with gr.Row():
                     with gr.Column(scale=8):
-                        textbox_3 = gr.Textbox(
-                            label="Text Query", show_label=False, placeholder="Enter text and press ENTER"
-                        ).style(container=False)
+                        textbox_3 = gr.Textbox(label="Text Query", show_label=False, placeholder="Enter text and press ENTER").style(container=False)
                     with gr.Column(scale=1, min_width=60):
                         submit_btn = gr.Button(value="Submit", visible=False)
                 with gr.Row(visible=False) as button_row:
@@ -615,9 +591,7 @@ def build_demo(embed_mode):
             early_stopping,
         ]
         upvote_btn.click(upvote_last_response, [state, model_selector], [textbox_3, upvote_btn, downvote_btn, flag_btn])
-        downvote_btn.click(
-            downvote_last_response, [state, model_selector], [textbox_3, upvote_btn, downvote_btn, flag_btn]
-        )
+        downvote_btn.click(downvote_last_response, [state, model_selector], [textbox_3, upvote_btn, downvote_btn, flag_btn])
         flag_btn.click(flag_last_response, [state, model_selector], [textbox_3, upvote_btn, downvote_btn, flag_btn])
         regenerate_btn.click(regenerate, state, [state, chatbot] + demo_list + [textbox_3, videobox_3] + btn_list).then(
             http_bot, [state, model_selector] + prarameter_list, [state, chatbot] + btn_list

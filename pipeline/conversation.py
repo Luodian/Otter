@@ -75,9 +75,7 @@ class Conversation:
                             max_hw, min_hw = max(image.size), min(image.size)
                             aspect_ratio = max_hw / min_hw
                             max_len, min_len = 800, 400
-                            shortest_edge = int(
-                                min(max_len / aspect_ratio, min_len, min_hw)
-                            )
+                            shortest_edge = int(min(max_len / aspect_ratio, min_len, min_hw))
                             longest_edge = int(shortest_edge * aspect_ratio)
                             H, W = image.size
                             if H > W:
@@ -95,9 +93,7 @@ class Conversation:
                                 max_hw, min_hw = max(frame.size), min(frame.size)
                                 aspect_ratio = max_hw / min_hw
                                 max_len, min_len = 800, 400
-                                shortest_edge = int(
-                                    min(max_len / aspect_ratio, min_len, min_hw)
-                                )
+                                shortest_edge = int(min(max_len / aspect_ratio, min_len, min_hw))
                                 longest_edge = int(shortest_edge * aspect_ratio)
                                 H, W = frame.size
                                 if H > W:
@@ -107,9 +103,7 @@ class Conversation:
                                 image = frame.resize((H, W))
                                 buffered = BytesIO()
                                 image.save(buffered, format="JPEG")
-                                img_b64_str = base64.b64encode(
-                                    buffered.getvalue()
-                                ).decode()
+                                img_b64_str = base64.b64encode(buffered.getvalue()).decode()
                                 frames.append(img_b64_str)
                             images.append(frames)
         return images
@@ -127,9 +121,7 @@ class Conversation:
                         max_hw, min_hw = max(image.size), min(image.size)
                         aspect_ratio = max_hw / min_hw
                         max_len, min_len = 800, 400
-                        shortest_edge = int(
-                            min(max_len / aspect_ratio, min_len, min_hw)
-                        )
+                        shortest_edge = int(min(max_len / aspect_ratio, min_len, min_hw))
                         longest_edge = int(shortest_edge * aspect_ratio)
                         H, W = image.size
                         if H > W:
@@ -170,9 +162,7 @@ class Conversation:
             return {
                 "system": self.system,
                 "roles": self.roles,
-                "messages": [
-                    [x, y[0] if type(y) is tuple else y] for x, y in self.messages
-                ],
+                "messages": [[x, y[0] if type(y) is tuple else y] for x, y in self.messages],
                 "offset": self.offset,
                 "sep": self.sep,
                 "sep2": self.sep2,

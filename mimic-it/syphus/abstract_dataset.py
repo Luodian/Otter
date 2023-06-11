@@ -21,19 +21,13 @@ class AbstractDataset(ABC):
     def __init__(self, name: str, prompt_path: str, query_inputs_path: str):
         """Constructor."""
         self.name: str = name
-        self.prompt: Dict[
-            str, Union[str, List[Dict[str, Union[str, List[Dict[str, str]]]]]]
-        ] = self._load_prompt(prompt_path)
+        self.prompt: Dict[str, Union[str, List[Dict[str, Union[str, List[Dict[str, str]]]]]]] = self._load_prompt(prompt_path)
         self.query_inputs: List[str] = self._load_query_inputs(query_inputs_path)
 
-    def _load_prompt(
-        self, path: str
-    ) -> Dict[str, Union[str, List[Dict[str, Union[str, List[Dict[str, str]]]]]]]:
+    def _load_prompt(self, path: str) -> Dict[str, Union[str, List[Dict[str, Union[str, List[Dict[str, str]]]]]]]:
         with open(path, "r") as f:
             json_data: Dict[str, Any] = json.load(f)
-        in_context: List[Dict[str, Union[str, List[Dict[str, str]]]]] = json_data[
-            "in_context"
-        ].copy()
+        in_context: List[Dict[str, Union[str, List[Dict[str, str]]]]] = json_data["in_context"].copy()
         for n, conv in enumerate(json_data["in_context"]):
             role, content = conv["role"], conv["content"]
             # we need to convert the QA pair into a string
@@ -50,9 +44,7 @@ class AbstractDataset(ABC):
             else:
                 raise ValueError("wrong role. Only user and assistant are allowed.")
             in_context[n] = {"role": role, "content": content_string}
-        results: Dict[
-            str, Union[str, List[Dict[str, Union[str, List[Dict[str, str]]]]]]
-        ] = {
+        results: Dict[str, Union[str, List[Dict[str, Union[str, List[Dict[str, str]]]]]]] = {
             "system_message": json_data["system_message"],
             "in_context": in_context,
         }

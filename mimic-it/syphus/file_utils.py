@@ -72,9 +72,7 @@ def query_gpt(inputs: dict[str], dataset_name: str) -> tuple[dict[str, str], str
     return response, inputs["query_input"]["id"]
 
 
-def split_question_and_answer(
-    pair_of_answer: str, file_id: str
-) -> tuple[bool, dict[str, str]]:
+def split_question_and_answer(pair_of_answer: str, file_id: str) -> tuple[bool, dict[str, str]]:
     """
     Split the question and answer from the pair of question and answer.
     Args:
@@ -98,9 +96,7 @@ def split_question_and_answer(
         }
 
 
-def format_output(
-    response: str, file_id: str, dataset_name: str
-) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+def format_output(response: str, file_id: str, dataset_name: str) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
     """
     Format the output of ChatGPT.
 
@@ -136,9 +132,7 @@ def format_output(
     return valid_output, invalid_output
 
 
-def export_single_output_json(
-    result: dict[str, str], file_name: str, dataset_name: str, duration: float
-) -> None:
+def export_single_output_json(result: dict[str, str], file_name: str, dataset_name: str, duration: float) -> None:
     """
     Export the output of ChatGPT to a json file.
 
@@ -163,24 +157,16 @@ def export_single_output_json(
             json.dump(error_messages, f, indent=4)
     with open(f"{output_folder}/{file_name}_meta.json", "w") as f:
         meta_data = {}
-        meta_data["completion_tokens"] = (
-            result["tokens"]["completion_tokens"] if "tokens" in result else 0
-        )
-        meta_data["prompt_tokens"] = (
-            result["tokens"]["prompt_tokens"] if "tokens" in result else 0
-        )
-        meta_data["total_tokens"] = (
-            meta_data["completion_tokens"] + meta_data["prompt_tokens"]
-        )
+        meta_data["completion_tokens"] = result["tokens"]["completion_tokens"] if "tokens" in result else 0
+        meta_data["prompt_tokens"] = result["tokens"]["prompt_tokens"] if "tokens" in result else 0
+        meta_data["total_tokens"] = meta_data["completion_tokens"] + meta_data["prompt_tokens"]
         meta_data["valid_outputs"] = len(valid_output)
         meta_data["invalid_outputs"] = len(invalid_output)
         meta_data["time"] = round(duration, 2)
         json.dump(meta_data, f, indent=4)
 
 
-def export_output_json(
-    results: list[dict[str, str]], name: str, duration: float
-) -> None:
+def export_output_json(results: list[dict[str, str]], name: str, duration: float) -> None:
     """
     Export the output of ChatGPT to a json file.
 

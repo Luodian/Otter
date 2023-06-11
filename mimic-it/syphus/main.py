@@ -16,16 +16,12 @@ from file_utils import (
 )
 
 
-def task(
-    inputs: Dict[str, Union[str, Dict[str, Union[str, int]]]]
-) -> Dict[str, Union[Dict[str, int], List[str]]]:
+def task(inputs: Dict[str, Union[str, Dict[str, Union[str, int]]]]) -> Dict[str, Union[Dict[str, int], List[str]]]:
     global dataset_name
     try:
         gpt_output, file_id = query_gpt(inputs, dataset_name)
         tokens = dict(gpt_output["usage"])
-        valid_outputs, invalid_outputs = format_output(
-            gpt_output["choices"][0]["message"]["content"], file_id, dataset_name
-        )
+        valid_outputs, invalid_outputs = format_output(gpt_output["choices"][0]["message"]["content"], file_id, dataset_name)
         result = {
             "tokens": tokens,
             "valid_outputs": valid_outputs,
@@ -43,22 +39,14 @@ if __name__ == "__main__":
     openai.api_key = os.environ.get("OPENAI_API_KEY", "")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--name", type=str, required=True, help="Path to the dataset class."
-    )
+    parser.add_argument("--name", type=str, required=True, help="Path to the dataset class.")
     parser.add_argument("--num_threads", type=int, default=8, help="Number of threads.")
-    parser.add_argument(
-        "--slice_start", type=int, default=0, help="Dryrun test, on querying N samples."
-    )
-    parser.add_argument(
-        "--slice_end", type=int, default=-1, help="Dryrun test, on querying N samples."
-    )
+    parser.add_argument("--slice_start", type=int, default=0, help="Dryrun test, on querying N samples.")
+    parser.add_argument("--slice_end", type=int, default=-1, help="Dryrun test, on querying N samples.")
     parser.add_argument("--random_sample", action="store_true", help="Random sample.")
     parser.add_argument("--dataset_version", default="v1", help="Dataset version.")
     parser.add_argument("--prompt_path", help="Path to the prompt file.")
-    parser.add_argument(
-        "--query_inputs_path", "-in", help="Path to the query input file."
-    )
+    parser.add_argument("--query_inputs_path", "-in", help="Path to the query input file.")
 
     args = parser.parse_args()
     dataset_args = {}

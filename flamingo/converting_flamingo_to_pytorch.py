@@ -27,22 +27,12 @@ class FlamingoModel(FlamingoPreTrainedModel):
         args,
     ):
         super().__init__(config)
-        text_tokenizer = LlamaTokenizer.from_pretrained(
-            config.text_config._name_or_path
-        )
-        lang_encoder = LlamaForCausalLM.from_pretrained(
-            config.text_config._name_or_path
-        )
-        vision_encoder = CLIPVisionModel.from_pretrained(
-            config.vision_config._name_or_path
-        )
+        text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+        lang_encoder = LlamaForCausalLM.from_pretrained(config.text_config._name_or_path)
+        vision_encoder = CLIPVisionModel.from_pretrained(config.vision_config._name_or_path)
 
         text_tokenizer.add_special_tokens(
-            {
-                "additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]
-                if args.add_answer_token
-                else ["<|endofchunk|>", "<image>"]
-            }
+            {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"] if args.add_answer_token else ["<|endofchunk|>", "<image>"]}
         )
         if text_tokenizer.pad_token is None:
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
@@ -85,9 +75,7 @@ class FlamingoModel(FlamingoPreTrainedModel):
         self.lang_encoder.set_output_embeddings(new_embeddings)
 
 
-def rename_flamingo_checkpoint(
-    old_ckpt: dict[str, torch.Tensor]
-) -> dict[str, torch.Tensor]:
+def rename_flamingo_checkpoint(old_ckpt: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
     """Rename some keys in the public Flamingo checkpoint"""
     perceiver_pattern1 = re.compile(r"perceiver\.layers\.[0-9]\.0")
     perceiver_pattern2 = re.compile(r"perceiver\.layers\.[0-9]\.1")

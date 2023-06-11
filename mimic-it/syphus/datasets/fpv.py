@@ -29,9 +29,7 @@ class SceneNavigation(AbstractDataset):
         for scene_id, inner_dict in query_inputs.items():
             descriptions = inner_dict["description"]
             random.shuffle(descriptions)
-            formatted_descriptions = [
-                cur_description[1] for cur_description in descriptions[:50]
-            ]
+            formatted_descriptions = [cur_description[1] for cur_description in descriptions[:50]]
             results.append(
                 {
                     "id": scene_id,
@@ -84,14 +82,10 @@ class EGO4D(AbstractDataset):
                         formatted_descriptions.append(f"description: {description}")
                     else:
                         processed_timestamps.add(rounded_timestamp)
-                        formatted_descriptions.append(
-                            f"timestamp: {rounded_timestamp}\ndescription: {description}\nobjects: {dense_caption}"
-                        )
+                        formatted_descriptions.append(f"timestamp: {rounded_timestamp}\ndescription: {description}\nobjects: {dense_caption}")
 
                 formatted_descriptions = "\n".join(formatted_descriptions)
-                formatted_descriptions = (
-                    formatted_descriptions + "\n" + self._get_restrict_words()
-                )
+                formatted_descriptions = formatted_descriptions + "\n" + self._get_restrict_words()
                 filled_clip_id = str(clip_id).zfill(6)
                 results.append(
                     {
