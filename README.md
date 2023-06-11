@@ -97,27 +97,27 @@ Otter is designed to support multi-modal in-context instruction tuning based on 
 
 We train Otter on MIMIC-IT dataset with approximately 2.8 million in-context instruction-response pairs, which are structured into a cohesive template to facilitate various tasks.
 
-The following template encompasses images, user instructions, and model-generated responses, utilizing the `Human` and `GPT` role labels to enable seamless user-assistant interactions.
+The following template encompasses images, user instructions, and model-generated responses, utilizing the `User` and `GPT` role labels to enable seamless user-assistant interactions.
 
 ```
-<image>Human:{instruction} GPT:<answer>{response}<endofchunk>
+<image>User:{instruction} GPT:<answer>{response}<endofchunk>
 ```
 
 Training the Otter model on the MIMIC-IT dataset allows it to acquire different capacities, as demonstrated by the LA and SD tasks. Trained on the LA task, the model exhibits exceptional scene comprehension, reasoning abilities, and multi-round conversation capabilities. 
 
 ```python
-<image>Human:{instruction} GPT:<answer>{response}<endofchunk>
+<image>User:{instruction} GPT:<answer>{response}<endofchunk>
 ```
 
 Regarding the concept of organizing visual-language in-context examples, we demonstrate here the acquired ability of the Otter model to follow inter-contextual instructions after training on the LA-T2T task. The organized input data format is as follows:
 
 ```python
 # Multiple in-context example with similar instructions
-<image>Human:{instruction} GPT:<answer>{response}<|endofchunk|>
+<image>User:{instruction} GPT:<answer>{response}<|endofchunk|>
 # ....
-<image>Human:{instruction} GPT:<answer>{response}<|endofchunk|>
+<image>User:{instruction} GPT:<answer>{response}<|endofchunk|>
 # Query example
-<image>Human:{instruction} GPT:<answer>
+<image>User:{instruction} GPT:<answer>
 ```
 
 For more details, please refer to our [paper](https://arxiv.org/abs/2306.05425)'s appendix for other tasks.
