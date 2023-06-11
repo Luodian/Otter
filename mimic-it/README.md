@@ -31,7 +31,7 @@ The initial release includes LA and DC instruction-response pairs for the MIMIC-
 
 We are contacting the image sources (those public datasets we used) to ask if we can directly release their image/video data in our Otter training format (base64 format within a large JSON file), we will put these data in following link if there would not be any legal/license issue. 
 
-This process may take some time. If you are interested in using this data. Please leave an issue in this repository or email drluodian@gmail.com, and we will keep you updated.
+This process may take some time. If you are interested in using this data, please leave an issue in this repository or email drluodian@gmail.com, and we will keep you updated.
 
 Additionally, we are in the process of providing the scripts used to convert public dataset images and extract specific frames from corresponding videos into the MIMIC-IT input format. This will help map the original dataset to our annotations UUIDs (e.g. from COCO's `000000215677.jpg` -> ours `LA_00_IMG_000000215677`).
 
