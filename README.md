@@ -224,9 +224,9 @@ If you found this repository useful, please consider citing:
 
 ### 👨‍🏫 Acknowledgements
 
-We thank [Chunyuan Li](https://chunyuan.li/) and [Jack Hessel](https://jmhessel.com/) for their advise and support, as well as the [OpenFlamingo](https://github.com/mlfoundations/open_flamingo) team for their great contribution to the open source community.
+We thank [Jack Hessel](https://jmhessel.com/) for the advise and support, as well as the [OpenFlamingo](https://github.com/mlfoundations/open_flamingo) team for their great contribution to the open source community.
 
 ### 📝 Related Projects
 
-- [LLaVA](https://github.com/haotian-liu/LLaVA)
-- [GPT-4-LLM](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
+- [LLaVA: Visual Instruction Tuning](https://github.com/haotian-liu/LLaVA)
+- [Instruction Tuning with GPT4](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
