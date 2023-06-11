@@ -33,9 +33,12 @@
 
 **Video Demo:** [Otter's Conceptual Demo Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili 哔哩哔哩](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)
 
-**Interactive Demo:** [Otter Demo (image version only, video version upcoming)](https://otter.cliangyu.com/)
+**Interactive Demo:** [Otter Demo (video version, trained on MIMIC-IT DC)](https://ottervideo.cliangyu.com/)
 
-**Checkpoints:** [Checkpoints v0.1](https://huggingface.co/luodian/otter-9b-hf) | Checkpoints v0.2 (upcoming)
+**Checkpoints:** 
+- [Checkpoints v0.1 (image version)](https://huggingface.co/luodian/otter-9b-hf)
+- [Checkpoints v0.2 (video version, upcoming)]() 
+- [Checkpoints v0.3 (Otter-E, visual assistant version, upcoming)]()
 
 Otter v0.2 supports videos inputs (frames are arranged as original Flamingo's implementation) and multiple images inputs (they serve as in-context examples for each other). 
 
@@ -222,3 +225,8 @@ If you found this repository useful, please consider citing:
 ### 👨‍🏫 Acknowledgements
 
 We thank [Chunyuan Li](https://chunyuan.li/) and [Jack Hessel](https://jmhessel.com/) for their advise and support, as well as the [OpenFlamingo](https://github.com/mlfoundations/open_flamingo) team for their great contribution to the open source community.
+
+### 📝 Related Projects
+
+- [LLaVA](https://github.com/haotian-liu/LLaVA)
+- [GPT-4-LLM](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
