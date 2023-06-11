@@ -194,6 +194,7 @@ class ModelWorker:
         ).to(self.device)
         generation_kwargs = params.get("generation_kwargs", {})
         logger.info(f"generation_kwargs: {generation_kwargs}")
+        # generation_kwargs["num_beams"] = generation_kwargs.get("num_beams", 3)
         generation_input = dict(
             vision_x=vision_x,
             lang_x=inputs["input_ids"],
