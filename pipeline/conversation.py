@@ -35,7 +35,7 @@ class Conversation:
                 if message:
                     if type(message) is tuple:
                         message = message[0]
-                    ret += role + ": " + message + self.sep
+                    ret += role + ":" + message + self.sep
                 else:
                     ret += role + ":"
             return ret
