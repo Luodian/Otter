@@ -205,6 +205,7 @@ class ModelWorker:
                         .unsqueeze(0)
                         .unsqueeze(0)
                     ).to(self.device)
+                    assert vision_x.shape[3] == len(images) # dim of vision_x: [B, T, F, C, H, W], make sure conditioned on frames of the same video
                 else:
                     vision_x = (
                         image_processor.preprocess(images, return_tensors="pt")[
