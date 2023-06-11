@@ -5,9 +5,7 @@ import csv
 
 rel_ins_ids_num = 2
 
-cur_file_path = (
-    "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACONV_instructions.json"
-)
+cur_file_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACONV_instructions.json"
 # cur_file_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json"
 # cur_file_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json"
 # cur_file_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
@@ -25,14 +23,10 @@ if "CONV" in cur_file_path:
         _, _, _, conversation_id, round_id = i.split("_")
         if conversation_id not in conversation_dict:
             conversation_dict[conversation_id] = 0
-        conversation_dict[conversation_id] = max(
-            int(round_id), conversation_dict[conversation_id]
-        )
+        conversation_dict[conversation_id] = max(int(round_id), conversation_dict[conversation_id])
 
 
-target_json_path = (
-    "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACONV_train.json"
-)
+target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACONV_train.json"
 # target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json"
 # target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json"
 # target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
@@ -42,10 +36,7 @@ target_json = {}
 for cur_id in tqdm(cur_file):
     if "CONV" in target_json_path:
         _, _, _, conversation_id, round_id = cur_id.split("_")
-        if (
-            cur_id
-            == f"LACONV_00_INS_{conversation_id}_{conversation_dict[conversation_id]}"
-        ):
+        if cur_id == f"LACONV_00_INS_{conversation_id}_{conversation_dict[conversation_id]}":
             instruction_id = cur_id
             if len(cur_file[cur_id]["rel_ins_ids"]) < rel_ins_ids_num:
                 if len(cur_file[cur_id]["rel_ins_ids"]) == 0:

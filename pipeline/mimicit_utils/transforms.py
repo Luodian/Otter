@@ -39,10 +39,7 @@ def crop(image, target, region, delete=True):
         num_polygons = polygons.shape[0]
         max_size = torch.as_tensor([w, h], dtype=torch.float32)
         start_coord = torch.cat(
-            [
-                torch.tensor([j, i], dtype=torch.float32)
-                for _ in range(polygons.shape[1] // 2)
-            ],
+            [torch.tensor([j, i], dtype=torch.float32) for _ in range(polygons.shape[1] // 2)],
             dim=0,
         )
         cropped_boxes = polygons - start_coord
@@ -80,17 +77,13 @@ def hflip(image, target):
     target = target.copy()
     if "boxes" in target:
         boxes = target["boxes"]
-        boxes = boxes[:, [2, 1, 0, 3]] * torch.as_tensor(
-            [-1, 1, -1, 1]
-        ) + torch.as_tensor([w, 0, w, 0])
+        boxes = boxes[:, [2, 1, 0, 3]] * torch.as_tensor([-1, 1, -1, 1]) + torch.as_tensor([w, 0, w, 0])
         target["boxes"] = boxes
 
     if "polygons" in target:
         polygons = target["polygons"]
         num_polygons = polygons.shape[0]
-        polygons = polygons.reshape(num_polygons, -1, 2) * torch.as_tensor(
-            [-1, 1]
-        ) + torch.as_tensor([w, 0])
+        polygons = polygons.reshape(num_polygons, -1, 2) * torch.as_tensor([-1, 1]) + torch.as_tensor([w, 0])
         target["polygons"] = polygons
 
     if "masks" in target:
@@ -138,26 +131,19 @@ def resize(image, target, size, max_size=None):
     if target is None:
         return rescaled_image
 
-    ratios = tuple(
-        float(s) / float(s_orig) for s, s_orig in zip(rescaled_image.size, image.size)
-    )
+    ratios = tuple(float(s) / float(s_orig) for s, s_orig in zip(rescaled_image.size, image.size))
     ratio_width, ratio_height = ratios
 
     target = target.copy()
     if "boxes" in target:
         boxes = target["boxes"]
-        scaled_boxes = boxes * torch.as_tensor(
-            [ratio_width, ratio_height, ratio_width, ratio_height]
-        )
+        scaled_boxes = boxes * torch.as_tensor([ratio_width, ratio_height, ratio_width, ratio_height])
         target["boxes"] = scaled_boxes
 
     if "polygons" in target:
         polygons = target["polygons"]
         scaled_ratio = torch.cat(
-            [
-                torch.tensor([ratio_width, ratio_height])
-                for _ in range(polygons.shape[1] // 2)
-            ],
+            [torch.tensor([ratio_width, ratio_height]) for _ in range(polygons.shape[1] // 2)],
             dim=0,
         )
         scaled_polygons = polygons * scaled_ratio
@@ -211,15 +197,11 @@ class ObjectCenterCrop(object):
             0,
         )
         crop_top = max(
-            center_y
-            - crop_height / 2
-            + min(image_height - center_y - crop_height / 2, 0),
+            center_y - crop_height / 2 + min(image_height - center_y - crop_height / 2, 0),
             0,
         )
 
-        return crop(
-            img, target, (crop_top, crop_left, crop_height, crop_width), delete=False
-        )
+        return crop(img, target, (crop_top, crop_left, crop_height, crop_width), delete=False)
 
 
 class RandomHorizontalFlip(object):
@@ -272,10 +254,7 @@ class Normalize(object):
         if "polygons" in target:
             polygons = target["polygons"]
             scale = torch.cat(
-                [
-                    torch.tensor([w, h], dtype=torch.float32)
-                    for _ in range(polygons.shape[1] // 2)
-                ],
+                [torch.tensor([w, h], dtype=torch.float32) for _ in range(polygons.shape[1] // 2)],
                 dim=0,
             )
             polygons = polygons / scale
@@ -321,9 +300,7 @@ class LargeScaleJitter(object):
 
         if "boxes" in target:
             boxes = target["boxes"]
-            scaled_boxes = boxes * torch.as_tensor(
-                [ratio_width, ratio_height, ratio_width, ratio_height]
-            )
+            scaled_boxes = boxes * torch.as_tensor([ratio_width, ratio_height, ratio_width, ratio_height])
             target["boxes"] = scaled_boxes
 
         if "area" in target:
@@ -379,27 +356,20 @@ class LargeScaleJitter(object):
     def pad_target(self, padding, target):
         target = target.copy()
         if "masks" in target:
-            target["masks"] = torch.nn.functional.pad(
-                target["masks"], (0, padding[1], 0, padding[0])
-            )
+            target["masks"] = torch.nn.functional.pad(target["masks"], (0, padding[1], 0, padding[0]))
         return target
 
     def __call__(self, image, target=None):
         image_size = image.size
         image_size = torch.tensor(image_size[::-1])
 
-        random_scale = (
-            torch.rand(1) * (self.aug_scale_max - self.aug_scale_min)
-            + self.aug_scale_min
-        )
+        random_scale = torch.rand(1) * (self.aug_scale_max - self.aug_scale_min) + self.aug_scale_min
         scaled_size = (random_scale * self.desired_size).round()
 
         scale = torch.maximum(scaled_size / image_size[0], scaled_size / image_size[1])
         scaled_size = (image_size * scale).round().int()
 
-        scaled_image = F.resize(
-            image, scaled_size.tolist(), interpolation=Image.BICUBIC
-        )
+        scaled_image = F.resize(image, scaled_size.tolist(), interpolation=Image.BICUBIC)
 
         if target is not None:
             target = self.rescale_target(scaled_size, image_size, target)
@@ -421,9 +391,7 @@ class LargeScaleJitter(object):
         else:
             assert False
             padding = self.desired_size - scaled_size
-            output_image = F.pad(
-                scaled_image, [0, 0, padding[1].item(), padding[0].item()]
-            )
+            output_image = F.pad(scaled_image, [0, 0, padding[1].item(), padding[0].item()])
             if target is not None:
                 target = self.pad_target(padding, target)
 
@@ -450,9 +418,7 @@ class OriginLargeScaleJitter(object):
 
         if "boxes" in target:
             boxes = target["boxes"]
-            scaled_boxes = boxes * torch.as_tensor(
-                [ratio_width, ratio_height, ratio_width, ratio_height]
-            )
+            scaled_boxes = boxes * torch.as_tensor([ratio_width, ratio_height, ratio_width, ratio_height])
             target["boxes"] = scaled_boxes
 
         if "area" in target:
@@ -508,23 +474,16 @@ class OriginLargeScaleJitter(object):
     def pad_target(self, padding, target):
         target = target.copy()
         if "masks" in target:
-            target["masks"] = torch.nn.functional.pad(
-                target["masks"], (0, padding[1], 0, padding[0])
-            )
+            target["masks"] = torch.nn.functional.pad(target["masks"], (0, padding[1], 0, padding[0]))
         return target
 
     def __call__(self, image, target=None):
         image_size = image.size
         image_size = torch.tensor(image_size[::-1])
 
-        out_desired_size = (
-            (self.desired_size * image_size / max(image_size)).round().int()
-        )
+        out_desired_size = (self.desired_size * image_size / max(image_size)).round().int()
 
-        random_scale = (
-            torch.rand(1) * (self.aug_scale_max - self.aug_scale_min)
-            + self.aug_scale_min
-        )
+        random_scale = torch.rand(1) * (self.aug_scale_max - self.aug_scale_min) + self.aug_scale_min
         scaled_size = (random_scale * self.desired_size).round()
 
         scale = torch.minimum(scaled_size / image_size[0], scaled_size / image_size[1])
@@ -551,9 +510,7 @@ class OriginLargeScaleJitter(object):
                 target = self.crop_target(region, target)
         else:
             padding = out_desired_size - scaled_size
-            output_image = F.pad(
-                scaled_image, [0, 0, padding[1].item(), padding[0].item()]
-            )
+            output_image = F.pad(scaled_image, [0, 0, padding[1].item(), padding[0].item()])
             if target is not None:
                 target = self.pad_target(padding, target)
 

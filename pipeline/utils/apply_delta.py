@@ -11,14 +11,10 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 
 def apply_delta(base_model_path, target_model_path, delta_path):
     print("Loading base model")
-    base = AutoModelForCausalLM.from_pretrained(
-        base_model_path, torch_dtype=torch.float16, low_cpu_mem_usage=True
-    )
+    base = AutoModelForCausalLM.from_pretrained(base_model_path, torch_dtype=torch.float16, low_cpu_mem_usage=True)
 
     print("Loading delta")
-    delta = AutoModelForCausalLM.from_pretrained(
-        delta_path, torch_dtype=torch.float16, low_cpu_mem_usage=True
-    )
+    delta = AutoModelForCausalLM.from_pretrained(delta_path, torch_dtype=torch.float16, low_cpu_mem_usage=True)
     delta_tokenizer = AutoTokenizer.from_pretrained(delta_path)
 
     print("Applying delta")

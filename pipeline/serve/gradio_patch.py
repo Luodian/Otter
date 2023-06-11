@@ -94,9 +94,7 @@ class Chatbot(Changeable, Selectable, IOComponent, JSONSerializable):
         }
         return updated_config
 
-    def _process_chat_messages(
-        self, chat_message: str | Tuple | List | Dict | None
-    ) -> str | Dict | None:
+    def _process_chat_messages(self, chat_message: str | Tuple | List | Dict | None) -> str | Dict | None:
         if chat_message is None:
             return None
         elif isinstance(chat_message, (tuple, list)):
@@ -108,9 +106,7 @@ class Chatbot(Changeable, Selectable, IOComponent, JSONSerializable):
                 "data": None,  # These last two fields are filled in by the frontend
                 "is_file": True,
             }
-        elif isinstance(
-            chat_message, dict
-        ):  # This happens for previously processed messages
+        elif isinstance(chat_message, dict):  # This happens for previously processed messages
             return chat_message
         elif isinstance(chat_message, str):
             # return self.md.render(chat_message)
@@ -120,9 +116,7 @@ class Chatbot(Changeable, Selectable, IOComponent, JSONSerializable):
 
     def postprocess(
         self,
-        y: List[
-            Tuple[str | Tuple | List | Dict | None, str | Tuple | List | Dict | None]
-        ],
+        y: List[Tuple[str | Tuple | List | Dict | None, str | Tuple | List | Dict | None]],
     ) -> List[Tuple[str | Dict | None, str | Dict | None]]:
         """
         Parameters:
@@ -134,12 +128,8 @@ class Chatbot(Changeable, Selectable, IOComponent, JSONSerializable):
             return []
         processed_messages = []
         for message_pair in y:
-            assert isinstance(
-                message_pair, (tuple, list)
-            ), f"Expected a list of lists or list of tuples. Received: {message_pair}"
-            assert (
-                len(message_pair) == 2
-            ), f"Expected a list of lists of length 2 or list of tuples of length 2. Received: {message_pair}"
+            assert isinstance(message_pair, (tuple, list)), f"Expected a list of lists or list of tuples. Received: {message_pair}"
+            assert len(message_pair) == 2, f"Expected a list of lists of length 2 or list of tuples of length 2. Received: {message_pair}"
 
             human_message = message_pair[0]
             if type(human_message) == tuple:

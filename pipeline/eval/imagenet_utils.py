@@ -1002,6 +1002,4 @@ openai_imagenet_classnames = [
     "toilet paper",
 ]
 # Maps numeric class ids to labels
-IMAGENET_1K_CLASS_ID_TO_LABEL = dict(
-    zip(range(len(openai_imagenet_classnames)), openai_imagenet_classnames)
-)
+IMAGENET_1K_CLASS_ID_TO_LABEL = dict(zip(range(len(openai_imagenet_classnames)), openai_imagenet_classnames))

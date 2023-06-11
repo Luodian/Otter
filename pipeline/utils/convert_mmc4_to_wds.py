@@ -30,9 +30,7 @@ def main():
     doc_shards = list(braceexpand.braceexpand(args.doc_shards))
     image_shards = list(braceexpand.braceexpand(args.image_shards))
 
-    assert len(doc_shards) == len(
-        image_shards
-    ), "Each doc shards must have a corresponding image shard"
+    assert len(doc_shards) == len(image_shards), "Each doc shards must have a corresponding image shard"
 
     with wds.ShardWriter(args.output_dir + "/%09d.tar", maxcount=1000) as sink:
         for idx in range(len(doc_shards)):
@@ -53,17 +51,11 @@ def main():
                         # Add each image to the tar file
                         for img_idx, image_name in enumerate(image_names):
                             try:
-                                image = image_tar.extractfile(
-                                    f"{image_tar.getnames()[0]}/{image_name}"
-                                )
+                                image = image_tar.extractfile(f"{image_tar.getnames()[0]}/{image_name}")
                                 # convert to base64
                                 image_bytes = image.read()
-                                image_base64 = base64.b64encode(image_bytes).decode(
-                                    "utf-8"
-                                )
-                                sample_data["image_info"][img_idx][
-                                    "image_base64"
-                                ] = image_base64
+                                image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+                                sample_data["image_info"][img_idx]["image_base64"] = image_base64
                             except Exception as e:
                                 print(f"Error: {e}")
                                 found_key = False

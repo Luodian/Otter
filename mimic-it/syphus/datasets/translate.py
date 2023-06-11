@@ -25,8 +25,6 @@ class TranslationDataset(AbstractDataset):
             json_data = json.load(f)["data"]
         temp = []
         for file_id, i in json_data.items():
-            all_string = (
-                "<a>" + i["instruction"] + "</a>" + "<b>" + i["answer"] + "</b>"
-            )
+            all_string = "<a>" + i["instruction"] + "</a>" + "<b>" + i["answer"] + "</b>"
             temp.extend([{"id": file_id, "sentences": all_string}])
         return temp

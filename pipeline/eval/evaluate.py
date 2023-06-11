@@ -37,9 +37,7 @@ parser.add_argument(
     default=1,
     help="how often to add a cross-attention layer after each transformer layer",
 )
-parser.add_argument(
-    "--results_file", type=str, default=None, help="JSON file to save results"
-)
+parser.add_argument("--results_file", type=str, default=None, help="JSON file to save results")
 
 # Trial arguments
 parser.add_argument("--shots", nargs="+", default=[0, 4, 8, 16, 32], type=int)
@@ -55,9 +53,7 @@ parser.add_argument(
     default=[0],
     help="Seeds to use for each trial for picking demonstrations and eval sets",
 )
-parser.add_argument(
-    "--num_samples", type=int, default=5000, help="Number of samples to evaluate on"
-)
+parser.add_argument("--num_samples", type=int, default=5000, help="Number of samples to evaluate on")
 
 parser.add_argument("--batch_size", type=int, default=8)
 parser.add_argument("--device", type=int, default=0)
@@ -200,9 +196,7 @@ def main():
                 print(f"Shots {shot} Trial {trial} CIDEr score: {cider_score}")
                 scores.append(cider_score)
             print(f"Shots {shot} Mean CIDEr score: {np.mean(scores)}")
-            results["flickr30"].append(
-                {"shots": shot, "trials": scores, "mean": np.mean(scores)}
-            )
+            results["flickr30"].append({"shots": shot, "trials": scores, "mean": np.mean(scores)})
     results = defaultdict(list)
 
     if args.eval_coco:
@@ -225,9 +219,7 @@ def main():
                 print(f"Shots {shot} Trial {trial} CIDEr score: {cider_score}")
                 scores.append(cider_score)
             print(f"Shots {shot} Mean CIDEr score: {np.mean(scores)}")
-            results["coco"].append(
-                {"shots": shot, "trials": scores, "mean": np.mean(scores)}
-            )
+            results["coco"].append({"shots": shot, "trials": scores, "mean": np.mean(scores)})
 
     if args.eval_ok_vqa:
         print("Evaluating on OK-VQA...")
@@ -251,9 +243,7 @@ def main():
                 print(f"Shots {shot} Trial {trial} OK-VQA score: {ok_vqa_score}")
                 scores.append(ok_vqa_score)
             print(f"Shots {shot} Mean OK-VQA score: {np.mean(scores)}")
-            results["ok_vqa"].append(
-                {"shots": shot, "trials": scores, "mean": np.mean(scores)}
-            )
+            results["ok_vqa"].append({"shots": shot, "trials": scores, "mean": np.mean(scores)})
 
     if args.eval_vqav2:
         print("Evaluating on VQAv2...")
@@ -277,9 +267,7 @@ def main():
                 print(f"Shots {shot} Trial {trial} VQA score: {vqa_score}")
                 scores.append(vqa_score)
             print(f"Shots {shot} Mean VQA score: {np.mean(scores)}")
-            results["vqav2"].append(
-                {"shots": shot, "trials": scores, "mean": np.mean(scores)}
-            )
+            results["vqav2"].append({"shots": shot, "trials": scores, "mean": np.mean(scores)})
 
     if args.eval_imagenet:
         print("Evaluating on ImageNet...")
@@ -297,14 +285,10 @@ def main():
                     seed=seed,
                     imagenet_root=args.imagenet_root,
                 )
-                print(
-                    f"Shots {shot} Trial {trial} " f"ImageNet score: {imagenet_score}"
-                )
+                print(f"Shots {shot} Trial {trial} " f"ImageNet score: {imagenet_score}")
                 scores.append(imagenet_score)
             print(f"Shots {shot} Mean ImageNet score: {np.mean(scores)}")
-            results["imagenet"].append(
-                {"shots": shot, "trials": scores, "mean": np.mean(scores)}
-            )
+            results["imagenet"].append({"shots": shot, "trials": scores, "mean": np.mean(scores)})
 
     if args.results_file is not None:
         with open(args.results_file, "w") as f:
@@ -313,32 +297,24 @@ def main():
 
 def get_random_indices(num_samples, query_set_size, full_dataset, seed):
     if num_samples + query_set_size > len(full_dataset):
-        raise ValueError(
-            f"num_samples + num_shots must be less than {len(full_dataset)}"
-        )
+        raise ValueError(f"num_samples + num_shots must be less than {len(full_dataset)}")
 
     # get a random subset of the dataset
     np.random.seed(seed)
-    random_indices = np.random.choice(
-        len(full_dataset), num_samples + query_set_size, replace=False
-    )
+    random_indices = np.random.choice(len(full_dataset), num_samples + query_set_size, replace=False)
     return random_indices
 
 
 def prepare_eval_samples_and_dataset(full_dataset, random_indices, query_set_size):
     # get in context samples
     in_context_samples = [full_dataset[i] for i in random_indices[:query_set_size]]
-    eval_dataset = torch.utils.data.Subset(
-        full_dataset, random_indices[query_set_size:]
-    )
+    eval_dataset = torch.utils.data.Subset(full_dataset, random_indices[query_set_size:])
     return in_context_samples, eval_dataset
 
 
 def get_context_images(image_processor, in_context_samples, num_shots):
     if num_shots > 0:
-        context_images = [
-            image_processor(s["image"]).unsqueeze(0) for s in in_context_samples
-        ]
+        context_images = [image_processor(s["image"]).unsqueeze(0) for s in in_context_samples]
         context_images = torch.cat(context_images, dim=0)
         context_images = context_images.unsqueeze(1).unsqueeze(0)
     else:
@@ -352,11 +328,7 @@ def get_context_text(
     effective_num_shots,
     num_shots,
 ) -> str:
-    context_text = (
-        "".join([get_prompt(s) for s in in_context_samples])
-        if effective_num_shots > 0
-        else ""
-    )
+    context_text = "".join([get_prompt(s) for s in in_context_samples]) if effective_num_shots > 0 else ""
 
     if num_shots == 0:
         context_text = context_text.replace("<image>", "")
@@ -470,9 +442,7 @@ def evaluate_coco_flickr(
     desc = "Running inference Flickr30" if is_flickr else "Running inference COCO"
 
     for batch in more_itertools.chunked(tqdm(eval_dataset, desc=desc), batch_size):
-        batch_demo_samples = sample_batch_demos_from_query_set(
-            in_context_samples, effective_num_shots, len(batch)
-        )
+        batch_demo_samples = sample_batch_demos_from_query_set(in_context_samples, effective_num_shots, len(batch))
 
         context_images = [
             get_context_images(
@@ -523,10 +493,7 @@ def evaluate_coco_flickr(
             length_penalty=length_penalty,
             input_ids=input_ids,
         )
-        new_predictions = [
-            postprocess_captioning_generation(out).replace('"', "")
-            for out in tokenizer.batch_decode(outputs, skip_special_tokens=True)
-        ]
+        new_predictions = [postprocess_captioning_generation(out).replace('"', "") for out in tokenizer.batch_decode(outputs, skip_special_tokens=True)]
 
         for i, sample in enumerate(batch):
             predictions[sample["image_id"]] = {
@@ -535,18 +502,11 @@ def evaluate_coco_flickr(
 
     # save the predictions to a temporary file
     random_uuid = str(uuid.uuid4())
-    results_path = (
-        f"flickrresults_{random_uuid}.json"
-        if is_flickr
-        else f"cocoresults_{random_uuid}.json"
-    )
+    results_path = f"flickrresults_{random_uuid}.json" if is_flickr else f"cocoresults_{random_uuid}.json"
     with open(results_path, "w") as f:
         f.write(
             json.dumps(
-                [
-                    {"image_id": k, "caption": predictions[k]["caption"]}
-                    for k in predictions
-                ],
+                [{"image_id": k, "caption": predictions[k]["caption"]} for k in predictions],
                 indent=4,
             )
         )
@@ -615,9 +575,7 @@ def evaluate_vqa(
     effective_num_shots = num_shots if num_shots > 0 else 2
 
     if num_samples + effective_num_shots > len(full_dataset):
-        raise ValueError(
-            f"num_samples + num_shots must be less than or equal to {len(full_dataset)}"
-        )
+        raise ValueError(f"num_samples + num_shots must be less than or equal to {len(full_dataset)}")
 
     random_indices = get_random_indices(num_samples, query_set_size, full_dataset, seed)
 
@@ -633,12 +591,8 @@ def evaluate_vqa(
     model.eval()
     predictions = []
 
-    for batch in more_itertools.chunked(
-        tqdm(eval_dataset, desc="Running inference"), batch_size
-    ):
-        batch_demo_samples = sample_batch_demos_from_query_set(
-            in_context_samples, effective_num_shots, len(batch)
-        )
+    for batch in more_itertools.chunked(tqdm(eval_dataset, desc="Running inference"), batch_size):
+        batch_demo_samples = sample_batch_demos_from_query_set(in_context_samples, effective_num_shots, len(batch))
 
         context_images = [
             get_context_images(
@@ -666,9 +620,7 @@ def evaluate_vqa(
             num_shots=num_shots,
         )
 
-        batch_text = [
-            context_text[i] + get_prompt(s, train=False) for i, s in enumerate(batch)
-        ]
+        batch_text = [context_text[i] + get_prompt(s, train=False) for i, s in enumerate(batch)]
 
         tokenizer.padding_side = "left"
         encodings = tokenizer(
@@ -679,9 +631,7 @@ def evaluate_vqa(
             max_length=2000,
         )
         input_ids = encodings["input_ids"].to(device if device >= 0 else "cpu")
-        attention_mask = encodings["attention_mask"].to(
-            device if device >= 0 else "cpu"
-        )
+        attention_mask = encodings["attention_mask"].to(device if device >= 0 else "cpu")
 
         outputs = get_outputs(
             model=model,
@@ -694,23 +644,11 @@ def evaluate_vqa(
             input_ids=input_ids,
         )
 
-        process_function = (
-            postprocess_vqa_generation
-            if vqa_dataset == "vqa"
-            else postprocess_ok_vqa_generation
-        )
+        process_function = postprocess_vqa_generation if vqa_dataset == "vqa" else postprocess_ok_vqa_generation
 
-        new_predictions = [
-            process_function(out)
-            for out in tokenizer.batch_decode(outputs, skip_special_tokens=True)
-        ]
+        new_predictions = [process_function(out) for out in tokenizer.batch_decode(outputs, skip_special_tokens=True)]
 
-        predictions.extend(
-            [
-                {"answer": p, "question_id": sample["question_id"]}
-                for p, sample in zip(new_predictions, batch)
-            ]
-        )
+        predictions.extend([{"answer": p, "question_id": sample["question_id"]} for p, sample in zip(new_predictions, batch)])
     # save the predictions to a temporary file
     random_uuid = str(uuid.uuid4())
     with open(f"{vqa_dataset}results_{random_uuid}.json", "w") as f:
@@ -762,19 +700,12 @@ def evaluate_imagenet(
     effective_num_shots = num_shots if num_shots > 0 else 2
 
     if num_samples + effective_num_shots > len(full_dataset):
-        raise ValueError(
-            f"num_samples + num_shots must be less than or equal to "
-            f"{len(full_dataset)} "
-        )
+        raise ValueError(f"num_samples + num_shots must be less than or equal to " f"{len(full_dataset)} ")
 
-    random_indices = get_random_indices(
-        num_samples, effective_num_shots, full_dataset, seed
-    )
+    random_indices = get_random_indices(num_samples, effective_num_shots, full_dataset, seed)
 
     eoc_token = "<|endofchunk|>"
-    eoc_token_id = tokenizer.additional_special_tokens_ids[
-        tokenizer.additional_special_tokens.index(eoc_token)
-    ]
+    eoc_token_id = tokenizer.additional_special_tokens_ids[tokenizer.additional_special_tokens.index(eoc_token)]
 
     # Padding from right allows efficient precomputing of context activations.
     tokenizer.padding_side = "right"
@@ -866,9 +797,7 @@ def evaluate_imagenet(
         # For each ImageNet class, construct the output prompt, compute a
         # forward pass, and store the results.
         for imagenet_class_name in tqdm(openai_imagenet_classnames):
-            batch_text = [
-                context_text + _imagenet_prompt(imagenet_class_name, False) + eoc_token
-            ] * batch_size
+            batch_text = [context_text + _imagenet_prompt(imagenet_class_name, False) + eoc_token] * batch_size
 
             full_batch_encodings = tokenizer(batch_text, **tokenizer_kwargs)
 
@@ -877,23 +806,14 @@ def evaluate_imagenet(
             # context_len:] inputs that have not been precomputed and
             # vary per class.
             full_batch_input_ids = full_batch_encodings["input_ids"].to(device)
-            full_batch_attention_mask = full_batch_encodings["attention_mask"].to(
-                device
-            )
+            full_batch_attention_mask = full_batch_encodings["attention_mask"].to(device)
 
             # Sanity check that the encoded inputs with context are the same
             # as the encoded context alone, for every example in the batch
-            assert torch.all(
-                context_ids[0, :] == full_batch_input_ids[:, :context_len]
-            ).item()
+            assert torch.all(context_ids[0, :] == full_batch_input_ids[:, :context_len]).item()
 
             # Clone the nested structure of the past key values
-            past_key_values = tuple(
-                [
-                    tuple([x.clone() for x in inner])
-                    for inner in context_precomputed.past_key_values
-                ]
-            )
+            past_key_values = tuple([tuple([x.clone() for x in inner]) for inner in context_precomputed.past_key_values])
 
             # Compute the outputs without recomputing context representations.
             outputs = model(
@@ -937,9 +857,7 @@ def evaluate_imagenet(
     print(f"[DEBUG] ImageNet accuracy with max prob method is {acc_max_prob}")
     print(f"[DEBUG] ImageNet accuracy with min loss method is {acc_min_loss}")
     print(f"[DEBUG] printing ImageNet predictions and labels:")
-    for yhat_prob, yhat_loss, y in zip(
-        predictions_max_prob, predictions_min_loss, labels
-    ):
+    for yhat_prob, yhat_loss, y in zip(predictions_max_prob, predictions_min_loss, labels):
         print(
             " " * 30 + f"label: {IMAGENET_1K_CLASS_ID_TO_LABEL[y]}"
             f"\nprediction (max prob method): "
