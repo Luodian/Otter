@@ -184,25 +184,40 @@ class ModelWorker:
         prompt = params["prompt"]
         logger.info(f"Prompt:::{prompt}")
         images = params.get("images", None)
+        
         if images is not None:
             assert type(images) is list
             if len(images) > 0:
                 if type(images[0]) is list:  # current support single video
-                    images = images[0]
+                    images = images[-1]
+                    is_video = True
+                else:
+                    is_video = False
                 images = [
                     Image.open(BytesIO(base64.b64decode(image))) for image in images
                 ]
                 logger.info(f"{len(images)} images conditioned.")
-                vision_x = (
-                    image_processor.preprocess(images, return_tensors="pt")[
-                        "pixel_values"
-                    ]
-                    .unsqueeze(1)
-                    .unsqueeze(0)
-                ).to(self.device)
+                if is_video is True:
+                    vision_x = (
+                        image_processor.preprocess(images, return_tensors="pt")[
+                            "pixel_values"
+                        ]
+                        .unsqueeze(0)
+                        .unsqueeze(0)
+                    ).to(self.device)
+                else:
+                    vision_x = (
+                        image_processor.preprocess(images, return_tensors="pt")[
+                            "pixel_values"
+                        ]
+                        .unsqueeze(1)
+                        .unsqueeze(0)
+                    ).to(self.device)
+                logger.info(f"Is video? {is_video} vision_x shape: {vision_x.shape}")
             else:
                 images = None
                 vision_x = None
+        
         streamer = TextIteratorStreamer(
             tokenizer, skip_prompt=True, skip_special_tokens=True
         )
