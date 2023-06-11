@@ -43,7 +43,7 @@ priority = {
 }
 
 
-def extract_frames(video_path, num_frames=128):
+def extract_frames(video_path, num_frames=16):
     video = cv2.VideoCapture(video_path)
     total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
     frame_step = total_frames // num_frames
@@ -512,7 +512,7 @@ a:link {
   width: 50%;
 }
 </style>
-<h1><a href="https://github.com/Luodian/otter"><img src="https://cliangyu.com/images/li2023otter.png" alt="Otter: Multi-Modal In-Context Learning Model with Instruction Tuning" width="500px" class="center"></a></h1>
+<h1><a href="https://github.com/Luodian/otter"><img src="https://i.postimg.cc/MKmyP9wH/new-banner.png" alt="Otter: Multi-Modal In-Context Learning Model with Instruction Tuning" width="500px" class="center"></a></h1>
 </header>
 <h2><a href="https://github.com/Luodian/otter"><img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" style="height: 15px; display:inline;" class="icon" alt="github">GitHub</a>
 &nbsp;&nbsp;&nbsp;
