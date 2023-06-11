@@ -9,7 +9,7 @@ High-quality instructions are essential for the zero-shot performance of large l
 MIMIC-IT covers a vast array of real-life scenarios that empower Vision-Language Models (VLMs) to not only comprehend general scenes, but also to reason about context and astutely differentiate between observations. MIMIC-IT also enables the application of egocentric visual assistant model that can serve that can answer your questions like **Hey, Do you think I left my keys on the table?**. In addition to English, MIMIC-IT is also multilingual, supporting Chinese, Korean, Japanese, German, French, Spanish, and Arabic, thereby allowing a larger global audience to altogether enjoy from the convenience brought about by advancements in artificial intelligence.
 
 <p align="center" width="100%">
-<img src="https://i.postimg.cc/k406BN26/mimic-it.png"  width="80%" height="80%">
+<img src="https://i.postimg.cc/4x66gHhw/mimic-it.jpg"  width="80%" height="80%">
 </p>
 
 ## Dataset Statistics
@@ -29,15 +29,17 @@ MIMIC-IT covers a vast array of real-life scenarios that empower Vision-Language
 
 The initial release includes LA and DC instruction-response pairs for the MIMIC-IT dataset. We plan to release additional datasets with a larger number of instruction pairs and more information after further examination.
 
-We are addressing potential issues related to directly releasing image/video data in our Otter training format, which involves storing images/video frames in base64 format within a large JSON file. This process may take some time. If you are interested in using this data, please leave an issue in this repository or email drluodian@gmail.com, and we will keep you updated.
+We are contacting the image sources (those public datasets we used) to ask if we can directly release their image/video data in our Otter training format (base64 format within a large JSON file), we will put these data in following link if there would not be any legal/license issue. 
 
-Additionally, we are in the process of cleaning the scripts used to convert public dataset images and extract specific frames from corresponding videos into the MIMIC-IT input format. This will help map the original dataset to our annotations UUIDs (e.g. from COCO's `000000215677.jpg` -> ours `LA_00_IMG_000000215677`).
+This process may take some time. If you are interested in using this data, please leave an issue in this repository or email drluodian@gmail.com, and we will keep you updated.
+
+Additionally, we are in the process of providing the scripts used to convert public dataset images and extract specific frames from corresponding videos into the MIMIC-IT input format. This will help map the original dataset to our annotations UUIDs (e.g. from COCO's `000000215677.jpg` -> ours `LA_00_IMG_000000215677`).
 
 
 | Scenes | Images/Videos | Size | Annotations | Size |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **LA In-context** | Processing | 5.2GB |[link]() | 269.3MB |
-| **Dense Caption** | Processing | 86.4GB |[link]() | | 269.1MB | 
+| :--- | :---: | :---: | :---: | :---: |
+| **LA In-context** | Processing | 5.2GB |[link](https://entuedu-my.sharepoint.com/:u:/r/personal/libo0013_e_ntu_edu_sg/Documents/MIMIC-IT-Release/LA_instructions.json.zip?csf=1&web=1&e=SvaKh3) | 269.3MB |
+| **Dense Caption** | Processing | 86.4GB |[link](https://entuedu-my.sharepoint.com/:u:/r/personal/libo0013_e_ntu_edu_sg/Documents/MIMIC-IT-Release/DC_instructions.json.zip?csf=1&web=1&e=jM4gGB) | 269.1MB | 
 | **TV Caption** | Processing | 17.0GB | Cleaning | 55.6MB |
 | **Visual Story Telling** | Processing | 16.2GB |Cleaning | 33.4MB |
 | **Scene Navigation (Indoor Event Planning)** | Processing | 2.3GB |Cleaning | 7.6MB |

@@ -1,6 +1,5 @@
 accelerate>=0.19.0
 braceexpand>=0.1.7
-data_utils>=0.0.7
 einops>=0.6.1
 einops_exts>=0.0.4
 fastapi>=0.95.2

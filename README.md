@@ -29,7 +29,7 @@
 ![](https://black.readthedocs.io/en/stable/_static/license.svg)
 ![](https://img.shields.io/badge/code%20style-black-000000.svg)
 
-[Project Page](https://otter-ntu.github.io/) | [Otter Paper](https://arxiv.org/abs/2305.03726) | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425) | [MIMIC-IT Dataset](mimic-it/readme.md)
+[Project Page](https://otter-ntu.github.io/) | [Otter Paper](https://arxiv.org/abs/2305.03726) | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425) | [MIMIC-IT Dataset](mimic-it/README.md)
 
 **Video Demo:** [Otter's Conceptual Demo Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili 哔哩哔哩](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)
 
@@ -49,17 +49,17 @@ Otter v0.2 supports videos inputs (frames are arranged as original Flamingo's im
 
 ## 🦾 Update
 
-- [2023-06-08]
+**[2023-06-08]**
 1. Introducing Project Otter's brand new homepage: https://otter-ntu.github.io/. Check it out now!
 2. Check our [paper](https://arxiv.org/abs/2306.05425) introducing MIMIC-IT in details. Meet MIMIC-IT, the first multimodal in-context instruction tuning dataset with 2.8M instructions! Designed to create diverse vision-language instructions that align with real-world visual content, MIMIC-IT spans across seven image and video datasets covering a vast array of scenes. From general scene understanding to spotting subtle differences and enhancing egocentric view comprehension for AR headsets, our MIMIC-IT dataset has it all. Discover more about the MIMIC-IT dataset now!
 3. Stay tuned for our upcoming Otter Model v0.2, trained on the MIMIC-IT dataset! With the ability to understand daily scenes, reason in context, spot differences in observations, and act as an egocentric assistant. Checkout conceptual demo video at [Youtube](https://www.youtube.com/watch?v=K8o_LKGQJhs) or [Bilibili](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)!
 
-- [2023-05-14]
-  1. Otter battles with Owl? the Pokémon Arena is here! Our model is selected into [Multi-Modal Arena](http://vlarena.opengvlab.com/). This is an interesting Multi-Modal Foundation Models competition arena that let you see different models reaction to the same question.
+**[2023-05-14]**
+1. Otter battles with Owl? the Pokémon Arena is here! Our model is selected into [Multi-Modal Arena](http://vlarena.opengvlab.com/). This is an interesting Multi-Modal Foundation Models competition arena that let you see different models reaction to the same question.
 
-- [2023-05-08]
-  1. Check our Arxiv release paper at [Otter: A Multi-Modal Model with In-Context Instruction Tuning](https://arxiv.org/abs/2305.03726) !
-  2. We support `xformers` for memory efficient attention.
+**[2023-05-08]**
+1. Check our Arxiv release paper at [Otter: A Multi-Modal Model with In-Context Instruction Tuning](https://arxiv.org/abs/2305.03726) !
+2. We support `xformers` for memory efficient attention.
 
 ## 🦦 Overview
 
@@ -94,27 +94,27 @@ Otter is designed to support multi-modal in-context instruction tuning based on 
 
 We train Otter on MIMIC-IT dataset with approximately 2.8 million in-context instruction-response pairs, which are structured into a cohesive template to facilitate various tasks.
 
-The following template encompasses images, user instructions, and model-generated responses, utilizing the `Human` and `Assistant` role labels to enable seamless user-assistant interactions.
+The following template encompasses images, user instructions, and model-generated responses, utilizing the `Human` and `GPT` role labels to enable seamless user-assistant interactions.
 
 ```
-<image>Human:{instruction} Assistant:<answer>{response}<endofchunk>
+<image>Human:{instruction} GPT:<answer>{response}<endofchunk>
 ```
 
 Training the Otter model on the MIMIC-IT dataset allows it to acquire different capacities, as demonstrated by the LA and SD tasks. Trained on the LA task, the model exhibits exceptional scene comprehension, reasoning abilities, and multi-round conversation capabilities. 
 
 ```python
-<image>Human:{instruction} Assistant:<answer>{response}<endofchunk>
+<image>Human:{instruction} GPT:<answer>{response}<endofchunk>
 ```
 
 Regarding the concept of organizing visual-language in-context examples, we demonstrate here the acquired ability of the Otter model to follow inter-contextual instructions after training on the LA-T2T task. The organized input data format is as follows:
 
 ```python
 # Multiple in-context example with similar instructions
-<image>Human:{instruction} Assistant:<answer>{response}<|endofchunk|>
+<image>Human:{instruction} GPT:<answer>{response}<|endofchunk|>
 # ....
-<image>Human:{instruction} Assistant:<answer>{response}<|endofchunk|>
+<image>Human:{instruction} GPT:<answer>{response}<|endofchunk|>
 # Query example
-<image>Human:{instruction} Assistant:<answer>
+<image>Human:{instruction} GPT:<answer>
 ```
 
 For more details, please refer to our [paper](https://arxiv.org/abs/2306.05425)'s appendix for other tasks.
