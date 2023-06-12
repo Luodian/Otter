@@ -97,10 +97,10 @@ Otter is designed to support multi-modal in-context instruction tuning based on 
 
 We train Otter on MIMIC-IT dataset with approximately 2.8 million in-context instruction-response pairs, which are structured into a cohesive template to facilitate various tasks.
 
-The following template encompasses images, user instructions, and model-generated responses, utilizing the `Human` and `GPT` role labels to enable seamless user-assistant interactions.
+The following template encompasses images, user instructions, and model-generated responses, utilizing the `User` and `GPT` role labels to enable seamless user-assistant interactions.
 
 ```
-<image>Human:{instruction} GPT:<answer>{response}<endofchunk>
+<image>User:{instruction} GPT:<answer>{response}<endofchunk>
 ```
 
 Training the Otter model on the MIMIC-IT dataset allows it to acquire different capacities, as demonstrated by the LA and SD tasks. Trained on the LA task, the model exhibits exceptional scene comprehension, reasoning abilities, and multi-round conversation capabilities. 
