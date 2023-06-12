@@ -8,7 +8,7 @@ from io import BytesIO
 import re
 import contextlib
 import os
-import json
+import orjson
 
 from PIL import ImageFile
 from torchvision import transforms
@@ -100,14 +100,17 @@ class MimicitDataset(Dataset):
 
         assert os.path.exists(cur_train_config_path), f"Error: The local train_config_path {cur_train_config_path} not exists!"
 
-        with open(self.multi_instruct_path) as f:
-            self.dataset = json.load(f)["data"]
+        # Load the dataset
+        with open(self.multi_instruct_path, "rb") as f:
+            self.dataset = orjson.loads(f.read())["data"]
 
-        with open(self.images_path) as f:
-            self.images = json.load(f)
+        # Load the images
+        with open(self.images_path, "rb") as f:
+            self.images = orjson.loads(f.read())
 
-        with open(self.train_config_path) as f:
-            self.train_config = json.load(f)
+        # Load the train_config
+        with open(self.train_config_path, "rb") as f:
+            self.train_config = orjson.loads(f.read())
 
         self.train_data_list = list(self.train_config.keys())
 
