@@ -5,7 +5,7 @@
 
 <div>
 <div align="center">
-    <a href='https://brianboli.com/' target='_blank'>Bo Li*<sup>,1</sup></a>&emsp;
+    <a href='https://brianboli.com/' target='_blank'>Bo Li*<sup>1</sup></a>&emsp;
     <a href='https://zhangyuanhan-ai.github.io/' target='_blank'>Yuanhan Zhang*<sup>,1</sup></a>&emsp;
     <a href='https://cliangyu.com/' target='_blank'>Liangyu Chen*<sup>,1</sup></a>&emsp;
     <a href='https://king159.github.io/' target='_blank'>Jinghao Wang*<sup>,1</sup></a>&emsp;
@@ -106,18 +106,18 @@ The following template encompasses images, user instructions, and model-generate
 Training the Otter model on the MIMIC-IT dataset allows it to acquire different capacities, as demonstrated by the LA and SD tasks. Trained on the LA task, the model exhibits exceptional scene comprehension, reasoning abilities, and multi-round conversation capabilities. 
 
 ```python
-<image>Human:{instruction} GPT:<answer>{response}<endofchunk>
+<image>User:{instruction} GPT:<answer>{response}<endofchunk>
 ```
 
 Regarding the concept of organizing visual-language in-context examples, we demonstrate here the acquired ability of the Otter model to follow inter-contextual instructions after training on the LA-T2T task. The organized input data format is as follows:
 
 ```python
 # Multiple in-context example with similar instructions
-<image>Human:{instruction} GPT:<answer>{response}<|endofchunk|>
+<image>User:{instruction} GPT:<answer>{response}<|endofchunk|>
 # ....
-<image>Human:{instruction} GPT:<answer>{response}<|endofchunk|>
+<image>User:{instruction} GPT:<answer>{response}<|endofchunk|>
 # Query example
-<image>Human:{instruction} GPT:<answer>
+<image>User:{instruction} GPT:<answer>
 ```
 
 For more details, please refer to our [paper](https://arxiv.org/abs/2306.05425)'s appendix for other tasks.
