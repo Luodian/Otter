@@ -37,9 +37,7 @@ def extend_instance(obj, mixin):
     """Apply mixins to a class instance after creation"""
     base_cls = obj.__class__
     base_cls_name = obj.__class__.__name__
-    obj.__class__ = type(
-        base_cls_name, (mixin, base_cls), {}
-    )  # mixin needs to go first for our forward() logic to work
+    obj.__class__ = type(base_cls_name, (mixin, base_cls), {})  # mixin needs to go first for our forward() logic to work
 
 
 def getattr_recursive(obj, att):
@@ -151,19 +149,11 @@ class FlamingoPerceiverResampler(nn.Module):
         # )
         self.frame_embs = nn.Parameter(torch.randn(max_num_frames, dim))
 
-        self.media_time_embs = (
-            nn.Parameter(torch.randn(max_num_media, 1, dim))
-            if exists(max_num_media)
-            else None
-        )
+        self.media_time_embs = nn.Parameter(torch.randn(max_num_media, 1, dim)) if exists(max_num_media) else None
 
         self.layers = nn.ModuleList([])
         for _ in range(depth):
-            self.layers.append(
-                FlamingoPerceiverBlock(
-                    dim=dim, dim_head=dim_head, heads=heads, mult=ff_mult
-                )
-            )
+            self.layers.append(FlamingoPerceiverBlock(dim=dim, dim_head=dim_head, heads=heads, mult=ff_mult))
 
         self.norm = nn.LayerNorm(dim)
 
@@ -181,9 +171,7 @@ class FlamingoPerceiverResampler(nn.Module):
         if exists(self.frame_embs):
             frame_embs = repeat(self.frame_embs[:F], "F d -> b T F v d", b=b, T=T, v=v)
             x = x + frame_embs
-        x = rearrange(
-            x, "b T F v d -> b T (F v) d"
-        )  # flatten the frame and spatial dimensions
+        x = rearrange(x, "b T F v d -> b T (F v) d")  # flatten the frame and spatial dimensions
         if exists(self.media_time_embs):
             x = x + self.media_time_embs[:T]
 
@@ -288,9 +276,7 @@ class FlamingoMaskedCrossAttention(nn.Module):
         if exists(media_locations) and self.only_attend_immediate_media:
             # any text without a preceding media needs to have attention zeroed out
             text_without_media_mask = text_time == 0
-            text_without_media_mask = rearrange(
-                text_without_media_mask, "b i -> b 1 i 1"
-            )
+            text_without_media_mask = rearrange(text_without_media_mask, "b i -> b 1 i 1")
             attn = attn.masked_fill(text_without_media_mask, 0.0)
 
         out = torch.einsum("... i j, ... j d -> ... i d", attn, v)
@@ -384,9 +370,7 @@ class FlamingoLayer(nn.Module):
         **decoder_layer_kwargs,
     ):
         if self.gated_cross_attn_layer is None:
-            return self.decoder_layer(
-                lang_x, attention_mask=attention_mask, **decoder_layer_kwargs
-            )
+            return self.decoder_layer(lang_x, attention_mask=attention_mask, **decoder_layer_kwargs)
 
         if self.vis_x is None:
             raise ValueError("vis_x must be conditioned before forward pass")
@@ -400,9 +384,7 @@ class FlamingoLayer(nn.Module):
             media_locations=self.media_locations,
             attend_previous=self.attend_previous,
         )
-        lang_x = self.decoder_layer(
-            lang_x, attention_mask=attention_mask, **decoder_layer_kwargs
-        )
+        lang_x = self.decoder_layer(lang_x, attention_mask=attention_mask, **decoder_layer_kwargs)
         return lang_x
 
 
@@ -448,9 +430,7 @@ class FlamingoLMMixin(nn.Module):
             nn.ModuleList(
                 [
                     FlamingoLayer(gated_cross_attn_layer, decoder_layer)
-                    for gated_cross_attn_layer, decoder_layer in zip(
-                        gated_cross_attn_layers, self._get_decoder_layers()
-                    )
+                    for gated_cross_attn_layer, decoder_layer in zip(gated_cross_attn_layers, self._get_decoder_layers())
                 ]
             )
         )
@@ -462,9 +442,7 @@ class FlamingoLMMixin(nn.Module):
     def forward(self, *input, **kwargs):
         """Condition the Flamingo layers on the media locations before forward()"""
         if not self.initialized_flamingo:
-            raise ValueError(
-                "Flamingo layers are not initialized. Please call `init_flamingo` first."
-            )
+            raise ValueError("Flamingo layers are not initialized. Please call `init_flamingo` first.")
 
         input_ids = kwargs["input_ids"] if "input_ids" in kwargs else input[0]
         media_locations = input_ids == self.media_token_id
@@ -478,9 +456,7 @@ class FlamingoLMMixin(nn.Module):
             layer.condition_media_locations(media_locations)
             layer.condition_attend_previous(attend_previous)
 
-        return super().forward(
-            *input, **kwargs
-        )  # Call the other parent's forward method
+        return super().forward(*input, **kwargs)  # Call the other parent's forward method
 
     def is_conditioned(self) -> bool:
         """Check whether all decoder layers are already conditioned."""
@@ -525,15 +501,11 @@ class FlamingoModel(FlamingoPreTrainedModel):
         # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
         # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
         # vision_encoder = AutoModel.from_config(config.vision_config).vision_model
-        text_tokenizer = LlamaTokenizer.from_pretrained(
-            config.text_config._name_or_path
-        )
+        text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
         lang_encoder = LlamaForCausalLM(config=config.text_config)
         vision_encoder = CLIPVisionModel(config=config.vision_config)
 
-        text_tokenizer.add_special_tokens(
-            {"additional_special_tokens": ["<|endofchunk|>", "<image>"]}
-        )
+        text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
         if text_tokenizer.pad_token is None:
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
         self.text_tokenizer = text_tokenizer
@@ -630,18 +602,12 @@ class FlamingoModel(FlamingoPreTrainedModel):
             use_cache: whether to use cached key values. See use_cache
                 documentation in Hugging Face CausalLM models.
         """
-        assert (
-            vision_x is not None
-        ) or use_cached_vision_x, (
-            "Must provide either vision_x or use_cached_vision_x to True."
-        )
+        assert (vision_x is not None) or use_cached_vision_x, "Must provide either vision_x or use_cached_vision_x to True."
 
         if use_cached_vision_x:
             # Case: use cached; vision_x should be cached and other
             # vision-related inputs should not be provided.
-            assert (
-                vision_x is None
-            ), "Expect vision_x to be None when use_cached_vision_x is True."
+            assert vision_x is None, "Expect vision_x to be None when use_cached_vision_x is True."
             assert self.lang_encoder.is_conditioned()
 
         else:
@@ -702,15 +668,11 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
         # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
 
-        text_tokenizer = LlamaTokenizer.from_pretrained(
-            config.text_config._name_or_path
-        )
+        text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
         lang_encoder = LlamaForCausalLM(config=config.text_config)
         vision_encoder = CLIPVisionModel(config=config.vision_config)
 
-        text_tokenizer.add_special_tokens(
-            {"additional_special_tokens": ["<|endofchunk|>", "<image>"]}
-        )
+        text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
         if text_tokenizer.pad_token is None:
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
         self.text_tokenizer = text_tokenizer
@@ -772,9 +734,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
         self.lang_encoder.lm_head.requires_grad_(True)
         # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
-        print(
-            f"Trainable param: {sum(p.numel() for p in self.parameters() if p.requires_grad)}"
-        )
+        print(f"Trainable param: {sum(p.numel() for p in self.parameters() if p.requires_grad)}")
 
     def forward(
         self,
@@ -808,18 +768,12 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
             use_cache: whether to use cached key values. See use_cache
                 documentation in Hugging Face CausalLM models.
         """
-        assert (
-            vision_x is not None
-        ) or use_cached_vision_x, (
-            "Must provide either vision_x or use_cached_vision_x to True."
-        )
+        assert (vision_x is not None) or use_cached_vision_x, "Must provide either vision_x or use_cached_vision_x to True."
 
         if use_cached_vision_x:
             # Case: use cached; vision_x should be cached and other
             # vision-related inputs should not be provided.
-            assert (
-                vision_x is None
-            ), "Expect vision_x to be None when use_cached_vision_x is True."
+            assert vision_x is None, "Expect vision_x to be None when use_cached_vision_x is True."
             assert self.lang_encoder.is_conditioned()
 
         else:
@@ -878,9 +832,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         top_k: int = 0,
         top_p: float = 1.0,
         no_repeat_ngram_size: int = 0,
-        prefix_allowed_tokens_fn: Optional[
-            Callable[[int, torch.Tensor], list[int]]
-        ] = None,
+        prefix_allowed_tokens_fn: Optional[Callable[[int, torch.Tensor], list[int]]] = None,
         length_penalty: float = 1.0,
         num_return_sequences: int = 1,
         do_sample: bool = False,

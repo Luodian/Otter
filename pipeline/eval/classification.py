@@ -15,17 +15,12 @@ def compute_classification_accuracy(predictions: Sequence[Dict[str, str]]) -> fl
         """Function to preprocess both targets and predictions."""
         return s.lower()
 
-    is_correct = [
-        _preprocess_fn(x["prediction"]) == _preprocess_fn(x["class_label"])
-        for x in predictions
-    ]
+    is_correct = [_preprocess_fn(x["prediction"]) == _preprocess_fn(x["class_label"]) for x in predictions]
 
     return np.mean(is_correct).item()
 
 
-def compute_shifted_logits_and_labels(
-    logits: torch.Tensor, encodings, tokenizer, eoc_token_id
-) -> Tuple[torch.Tensor, torch.Tensor]:
+def compute_shifted_logits_and_labels(logits: torch.Tensor, encodings, tokenizer, eoc_token_id) -> Tuple[torch.Tensor, torch.Tensor]:
     """Helper function to compute shifted logits and labels.
 
     This allows for straightforward computation of the loss on shift_logits
@@ -65,17 +60,13 @@ def compute_shifted_logits_and_labels(
     return shift_logits, shift_labels
 
 
-def compute_per_sample_probs(
-    encodings, tokenizer, logits: torch.Tensor, eoc_token_id
-) -> torch.Tensor:
+def compute_per_sample_probs(encodings, tokenizer, logits: torch.Tensor, eoc_token_id) -> torch.Tensor:
     """Helper function to compute per-sample probability of the input sequence.
 
     Assumes <eos token> is used to separate inputs from targets in the
     prompt text
     """
-    shift_logits, shift_labels = compute_shifted_logits_and_labels(
-        logits, encodings, tokenizer, eoc_token_id
-    )
+    shift_logits, shift_labels = compute_shifted_logits_and_labels(logits, encodings, tokenizer, eoc_token_id)
 
     # Tuple of tensors for unmasked label tokens. The first element of the
     # tuple contains the batch indices; the second element contains the
@@ -91,9 +82,7 @@ def compute_per_sample_probs(
 
     # Sanity check that every element in batch has at least one unmasked
     # target token
-    assert torch.all(
-        torch.bincount(target_idxs[:, 0]) != 0
-    ), "At least one element in batch has no unmasked target tokens."
+    assert torch.all(torch.bincount(target_idxs[:, 0]) != 0), "At least one element in batch has no unmasked target tokens."
 
     # Renormalize over tokens to make sure they are proper probabilities via
     # softmax over the token dimension.
@@ -114,9 +103,7 @@ def compute_per_sample_loss(encodings, tokenizer, logits, eoc_token_id) -> torch
     Assumes <eos token> is used to separate inputs from targets in the
     prompt text
     """
-    shift_logits, shift_labels = compute_shifted_logits_and_labels(
-        logits, encodings, tokenizer, eoc_token_id
-    )
+    shift_logits, shift_labels = compute_shifted_logits_and_labels(logits, encodings, tokenizer, eoc_token_id)
 
     device = shift_logits.device
 

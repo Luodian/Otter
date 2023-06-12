@@ -191,3 +191,4 @@ azure
 .deepspeed_env
 
 *.mp4
+checkpoints

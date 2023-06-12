@@ -29,19 +29,11 @@ class OtterModel(OtterPreTrainedModel):
         config: OtterConfig,
     ):
         super().__init__(config)
-        text_tokenizer = LlamaTokenizer.from_pretrained(
-            config.text_config._name_or_path
-        )
-        lang_encoder = LlamaForCausalLM.from_pretrained(
-            config.text_config._name_or_path
-        )
-        vision_encoder = CLIPVisionModel.from_pretrained(
-            config.vision_config._name_or_path
-        )
+        text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+        lang_encoder = LlamaForCausalLM.from_pretrained(config.text_config._name_or_path)
+        vision_encoder = CLIPVisionModel.from_pretrained(config.vision_config._name_or_path)
 
-        text_tokenizer.add_special_tokens(
-            {"additional_special_tokens": ["<|endofchunk|>", "<image>"]}
-        )
+        text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
         if text_tokenizer.pad_token is None:
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
         self.text_tokenizer = text_tokenizer
@@ -85,9 +77,7 @@ class OtterModel(OtterPreTrainedModel):
         self.lang_encoder.set_output_embeddings(new_embeddings)
 
 
-def rename_flamingo_checkpoint(
-    old_ckpt: dict[str, torch.Tensor]
-) -> dict[str, torch.Tensor]:
+def rename_flamingo_checkpoint(old_ckpt: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
     """Rename some keys in the public flamingo checkpoint"""
     perceiver_pattern1 = re.compile(r"perceiver\.layers\.[0-9]\.0")
     perceiver_pattern2 = re.compile(r"perceiver\.layers\.[0-9]\.1")
@@ -122,9 +112,7 @@ def dump_hf_model(old_ckpt_path: str, new_folder_path: str) -> None:
     new_ckpt = rename_flamingo_checkpoint(old_ckpt)
     model.load_state_dict(new_ckpt, strict=False)
     text_tokenizer = model.text_tokenizer
-    text_tokenizer.add_special_tokens(
-        {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
-    )
+    text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
     model.lang_encoder.resize_token_embeddings(len(text_tokenizer))
     print(f"Saving HF model to {new_folder_path}")
     model.save_pretrained(new_folder_path)
