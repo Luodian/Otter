@@ -43,7 +43,7 @@ priority = {
 }
 
 
-def extract_frames(video_path, num_frames=16):
+def extract_frames(video_path, num_frames=32):
     video = cv2.VideoCapture(video_path)
     total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
     frame_step = total_frames // num_frames
@@ -208,7 +208,7 @@ def add_text(
     image_3,
     request: gr.Request,
 ):
-    template_name = "otter" if "otter" in model_selector.lower else "open_flamingo"
+    template_name = "otter" if "otter" in model_selector.lower() else "open_flamingo"
     # print("++++++++++++++++++++++++++++++")
     # print(model_selector)
     if "otter" in model_selector.lower():
@@ -295,7 +295,7 @@ def http_bot(
     logger.info(f"http_bot. ip: {request.client.host}")
     start_tstamp = time.time()
     model_name = model_selector
-    template_name = "otter" if "otter" in model_selector else "open_flamingo"
+    template_name = "otter" if "otter" in model_selector.lower() else "open_flamingo"
 
     if state.skip_next:
         yield (state, state.to_gradio_chatbot()) + (no_change_btn,) * 5
@@ -443,13 +443,15 @@ a:link {
 ### Note: 
 Current Otter Video is **Otter-v0.2-DC (0612)**, means it's trianed on [MIMIC-IT-DC](https://github.com/Luodian/Otter/tree/main/mimic-it) at June 12th.
 
+Otter-v0.2-V, trained on all videos in MIMIC-IT dataset, is currently undergoing internal testing and will be released soon.
+
 The system reads a video and uniformly extracts 16 frames, so avoid using excessively long videos if you want the model to generate specific descriptions.
 
 We currently **dont support language-only chat** (the model could but our code doesnt allow it for now). Since we aim to demonstrate the ability of chatting on videos, you may need to upload your video first and then ask it questions.
 
-Otter-v0.2-V, trained on all videos in MIMIC-IT dataset, is currently undergoing internal testing and will be released soon.
+Sometimes we are experiencing server overload, and as the model is hosted on a dual-RTX-3090 machine. Please try again later if you encounter any error or contact drluodian@gmail.com for any problem.
 
-If model repeatedly describes previous images, please click "clear history" to clean all image caches to make sure the model perform correctly.
+If you find it's interesting, please consider to star our github and cite our paper. What we do is all to make the community better and to approach the goal of AI for helping people's life.
 </span>
 """
 
@@ -540,7 +542,7 @@ def build_demo(embed_mode):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         gr.Examples(
             examples=[
-                ["", "", "", "", f"{cur_dir}/examples/vr_demo.mp4", "Hey Otter, do you think it looks cool?"],
+                ["", "", "", "", f"{cur_dir}/examples/Apple Vision Pro - Reveal Trailer.mp4", "Hey Otter, do you think it's cool?"],
                 ["", "", "", "", f"{cur_dir}/examples/example.mp4", "What does the video describe?"],
                 [
                     "Is there a person in this video?",
@@ -558,7 +560,6 @@ def build_demo(embed_mode):
                     f"{cur_dir}/examples/dc_demo2.mp4",
                     "What does the video describe?",
                 ],
-                ["", "", "", "", f"{cur_dir}/examples/example.mp4", "What does the video describe?"],
             ],
             inputs=[
                 textbox_demo_question_1,
