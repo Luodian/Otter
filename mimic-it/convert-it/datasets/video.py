@@ -91,7 +91,7 @@ class VisualStoryTelling(AbstractDataset):
         Returns:
             Dict[str, Image.Image]: A dictionary of images, where the keys are the IDs of the images.
         """
-        from datasets.visual_story_telling_utils import download
+        from datasets.utils.visual_story_telling_utils import download
 
         with open(image_path, "r") as f:
             data = json.load(f)
