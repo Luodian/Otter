@@ -63,7 +63,7 @@ class ModelWorker:
         checkpoint_path,
         keep_aspect_ratio,
         num_gpus,
-        load_8bit,
+        load_bit,
         load_pt,
     ):
         self.controller_addr = controller_addr
@@ -72,25 +72,34 @@ class ModelWorker:
         self.model_name = model_name
         logger.info(f"Loading the model {self.model_name} on worker {worker_id} ...")
         self.keep_aspect_ratio = keep_aspect_ratio
+        self.load_bit = load_bit
         (
             self.tokenizer,
             self.model,
             self.image_processor,
             self.context_len,
-        ) = self.load_model(lm_path, checkpoint_path, num_gpus, load_8bit, load_pt)
+        ) = self.load_model(lm_path, checkpoint_path, num_gpus, load_pt)
 
         if not no_register:
             self.register_to_controller()
             self.heart_beat_thread = threading.Thread(target=heart_beat_worker, args=(self,))
             self.heart_beat_thread.start()
 
-    def load_model(self, lm_path, checkpoint_path, num_gpus, load_in_8bit, load_pt=None):
+    def load_model(self, lm_path, checkpoint_path, num_gpus, load_pt=None):
         # if not load_pt:
-        device_map = "balanced" if num_gpus > 0 else None
-        if "otter" in checkpoint_path:
-            model = OtterForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit)
+        device_map = "auto" if num_gpus > 0 else None
+        if self.load_bit == 8:
+            precision = {"load_in_8bit": True}
+        elif self.load_bit == 4:
+            precision = {"load_in_4bit": True}
+        elif self.load_bit == 16:
+            precision = {"torch_dtype": torch.float16}
         else:
-            model = FlamingoForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit)
+            precision = {}
+        if "otter" in checkpoint_path:
+            model = OtterForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, **precision)                                                               
+        else:
+            model = FlamingoForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map,  **precision)        
         model.text_tokenizer.padding_side = "left"  # otter video
         tokenizer = model.text_tokenizer
 
@@ -178,11 +187,13 @@ class ModelWorker:
                     is_video = False
                 images = [Image.open(BytesIO(base64.b64decode(image))) for image in images]
                 logger.info(f"{len(images)} images conditioned.")
+                tensor_dtype = torch.float16 if self.load_bit == 16 else torch.float32
                 if is_video is True:
-                    vision_x = (image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(0).unsqueeze(0)).to(self.device)
+                    vision_x = (image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(0).unsqueeze(0))
                     assert vision_x.shape[2] == len(images)  # dim of vision_x: [B, T, F, C, H, W], make sure conditioned on frames of the same video
                 else:
-                    vision_x = (image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)).to(self.device)
+                    vision_x = (image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0))
+                vision_x = vision_x.to(self.device, dtype=tensor_dtype)
                 logger.info(f"Is video? {is_video} vision_x shape: {vision_x.shape}")
             else:
                 images = None
@@ -280,7 +291,7 @@ if __name__ == "__main__":
     parser.add_argument("--limit_model_concurrency", type=int, default=5)
     parser.add_argument("--stream_interval", type=int, default=2)
     parser.add_argument("--no_register", action="store_true")
-    parser.add_argument("--load_8bit", action="store_true")
+    parser.add_argument("--load_bit", type=int, default=32)
     parser.add_argument("--load_pt", action="store_true")
     args = parser.parse_args()
 
@@ -299,7 +310,7 @@ if __name__ == "__main__":
         args.checkpoint_path,
         args.keep_aspect_ratio,
         args.num_gpus,
-        args.load_8bit,
+        args.load_bit,
         args.load_pt,
     )
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
