@@ -206,6 +206,7 @@ class ModelWorker:
             [prompt],
             return_tensors="pt",
         ).to(self.device)
+        logger.info(f"input_ids: {inputs['input_ids'].shape} attention_mask: {inputs['attention_mask'].shape}")
         generation_kwargs = params.get("generation_kwargs", {})
         logger.info(f"generation_kwargs: {generation_kwargs}")
         # generation_kwargs["num_beams"] = generation_kwargs.get("num_beams", 3)
