@@ -79,7 +79,7 @@ class VisualStoryTelling(AbstractDataset):
             num_threads (int): The number of threads to use for processing the images.
         """
         super().__init__(name, short_name, image_path, num_threads)
-    
+
     def _load_images(self, image_path: str, num_thread: int) -> dict[str, Image.Image]:
         from datasets.visual_story_telling_utils import download
 
