@@ -24,9 +24,7 @@ def add_training_args(parser):
 
     group = parser.add_argument_group("train", "training configurations")
 
-    group.add_argument(
-        "--batch-size", type=int, default=4, help="Data Loader batch size"
-    )
+    group.add_argument("--batch-size", type=int, default=4, help="Data Loader batch size")
     group.add_argument("--micro-batch-size", type=int, default=0)
     group.add_argument(
         "--weight-decay",
@@ -55,8 +53,7 @@ def add_training_args(parser):
         "--lr-decay-iters",
         type=int,
         default=None,
-        help="number of iterations to decay LR over,"
-        " If None defaults to `--train-iters`*`--epochs`",
+        help="number of iterations to decay LR over," " If None defaults to `--train-iters`*`--epochs`",
     )
     group.add_argument(
         "--lr-decay-style",
@@ -71,8 +68,7 @@ def add_training_args(parser):
         "--warmup-proportion",
         type=float,
         default=0.01,
-        help="percentage of data to warmup on (.01 = 1% of all "
-        "training iters). Default 0.01",
+        help="percentage of data to warmup on (.01 = 1% of all " "training iters). Default 0.01",
     )
     group.add_argument(
         "--adam-eps",
@@ -119,9 +115,7 @@ def add_training_args(parser):
         help="local rank passed from distributed launcher",
     )
     group.add_argument("--worker-cnt", type=int, default=1, help="number of workers")
-    group.add_argument(
-        "--gpus-per-node", type=int, default=4, help="number of gpus per node"
-    )
+    group.add_argument("--gpus-per-node", type=int, default=4, help="number of gpus per node")
     group.add_argument("--entry", type=str, default="main_distill.py")
     group.add_argument("--fp16", action="store_true", help="Run model in fp16 mode")
 
@@ -134,14 +128,11 @@ def add_data_args(parser=None):
         parser = argparse.ArgumentParser()
     group = parser.add_argument_group("data", "data configurations")
 
-    group.add_argument(
-        "--model-parallel-size", type=int, default=1, help="size of the model parallel."
-    )
+    group.add_argument("--model-parallel-size", type=int, default=1, help="size of the model parallel.")
     group.add_argument(
         "--shuffle",
         action="store_true",
-        help="Shuffle data. Shuffling is deterministic "
-        "based on seed and current epoch.",
+        help="Shuffle data. Shuffling is deterministic " "based on seed and current epoch.",
     )
     group.add_argument(
         "--local-shuffle",
@@ -163,19 +154,11 @@ def add_data_args(parser=None):
     group.add_argument(
         "--use-npy-data-loader",
         action="store_true",
-        help="Use the numpy data loader. If set, then"
-        "train-data-path, val-data-path, and test-data-path"
-        "should also be provided.",
+        help="Use the numpy data loader. If set, then" "train-data-path, val-data-path, and test-data-path" "should also be provided.",
     )
-    group.add_argument(
-        "--train-data-path", type=str, default="", help="path to the training data"
-    )
-    group.add_argument(
-        "--val-data-path", type=str, default="", help="path to the validation data"
-    )
-    group.add_argument(
-        "--test-data-path", type=str, default="", help="path to the test data"
-    )
+    group.add_argument("--train-data-path", type=str, default="", help="path to the training data")
+    group.add_argument("--val-data-path", type=str, default="", help="path to the validation data")
+    group.add_argument("--test-data-path", type=str, default="", help="path to the test data")
     group.add_argument(
         "--input-data-sizes-file",
         type=str,
@@ -227,22 +210,16 @@ def add_data_args(parser=None):
     group.add_argument(
         "--use-tfrecords",
         action="store_true",
-        help="load `--train-data`, `--valid-data`, "
-        "`--test-data` from BERT tf records instead of "
-        "normal data pipeline",
+        help="load `--train-data`, `--valid-data`, " "`--test-data` from BERT tf records instead of " "normal data pipeline",
     )
-    group.add_argument(
-        "--seq-length", type=int, default=512, help="Maximum sequence length to process"
-    )
+    group.add_argument("--seq-length", type=int, default=512, help="Maximum sequence length to process")
     group.add_argument(
         "--prompt-length",
         type=int,
         default=512,
         help="Maximum prompt length to process",
     )
-    group.add_argument(
-        "--mem-length", type=int, default=0, help="The memory length to preserve"
-    )
+    group.add_argument("--mem-length", type=int, default=0, help="The memory length to preserve")
     group.add_argument(
         "--max-preds-per-seq",
         type=int,
@@ -256,22 +233,12 @@ def add_data_args(parser=None):
         action="store_true",
         help="only sample one document in one sample",
     )
-    group.add_argument(
-        "--tables", type=str, default="", help="table name (train, valid, test)"
-    )
-    group.add_argument(
-        "--selected-cols", type=str, default="0,1,2,3,4,5,6,7", help="table column name"
-    )
-    group.add_argument(
-        "--num-bins", type=int, default=1000, help="number of quantization bins"
-    )
+    group.add_argument("--tables", type=str, default="", help="table name (train, valid, test)")
+    group.add_argument("--selected-cols", type=str, default="0,1,2,3,4,5,6,7", help="table column name")
+    group.add_argument("--num-bins", type=int, default=1000, help="number of quantization bins")
     group.add_argument("--max-image-size", type=int, default=512, help="max image size")
-    group.add_argument(
-        "--no-text-data", type=bool, default=False, help="no use pure text data"
-    )
-    group.add_argument(
-        "--no-image-data", type=bool, default=False, help="no use pure image data"
-    )
+    group.add_argument("--no-text-data", type=bool, default=False, help="no use pure text data")
+    group.add_argument("--no-image-data", type=bool, default=False, help="no use pure image data")
     group.add_argument(
         "--text-selected-cols",
         type=str,
@@ -290,21 +257,15 @@ def add_data_args(parser=None):
         default=None,
         help="detection table selected cols",
     )
-    group.add_argument(
-        "--neg-sample-dir", type=str, default=None, help="negative sample dir"
-    )
+    group.add_argument("--neg-sample-dir", type=str, default=None, help="negative sample dir")
     group.add_argument(
         "--max-object-length",
         type=int,
         default=100,
         help="the maximum object sequence length",
     )
-    group.add_argument(
-        "--code-dict-size", type=int, default=8192, help="code dict size"
-    )
-    group.add_argument(
-        "--code-image-size", type=int, default=128, help="code image size"
-    )
+    group.add_argument("--code-dict-size", type=int, default=8192, help="code dict size")
+    group.add_argument("--code-image-size", type=int, default=128, help="code image size")
     group.add_argument("--pretrain-seed", type=int, default=7, help="pretrain seed")
     group.add_argument(
         "--mask-ratio",
@@ -359,23 +320,15 @@ def add_data_args(parser=None):
         help="the maximum target sequence length",
     )
     group.add_argument("--prompt-type", type=str, default=None, help="prompt_type")
-    group.add_argument(
-        "--add-object", type=bool, default=False, help="add object to encoder"
-    )
-    group.add_argument(
-        "--add-caption", type=bool, default=False, help="add caption to encoder"
-    )
+    group.add_argument("--add-object", type=bool, default=False, help="add object to encoder")
+    group.add_argument("--add-caption", type=bool, default=False, help="add caption to encoder")
 
     return parser
 
 
 def add_custom_args(parser):
-    group = parser.add_argument_group(
-        "Custom arguments diverted from M6-opensource", "configurations"
-    )
-    group.add_argument(
-        "--num_prompts", type=int, default=0, help="enable prompt tune-tuning if > 0"
-    )
+    group = parser.add_argument_group("Custom arguments diverted from M6-opensource", "configurations")
+    group.add_argument("--num_prompts", type=int, default=0, help="enable prompt tune-tuning if > 0")
 
     group.add_argument("--gradient-accumulation-steps", type=int, default=1)
     group.add_argument("--do-train", action="store_true")
@@ -395,12 +348,8 @@ def add_custom_args(parser):
         default=1,
         help="stores model weights every ckpt_epoch_frequency times",
     )
-    group.add_argument(
-        "--metric", type=str, default="accuracy", help="metric to save the best ckpt"
-    )
-    group.add_argument(
-        "--best-score", type=float, default=-1.0, help="save the best score"
-    )
+    group.add_argument("--metric", type=str, default="accuracy", help="metric to save the best ckpt")
+    group.add_argument("--best-score", type=float, default=-1.0, help="save the best score")
     group.add_argument(
         "--best-step",
         type=int,
@@ -414,12 +363,8 @@ def add_custom_args(parser):
         help="The version of generator",
     )
     group.add_argument("--debug-generate", action="store_true")
-    group.add_argument(
-        "--keep-last-ckpt-num", type=int, default=15, help="The num of ckpts to keep"
-    )
-    group.add_argument(
-        "--evaluate-idx", type=int, default=0, help="The num of evaluate"
-    )
+    group.add_argument("--keep-last-ckpt-num", type=int, default=15, help="The num of ckpts to keep")
+    group.add_argument("--evaluate-idx", type=int, default=0, help="The num of evaluate")
     return parser
 
 
@@ -519,9 +464,7 @@ def add_model_args(parser):
         help="The config name of student model",
     )
 
-    group.add_argument(
-        "--scst", type=bool, default=False, help="Self-critical sequence training"
-    )
+    group.add_argument("--scst", type=bool, default=False, help="Self-critical sequence training")
     return parser
 
 
@@ -533,15 +476,9 @@ def add_criterions_args(parser):
         default=0.0,
         help="epsilon for label smoothing, 0 means no label smoothing",
     )
-    group.add_argument(
-        "--report-accuracy", type=bool, default=False, help="report accuracy metric"
-    )
-    group.add_argument(
-        "--ignore-prefix-size", type=int, default=0, help="Ignore first N tokens"
-    )
-    group.add_argument(
-        "--ignore-eos", type=bool, default=False, help="Ignore eos token"
-    )
+    group.add_argument("--report-accuracy", type=bool, default=False, help="report accuracy metric")
+    group.add_argument("--ignore-prefix-size", type=int, default=0, help="Ignore first N tokens")
+    group.add_argument("--ignore-eos", type=bool, default=False, help="Ignore eos token")
     # group.add_argument("--sentence_avg",
     #                    type=bool)
     group.add_argument(
@@ -558,12 +495,8 @@ def add_criterions_args(parser):
     )
     group.add_argument("--use-rdrop", type=bool, default=False, help="use R-Drop")
     group.add_argument("--reg-alpha", type=float, default=1.0, help="weight for R-Drop")
-    group.add_argument(
-        "--sample-patch-num", type=int, default=196, help="sample patches for v1"
-    )
-    group.add_argument(
-        "--constraint-range", type=str, default=None, help="constraint range"
-    )
+    group.add_argument("--sample-patch-num", type=int, default=196, help="sample patches for v1")
+    group.add_argument("--constraint-range", type=str, default=None, help="constraint range")
     group.add_argument(
         "--sentence-avg",
         type=bool,
@@ -576,9 +509,7 @@ def add_criterions_args(parser):
         default=None,
         help="path to cached cPickle file used to calculate CIDEr scores",
     )
-    group.add_argument(
-        "--ans2label-file", type=str, default=None, help="ans2label file"
-    )
+    group.add_argument("--ans2label-file", type=str, default=None, help="ans2label file")
     group.add_argument(
         "--val-inference-type",
         type=str,
@@ -594,9 +525,7 @@ def add_generator_args(parser):
     group.add_argument("--max-len-a", type=int, default=0, help="max-len-a")
     group.add_argument("--max-len-b", type=int, default=200, help="max-len-b")
     group.add_argument("--min-len", type=int, default=1, help="min-len")
-    group.add_argument(
-        "--no-repeat-ngram-size", type=int, default=0, help="no_repeat_ngram_size"
-    )
+    group.add_argument("--no-repeat-ngram-size", type=int, default=0, help="no_repeat_ngram_size")
     return parser
 
 
@@ -638,11 +567,7 @@ def get_args(add_custom_args_fn=add_custom_args):
 
     args.model_parallel_size = min(args.model_parallel_size, args.world_size)
     if args.rank == 0:
-        print(
-            "using world size: {} and model-parallel size: {} ".format(
-                args.world_size, args.model_parallel_size
-            )
-        )
+        print("using world size: {} and model-parallel size: {} ".format(args.world_size, args.model_parallel_size))
 
     if args.micro_batch_size <= 0:
         args.micro_batch_size = args.batch_size

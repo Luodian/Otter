@@ -81,24 +81,16 @@ class ModelWorker:
 
         if not no_register:
             self.register_to_controller()
-            self.heart_beat_thread = threading.Thread(
-                target=heart_beat_worker, args=(self,)
-            )
+            self.heart_beat_thread = threading.Thread(target=heart_beat_worker, args=(self,))
             self.heart_beat_thread.start()
 
-    def load_model(
-        self, lm_path, checkpoint_path, num_gpus, load_in_8bit, load_pt=None
-    ):
+    def load_model(self, lm_path, checkpoint_path, num_gpus, load_in_8bit, load_pt=None):
         # if not load_pt:
         device_map = "balanced" if num_gpus > 0 else None
         if "otter" in checkpoint_path:
-            model = OtterForConditionalGeneration.from_pretrained(
-                checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit
-            )
+            model = OtterForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit)
         else:
-            model = FlamingoForConditionalGeneration.from_pretrained(
-                checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit
-            )
+            model = FlamingoForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit)
         model.text_tokenizer.padding_side = "left"  # otter video
         tokenizer = model.text_tokenizer
 
@@ -126,9 +118,7 @@ class ModelWorker:
 
     def send_heart_beat(self):
         logger.info(
-            f"Send heart beat. Models: {[self.model_name]}. "
-            f"Semaphore: {pretty_print_semaphore(model_semaphore)}. "
-            f"global_counter: {global_counter}"
+            f"Send heart beat. Models: {[self.model_name]}. " f"Semaphore: {pretty_print_semaphore(model_semaphore)}. " f"global_counter: {global_counter}"
         )
 
         url = self.controller_addr + "/receive_heart_beat"
@@ -156,15 +146,7 @@ class ModelWorker:
         if model_semaphore is None:
             return 0
         else:
-            return (
-                args.limit_model_concurrency
-                - model_semaphore._value
-                + (
-                    len(model_semaphore._waiters)
-                    if model_semaphore._waiters is not None
-                    else 0
-                )
-            )
+            return args.limit_model_concurrency - model_semaphore._value + (len(model_semaphore._waiters) if model_semaphore._waiters is not None else 0)
 
     def get_status(self):
         return {
@@ -193,40 +175,26 @@ class ModelWorker:
                     is_video = True
                 else:
                     is_video = False
-                images = [
-                    Image.open(BytesIO(base64.b64decode(image))) for image in images
-                ]
+                images = [Image.open(BytesIO(base64.b64decode(image))) for image in images]
                 logger.info(f"{len(images)} images conditioned.")
                 if is_video is True:
-                    vision_x = (
-                        image_processor.preprocess(images, return_tensors="pt")[
-                            "pixel_values"
-                        ]
-                        .unsqueeze(0)
-                        .unsqueeze(0)
-                    ).to(self.device)
+                    vision_x = (image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(0).unsqueeze(0)).to(self.device)
+                    assert vision_x.shape[2] == len(images)  # dim of vision_x: [B, T, F, C, H, W], make sure conditioned on frames of the same video
                 else:
-                    vision_x = (
-                        image_processor.preprocess(images, return_tensors="pt")[
-                            "pixel_values"
-                        ]
-                        .unsqueeze(1)
-                        .unsqueeze(0)
-                    ).to(self.device)
+                    vision_x = (image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)).to(self.device)
                 logger.info(f"Is video? {is_video} vision_x shape: {vision_x.shape}")
             else:
                 images = None
                 vision_x = None
 
-        streamer = TextIteratorStreamer(
-            tokenizer, skip_prompt=True, skip_special_tokens=True
-        )
+        streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
         inputs = tokenizer(
             prompt,
             return_tensors="pt",
         ).to(self.device)
         generation_kwargs = params.get("generation_kwargs", {})
         logger.info(f"generation_kwargs: {generation_kwargs}")
+        # generation_kwargs["num_beams"] = generation_kwargs.get("num_beams", 3)
         generation_input = dict(
             vision_x=vision_x,
             lang_x=inputs["input_ids"],
@@ -288,9 +256,7 @@ async def generate_stream(request: Request):
     worker.send_heart_beat()
     generator = worker.generate_stream_gate(params)
     background_tasks = BackgroundTasks()
-    background_tasks.add_task(
-        partial(release_model_semaphore, fn=worker.send_heart_beat)
-    )
+    background_tasks.add_task(partial(release_model_semaphore, fn=worker.send_heart_beat))
     return StreamingResponse(generator, background=background_tasks)
 
 
@@ -304,9 +270,7 @@ if __name__ == "__main__":
     parser.add_argument("--host", type=str, default="localhost")
     parser.add_argument("--port", type=int, default=21002)
     parser.add_argument("--worker_address", type=str, default="http://localhost:21002")
-    parser.add_argument(
-        "--controller_address", type=str, default="http://localhost:21001"
-    )
+    parser.add_argument("--controller_address", type=str, default="http://localhost:21001")
     parser.add_argument("--lm_path", type=str, default="luodian/llama-7b-hf")
     parser.add_argument("--model_name", type=str)
     parser.add_argument("--checkpoint_path", type=str)
@@ -320,9 +284,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     worker_id = str(uuid.uuid4())[:6]
-    logger = build_logger(
-        "model_worker", f"model_worker_{args.model_name}_{worker_id}.log"
-    )
+    logger = build_logger("model_worker", f"model_worker_{args.model_name}_{worker_id}.log")
 
     logger.info(f"args: {args}")
 

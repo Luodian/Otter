@@ -6,9 +6,7 @@ save_name = f"/mnt/lustre/yhzhang/data/LLaVA-Instruct-150K/complex_reasoning_77k
 
 for idx in range(3):
     source_path = f"all-MiniLM-L6-v1_features.rank_{idx}.npz"
-    source_file_npz = np.load(
-        f"/mnt/lustre/yhzhang/data/LLaVA-Instruct-150K/complex_reasoning_77k/features/{source_path}"
-    )
+    source_file_npz = np.load(f"/mnt/lustre/yhzhang/data/LLaVA-Instruct-150K/complex_reasoning_77k/features/{source_path}")
     # import pdb;pdb.set_trace()
     cur_uniq_id = source_file_npz["uniqids"]
     # cur_img_feature = source_file_npz["image_features"]

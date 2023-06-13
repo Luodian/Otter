@@ -48,11 +48,7 @@ def get_response(url: str, prompt: str, model=None, image_processor=None) -> str
         str: response of the model
     """
     query_image = get_image(url)
-    vision_x = (
-        image_processor.preprocess([query_image], return_tensors="pt")["pixel_values"]
-        .unsqueeze(1)
-        .unsqueeze(0)
-    )
+    vision_x = image_processor.preprocess([query_image], return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)
     lang_x = model.text_tokenizer(
         [
             get_formatted_prompt(prompt),
@@ -185,9 +181,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    model = OtterForConditionalGeneration.from_pretrained(
-        args.model_path_or_name, device_map="auto"
-    )
+    model = OtterForConditionalGeneration.from_pretrained(args.model_path_or_name, device_map="auto")
     model.text_tokenizer.padding_side = "left"
     tokenizer = model.text_tokenizer
     image_processor = transformers.CLIPImageProcessor()
@@ -199,9 +193,7 @@ if __name__ == "__main__":
         for item in data["input"]:
             print("=" * 50)
             print(f"Processing {item['image']} with prompt {item['instruction']}")
-            response = get_response(
-                item["image"], item["instruction"], model, image_processor
-            )
+            response = get_response(item["image"], item["instruction"], model, image_processor)
             print(f"Response: {response}")
             responses.append(
                 {

@@ -60,15 +60,11 @@ class OtterConfig(PretrainedConfig):
 
         if vision_config is None:
             vision_config = {}
-            logger.info(
-                "vision_config is None. initializing the vision config with default values."
-            )
+            logger.info("vision_config is None. initializing the vision config with default values.")
 
         if text_config is None:
             text_config = {}
-            logger.info(
-                "text_config is None. Initializing the text config with default values."
-            )
+            logger.info("text_config is None. Initializing the text config with default values.")
 
         self.vision_config = CLIPVisionConfig(**vision_config)
         self.text_config = CONFIG_MAPPING[text_config.pop("model_type")](**text_config)
@@ -88,7 +84,5 @@ class OtterConfig(PretrainedConfig):
         output["text_config"] = self.text_config.to_dict()
         output["model_type"] = self.__class__.model_type
         output["cross_attn_every_n_layers"] = self.cross_attn_every_n_layers
-        output[
-            "use_media_placement_augmentation"
-        ] = self.use_media_placement_augmentation
+        output["use_media_placement_augmentation"] = self.use_media_placement_augmentation
         return output

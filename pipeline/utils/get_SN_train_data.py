@@ -18,9 +18,7 @@ for cur_id in cur_file:
     conversation_id = f"{scene_id}_00_{activity_id}_round"
     if conversation_id not in conversation_dict:
         conversation_dict[conversation_id] = 0
-    conversation_dict[conversation_id] = max(
-        int(round_id[-1]), conversation_dict[conversation_id]
-    )
+    conversation_dict[conversation_id] = max(int(round_id[-1]), conversation_dict[conversation_id])
 
 target_json_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/SN/SN_train.json"
 
