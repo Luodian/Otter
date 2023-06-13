@@ -1,15 +1,15 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Tuple
-from PIL.Image import Image
+from PIL import Image
 import importlib
 
 AVAILABLE_DATASETS: List[str] = [
-    "change.SpotTheDifference",
+    # "change.SpotTheDifference",
     "video.DenseCaptions",
-    "video.TVCaptions",
+    # "video.TVCaptions",
     "video.VisualStoryTelling",
-    "3d.SceneNavigation",
-    "fpv.EGO4D",
+    # "3d.SceneNavigation",
+    # "fpv.EGO4D",
 ]
 
 
@@ -26,10 +26,10 @@ class AbstractDataset(ABC):
         """
         self.name: str = name
         self.short_name: str = short_name
-        self.images: Dict[str, Image] = self._load_images(image_path, num_threads)
+        self.images: Dict[str, Image.Image] = self._load_images(image_path, num_threads)
 
     @abstractmethod
-    def _load_images(self, image_path: str, num_thread: int) -> dict[str, Image]:
+    def _load_images(self, image_path: str, num_thread: int) -> dict[str, Image.Image]:
         """
         Load the images from the videos or albums.
 
@@ -38,7 +38,7 @@ class AbstractDataset(ABC):
             num_thread (int): The number of threads to use for loading the images.
 
         Returns:
-            Dict[str, Image]: A dictionary of images, where the keys are the IDs of the images.
+            Dict[str, Image.Image]: A dictionary of images, where the keys are the IDs of the images.
         """
         pass
 
@@ -64,12 +64,12 @@ class AbstractDataset(ABC):
         self.keys = iter(self.images.keys())
         return self
 
-    def __next__(self) -> Tuple[str, Image]:
+    def __next__(self) -> Tuple[str, Image.Image]:
         """
         Return the next item in the iteration.
 
         Returns:
-            Tuple[str, Image]: The next item as a tuple of key and image.
+            Tuple[str, Image.Image]: The next item as a tuple of key and image.
 
         Raises:
             StopIteration: If there are no more items in the iteration.

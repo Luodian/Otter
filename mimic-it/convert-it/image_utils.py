@@ -39,7 +39,7 @@ def resize_image(image, target_size=(224, 224)):
     return image
 
 
-def process_image(img: Image):
+def process_image(img: Image.Image):
     """
     Processes the input image by resizing it, converting it to RGB mode, and encoding it as base64.
 
@@ -59,13 +59,13 @@ def process_image(img: Image):
 
 
 def get_json_data(
-    images: dict[str, Image], dataset_name: str, num_thread: int
+    images: dict[str, Image.Image], dataset_name: str, num_thread: int
 ) -> dict[str, str]:
     """
     Converts a dictionary of images to a JSON-compatible dictionary with base64 encoded strings.
 
     Args:
-        images (Dict[str, Image]): A dictionary of images, where the keys are image identifiers and the values are PIL.Image.Image objects.
+        images (Dict[str, Image.Image]): A dictionary of images, where the keys are image identifiers and the values are PIL.Image.Image objects.
         dataset_name (str): The name of the dataset.
         num_threads (int): The number of threads to use for processing the images.
 
