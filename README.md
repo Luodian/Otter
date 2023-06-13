@@ -37,7 +37,8 @@
 
 **Checkpoints:** 
 - [Checkpoints v0.1 (image version)](https://huggingface.co/luodian/otter-9b-hf)
-- [Checkpoints v0.2 (video version, upcoming)]() 
+- [Checkpoints v0.2 (video version, trained on MIMIC-IT-DC)](https://huggingface.co/luodian/otter-9b-dc-hf)
+- [Checkpoints v0.2 (video version, trained on MIMIC-IT all videos)]() 
 - [Checkpoints v0.3 (Otter-E, visual assistant version, upcoming)]()
 
 Otter v0.2 supports videos inputs (frames are arranged as original Flamingo's implementation) and multiple images inputs (they serve as in-context examples for each other). 
