@@ -8,7 +8,9 @@ from image_utils import frame_video, get_image_name
 
 
 class DenseCaptions(AbstractDataset):
-    def __init__(self, name: str = "DenseCaptions", short_name="DC", *, image_path: str):
+    def __init__(
+        self, name: str = "DenseCaptions", short_name="DC", *, image_path: str
+    ):
         super().__init__(name, short_name, image_path)
 
     def _load_images(self, image_path: str, num_thread: int) -> Dict[str, Image]:
