@@ -22,7 +22,9 @@ class DenseCaptions(AbstractDataset):
             for video in videos:
                 futures[get_image_name] = executor.submit(frame_video, video)
             results = {}
-            process_bar = tqdm(total=len(videos), desc="Processing videos into images", unit="video")
+            process_bar = tqdm(
+                total=len(videos), desc="Processing videos into images", unit="video"
+            )
             for video, future in futures.items():
                 for index, result in enumerate(future.result()):
                     name = get_image_id(self.name, video + "_" + str(index).zfill(4))
