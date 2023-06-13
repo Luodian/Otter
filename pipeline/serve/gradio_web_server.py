@@ -230,6 +230,12 @@ def add_text(
     text = text[:1536]  # Hard cut-off
     if image_3 is not None:
         text = DEFAULT_IMAGE_TOKEN + human_role_label + text
+
+    # clean state if it's a new conversation
+    if image_3 is not None and state is not None:
+        state = conv_templates[template_name].copy()
+        logger.info(f"TEMPLATE. {state}")
+        
     if text_demo_answer_2 != "":
         assert image_demo_2 is not None
         text = (
@@ -549,57 +555,14 @@ def build_demo(embed_mode):
                     ).style(container=True)
 
                 with gr.Accordion("Parameters", open=False, visible=False) as parameter_row:
-                    with gr.Row():
-                        max_new_tokens = gr.Slider(
-                            minimum=20,
-                            maximum=500,
-                            value=200,
-                            step=10,
-                            interactive=True,
-                            label="# generation tokens",
-                        )
-                        temperature = gr.Slider(
-                            minimum=0,
-                            maximum=1,
-                            value=1,
-                            step=0.1,
-                            interactive=True,
-                            label="temperature",
-                        )
-                        top_k = gr.Slider(
-                            minimum=0,
-                            maximum=10,
-                            value=0,
-                            step=1,
-                            interactive=True,
-                            label="top_k",
-                        )
-                        top_p = gr.Slider(
-                            minimum=0,
-                            maximum=1,
-                            value=1.0,
-                            step=0.1,
-                            interactive=True,
-                            label="top_p",
-                        )
-                        no_repeat_ngram_size = gr.Slider(
-                            minimum=1,
-                            maximum=10,
-                            value=3,
-                            step=1,
-                            interactive=True,
-                            label="no_repeat_ngram_size",
-                        )
-                        length_penalty = gr.Slider(
-                            minimum=1,
-                            maximum=5,
-                            value=1,
-                            step=0.1,
-                            interactive=True,
-                            label="length_penalty",
-                        )
-                        do_sample = gr.Checkbox(interactive=True, label="do_sample")
-                        early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
+                    max_new_tokens = gr.Slider(minimum=16, maximum=512, value=512, step=1, interactive=True, label="# generation tokens")
+                    temperature = gr.Slider(minimum=0, maximum=1, value=1, step=0.1, interactive=True, label="temperature")
+                    top_k = gr.Slider(minimum=0, maximum=10, value=0, step=1, interactive=True, label="top_k")
+                    top_p = gr.Slider(minimum=0, maximum=1, value=1.0, step=0.1, interactive=True, label="top_p")
+                    no_repeat_ngram_size = gr.Slider(minimum=1, maximum=10, value=3, step=1, interactive=True, label="no_repeat_ngram_size")
+                    length_penalty = gr.Slider(minimum=1, maximum=5, value=1, step=0.1, interactive=True, label="length_penalty")
+                    do_sample = gr.Checkbox(interactive=True, label="do_sample")
+                    early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
 
             with gr.Column(scale=6):
                 chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=720)

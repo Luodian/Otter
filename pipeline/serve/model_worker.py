@@ -88,9 +88,9 @@ class ModelWorker:
     def load_model(self, lm_path, checkpoint_path, num_gpus, load_pt=None):
         # if not load_pt:
         device_map = "auto" if num_gpus > 0 else None
-        if self.load_bit == "8":
+        if self.load_bit == "int8":
             precision = {"load_in_8bit": True}
-        elif self.load_bit == "4":
+        elif self.load_bit == "int4":
             precision = {"load_in_4bit": True}
         elif self.load_bit == "fp16":
             precision = {"torch_dtype": torch.float16}
@@ -110,7 +110,7 @@ class ModelWorker:
         model.eval()
 
         self.device = "cuda" if num_gpus > 0 else "cpu"
-        logger.info(f"Loading the model to {self.device} ...")
+        logger.info(f"Loading the model to {self.device} in {self.load_bit}...")
         context_len = 2048
         image_processor = transformers.CLIPImageProcessor()
 
@@ -293,7 +293,7 @@ if __name__ == "__main__":
     parser.add_argument("--limit_model_concurrency", type=int, default=5)
     parser.add_argument("--stream_interval", type=int, default=2)
     parser.add_argument("--no_register", action="store_true")
-    parser.add_argument("--load_bit", type=str, choices=["fp16", "bf16", "8", "4", "32"], default="32")
+    parser.add_argument("--load_bit", type=str, choices=["fp16", "bf16", "int8", "int4", "fp32"], default="32")
     parser.add_argument("--load_pt", action="store_true")
     args = parser.parse_args()
 
