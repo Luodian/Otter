@@ -9,11 +9,12 @@ from image_utils import frame_video, get_image_name
 
 class DenseCaptions(AbstractDataset):
     def __init__(
-        self, name: str = "DenseCaptions",
+        self, 
+        name: str = "DenseCaptions",
         short_name="DC",
         *,
         image_path: str,
-        num_threads: int
+        num_threads: int,
     ):
         super().__init__(name, short_name, image_path, num_threads)
 
