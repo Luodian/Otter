@@ -73,7 +73,7 @@ def get_json_data(
         return results
 
 
-def frame_video(video_file, fps=1):
+def frame_video(video_file: str, fps=1):
     """
     Extracts frames from a video file at a specified frame rate and returns them as base64 encoded strings.
 
@@ -82,7 +82,7 @@ def frame_video(video_file, fps=1):
         fps (int): The frame rate at which frames should be extracted. Defaults to 1 frame per second.
 
     Returns:
-        List[str]: A list of base64 encoded string representations of the extracted frames.
+        List[Image]: A list of PIL.Image.Image objects representing the extracted frames.
     """
     if not os.path.exists(video_file):
         raise FileNotFoundError(f"Video file {video_file} does not exist.")
@@ -103,7 +103,7 @@ def frame_video(video_file, fps=1):
         if frame_count % (video_fps // fps) == 0:
             # convert frame to base64
             _, buffer = cv2.imencode(".jpg", frame)
-            frames.append(base64.b64encode(buffer).decode("utf-8"))
+            frames.append(Image.open(BytesIO(buffer)))
             saved_frame_count += 1
 
         frame_count += 1
@@ -111,3 +111,29 @@ def frame_video(video_file, fps=1):
     cap.release()
 
     return frames
+
+
+def get_image_name(image_path: str) -> str:
+    """
+    Extracts the image name from a given image path.
+
+    Args:
+        image_path (str): The path to the image.
+
+    Returns:
+        str: The image name.
+    """
+    return image_path.split("/")[-1].split(".")[0]
+
+def get_image_id(image_name: str, dataset_name: str) -> str:
+    """
+    Extracts the image identifier from a given image path.
+
+    Args:
+        image_path (str): The path to the image.
+        dataset_name (str): The name of the dataset.
+
+    Returns:
+        str: The image identifier.
+    """
+    return f"{dataset_name}_IMG_{get_image_name(image_name)}"
