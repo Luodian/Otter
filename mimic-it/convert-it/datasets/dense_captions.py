@@ -1,5 +1,3 @@
-import json
-
 from abstract_dataset import AbstractDataset
 from PIL import Image
 from typing import Dict
