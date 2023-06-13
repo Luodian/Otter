@@ -434,8 +434,9 @@ a:link {
 &nbsp;&nbsp;&nbsp;
 <a href="https://youtu.be/K8o_LKGQJhs"><img src="https://www.svgrepo.com/show/13671/youtube.svg" style="height: 15px; display:inline;" class="icon" alt="video demo">Video</a>
 &nbsp;&nbsp;&nbsp;
+<a href="https://otter.cliangyu.com/"><img src="https://www.svgrepo.com/show/2065/chat.svg" style="height: 15px; display:inline;" class="icon" alt="live demo">Live Demo (Otter Image)</a>
+&nbsp;&nbsp;&nbsp;
 <img style="height: 20px; display:inline;" src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fotter.cliangyu.com&count_bg=%23FFA500&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false"/>
-
 </h2>
 
 <span style="font-size:larger;">
@@ -444,6 +445,7 @@ a:link {
 Current Otter Video is **Otter-v0.2-DC (0612)**, means it's trianed on [MIMIC-IT-DC](https://github.com/Luodian/Otter/tree/main/mimic-it) at June 12th.
 
 Otter-v0.2-V, trained on all videos in MIMIC-IT dataset, is currently undergoing internal testing and will be released soon.
+</span>
 
 The system reads a video and uniformly extracts 16 frames, so avoid using excessively long videos if you want the model to generate specific descriptions.
 
@@ -451,8 +453,7 @@ We currently **dont support language-only chat** (the model could but our code d
 
 Sometimes we are experiencing server overload, and as the model is hosted on a dual-RTX-3090 machine. Please try again later if you encounter any error or contact drluodian@gmail.com for any problem.
 
-If you find it's interesting, please consider to star our github and cite our paper. What we do is all to make the community better and to approach the goal of AI for helping people's life.
-</span>
+If you find it's interesting, please consider to star our [github](https://github.com/Luodian/Otter) and cite our [paper](https://arxiv.org/abs/2306.05425). What we do is all to make the community better and to approach the goal of AI for helping people's life.
 """
 
 tos_markdown = """

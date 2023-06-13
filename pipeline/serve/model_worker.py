@@ -108,6 +108,7 @@ class ModelWorker:
         if num_gpus > 0:
             model.cuda()
         model.eval()
+        model.tie_weights()
 
         self.device = "cuda" if num_gpus > 0 else "cpu"
         logger.info(f"Loading the model to {self.device} in {self.load_bit}...")
@@ -189,7 +190,7 @@ class ModelWorker:
                     is_video = False
                 images = [Image.open(BytesIO(base64.b64decode(image))) for image in images]
                 logger.info(f"{len(images)} images conditioned.")
-                tensor_dtype = {"fp16": torch.float16, "bf16": torch.bfloat16, "32": torch.float32}[self.load_bit]
+                tensor_dtype = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}[self.load_bit]
                 if is_video is True:
                     vision_x = image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(0).unsqueeze(0)
                     assert vision_x.shape[2] == len(images)  # dim of vision_x: [B, T, F, C, H, W], make sure conditioned on frames of the same video
@@ -294,7 +295,7 @@ if __name__ == "__main__":
     parser.add_argument("--limit_model_concurrency", type=int, default=5)
     parser.add_argument("--stream_interval", type=int, default=2)
     parser.add_argument("--no_register", action="store_true")
-    parser.add_argument("--load_bit", type=str, choices=["fp16", "bf16", "int8", "int4", "fp32"], default="32")
+    parser.add_argument("--load_bit", type=str, choices=["fp16", "bf16", "int8", "int4", "fp32"], default="fp32")
     parser.add_argument("--load_pt", action="store_true")
     args = parser.parse_args()
 
