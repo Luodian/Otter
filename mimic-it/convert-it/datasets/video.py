@@ -6,20 +6,11 @@ from typing import Dict
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from glob import glob
-from image_utils import (
-    frame_video,
-    get_image_name,
-    get_image_id
-)
+from image_utils import frame_video, get_image_name, get_image_id
 
 
 class DenseCaptions(AbstractDataset):
-    def __init__(
-        self,
-        name: str = "DenseCaptions",
-        *,
-        image_path: str
-    ):
+    def __init__(self, name: str = "DenseCaptions", *, image_path: str):
         super().__init__(name, image_path)
 
     def _load_images(
@@ -36,10 +27,7 @@ class DenseCaptions(AbstractDataset):
             process_bar = tqdm(total=len(videos), desc="Processing videos into images", unit="video")
             for video, future in futures.items():
                 for index, result in enumerate(future.result()):
-                    name = get_image_id(
-                        self.name,
-                        video + "_" + str(index).zfill(4)
-                    )
+                    name = get_image_id(self.name, video + "_" + str(index).zfill(4))
                     results[name] = result
                 process_bar.update(1)
             process_bar.close()

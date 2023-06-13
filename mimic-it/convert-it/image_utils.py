@@ -61,7 +61,9 @@ def get_json_data(
     """
     futures = {}
     with ThreadPoolExecutor(max_workers=num_thread) as executor:
-        process_bar = tqdm(total=len(images), desc="Processing images", unit="image")
+        process_bar = tqdm(
+            total=len(images), desc="Processing images", unit="image"
+        )
         for key, img in images.items():
             new_key = f"{dataset_name}_IMG_{key}"
             futures[new_key] = executor.submit(process_image, img)
@@ -124,6 +126,7 @@ def get_image_name(image_path: str) -> str:
         str: The image name.
     """
     return image_path.split("/")[-1].split(".")[0]
+
 
 def get_image_id(image_name: str, dataset_name: str) -> str:
     """
