@@ -235,7 +235,7 @@ def add_text(
     if image_3 is not None and state is not None:
         state = conv_templates[template_name].copy()
         logger.info(f"TEMPLATE. {state}")
-        
+
     if text_demo_answer_2 != "":
         assert image_demo_2 is not None
         text = (
