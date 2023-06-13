@@ -173,9 +173,6 @@ class OtterPerceiverResampler(nn.Module):
         super().__init__()
         self.latents = nn.Parameter(torch.randn(num_latents, dim))
         self.frame_embs = nn.Parameter(torch.randn(max_num_frames, dim)) if exists(max_num_frames) else None
-        # self.frame_embs = (
-        #     nn.Parameter(torch.randn(max_num_frames, dim))
-        # )
 
         self.media_time_embs = nn.Parameter(torch.randn(max_num_media, 1, dim)) if exists(max_num_media) else None
 
@@ -547,12 +544,13 @@ class OtterModel(OtterPreTrainedModel):
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
         self.only_attend_previous = config.only_attend_previous
+        self.max_num_frames = config.max_num_frames if hasattr(config, "max_num_frames") else None
 
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder
 
         self.vis_dim = 1024
-        self.perceiver = OtterPerceiverResampler(dim=self.vis_dim)
+        self.perceiver = OtterPerceiverResampler(dim=self.vis_dim, max_num_frames=self.max_num_frames)
 
         self.lang_encoder.init_otter(
             media_token_id=self.media_token_id,
@@ -706,12 +704,13 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
+        self.max_num_frames = config.max_num_frames if hasattr(config, "max_num_frames") else None
 
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder
 
         self.vis_dim = 1024
-        self.perceiver = OtterPerceiverResampler(dim=self.vis_dim)
+        self.perceiver = OtterPerceiverResampler(dim=self.vis_dim, max_num_frames=self.max_num_frames)
 
         self.only_attend_previous = config.only_attend_previous
 
