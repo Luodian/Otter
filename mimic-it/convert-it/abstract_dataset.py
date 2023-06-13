@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Tuple
-from PIL import Image
+from PIL.Image import Image
 import importlib
 
 AVAILABLE_DATASETS: List[str] = [
@@ -14,7 +14,7 @@ AVAILABLE_DATASETS: List[str] = [
 
 
 class AbstractDataset(ABC):
-    def __init__(self, name: str, short_name: str, image_path: str):
+    def __init__(self, name: str, short_name: str, image_path: str, num_threads: int):
         """
         Constructor.
 
@@ -24,10 +24,10 @@ class AbstractDataset(ABC):
         """
         self.name: str = name
         self.short_name: str = short_name
-        self.images: Dict[str, Image] = self._load_images(image_path)
+        self.images: Dict[str, Image] = self._load_images(image_path, num_threads)
 
     @abstractmethod
-    def _load_images(self, image_path: str, num_thread: int) -> Dict[str, Image]:
+    def _load_images(self, image_path: str, num_thread: int) -> dict[str, Image]:
         """
         Load the images from the videos or albums.
 

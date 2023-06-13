@@ -4,7 +4,6 @@ import cv2
 
 from io import BytesIO
 from PIL import Image
-from typing import Dict
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 
@@ -60,8 +59,8 @@ def process_image(img: Image):
 
 
 def get_json_data(
-    images: Dict[str, Image], dataset_name: str, num_thread: int
-) -> Dict[str, str]:
+    images: dict[str, Image], dataset_name: str, num_thread: int
+) -> dict[str, str]:
     """
     Converts a dictionary of images to a JSON-compatible dictionary with base64 encoded strings.
 
