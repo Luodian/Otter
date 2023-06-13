@@ -5,6 +5,8 @@ import cv2
 from io import BytesIO
 from PIL import Image
 from typing import Dict
+from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor
 
 
 def resize_image(image, target_size=(224, 224)):
@@ -43,25 +45,43 @@ def process_image(img: Image):
     return img_base64
 
 
-def get_json_data(images: Dict[str, Image], dataset_name: str) -> Dict[str, str]:
+def get_json_data(images: Dict[str, Image], dataset_name: str, num_thread: int) -> Dict[str, str]:
     """
     Converts a dictionary of images to a JSON-compatible dictionary with base64 encoded strings.
 
     Args:
         images (Dict[str, Image]): A dictionary of images, where the keys are image identifiers and the values are PIL.Image.Image objects.
         dataset_name (str): The name of the dataset.
+        num_thread (int): The number of threads to use for processing the images.
 
     Returns:
         Dict[str, str]: A dictionary where the keys are formatted as "{dataset_name}_IMG_{key}" and the values are base64 encoded string representations of the processed images.
     """
-    json_data = {}
-    for key, img in images.items():
-        new_key = f"{dataset_name}_IMG_{key}"
-        json_data[new_key] = process_image(img)
-    return json_data
+    futures = {}
+    with ThreadPoolExecutor(max_workers=num_thread) as executor:
+        process_bar = tqdm(total=len(images), desc="Processing images", unit="image")
+        for key, img in images.items():
+            new_key = f"{dataset_name}_IMG_{key}"
+            futures[new_key] = executor.submit(process_image, img)
+        results = {}
+        for key, future in futures.items():
+            results[key] = future.result()
+            process_bar.update(1)
+        process_bar.close()
+        return results
 
 
-def save_video_to_b64(video_file, fps=1):
+def frame_video(video_file, fps=1):
+    """
+    Extracts frames from a video file at a specified frame rate and returns them as base64 encoded strings.
+
+    Args:
+        video_file (str): The path to the video file.
+        fps (int): The frame rate at which frames should be extracted. Defaults to 1 frame per second.
+
+    Returns:
+        List[str]: A list of base64 encoded string representations of the extracted frames.
+    """
     if not os.path.exists(video_file):
         raise FileNotFoundError(f"Video file {video_file} does not exist.")
 
