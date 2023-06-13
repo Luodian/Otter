@@ -10,10 +10,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 def get_image_id(image_name: str, dataset_name: str) -> str:
     """
-    Extracts the image identifier from a given image path.
+    Extracts the image identifier from a given image name.
 
     Args:
-        image_path (str): The path to the image.
+        image_name (str): The name of the image.
         dataset_name (str): The name of the dataset.
 
     Returns:
@@ -44,7 +44,7 @@ def process_image(img: Image):
     Processes the input image by resizing it, converting it to RGB mode, and encoding it as base64.
 
     Args:
-        img (PIL.Image.Image): The input image to be processed.
+        image (PIL.Image.Image): The input image to be processed.
 
     Returns:
         str: The base64 encoded string representation of the processed image.
@@ -67,7 +67,7 @@ def get_json_data(
     Args:
         images (Dict[str, Image]): A dictionary of images, where the keys are image identifiers and the values are PIL.Image.Image objects.
         dataset_name (str): The name of the dataset.
-        num_thread (int): The number of threads to use for processing the images.
+        num_threads (int): The number of threads to use for processing the images.
 
     Returns:
         Dict[str, str]: A dictionary where the keys are formatted as "{dataset_name}_IMG_{key}" and the values are base64 encoded string representations of the processed images.
@@ -140,5 +140,11 @@ def get_image_name(image_path: str) -> str:
 
 
 def create_folder(folder_name: str):
+    """
+    Creates a folder if it does not already exist.
+
+    Args:
+        folder_name (str): The name of the folder to create.
+    """
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)

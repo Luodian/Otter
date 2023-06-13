@@ -20,7 +20,9 @@ class AbstractDataset(ABC):
 
         Args:
             name (str): The name of the dataset.
+            short_name (str): The short name of the dataset.
             image_path (str): The path to the images of the dataset.
+            num_threads (int): The number of threads to use for processing the images.
         """
         self.name: str = name
         self.short_name: str = short_name
@@ -45,10 +47,10 @@ class AbstractDataset(ABC):
         Return the item at the given index as a dictionary.
 
         Args:
-            index (int): The index of the item to retrieve.
+            key (str): The key of the item to retrieve.
 
         Returns:
-            Dict[str, Any]: The item at the given index.
+            Dict[str, Any]: The item at the given key.
         """
         return self.images[key]
 
@@ -67,7 +69,7 @@ class AbstractDataset(ABC):
         Return the next item in the iteration.
 
         Returns:
-            Tuple[str, Image]: The next item as a tuple of index and image.
+            Tuple[str, Image]: The next item as a tuple of key and image.
 
         Raises:
             StopIteration: If there are no more items in the iteration.
@@ -80,13 +82,38 @@ class AbstractDataset(ABC):
             raise StopIteration
 
     def __len__(self) -> int:
+        """
+        Return the length of the dataset.
+
+        Returns:
+            int: The length of the dataset.
+        """
         return len(self.query_inputs)
 
     def __str__(self) -> str:
+        """
+        Return a string representation of the dataset.
+
+        Returns:
+            str: The string representation of the dataset.
+        """
         return f"{self.name} dataset"
 
 
 def get_dataset_by_path(path: str, dataset_args: dict[str, str]) -> AbstractDataset:
+    """
+    Get an instance of a dataset class based on the given path.
+
+    Args:
+        path (str): The path to the dataset class in the format "<module>.<class>".
+        dataset_args (Dict[str, str]): Additional arguments to pass to the dataset class constructor.
+
+    Returns:
+        AbstractDataset: An instance of the dataset class.
+
+    Raises:
+        AssertionError: If the given path is not an available dataset.
+    """
     assert path in AVAILABLE_DATASETS, f"{path} is not an available dataset."
     module_path, dataset_name = path.split(".")
     module_path = "datasets." + module_path
@@ -101,4 +128,10 @@ def get_dataset_by_path(path: str, dataset_args: dict[str, str]) -> AbstractData
 
 
 def get_available_datasets() -> List[str]:
+    """
+    Get a list of available dataset paths.
+
+    Returns:
+        List[str]: A list of available dataset paths.
+    """
     return AVAILABLE_DATASETS

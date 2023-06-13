@@ -1,6 +1,5 @@
 from abstract_dataset import AbstractDataset
 from PIL.Image import Image
-from typing import Dict
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from glob import glob
@@ -16,9 +15,28 @@ class DenseCaptions(AbstractDataset):
         image_path: str,
         num_threads: int,
     ):
+        """
+        Initializes a DenseCaptions dataset.
+
+        Args:
+            name (str): The name of the dataset. Defaults to "DenseCaptions".
+            short_name (str): The short name of the dataset. Defaults to "DC".
+            image_path (str): The path to the directory containing the dataset images.
+            num_threads (int): The number of threads to use for processing the images.
+        """
         super().__init__(name, short_name, image_path, num_threads)
 
     def _load_images(self, image_path: str, num_thread: int) -> dict[str, Image]:
+        """
+        Loads the images from the dataset.
+
+        Args:
+            image_path (str): The path to the directory containing the dataset images.
+            num_threads (int): The number of threads to use for processing the images.
+
+        Returns:
+            dict[str, Image]: A dictionary where the keys are image identifiers and the values are PIL.Image.Image objects.
+        """
         videos = glob(f"{image_path}/*.mp4")
         if len(videos) <= 100:
             raise ValueError("Not enough videos in the dataset, please check the path.")
