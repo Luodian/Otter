@@ -9,7 +9,7 @@ from image_utils import frame_video, get_image_name
 
 class DenseCaptions(AbstractDataset):
     def __init__(
-        self, 
+        self,
         name: str = "DenseCaptions",
         short_name="DC",
         *,
