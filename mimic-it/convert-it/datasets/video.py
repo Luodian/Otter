@@ -81,6 +81,16 @@ class VisualStoryTelling(AbstractDataset):
         super().__init__(name, short_name, image_path, num_threads)
 
     def _load_images(self, image_path: str, num_thread: int) -> dict[str, Image.Image]:
+        """
+        Load the images from the VisualStoryTelling dataset.
+
+        Args:
+            image_path (str): The path to the JSON file containing the dataset images.
+            num_thread (int): The number of threads to use for loading the images.
+
+        Returns:
+            Dict[str, Image.Image]: A dictionary of images, where the keys are the IDs of the images.
+        """
         from datasets.visual_story_telling_utils import download
 
         with open(image_path, "r") as f:
