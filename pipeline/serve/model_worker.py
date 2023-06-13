@@ -88,18 +88,20 @@ class ModelWorker:
     def load_model(self, lm_path, checkpoint_path, num_gpus, load_pt=None):
         # if not load_pt:
         device_map = "auto" if num_gpus > 0 else None
-        if self.load_bit == 8:
+        if self.load_bit == "8":
             precision = {"load_in_8bit": True}
-        elif self.load_bit == 4:
+        elif self.load_bit == "4":
             precision = {"load_in_4bit": True}
-        elif self.load_bit == 16:
+        elif self.load_bit == "fp16":
             precision = {"torch_dtype": torch.float16}
+        elif self.load_bit == "bf16":
+            precision = {"torch_dtype": torch.bfloat16}
         else:
             precision = {}
         if "otter" in checkpoint_path:
-            model = OtterForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, **precision)                                                               
+            model = OtterForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, **precision)
         else:
-            model = FlamingoForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map,  **precision)        
+            model = FlamingoForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, **precision)
         model.text_tokenizer.padding_side = "left"  # otter video
         tokenizer = model.text_tokenizer
 
@@ -189,10 +191,10 @@ class ModelWorker:
                 logger.info(f"{len(images)} images conditioned.")
                 tensor_dtype = torch.float16 if self.load_bit == 16 else torch.float32
                 if is_video is True:
-                    vision_x = (image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(0).unsqueeze(0))
+                    vision_x = image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(0).unsqueeze(0)
                     assert vision_x.shape[2] == len(images)  # dim of vision_x: [B, T, F, C, H, W], make sure conditioned on frames of the same video
                 else:
-                    vision_x = (image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0))
+                    vision_x = image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)
                 vision_x = vision_x.to(self.device, dtype=tensor_dtype)
                 logger.info(f"Is video? {is_video} vision_x shape: {vision_x.shape}")
             else:
@@ -291,7 +293,7 @@ if __name__ == "__main__":
     parser.add_argument("--limit_model_concurrency", type=int, default=5)
     parser.add_argument("--stream_interval", type=int, default=2)
     parser.add_argument("--no_register", action="store_true")
-    parser.add_argument("--load_bit", type=int, default=32)
+    parser.add_argument("--load_bit", type=str, choices=["fp16", "bf16", "8", "4", "32"], default="32")
     parser.add_argument("--load_pt", action="store_true")
     args = parser.parse_args()
 
