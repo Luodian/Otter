@@ -88,13 +88,9 @@ class ModelWorker:
         # if not load_pt:
         device_map = "balanced" if num_gpus > 0 else None
         if "otter" in checkpoint_path:
-            model = OtterForConditionalGeneration.from_pretrained(
-                checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit
-            )
+            model = OtterForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit)
         else:
-            model = FlamingoForConditionalGeneration.from_pretrained(
-                checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit
-            )
+            model = FlamingoForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, load_in_8bit=load_in_8bit)
         model.text_tokenizer.padding_side = "left"  # otter video
         tokenizer = model.text_tokenizer
 
@@ -123,9 +119,7 @@ class ModelWorker:
 
     def send_heart_beat(self):
         logger.info(
-            f"Send heart beat. Models: {[self.model_name]}. "
-            f"Semaphore: {pretty_print_semaphore(model_semaphore)}. "
-            f"global_counter: {global_counter}"
+            f"Send heart beat. Models: {[self.model_name]}. " f"Semaphore: {pretty_print_semaphore(model_semaphore)}. " f"global_counter: {global_counter}"
         )
 
         url = self.controller_addr + "/receive_heart_beat"
@@ -153,11 +147,7 @@ class ModelWorker:
         if model_semaphore is None:
             return 0
         else:
-            return (
-                args.limit_model_concurrency
-                - model_semaphore._value
-                + (len(model_semaphore._waiters) if model_semaphore._waiters is not None else 0)
-            )
+            return args.limit_model_concurrency - model_semaphore._value + (len(model_semaphore._waiters) if model_semaphore._waiters is not None else 0)
 
     def get_status(self):
         return {
@@ -192,11 +182,7 @@ class ModelWorker:
                     vision_x = (image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(0).unsqueeze(0)).to(self.device)
                     assert vision_x.shape[2] == len(images)  # dim of vision_x: [B, T, F, C, H, W], make sure conditioned on frames of the same video
                 else:
-                    vision_x = (
-                        image_processor.preprocess(images, return_tensors="pt")["pixel_values"]
-                        .unsqueeze(1)
-                        .unsqueeze(0)
-                    ).to(self.device)
+                    vision_x = (image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)).to(self.device)
                 logger.info(f"Is video? {is_video} vision_x shape: {vision_x.shape}")
             else:
                 images = None

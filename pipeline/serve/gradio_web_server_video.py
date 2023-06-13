@@ -43,7 +43,7 @@ priority = {
 }
 
 
-def extract_frames(video_path, num_frames=32):
+def extract_frames(video_path, num_frames=16):
     video = cv2.VideoCapture(video_path)
     total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
     frame_step = total_frames // num_frames
