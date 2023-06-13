@@ -189,7 +189,7 @@ class ModelWorker:
                     is_video = False
                 images = [Image.open(BytesIO(base64.b64decode(image))) for image in images]
                 logger.info(f"{len(images)} images conditioned.")
-                tensor_dtype = torch.float16 if self.load_bit == 16 else torch.float32
+                tensor_dtype = {"fp16": torch.float16, "bf16": torch.bfloat16, "32": torch.float32}[self.load_bit]
                 if is_video is True:
                     vision_x = image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(0).unsqueeze(0)
                     assert vision_x.shape[2] == len(images)  # dim of vision_x: [B, T, F, C, H, W], make sure conditioned on frames of the same video
