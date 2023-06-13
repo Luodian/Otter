@@ -4,7 +4,7 @@ from PIL import Image
 import importlib
 
 AVAILABLE_DATASETS: List[str] = [
-    # "change.SpotTheDifference",
+    "change.SpotTheDifference",
     "video.DenseCaptions",
     # "video.TVCaptions",
     "video.VisualStoryTelling",

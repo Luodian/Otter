@@ -70,7 +70,7 @@ class VisualStoryTelling(AbstractDataset):
         num_threads: int,
     ):
         """
-        Initializes a DenseCaptions dataset.
+        Initializes a VisualStoryTelling dataset.
 
         Args:
             name (str): The name of the dataset. Defaults to "VisualStroryTelling".
