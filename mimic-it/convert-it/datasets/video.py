@@ -13,13 +13,11 @@ class DenseCaptions(AbstractDataset):
     def __init__(self, name: str = "DenseCaptions", *, image_path: str):
         super().__init__(name, image_path)
 
-    def _load_images(
-        self, image_path: str, num_thread: int
-    ) -> Dict[str, Image]:
+    def _load_images(self, image_path: str, num_thread: int) -> Dict[str, Image]:
         videos = glob(f"{image_path}/*.mp4")
         if len(videos) <= 100:
             raise ValueError("Not enough videos in the dataset, please check the path.")
-        with ThreadPoolExecutor() as executor:
+        with ThreadPoolExecutor(max_workers=num_thread) as executor:
             futures = {}
             for video in videos:
                 futures[get_image_name] = executor.submit(frame_video, video)
