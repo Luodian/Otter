@@ -9,6 +9,20 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 
 
+def get_image_id(image_name: str, dataset_name: str) -> str:
+    """
+    Extracts the image identifier from a given image path.
+
+    Args:
+        image_path (str): The path to the image.
+        dataset_name (str): The name of the dataset.
+
+    Returns:
+        str: The image identifier.
+    """
+    return f"{dataset_name}_IMG_{get_image_name(image_name)}"
+
+
 def resize_image(image, target_size=(224, 224)):
     """
     Resizes the given image to the target size using the Lanczos algorithm.
@@ -63,7 +77,7 @@ def get_json_data(
     with ThreadPoolExecutor(max_workers=num_thread) as executor:
         process_bar = tqdm(total=len(images), desc="Processing images", unit="image")
         for key, img in images.items():
-            new_key = f"{dataset_name}_IMG_{key}"
+            new_key = get_image_id(key, dataset_name)
             futures[new_key] = executor.submit(process_image, img)
         results = {}
         for key, future in futures.items():
@@ -126,15 +140,6 @@ def get_image_name(image_path: str) -> str:
     return image_path.split("/")[-1].split(".")[0]
 
 
-def get_image_id(image_name: str, dataset_name: str) -> str:
-    """
-    Extracts the image identifier from a given image path.
-
-    Args:
-        image_path (str): The path to the image.
-        dataset_name (str): The name of the dataset.
-
-    Returns:
-        str: The image identifier.
-    """
-    return f"{dataset_name}_IMG_{get_image_name(image_name)}"
+def create_folder(folder_name: str):
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)

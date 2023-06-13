@@ -9,16 +9,12 @@ AVAILABLE_DATASETS: List[str] = [
     "video.TVCaptions",
     "video.VisualStoryTelling",
     "3d.SceneNavigation",
-    "funqa.FunQA_translation",
-    "funqa.FunQA_mcqa",
-    "funqa.FunQA_dia",
     "fpv.EGO4D",
-    "translate.Translation",
 ]
 
 
 class AbstractDataset(ABC):
-    def __init__(self, name: str, image_path: str):
+    def __init__(self, name: str, short_name: str, image_path: str):
         """
         Constructor.
 
@@ -27,6 +23,7 @@ class AbstractDataset(ABC):
             image_path (str): The path to the images of the dataset.
         """
         self.name: str = name
+        self.short_name: str = short_name
         self.images: Dict[str, Image] = self._load_images(image_path)
 
     @abstractmethod
