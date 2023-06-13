@@ -40,7 +40,8 @@
 
 **Checkpoints:** 
 - [Checkpoints v0.1 (image version)](https://huggingface.co/luodian/otter-9b-hf)
-- [Checkpoints v0.2 (video version)](https://huggingface.co/luodian/otter-9b-dc-hf)
+- [Checkpoints v0.2 (video version, trained on MIMIC-IT-DC)](https://huggingface.co/luodian/otter-9b-dc-hf)
+- [Checkpoints v0.2 (video version, trained on MIMIC-IT all videos, upcoming)]()
 - [Checkpoints v0.3 (Otter-E, visual assistant version, upcoming)]()
 
 Otter v0.1 supports multiple images inputs as in-context examples, which is **the first multi-modal instruction tuned model** that supports to organize inputs this way. 
