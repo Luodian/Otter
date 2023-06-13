@@ -191,8 +191,8 @@ def add_text(
     image_3,
     request: gr.Request,
 ):
-    template_name = "otter" if "otter" in model_selector else "open_flamingo"
-    if "otter" in model_selector:
+    template_name = "otter" if "otter" in model_selector.lower() else "open_flamingo"
+    if "otter" in model_selector.lower():
         DEFAULT_ANSWER_TOKEN = "<answer> "
         human_role_label = conv_templates[template_name].copy().roles[0] + ": "
         bot_role_label = " " + conv_templates[template_name].copy().roles[1] + ":"
@@ -306,7 +306,7 @@ def http_bot(
     logger.info(f"http_bot. ip: {request.client.host}")
     start_tstamp = time.time()
     model_name = model_selector
-    template_name = "otter" if "otter" in model_selector else "open_flamingo"
+    template_name = "otter" if "otter" in model_selector.lower() else "open_flamingo"
 
     if state.skip_next:
         # This generate call is skipped due to invalid inputs
