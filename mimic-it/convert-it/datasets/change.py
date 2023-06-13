@@ -56,7 +56,7 @@ class SpotTheDifference(AbstractDataset):
             jpgs.add(path.split("/")[-1].split(".")[0])
         for path in pngs_path:
             pngs.add(path.split("/")[-1].split(".")[0])
-            
+
         def get_path(file_name):
             if file_name in jpgs:
                 return os.path.join(image_path, file_name + ".jpg")
@@ -68,14 +68,14 @@ class SpotTheDifference(AbstractDataset):
             else:
                 # print("===================================", file_name)
                 raise Exception("File not found")
-        
+
         def read_image(file_name) -> Image.Image:
             return Image.open(file_name)
-        
+
         file_not_found = []
-        
+
         images = {}
-        
+
         for id in tqdm(ids, desc="Reading images"):
             try:
                 file_1 = get_path(id)
