@@ -80,9 +80,9 @@ class VisualStoryTelling(AbstractDataset):
         """
         super().__init__(name, short_name, image_path, num_threads)
     
-    
     def _load_images(self, image_path: str, num_thread: int) -> dict[str, Image.Image]:
+        from datasets.visual_story_telling_utils import download
+
         with open(image_path, "r") as f:
             data = json.load(f)
-        from datasets.visual_story_telling_utils import download
         return download(data["images"], num_thread)
