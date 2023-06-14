@@ -72,17 +72,24 @@ def get_json_data(
     Returns:
         Dict[str, str]: A dictionary where the keys are formatted as "{dataset_name}_IMG_{key}" and the values are base64 encoded string representations of the processed images.
     """
-    futures = {}
     with ThreadPoolExecutor(max_workers=num_thread) as executor:
         process_bar = tqdm(total=len(images), desc="Processing images", unit="image")
-        for key, img in images.items():
-            new_key = get_image_id(key, dataset_name)
-            futures[new_key] = executor.submit(process_image, img)
         results = {}
-        for key, future in futures.items():
-            results[key] = future.result()
+
+        def process_image_wrapper(args):
+            key, img = args
+            new_key = get_image_id(key, dataset_name)
+            result = process_image(img)
             process_bar.update(1)
+            return new_key, result
+
+        processed_images = executor.map(process_image_wrapper, images.items())
+
+        for key, result in processed_images:
+            results[key] = result
+
         process_bar.close()
+
         return results
 
 
