@@ -1,4 +1,5 @@
 import json
+import os
 
 from abstract_dataset import AbstractDataset
 from PIL import Image
@@ -6,6 +7,7 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from glob import glob
 from image_utils import frame_video, get_image_name, resize_image
+from natsort import natsorted
 
 
 class DenseCaptions(AbstractDataset):
@@ -129,4 +131,38 @@ class TVCaptions(AbstractDataset):
         Returns:
             Dict[str, Image.Image]: A dictionary of images, where the keys are the IDs of the images.
         """
-        pass
+        def get_frames(directory, frames=16):
+            # Generate a list of image filenames
+            image_filenames = natsorted(os.listdir(directory))
+
+            # Calculate the stride length to achieve an average sample
+            stride = len(image_filenames) // frames
+
+            # Initialize the starting index for sampling
+            start_index = stride // 2
+
+            # Sample 16 images evenly
+            sampled_images = [image_filenames[i] for i in range(start_index, len(image_filenames), stride)]
+
+            return sampled_images
+
+        def get_images(frames, frame_name, clip_name):
+            images = {}
+            for frame in frames:
+                image_name = os.path.basename(frame).split(".")[0]
+                image_id = f"{frame_name}_{clip_name}_{image_name}"
+                images[image_id] = Image.open(frame)
+            return images
+
+        frames = glob(os.path.join(image_path, "*"))
+        all_images = {}
+        for frame in frames:
+            frame_name = os.path.basename(frame).split("_")[0]
+            clips = glob(os.path.join(frame, "*"))
+            for clip in clips:
+                clip_name = os.path.basename(clip)
+                frames = get_frames(clip)
+                all_images.update(get_images(frames, frame_name, clip_name))
+        
+        return all_images
+                
