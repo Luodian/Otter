@@ -8,7 +8,7 @@ AVAILABLE_DATASETS: List[str] = [
     "video.DenseCaptions",
     "video.TVCaptions",
     "video.VisualStoryTelling",
-    # "3d.SceneNavigation",
+    "3d.SceneNavigation",
     # "fpv.EGO4D",
 ]
 
