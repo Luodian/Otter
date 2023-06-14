@@ -717,8 +717,6 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         self.vis_dim = 1024
         self.perceiver = OtterPerceiverResampler(dim=self.vis_dim, max_num_frames=self.max_num_frames)
 
-       
-
         self.lang_encoder.init_otter(
             media_token_id=self.media_token_id,
             vis_hidden_size=self.vis_dim,
