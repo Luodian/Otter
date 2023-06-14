@@ -135,10 +135,10 @@ class TVCaptions(AbstractDataset):
 
         def get_frames(directory, frames=16):
             # Generate a list of image filenames
-            image_filenames = natsorted(os.listdir(directory))
+            image_filenames = natsorted(glob(os.path.join(directory, "*")))
 
             # Calculate the stride length to achieve an average sample
-            stride = len(image_filenames) // frames
+            stride = max(1, len(image_filenames) // frames)
 
             # Initialize the starting index for sampling
             start_index = stride // 2
@@ -165,18 +165,17 @@ class TVCaptions(AbstractDataset):
             frame_name = os.path.basename(frame).split("_")[0]
             clips = glob(os.path.join(frame, "*"))
             progress_bar = tqdm(
-                len(clips), desc=f"Processing clips in {frame_name}", unit="clip"
+                total=len(clips), desc=f"Processing clips in {frame_name}", unit="clip"
             )
             with ThreadPoolExecutor(max_workers=num_thread) as executor:
-                futures = []
-                for clip in clips:
+                
+                def get_images_dict(clip):
                     clip_name = os.path.basename(clip)
                     frames = get_frames(clip)
-                    futures.append(
-                        executor.submit(get_images, frames, frame_name, clip_name)
-                    )
-                for future in futures:
-                    all_images.update(future.result())
+                    return get_images(frames, frame_name, clip_name)
+                
+                for images in executor.map(get_images_dict, clips):
+                    all_images.update(images)
                     progress_bar.update(1)
             progress_bar.close()
 
