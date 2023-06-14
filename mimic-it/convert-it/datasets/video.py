@@ -168,12 +168,12 @@ class TVCaptions(AbstractDataset):
                 total=len(clips), desc=f"Processing clips in {frame_name}", unit="clip"
             )
             with ThreadPoolExecutor(max_workers=num_thread) as executor:
-                
+
                 def get_images_dict(clip):
                     clip_name = os.path.basename(clip)
                     frames = get_frames(clip)
                     return get_images(frames, frame_name, clip_name)
-                
+
                 for images in executor.map(get_images_dict, clips):
                     all_images.update(images)
                     progress_bar.update(1)
