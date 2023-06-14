@@ -19,7 +19,7 @@ class SceneNavigation(AbstractDataset):
         Args:
             name (str): The name of the dataset. Defaults to "SceneNavigation".
             short_name (str): The short name of the dataset. Defaults to "SN".
-            image_path (str): The path to the directory containing the dataset images.
+            image_path (str): The directory path of the folder named "scannet_frames_25k" obtained by downloading a compressed file from http://www.scan-net.org/ and extracting it.
             num_threads (int): The number of threads to use for processing the images.
         """
         super().__init__(name, short_name, image_path, num_threads)
