@@ -156,7 +156,7 @@ class TVCaptions(AbstractDataset):
             for frame in frames:
                 image_name = os.path.basename(frame).split(".")[0]
                 image_id = f"{frame_name}_{clip_name}_{image_name}"
-                images[image_id] = Image.open(frame)
+                images[image_id] = resize_image(Image.open(frame))
             return images
 
         frames = glob(os.path.join(image_path, "*"))
@@ -164,9 +164,16 @@ class TVCaptions(AbstractDataset):
         for frame in frames:
             frame_name = os.path.basename(frame).split("_")[0]
             clips = glob(os.path.join(frame, "*"))
-            for clip in clips:
-                clip_name = os.path.basename(clip)
-                frames = get_frames(clip)
-                all_images.update(get_images(frames, frame_name, clip_name))
+            progress_bar = tqdm(len(clips), desc=f"Processing clips in {frame_name}", unit="clip")
+            with ThreadPoolExecutor(max_workers=num_thread) as executor:
+                futures = []
+                for clip in clips:
+                    clip_name = os.path.basename(clip)
+                    frames = get_frames(clip)
+                    futures.append(executor.submit(get_images, frames, frame_name, clip_name))
+                for future in futures:
+                    all_images.update(future.result())
+                    progress_bar.update(1)
+            progress_bar.close()
 
         return all_images
