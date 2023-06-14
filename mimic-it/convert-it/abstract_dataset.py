@@ -6,7 +6,7 @@ import importlib
 AVAILABLE_DATASETS: List[str] = [
     "change.SpotTheDifference",
     "video.DenseCaptions",
-    # "video.TVCaptions",
+    "video.TVCaptions",
     "video.VisualStoryTelling",
     # "3d.SceneNavigation",
     # "fpv.EGO4D",

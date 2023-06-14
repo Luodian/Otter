@@ -1,11 +1,10 @@
-import json
 import requests
-import argparse
 
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
 from io import BytesIO
+from image_utils import resize_image
 
 
 def get_url(image: dict[str]):
@@ -21,7 +20,7 @@ def download_single_image(image: dict[str]):
     pic = requests.get(url)
     return (
         id,
-        Image.open(BytesIO(pic.content)),
+        resize_image(Image.open(BytesIO(pic.content))),
     )
 
 

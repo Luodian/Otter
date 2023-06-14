@@ -5,7 +5,7 @@ from PIL import Image
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from glob import glob
-from image_utils import frame_video, get_image_name
+from image_utils import frame_video, get_image_name, resize_image
 
 
 class DenseCaptions(AbstractDataset):
@@ -96,3 +96,24 @@ class VisualStoryTelling(AbstractDataset):
         with open(image_path, "r") as f:
             data = json.load(f)
         return download(data["images"], num_thread)
+
+
+class TVCaptions(AbstractDataset):
+    def __init__(
+        self,
+        name: str = "TVCaptions",
+        short_name="TVC",
+        *,
+        image_path: str,
+        num_threads: int,
+    ):
+        """
+        Initializes a TVCaptions dataset.
+
+        Args:
+            name (str): The name of the dataset. Defaults to "TVCaptions".
+            short_name (str): The short name of the dataset. Defaults to "TVC".
+            image_path (str): The path to the directory containing the dataset images, downloaded from https://tvqa.cs.unc.edu/download_tvqa.html#tvqa-download-4
+            num_threads (int): The number of threads to use for processing the images.
+        """
+        super().__init__(name, short_name, image_path, num_threads)

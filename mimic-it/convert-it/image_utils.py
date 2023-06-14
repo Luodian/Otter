@@ -116,7 +116,7 @@ def frame_video(video_file: str, fps=1):
         if frame_count % (video_fps // fps) == 0:
             # convert frame to base64
             _, buffer = cv2.imencode(".jpg", frame)
-            frames.append(Image.open(BytesIO(buffer)))
+            frames.append(resize_image(Image.open(BytesIO(buffer))))
             saved_frame_count += 1
 
         frame_count += 1
