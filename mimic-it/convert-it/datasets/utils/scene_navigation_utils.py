@@ -9,6 +9,18 @@ from image_utils import resize_image
 
 
 def process(cur_dir, img_root):
+    """
+    Process images in a directory.
+
+    Parameters:
+    - cur_dir (str): The current directory name.
+    - img_root (str): The root directory of the images.
+
+    Returns:
+    - dict: A dictionary containing processed images. The keys are unique identifiers
+            for each image, and the values are the processed images.
+
+    """
     root = os.path.join(img_root, cur_dir, "color")
     file_list = os.listdir(root)
     images = {}
@@ -21,6 +33,18 @@ def process(cur_dir, img_root):
 
 
 def process_data(img_root: str, num_threads: int):
+    """
+    Process images in parallel using multiple threads.
+
+    Parameters:
+    - img_root (str): The root directory of the images.
+    - num_threads (int): The number of threads to use for parallel processing.
+
+    Returns:
+    - dict: A dictionary containing processed images. The keys are unique identifiers
+            for each image, and the values are the processed images.
+
+    """
     keys = os.listdir(img_root)
     all_images = {}
     process_bar = tqdm(total=len(keys), unit="image", desc="Loading images")
