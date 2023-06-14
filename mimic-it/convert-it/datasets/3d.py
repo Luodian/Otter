@@ -36,5 +36,5 @@ class SceneNavigation(AbstractDataset):
             dict[str, Image.Image]: A dictionary where the keys are image identifiers and the values are PIL.Image.Image objects.
         """
         from datasets.utils.scene_navigation_utils import process_data
-        
+
         return process_data(image_path, num_thread)

@@ -14,7 +14,7 @@ def process(cur_dir, img_root):
     images = {}
     for cur_file in file_list:
         file_name = os.path.join(img_root, cur_dir, "color", cur_file)
-        img = Image.open(file_name) # path to file
+        img = Image.open(file_name)  # path to file
         image_id = f"{cur_dir}_color_{cur_file[:-4]}"
         images[image_id] = resize_image(img)
     return images

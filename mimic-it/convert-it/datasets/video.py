@@ -117,7 +117,7 @@ class TVCaptions(AbstractDataset):
             num_threads (int): The number of threads to use for processing the images.
         """
         super().__init__(name, short_name, image_path, num_threads)
-    
+
     def _load_images(self, image_path: str, num_thread: int) -> dict[str, Image.Image]:
         """
         Load the images from the TVCaptions dataset.
@@ -129,4 +129,4 @@ class TVCaptions(AbstractDataset):
         Returns:
             Dict[str, Image.Image]: A dictionary of images, where the keys are the IDs of the images.
         """
-
+        pass
