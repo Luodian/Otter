@@ -161,6 +161,7 @@ def train_one_epoch(
         # import pdb;pdb.set_trace()
         #### BACKWARD PASS ####
         total_loss_sum = sum(total_losses)
+        mean_loss = total_loss_sum / len(total_losses)
         accelerator.backward(total_loss_sum.to(device_id))
 
         def mask_embedding(m):
@@ -205,7 +206,7 @@ def train_one_epoch(
 
                 wandb.log(
                     {
-                        "loss_multi_instruct": total_loss_sum.item(),
+                        "loss_multi_instruct": mean_loss.item(),
                         "global_step": global_step // args.gradient_accumulation_steps,
                     },
                     commit=True,
@@ -213,7 +214,7 @@ def train_one_epoch(
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
-            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {total_loss_sum.item():.3f}")
+            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {mean_loss.item():.3f}")
 
 
 def main():
@@ -376,7 +377,7 @@ def main():
                 device_map="auto",
                 local_files_only=args.offline,
             )
-        elif "flamingo" in args.pretrained_model_name:
+        elif "flamingo" in args.pretrained_model_name_or_path:
             model = FlamingoForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
                 device_map="auto",
