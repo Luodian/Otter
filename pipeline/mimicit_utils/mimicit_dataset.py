@@ -194,7 +194,7 @@ class MimicitDataset(Dataset):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
-        random.shuffle(all_instruction_ids)
+        # random.shuffle(all_instruction_ids)
         for cur_instruction_id in all_instruction_ids[:]:
             cur_instruction_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
