@@ -130,6 +130,7 @@ class TVCaptions(AbstractDataset):
 
         Returns:
             Dict[str, Image.Image]: A dictionary of images, where the keys are the IDs of the images.
+
         """
         def get_frames(directory, frames=16):
             # Generate a list of image filenames
@@ -142,7 +143,9 @@ class TVCaptions(AbstractDataset):
             start_index = stride // 2
 
             # Sample 16 images evenly
-            sampled_images = [image_filenames[i] for i in range(start_index, len(image_filenames), stride)]
+            sampled_images = [
+                image_filenames[i] for i in range(start_index, len(image_filenames), stride)
+            ]
 
             return sampled_images
 
@@ -163,6 +166,5 @@ class TVCaptions(AbstractDataset):
                 clip_name = os.path.basename(clip)
                 frames = get_frames(clip)
                 all_images.update(get_images(frames, frame_name, clip_name))
-        
+
         return all_images
-                
