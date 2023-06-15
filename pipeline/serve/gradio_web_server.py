@@ -192,12 +192,15 @@ def add_text(
     request: gr.Request,
 ):
     if text_demo_question_2 != "":
+        text_demo_question_1 = text_demo_question_1.strip()
         if not re.search(r"[.,?]$", text_demo_question_2):
             text_demo_question_2 += "."
     if text_demo_answer_2 != "":
+        text_demo_question_2 = text_demo_question_2.strip()
         if not re.search(r"[.,?]$", text_demo_answer_2):
             text_demo_answer_2 += "."
     if text_3 != "":
+        text_3 = text_3.strip()
         if not re.search(r"[.,?]$", text_3):
             text_3 += "."
     template_name = "otter" if "otter" in model_selector.lower() else "open_flamingo"
@@ -584,7 +587,7 @@ def build_demo(embed_mode):
                     early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
 
             with gr.Column(scale=6):
-                chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=720)
+                chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=960)
                 with gr.Row():
                     with gr.Column(scale=8):
                         textbox_3 = gr.Textbox(
@@ -625,17 +628,17 @@ def build_demo(embed_mode):
                     "a bathroom sink.",
                     f"{cur_dir}/examples/dinner.jpg",
                     "An image of",
-                ],
-                [
-                    f"{cur_dir}/examples/tennis.jpg",
-                    "What's the danger of the sport in this image?",
-                    "The player may get hitted by the tennis ball.",
-                    f"{cur_dir}/examples/baseball.jpg",
-                    "What's the danger of the sport in this image?",
-                    "While chasing the baseball, the player may inadvertently collide with other players.",
-                    f"{cur_dir}/examples/soccer.png",
-                    "What's the potential danger of playing this sport in the dark? ",
-                ],
+                ]
+                # [
+                #     f"{cur_dir}/examples/tennis.jpg",
+                #     "What's the danger of the sport in this image?",
+                #     "The player may get hitted by the tennis ball.",
+                #     f"{cur_dir}/examples/baseball.jpg",
+                #     "What's the danger of the sport in this image?",
+                #     "While chasing the baseball, the player may inadvertently collide with other players.",
+                #     f"{cur_dir}/examples/soccer.png",
+                #     "What's the potential danger of playing this sport in the dark? ",
+                # ],
             ],
             inputs=[
                 imagebox_demo_1,

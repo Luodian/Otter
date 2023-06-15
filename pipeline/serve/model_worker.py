@@ -101,7 +101,9 @@ class ModelWorker:
         if "otter" in checkpoint_path:
             model = OtterForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, **precision)
         else:
-            model = FlamingoForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, **precision)
+            model = FlamingoForConditionalGeneration.from_pretrained(
+                checkpoint_path, device_map=device_map, **precision
+            )
         model.text_tokenizer.padding_side = "left"  # otter video
         tokenizer = model.text_tokenizer
 
@@ -131,7 +133,9 @@ class ModelWorker:
 
     def send_heart_beat(self):
         logger.info(
-            f"Send heart beat. Models: {[self.model_name]}. " f"Semaphore: {pretty_print_semaphore(model_semaphore)}. " f"global_counter: {global_counter}"
+            f"Send heart beat. Models: {[self.model_name]}. "
+            f"Semaphore: {pretty_print_semaphore(model_semaphore)}. "
+            f"global_counter: {global_counter}"
         )
 
         url = self.controller_addr + "/receive_heart_beat"
@@ -159,7 +163,11 @@ class ModelWorker:
         if model_semaphore is None:
             return 0
         else:
-            return args.limit_model_concurrency - model_semaphore._value + (len(model_semaphore._waiters) if model_semaphore._waiters is not None else 0)
+            return (
+                args.limit_model_concurrency
+                - model_semaphore._value
+                + (len(model_semaphore._waiters) if model_semaphore._waiters is not None else 0)
+            )
 
     def get_status(self):
         return {
@@ -193,10 +201,20 @@ class ModelWorker:
                 logger.info(f"{len(images)} images conditioned.")
                 tensor_dtype = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}[self.load_bit]
                 if is_video is True:
-                    vision_x = image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(0).unsqueeze(0)
-                    assert vision_x.shape[2] == len(images)  # dim of vision_x: [B, T, F, C, H, W], make sure conditioned on frames of the same video
+                    vision_x = (
+                        image_processor.preprocess(images, return_tensors="pt")["pixel_values"]
+                        .unsqueeze(0)
+                        .unsqueeze(0)
+                    )
+                    assert vision_x.shape[2] == len(
+                        images
+                    )  # dim of vision_x: [B, T, F, C, H, W], make sure conditioned on frames of the same video
                 else:
-                    vision_x = image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)
+                    vision_x = (
+                        image_processor.preprocess(images, return_tensors="pt")["pixel_values"]
+                        .unsqueeze(1)
+                        .unsqueeze(0)
+                    )
                 vision_x = vision_x.to(self.device, dtype=tensor_dtype)
                 logger.info(f"Is video? {is_video} vision_x shape: {vision_x.shape}")
             else:
@@ -210,15 +228,39 @@ class ModelWorker:
         ).to(self.device)
         logger.info(f"input_ids: {inputs['input_ids'].shape} attention_mask: {inputs['attention_mask'].shape}")
         generation_kwargs = params.get("generation_kwargs", {})
+        # generation_kwargs["num_beams"] = generation_kwargs.get("num_beams", 3)
         logger.info(f"generation_kwargs: {generation_kwargs}")
-        generation_kwargs["num_beams"] = generation_kwargs.get("num_beams", 3)
+
+        bad_words_id = tokenizer(["User:"], add_special_tokens=False).input_ids
         generation_input = dict(
             vision_x=vision_x,
             lang_x=inputs["input_ids"],
             attention_mask=inputs["attention_mask"],
-            streamer=streamer,
+            streamer = streamer,
+            bad_words_ids=bad_words_id,
             **generation_kwargs,
         )
+        # # Call the generate function and store the output in a variable
+        # generated_output = model.generate(**generation_input)
+
+        # # Decode the output using the tokenizer
+        # generated_text = (
+        #     tokenizer.decode(generated_output[0])
+        #     .split("<answer>")[-1]
+        #     .lstrip()
+        #     .rstrip()
+        #     .split("<|endofchunk|>")[0]
+        #     .lstrip()
+        #     .rstrip()
+        #     .lstrip('"')
+        #     .rstrip('"')
+        # )
+        # logger.info(f"Generated text: {generated_text}")
+        # ret = {
+        #     "text": generated_text,
+        #     "error_code": 0,
+        # }
+        # yield json.dumps(ret).encode() + b"\0"
         thread = threading.Thread(target=model.generate, kwargs=generation_input)
         thread.start()
         generated_text = ""

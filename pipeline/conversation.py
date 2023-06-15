@@ -82,7 +82,7 @@ class Conversation:
                                 image = image.resize((new_W, new_H))
 
                             buffered = BytesIO()
-                            image.save(buffered, format="JPEG")
+                            image.save(buffered, format="PNG")
                             img_b64_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
                             images.append(img_b64_str)
 
@@ -99,7 +99,7 @@ class Conversation:
                                     frame = frame.resize((new_W, new_H))
 
                                 buffered = BytesIO()
-                                frame.save(buffered, format="JPEG")
+                                frame.save(buffered, format="PNG")
                                 img_b64_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
                                 frames.append(img_b64_str)
 
