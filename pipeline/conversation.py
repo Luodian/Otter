@@ -83,7 +83,7 @@ class Conversation:
 
                             buffered = BytesIO()
                             image.save(buffered, format="PNG")
-                            img_b64_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
+                            img_b64_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
                             images.append(img_b64_str)
 
                         elif isinstance(image, list):
@@ -100,7 +100,7 @@ class Conversation:
 
                                 buffered = BytesIO()
                                 frame.save(buffered, format="PNG")
-                                img_b64_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
+                                img_b64_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
                                 frames.append(img_b64_str)
 
                             images.append(frames)
