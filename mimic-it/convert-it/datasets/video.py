@@ -155,7 +155,10 @@ class TVCaptions(AbstractDataset):
             images = {}
             for frame in frames:
                 image_name = os.path.basename(frame).split(".")[0]
-                image_id = f"{frame_name}_{clip_name}_{image_name}"
+                if clip_name.startswith(frame_name):
+                    image_id = f"{clip_name}_{image_name}"
+                else:
+                    image_id = f"{frame_name}_{clip_name}_{image_name}"
                 images[image_id] = resize_image(Image.open(frame))
             return images
 
