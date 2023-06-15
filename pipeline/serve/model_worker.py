@@ -188,7 +188,8 @@ class ModelWorker:
                     is_video = True
                 else:
                     is_video = False
-                images = [Image.open(BytesIO(base64.b64decode(image))) for image in images]
+                # cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
+                images = [Image.open(BytesIO(base64.urlsafe_b64decode(image))).convert("RGB") for image in images]
                 logger.info(f"{len(images)} images conditioned.")
                 tensor_dtype = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}[self.load_bit]
                 if is_video is True:
@@ -210,7 +211,7 @@ class ModelWorker:
         logger.info(f"input_ids: {inputs['input_ids'].shape} attention_mask: {inputs['attention_mask'].shape}")
         generation_kwargs = params.get("generation_kwargs", {})
         logger.info(f"generation_kwargs: {generation_kwargs}")
-        # generation_kwargs["num_beams"] = generation_kwargs.get("num_beams", 3)
+        generation_kwargs["num_beams"] = generation_kwargs.get("num_beams", 3)
         generation_input = dict(
             vision_x=vision_x,
             lang_x=inputs["input_ids"],

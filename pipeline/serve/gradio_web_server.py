@@ -7,7 +7,7 @@ import time
 import uuid
 import gradio as gr
 import requests
-
+import re
 from pipeline.conversation import default_conversation, conv_templates, SeparatorStyle
 from pipeline.constants import LOGDIR
 from pipeline.serve.serving_utils import (
@@ -191,6 +191,15 @@ def add_text(
     image_3,
     request: gr.Request,
 ):
+    if text_demo_question_2 != "":
+        if not re.search(r"[.,?]$", text_demo_question_2):
+            text_demo_question_2 += "."
+    if text_demo_answer_2 != "":
+        if not re.search(r"[.,?]$", text_demo_answer_2):
+            text_demo_answer_2 += "."
+    if text_3 != "":
+        if not re.search(r"[.,?]$", text_3):
+            text_3 += "."
     template_name = "otter" if "otter" in model_selector.lower() else "open_flamingo"
     if "otter" in model_selector.lower():
         DEFAULT_ANSWER_TOKEN = "<answer> "
@@ -557,12 +566,20 @@ def build_demo(embed_mode):
                     ).style(container=True)
 
                 with gr.Accordion("Parameters", open=False, visible=False) as parameter_row:
-                    max_new_tokens = gr.Slider(minimum=16, maximum=512, value=512, step=1, interactive=True, label="# generation tokens")
-                    temperature = gr.Slider(minimum=0, maximum=1, value=1, step=0.1, interactive=True, label="temperature")
+                    max_new_tokens = gr.Slider(
+                        minimum=16, maximum=512, value=512, step=1, interactive=True, label="# generation tokens"
+                    )
+                    temperature = gr.Slider(
+                        minimum=0, maximum=1, value=1, step=0.1, interactive=True, label="temperature"
+                    )
                     top_k = gr.Slider(minimum=0, maximum=10, value=0, step=1, interactive=True, label="top_k")
                     top_p = gr.Slider(minimum=0, maximum=1, value=1.0, step=0.1, interactive=True, label="top_p")
-                    no_repeat_ngram_size = gr.Slider(minimum=1, maximum=10, value=3, step=1, interactive=True, label="no_repeat_ngram_size")
-                    length_penalty = gr.Slider(minimum=1, maximum=5, value=1, step=0.1, interactive=True, label="length_penalty")
+                    no_repeat_ngram_size = gr.Slider(
+                        minimum=1, maximum=10, value=3, step=1, interactive=True, label="no_repeat_ngram_size"
+                    )
+                    length_penalty = gr.Slider(
+                        minimum=1, maximum=5, value=1, step=0.1, interactive=True, label="length_penalty"
+                    )
                     do_sample = gr.Checkbox(interactive=True, label="do_sample")
                     early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
 
