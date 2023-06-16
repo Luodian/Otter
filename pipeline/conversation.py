@@ -47,12 +47,12 @@ class Conversation:
 
                 if message:
                     if type(message) is tuple:
-                        message = message[0]
+                        message = message[0].strip()
 
                     if role is None:
                         ret += message + seps[i % 2]
                     else:
-                        ret += role + ": " + message + seps[i % 2]
+                        ret += role + ":" + message + seps[i % 2]
                 else:
                     if role is not None:
                         ret += role + ":"
@@ -258,7 +258,7 @@ otter_v1 = Conversation(
     offset=0,
     sep_style=SeparatorStyle.TWO,
     sep=" ",
-    sep2="</s>",
+    sep2="<|endofchunk|>",
 )
 
 open_flamingo_v1 = Conversation(
