@@ -247,7 +247,7 @@ def add_text(
     if image_3 is None and len(state.messages) >= 2:
         text = DEFAULT_IMAGE_TOKEN + human_role_label + text
         image_3 = state.messages[-2][1][3]
-        
+
     # # clean state if it's a new conversation
     # if image_3 is not None and state is not None:
     #     state = conv_templates[template_name].copy()
@@ -282,7 +282,24 @@ def add_text(
     state.append_message(state.roles[0], input)
     state.append_message(state.roles[1], None)
     state.skip_next = False
-    return ((state, state.to_gradio_chatbot(),) + ("", "", None,) * 2 + ("", None,) * 1 + (disable_btn,) * 5)
+    return (
+        (
+            state,
+            state.to_gradio_chatbot(),
+        )
+        + (
+            "",
+            "",
+            None,
+        )
+        * 2
+        + (
+            "",
+            None,
+        )
+        * 1
+        + (disable_btn,) * 5
+    )
 
 
 def post_process_code(code):
