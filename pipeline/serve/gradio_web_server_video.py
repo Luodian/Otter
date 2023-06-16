@@ -11,6 +11,7 @@ import requests
 from typing import Union
 from PIL import Image
 import cv2
+import re
 
 from pipeline.conversation import default_conversation, conv_templates, SeparatorStyle
 from pipeline.constants import LOGDIR
@@ -208,6 +209,18 @@ def add_text(
     image_3,
     request: gr.Request,
 ):
+    if text_demo_question_2 != "":
+        text_demo_question_1 = text_demo_question_1.strip()
+        if not re.search(r"[.,?]$", text_demo_question_2):
+            text_demo_question_2 += "."
+    if text_demo_answer_2 != "":
+        text_demo_question_2 = text_demo_question_2.strip()
+        if not re.search(r"[.,?]$", text_demo_answer_2):
+            text_demo_answer_2 += "."
+    if text_3 != "":
+        text_3 = text_3.strip()
+        if not re.search(r"[.,?]$", text_3):
+            text_3 += "."
     template_name = "otter" if "otter" in model_selector.lower() else "open_flamingo"
     # print("++++++++++++++++++++++++++++++")
     # print(model_selector)
@@ -522,7 +535,7 @@ def build_demo(embed_mode):
                     early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
 
             with gr.Column(scale=6):
-                chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=720)
+                chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=960)
                 with gr.Row():
                     with gr.Column(scale=8):
                         textbox_3 = gr.Textbox(
@@ -543,7 +556,7 @@ def build_demo(embed_mode):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         gr.Examples(
             examples=[
-                ["", "", "", "", f"{cur_dir}/examples/Apple Vision Pro - Reveal Trailer.mp4", "Hey Otter, do you think it's cool?"],
+                ["", "", "", "", f"{cur_dir}/examples/Apple Vision Pro - Reveal Trailer.mp4", "Hey Otter, do you think it's cool? "],
                 ["", "", "", "", f"{cur_dir}/examples/example.mp4", "What does the video describe?"],
                 [
                     "Is there a person in this video?",
