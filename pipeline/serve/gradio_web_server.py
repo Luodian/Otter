@@ -240,12 +240,12 @@ def add_text(
             )
 
     text = text[:1536]  # Hard cut-off
-    # first time to add the text
+
+    text = human_role_label + text
     if image_3 is not None:
-        text = DEFAULT_IMAGE_TOKEN + human_role_label + text
-    # multi-round text conversation: if the lastest conv is only text then condition on previous image
+        text = DEFAULT_IMAGE_TOKEN + text
     if image_3 is None and len(state.messages) >= 2:
-        text = DEFAULT_IMAGE_TOKEN + human_role_label + text
+        text = DEFAULT_IMAGE_TOKEN + text
         image_3 = state.messages[-2][1][3]
 
     # # clean state if it's a new conversation
