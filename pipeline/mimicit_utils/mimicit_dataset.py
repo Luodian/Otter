@@ -17,6 +17,7 @@ import random
 import sys
 
 from .transforms import *
+
 # sys.path.append("/mnt/lustre/yhzhang/Otter/pipeline/multi_instruct_data_utils")
 # from transforms import *
 
@@ -198,7 +199,7 @@ class MimicitDataset(Dataset):
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
         # random.shuffle(all_instruction_ids)
-        if 'CONV' in instruction_id:
+        if "CONV" in instruction_id:
             for cur_instruction_id in all_instruction_ids[:]:
                 cur_instruction_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
                 cur_instruction = self.dataset[cur_instruction_id]["instruction"]
@@ -544,9 +545,9 @@ if __name__ == "__main__":
     import json
     import argparse
     import sys
+
     sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/")
     from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
-
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -558,9 +559,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    args.multi_instruct_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACR_I2I_instructions.json"#,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
+    args.multi_instruct_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACR_I2I_instructions.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
     args.images_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LA_00.json"
-    args.train_config_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACR_I2I_train.json"#,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
+    args.train_config_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACR_I2I_train.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
     args.max_src_length = 256
     args.max_tgt_length = 256
     args.task = "pretrain"
@@ -568,18 +569,14 @@ if __name__ == "__main__":
     args.patch_image_size = 224
 
     from transformers import LlamaTokenizer
-    
-    with open( "/mnt/petrelfs/zhangyuanhan/weights/flamingo_9b_hf/config.json") as f:
+
+    with open("/mnt/petrelfs/zhangyuanhan/weights/flamingo_9b_hf/config.json") as f:
         config = json.load(f)
 
-    tokenizer = LlamaTokenizer.from_pretrained(
-           "luodian/llama-7b-hf"
-        )
+    tokenizer = LlamaTokenizer.from_pretrained("luodian/llama-7b-hf")
 
     # add <answer> token to tokenizer
-    tokenizer.add_special_tokens(
-        {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
-    )
+    tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
 
     tokenizer.add_special_tokens({"pad_token": "<PAD>"})
 
@@ -587,7 +584,7 @@ if __name__ == "__main__":
 
     cur_multi_instruct_path, cur_images_path, cur_train_config_path = args.multi_instruct_path, args.images_path, args.train_config_path
 
-    test_dataset = MimicitDataset(args,cur_multi_instruct_path, cur_images_path, cur_train_config_path)
+    test_dataset = MimicitDataset(args, cur_multi_instruct_path, cur_images_path, cur_train_config_path)
 
     uniq_id_dict = {}
     samples = []
@@ -595,16 +592,18 @@ if __name__ == "__main__":
     for _ in tqdm(test_dataset):
         if counter > 0:
             break
-        counter +=1
+        counter += 1
         samples.append(_)
     cur_data = test_dataset.collate(samples)
-    import pdb;pdb.set_trace()
-        # import pdb;pdb.set_trace()
-        # uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
-        # # index = random.choice(positive_caption_dict[uniq_id])
-        # # prompt_uniq_id, prompt_image, prompt_caption, prompt_question, prompt_refs, prompt_gt_objects, prompt_dataset_name, prompt_type = test_dataset.get_prompt_item(int(index))
-        # uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
-        # if uniq_id not in uniq_id_dict:
-        #     uniq_id_dict[uniq_id] = 0
+    import pdb
 
-        # print(uniq_id, image, caption, question, refs, gt_objects, dataset_name, type)
+    pdb.set_trace()
+    # import pdb;pdb.set_trace()
+    # uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
+    # # index = random.choice(positive_caption_dict[uniq_id])
+    # # prompt_uniq_id, prompt_image, prompt_caption, prompt_question, prompt_refs, prompt_gt_objects, prompt_dataset_name, prompt_type = test_dataset.get_prompt_item(int(index))
+    # uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
+    # if uniq_id not in uniq_id_dict:
+    #     uniq_id_dict[uniq_id] = 0
+
+    # print(uniq_id, image, caption, question, refs, gt_objects, dataset_name, type)
