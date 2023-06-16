@@ -482,8 +482,6 @@ def main():
     model, optimizer, lr_scheduler, multi_instruct_loaders = accelerator.prepare(model, optimizer, lr_scheduler, multi_instruct_loaders)
     model.train()
 
-    # device_id = accelerator.device
-
     for epoch in range(resume_from_epoch, args.num_epochs):
         for cur_data_loader in multi_instruct_loaders:
             cur_data_loader.dataset.set_epoch(epoch)

@@ -17,6 +17,9 @@ import random
 import sys
 
 from .transforms import *
+# sys.path.append("/mnt/lustre/yhzhang/Otter/pipeline/multi_instruct_data_utils")
+# from transforms import *
+
 
 from torch.utils.data import Dataset
 
@@ -206,7 +209,8 @@ class MimicitDataset(Dataset):
                 all_texts += cur_text
 
             all_texts = f"<image>{all_texts}"
-            cur_image = self.images[instruction_id]
+            cur_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
+            cur_image = self.images[cur_image_id]
             cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
             patch_images = self.patch_resize_transform(cur_image).unsqueeze(0).unsqueeze(0)
         else:
@@ -530,3 +534,77 @@ def collate_tokens(
     for i, v in enumerate(values):
         copy_tensor(v, res[i][size - len(v) :] if left_pad else res[i][: len(v)])
     return res
+
+
+if __name__ == "__main__":
+    from PIL import Image, ImageFile
+    from io import BytesIO
+    import base64
+    from tqdm import tqdm
+    import json
+    import argparse
+    import sys
+    sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/")
+    from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
+
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--multi_instruct_path",
+        type=str,
+        help="path to multi_instruct dataset, this should be a glob pattern such as vision_language_examples.tsv",
+    )
+    parser.add_argument("--offline", action="store_true")
+
+    args = parser.parse_args()
+
+    args.multi_instruct_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACR_I2I_instructions.json"#,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
+    args.images_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LA_00.json"
+    args.train_config_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACR_I2I_train.json"#,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
+    args.max_src_length = 256
+    args.max_tgt_length = 256
+    args.task = "pretrain"
+    args.pretrain_seed = 0
+    args.patch_image_size = 224
+
+    from transformers import LlamaTokenizer
+    
+    with open( "/mnt/petrelfs/zhangyuanhan/weights/flamingo_9b_hf/config.json") as f:
+        config = json.load(f)
+
+    tokenizer = LlamaTokenizer.from_pretrained(
+           "luodian/llama-7b-hf"
+        )
+
+    # add <answer> token to tokenizer
+    tokenizer.add_special_tokens(
+        {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
+    )
+
+    tokenizer.add_special_tokens({"pad_token": "<PAD>"})
+
+    args.tokenizer = tokenizer
+
+    cur_multi_instruct_path, cur_images_path, cur_train_config_path = args.multi_instruct_path, args.images_path, args.train_config_path
+
+    test_dataset = MimicitDataset(args,cur_multi_instruct_path, cur_images_path, cur_train_config_path)
+
+    uniq_id_dict = {}
+    samples = []
+    counter = 0
+    for _ in tqdm(test_dataset):
+        if counter > 0:
+            break
+        counter +=1
+        samples.append(_)
+    cur_data = test_dataset.collate(samples)
+    import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
+        # uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
+        # # index = random.choice(positive_caption_dict[uniq_id])
+        # # prompt_uniq_id, prompt_image, prompt_caption, prompt_question, prompt_refs, prompt_gt_objects, prompt_dataset_name, prompt_type = test_dataset.get_prompt_item(int(index))
+        # uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
+        # if uniq_id not in uniq_id_dict:
+        #     uniq_id_dict[uniq_id] = 0
+
+        # print(uniq_id, image, caption, question, refs, gt_objects, dataset_name, type)
