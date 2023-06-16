@@ -195,22 +195,36 @@ class MimicitDataset(Dataset):
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
         # random.shuffle(all_instruction_ids)
-        for cur_instruction_id in all_instruction_ids[:]:
-            cur_instruction_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
-            cur_instruction = self.dataset[cur_instruction_id]["instruction"]
-            cur_answer = self.dataset[cur_instruction_id]["answer"]
-            cur_image = self.images[cur_instruction_image_id]
-            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
-            cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0).unsqueeze(0)
-            if len(patch_images) == 0:
-                patch_images = cur_patch_image
-            else:
-                patch_images = torch.cat((patch_images, cur_patch_image))
+        if 'CONV' in instruction_id:
+            for cur_instruction_id in all_instruction_ids[:]:
+                cur_instruction_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
+                cur_instruction = self.dataset[cur_instruction_id]["instruction"]
+                cur_answer = self.dataset[cur_instruction_id]["answer"]
+                cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
+                cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+                cur_text = f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+                all_texts += cur_text
 
-            cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
-            cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
-            cur_text = f"<image>User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
-            all_texts += cur_text
+            all_texts = f"<image>{all_texts}"
+            cur_image = self.images[instruction_id]
+            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
+            patch_images = self.patch_resize_transform(cur_image).unsqueeze(0).unsqueeze(0)
+        else:
+            for cur_instruction_id in all_instruction_ids[:]:
+                cur_instruction_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
+                cur_instruction = self.dataset[cur_instruction_id]["instruction"]
+                cur_answer = self.dataset[cur_instruction_id]["answer"]
+                cur_image = self.images[cur_instruction_image_id]
+                cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
+                cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0).unsqueeze(0)
+                if len(patch_images) == 0:
+                    patch_images = cur_patch_image
+                else:
+                    patch_images = torch.cat((patch_images, cur_patch_image))
+                cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
+                cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+                cur_text = f"<image>User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+                all_texts += cur_text
         # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
         # incontext_text = "<image>User: What does this image descibe? GPT:<answer>The children in the image, along with the rest of the family. They are Skiing. <|endofchunk|>"
         # query_text = f"<image>User: What does this image descibe? GPT:<answer>"
