@@ -208,7 +208,7 @@ def add_text(
     image_3,
     request: gr.Request,
 ):
-    template_name = "otter" if "otter" in model_selector.lower else "open_flamingo"
+    template_name = "otter" if "otter" in model_selector.lower() else "open_flamingo"
     # print("++++++++++++++++++++++++++++++")
     # print(model_selector)
     if "otter" in model_selector.lower():
@@ -295,7 +295,7 @@ def http_bot(
     logger.info(f"http_bot. ip: {request.client.host}")
     start_tstamp = time.time()
     model_name = model_selector
-    template_name = "otter" if "otter" in model_selector else "open_flamingo"
+    template_name = "otter" if "otter" in model_selector.lower() else "open_flamingo"
 
     if state.skip_next:
         yield (state, state.to_gradio_chatbot()) + (no_change_btn,) * 5
@@ -434,21 +434,26 @@ a:link {
 &nbsp;&nbsp;&nbsp;
 <a href="https://youtu.be/K8o_LKGQJhs"><img src="https://www.svgrepo.com/show/13671/youtube.svg" style="height: 15px; display:inline;" class="icon" alt="video demo">Video</a>
 &nbsp;&nbsp;&nbsp;
+<a href="https://otter.cliangyu.com/"><img src="https://www.svgrepo.com/show/2065/chat.svg" style="height: 15px; display:inline;" class="icon" alt="live demo">Live Demo (Otter Image)</a>
+&nbsp;&nbsp;&nbsp;
 <img style="height: 20px; display:inline;" src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fotter.cliangyu.com&count_bg=%23FFA500&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false"/>
-
 </h2>
 
 <span style="font-size:larger;">
 
 ### Note: 
-Current Otter Video is **Otter-v0.2-DC**, means it's trianed on [MIMIC-IT-DC](https://github.com/Luodian/Otter/tree/main/mimic-it).
-
-The system reads a video and uniformly extracts 16 frames, so avoid using excessively long videos if you want the model to generate specific descriptions. 
+Current Otter Video is **Otter-v0.2-DC (0612)**, means it's trianed on [MIMIC-IT-DC](https://github.com/Luodian/Otter/tree/main/mimic-it) at June 12th.
 
 Otter-v0.2-V, trained on all videos in MIMIC-IT dataset, is currently undergoing internal testing and will be released soon.
-
-If model repeatedly describes previous images, please click "clear history" to clean all image caches to make sure the model perform correctly.
 </span>
+
+The system reads a video and uniformly extracts 16 frames, so avoid using excessively long videos if you want the model to generate specific descriptions.
+
+We currently **dont support language-only chat** (the model could but our code doesnt allow it for now). Since we aim to demonstrate the ability of chatting on videos, you may need to upload your video first and then ask it questions.
+
+Sometimes we are experiencing server overload, and as the model is hosted on a dual-RTX-3090 machine. Please try again later if you encounter any error or contact drluodian@gmail.com for any problem.
+
+If you find it's interesting, please consider to star our [github](https://github.com/Luodian/Otter) and cite our [paper](https://arxiv.org/abs/2306.05425). What we do is all to make the community better and to approach the goal of AI for helping people's life.
 """
 
 tos_markdown = """
@@ -538,7 +543,7 @@ def build_demo(embed_mode):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         gr.Examples(
             examples=[
-                ["", "", "", "", f"{cur_dir}/examples/vr_demo.mp4", "Hey Otter, do you think it looks cool?"],
+                ["", "", "", "", f"{cur_dir}/examples/Apple Vision Pro - Reveal Trailer.mp4", "Hey Otter, do you think it's cool?"],
                 ["", "", "", "", f"{cur_dir}/examples/example.mp4", "What does the video describe?"],
                 [
                     "Is there a person in this video?",
@@ -556,7 +561,6 @@ def build_demo(embed_mode):
                     f"{cur_dir}/examples/dc_demo2.mp4",
                     "What does the video describe?",
                 ],
-                ["", "", "", "", f"{cur_dir}/examples/example.mp4", "What does the video describe?"],
             ],
             inputs=[
                 textbox_demo_question_1,

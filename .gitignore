@@ -194,3 +194,4 @@ azure
 checkpoints
 
 tools
+pipeline/serve/examples/*.png

@@ -191,8 +191,8 @@ def add_text(
     image_3,
     request: gr.Request,
 ):
-    template_name = "otter" if "otter" in model_selector else "open_flamingo"
-    if "otter" in model_selector:
+    template_name = "otter" if "otter" in model_selector.lower() else "open_flamingo"
+    if "otter" in model_selector.lower():
         DEFAULT_ANSWER_TOKEN = "<answer> "
         human_role_label = conv_templates[template_name].copy().roles[0] + ": "
         bot_role_label = " " + conv_templates[template_name].copy().roles[1] + ":"
@@ -230,6 +230,12 @@ def add_text(
     text = text[:1536]  # Hard cut-off
     if image_3 is not None:
         text = DEFAULT_IMAGE_TOKEN + human_role_label + text
+
+    # clean state if it's a new conversation
+    if image_3 is not None and state is not None:
+        state = conv_templates[template_name].copy()
+        logger.info(f"TEMPLATE. {state}")
+
     if text_demo_answer_2 != "":
         assert image_demo_2 is not None
         text = (
@@ -306,7 +312,7 @@ def http_bot(
     logger.info(f"http_bot. ip: {request.client.host}")
     start_tstamp = time.time()
     model_name = model_selector
-    template_name = "otter" if "otter" in model_selector else "open_flamingo"
+    template_name = "otter" if "otter" in model_selector.lower() else "open_flamingo"
 
     if state.skip_next:
         # This generate call is skipped due to invalid inputs
@@ -465,20 +471,22 @@ a:link {
 
 <span style="font-size:larger;">
 
+### Note:
+Current Otter Image is **Otter-v0.1-LA-In-Context (0601)**, means it's trianed on [MIMIC-IT-LA-In-Context](https://github.com/Luodian/Otter/tree/main/mimic-it) at June 1st.
 
-
-### Note: 
-Following OpenFlamingo, you need to input at least one image in the first round of conversation with both Otter and OpenFlamingo.
-Current Otter model (ver. Apr 25) is under development. A model supporting better conversations will be released soon. If model repeatedly describes previous images, please click "clear history" to clean all image caches to make sure the model perform correctly.
+This version Otter Image demonstrates in-context learning ability to demonstrate more reasonable and coherent answer following given example instruction/response pairs. 
 </span>
 
-| Choose a model to chat with | |
-| --- | --- |
-| [Otter](https://github.com/Luodian/otter): a chat assistant fine-tuned from OpenFlamingo and in-context instructions. | [OpenFlamingo](https://github.com/mlfoundations/open_flamingo): a multimodal foundation model for in-context learning. |
+However, we only train it for 1 epoch due to our GPU bandwidth. We will release a better version soon.
+
+We currently **dont support language-only chat** (the model could but our code doesnt allow it for now). Since we aim to demonstrate the ability of chatting on videos, you may need to upload your video first and then ask it questions.
+
+Sometimes we are experiencing server overload, and as the model is hosted on a dual-RTX-3090 machine. Please try again later if you encounter any error or contact drluodian@gmail.com for any problem. If you find it's interesting, please consider to star our [github](https://github.com/Luodian/Otter) and cite our [paper](https://arxiv.org/abs/2306.05425). What we do is all to make the community better and to approach the goal of AI for helping people's life.
+
 """
 
 tos_markdown = """
-### Terms of use
+### Terms of Use
 By using this service, users are required to agree to the following terms: The service is a research preview intended for non-commercial use only. It only provides limited safety measures and may generate offensive content. It must not be used for any illegal, harmful, violent, racist, or sexual purposes. The service may collect user dialogue data for future research.
 Please click the "Flag" button if you get any inappropriate answer! We will collect those to keep improving our moderator. For an optimal experience, please use desktop computers for this demo, as mobile devices may compromise its quality.
 """
@@ -549,57 +557,14 @@ def build_demo(embed_mode):
                     ).style(container=True)
 
                 with gr.Accordion("Parameters", open=False, visible=False) as parameter_row:
-                    with gr.Row():
-                        max_new_tokens = gr.Slider(
-                            minimum=20,
-                            maximum=500,
-                            value=200,
-                            step=10,
-                            interactive=True,
-                            label="# generation tokens",
-                        )
-                        temperature = gr.Slider(
-                            minimum=0,
-                            maximum=1,
-                            value=1,
-                            step=0.1,
-                            interactive=True,
-                            label="temperature",
-                        )
-                        top_k = gr.Slider(
-                            minimum=0,
-                            maximum=10,
-                            value=0,
-                            step=1,
-                            interactive=True,
-                            label="top_k",
-                        )
-                        top_p = gr.Slider(
-                            minimum=0,
-                            maximum=1,
-                            value=1.0,
-                            step=0.1,
-                            interactive=True,
-                            label="top_p",
-                        )
-                        no_repeat_ngram_size = gr.Slider(
-                            minimum=1,
-                            maximum=10,
-                            value=3,
-                            step=1,
-                            interactive=True,
-                            label="no_repeat_ngram_size",
-                        )
-                        length_penalty = gr.Slider(
-                            minimum=1,
-                            maximum=5,
-                            value=1,
-                            step=0.1,
-                            interactive=True,
-                            label="length_penalty",
-                        )
-                        do_sample = gr.Checkbox(interactive=True, label="do_sample")
-                        early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
+                    max_new_tokens = gr.Slider(minimum=16, maximum=512, value=512, step=1, interactive=True, label="# generation tokens")
+                    temperature = gr.Slider(minimum=0, maximum=1, value=1, step=0.1, interactive=True, label="temperature")
+                    top_k = gr.Slider(minimum=0, maximum=10, value=0, step=1, interactive=True, label="top_k")
+                    top_p = gr.Slider(minimum=0, maximum=1, value=1.0, step=0.1, interactive=True, label="top_p")
+                    no_repeat_ngram_size = gr.Slider(minimum=1, maximum=10, value=3, step=1, interactive=True, label="no_repeat_ngram_size")
+                    length_penalty = gr.Slider(minimum=1, maximum=5, value=1, step=0.1, interactive=True, label="length_penalty")
+                    do_sample = gr.Checkbox(interactive=True, label="do_sample")
+                    early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
 
             with gr.Column(scale=6):
                 chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=720)
@@ -624,6 +589,17 @@ def build_demo(embed_mode):
         gr.Examples(
             examples=[
                 [
+                    f"{cur_dir}/examples/pepsi.png",
+                    "What's written on this image?",
+                    "pepsi, is pepsi ok?",
+                    f"{cur_dir}/examples/subway.png",
+                    "What's written on this image?",
+                    "SUBWAY, eat fresh",
+                    f"{cur_dir}/examples/think_different.png",
+                    "What's written on this image?",
+                    "Think Different",
+                ],
+                [
                     f"{cur_dir}/examples/cat.jpg",
                     "An image of",
                     "two cats.",
@@ -635,13 +611,13 @@ def build_demo(embed_mode):
                 ],
                 [
                     f"{cur_dir}/examples/tennis.jpg",
-                    "What is the danger of this sport?",
+                    "What's the danger of the sport in this image?",
                     "The player may get hitted by the tennis ball.",
                     f"{cur_dir}/examples/baseball.jpg",
-                    "What is the danger of this sport?",
+                    "What's the danger of the sport in this image?",
                     "While chasing the baseball, the player may inadvertently collide with other players.",
                     f"{cur_dir}/examples/soccer.png",
-                    "What is the danger of this sport?",
+                    "What's the potential danger of playing this sport in the dark? ",
                 ],
             ],
             inputs=[
