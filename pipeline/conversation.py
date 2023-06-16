@@ -47,12 +47,12 @@ class Conversation:
 
                 if message:
                     if type(message) is tuple:
-                        message = message[0]
+                        message = message[0].strip()
 
                     if role is None:
                         ret += message + seps[i % 2]
                     else:
-                        ret += role + ": " + message + seps[i % 2]
+                        ret += role + ":" + message + seps[i % 2]
                 else:
                     if role is not None:
                         ret += role + ":"
@@ -82,8 +82,8 @@ class Conversation:
                                 image = image.resize((new_W, new_H))
 
                             buffered = BytesIO()
-                            image.save(buffered, format="JPEG")
-                            img_b64_str = base64.b64encode(buffered.getvalue()).decode()
+                            image.save(buffered, format="PNG")
+                            img_b64_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
                             images.append(img_b64_str)
 
                         elif isinstance(image, list):
@@ -99,8 +99,8 @@ class Conversation:
                                     frame = frame.resize((new_W, new_H))
 
                                 buffered = BytesIO()
-                                frame.save(buffered, format="JPEG")
-                                img_b64_str = base64.b64encode(buffered.getvalue()).decode()
+                                frame.save(buffered, format="PNG")
+                                img_b64_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
                                 frames.append(img_b64_str)
 
                             images.append(frames)
@@ -258,7 +258,7 @@ otter_v1 = Conversation(
     offset=0,
     sep_style=SeparatorStyle.TWO,
     sep=" ",
-    sep2="</s>",
+    sep2="<|endofchunk|>",
 )
 
 open_flamingo_v1 = Conversation(

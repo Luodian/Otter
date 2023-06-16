@@ -7,7 +7,7 @@ import time
 import uuid
 import gradio as gr
 import requests
-
+import re
 from pipeline.conversation import default_conversation, conv_templates, SeparatorStyle
 from pipeline.constants import LOGDIR
 from pipeline.serve.serving_utils import (
@@ -191,6 +191,18 @@ def add_text(
     image_3,
     request: gr.Request,
 ):
+    if text_demo_question_1 != "":
+        text_demo_question_1 = text_demo_question_1.strip()
+        if not re.search(r"[.,?]$", text_demo_question_1):
+            text_demo_question_1 += "."
+    if text_demo_answer_2 != "":
+        text_demo_question_2 = text_demo_question_2.strip()
+        if not re.search(r"[.,?]$", text_demo_question_1):
+            text_demo_question_1 += "."
+    if text_3 != "":
+        text_3 = text_3.strip()
+        if not re.search(r"[.,?]$", text_3):
+            text_3 += "."
     template_name = "otter" if "otter" in model_selector.lower() else "open_flamingo"
     if "otter" in model_selector.lower():
         DEFAULT_ANSWER_TOKEN = "<answer> "
@@ -228,13 +240,18 @@ def add_text(
             )
 
     text = text[:1536]  # Hard cut-off
+    # first time to add the text
     if image_3 is not None:
         text = DEFAULT_IMAGE_TOKEN + human_role_label + text
+    # multi-round text conversation: if the lastest conv is only text then condition on previous image
+    if image_3 is None and len(state.messages) >= 2:
+        text = DEFAULT_IMAGE_TOKEN + human_role_label + text
+        image_3 = state.messages[-2][1][3]
 
-    # clean state if it's a new conversation
-    if image_3 is not None and state is not None:
-        state = conv_templates[template_name].copy()
-        logger.info(f"TEMPLATE. {state}")
+    # # clean state if it's a new conversation
+    # if image_3 is not None and state is not None:
+    #     state = conv_templates[template_name].copy()
+    #     logger.info(f"TEMPLATE. {state}")
 
     if text_demo_answer_2 != "":
         assert image_demo_2 is not None
@@ -477,9 +494,9 @@ Current Otter Image is **Otter-v0.1-LA-In-Context (0601)**, means it's trianed o
 This version Otter Image demonstrates in-context learning ability to demonstrate more reasonable and coherent answer following given example instruction/response pairs. 
 </span>
 
-However, we only train it for 1 epoch due to our GPU bandwidth. We will release a better version soon.
-
 We currently **dont support language-only chat** (the model could but our code doesnt allow it for now). Since we aim to demonstrate the ability of chatting on videos, you may need to upload your video first and then ask it questions.
+
+Otter can read multiple images and answer multiple questions towards the same image (visually the image will appear in chatbox again due to our implementation).
 
 Sometimes we are experiencing server overload, and as the model is hosted on a dual-RTX-3090 machine. Please try again later if you encounter any error or contact drluodian@gmail.com for any problem. If you find it's interesting, please consider to star our [github](https://github.com/Luodian/Otter) and cite our [paper](https://arxiv.org/abs/2306.05425). What we do is all to make the community better and to approach the goal of AI for helping people's life.
 
@@ -567,7 +584,7 @@ def build_demo(embed_mode):
                     early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
 
             with gr.Column(scale=6):
-                chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=720)
+                chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=960)
                 with gr.Row():
                     with gr.Column(scale=8):
                         textbox_3 = gr.Textbox(
@@ -608,17 +625,17 @@ def build_demo(embed_mode):
                     "a bathroom sink.",
                     f"{cur_dir}/examples/dinner.jpg",
                     "An image of",
-                ],
-                [
-                    f"{cur_dir}/examples/tennis.jpg",
-                    "What's the danger of the sport in this image?",
-                    "The player may get hitted by the tennis ball.",
-                    f"{cur_dir}/examples/baseball.jpg",
-                    "What's the danger of the sport in this image?",
-                    "While chasing the baseball, the player may inadvertently collide with other players.",
-                    f"{cur_dir}/examples/soccer.png",
-                    "What's the potential danger of playing this sport in the dark? ",
-                ],
+                ]
+                # [
+                #     f"{cur_dir}/examples/tennis.jpg",
+                #     "What's the danger of the sport in this image?",
+                #     "The player may get hitted by the tennis ball.",
+                #     f"{cur_dir}/examples/baseball.jpg",
+                #     "What's the danger of the sport in this image?",
+                #     "While chasing the baseball, the player may inadvertently collide with other players.",
+                #     f"{cur_dir}/examples/soccer.png",
+                #     "What's the potential danger of playing this sport in the dark? ",
+                # ],
             ],
             inputs=[
                 imagebox_demo_1,

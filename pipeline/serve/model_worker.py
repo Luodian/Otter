@@ -183,12 +183,17 @@ class ModelWorker:
         if images is not None:
             assert type(images) is list
             if len(images) > 0:
-                if type(images[0]) is list:  # current support single video
-                    images = images[-1]
+                if type(images[0]) is list:  # currently support single video only
+                    images = images[-1]  # reserve the last video
+                    # Split the string from the right side using rsplit()
+                    split_prompt = prompt.rsplit(DEFAULT_IMAGE_TOKEN, -1)
+                    # Join the string back together, leaving out all occurrences of DEFAULT_IMAGE_TOKEN except the last one, reserve the last DEFAULT_IMAGE_TOKEN
+                    prompt = DEFAULT_IMAGE_TOKEN.join(split_prompt[:-1]) + split_prompt[-1]
                     is_video = True
                 else:
                     is_video = False
-                images = [Image.open(BytesIO(base64.b64decode(image))) for image in images]
+                # cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
+                images = [Image.open(BytesIO(base64.urlsafe_b64decode(image))).convert("RGB") for image in images]
                 logger.info(f"{len(images)} images conditioned.")
                 tensor_dtype = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}[self.load_bit]
                 if is_video is True:
@@ -209,15 +214,39 @@ class ModelWorker:
         ).to(self.device)
         logger.info(f"input_ids: {inputs['input_ids'].shape} attention_mask: {inputs['attention_mask'].shape}")
         generation_kwargs = params.get("generation_kwargs", {})
-        logger.info(f"generation_kwargs: {generation_kwargs}")
         # generation_kwargs["num_beams"] = generation_kwargs.get("num_beams", 3)
+        logger.info(f"generation_kwargs: {generation_kwargs}")
+
+        bad_words_id = tokenizer(["User:", "GPT1:", "GFT:", "GPT:"], add_special_tokens=False).input_ids
         generation_input = dict(
             vision_x=vision_x,
             lang_x=inputs["input_ids"],
             attention_mask=inputs["attention_mask"],
             streamer=streamer,
+            bad_words_ids=bad_words_id,
             **generation_kwargs,
         )
+        # # Call the generate function and store the output in a variable
+        # generated_output = model.generate(**generation_input)
+
+        # # Decode the output using the tokenizer
+        # generated_text = (
+        #     tokenizer.decode(generated_output[0])
+        #     .split("<answer>")[-1]
+        #     .lstrip()
+        #     .rstrip()
+        #     .split("<|endofchunk|>")[0]
+        #     .lstrip()
+        #     .rstrip()
+        #     .lstrip('"')
+        #     .rstrip('"')
+        # )
+        # logger.info(f"Generated text: {generated_text}")
+        # ret = {
+        #     "text": generated_text,
+        #     "error_code": 0,
+        # }
+        # yield json.dumps(ret).encode() + b"\0"
         thread = threading.Thread(target=model.generate, kwargs=generation_input)
         thread.start()
         generated_text = ""
