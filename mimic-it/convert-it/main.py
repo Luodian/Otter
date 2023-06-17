@@ -7,9 +7,7 @@ from image_utils import get_json_data, create_folder
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--name", type=str, required=True, help="Path to the dataset class."
-    )
+    parser.add_argument("--name", type=str, required=True, help="Path to the dataset class.")
     parser.add_argument("--num_threads", type=int, default=8, help="Number of threads.")
     parser.add_argument("--image_path", help="Path to the prompt file.")
 
