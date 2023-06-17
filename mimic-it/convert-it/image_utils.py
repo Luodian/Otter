@@ -58,9 +58,7 @@ def process_image(img: Image.Image):
     return img_base64
 
 
-def get_json_data(
-    images: dict[str, Image.Image], dataset_name: str, num_thread: int
-) -> dict[str, str]:
+def get_json_data(images: dict[str, Image.Image], dataset_name: str, num_thread: int) -> dict[str, str]:
     """
     Converts a dictionary of images to a JSON-compatible dictionary with base64 encoded strings.
 

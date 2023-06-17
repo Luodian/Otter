@@ -46,12 +46,8 @@ class DenseCaptions(AbstractDataset):
             raise ValueError("Not enough videos in the dataset, please check the path.")
         with ThreadPoolExecutor(max_workers=num_thread) as executor:
             results = {}
-            process_bar = tqdm(
-                total=len(videos), desc="Processing videos into images", unit="video"
-            )
-            for video, framed_results in executor.map(
-                lambda x: (get_image_name(x), frame_video(x)), videos
-            ):
+            process_bar = tqdm(total=len(videos), desc="Processing videos into images", unit="video")
+            for video, framed_results in executor.map(lambda x: (get_image_name(x), frame_video(x)), videos):
                 for index, result in enumerate(framed_results):
                     # print("video", video)
                     name = video + "_" + str(index).zfill(4)
@@ -143,10 +139,7 @@ class TVCaptions(AbstractDataset):
             start_index = stride // 2
 
             # Sample 16 images evenly
-            sampled_images = [
-                image_filenames[i]
-                for i in range(start_index, len(image_filenames), stride)
-            ]
+            sampled_images = [image_filenames[i] for i in range(start_index, len(image_filenames), stride)]
 
             return sampled_images
 
@@ -166,9 +159,7 @@ class TVCaptions(AbstractDataset):
         for frame in frames:
             frame_name = os.path.basename(frame).split("_")[0]
             clips = glob(os.path.join(frame, "*"))
-            progress_bar = tqdm(
-                total=len(clips), desc=f"Processing clips in {frame_name}", unit="clip"
-            )
+            progress_bar = tqdm(total=len(clips), desc=f"Processing clips in {frame_name}", unit="clip")
             with ThreadPoolExecutor(max_workers=num_thread) as executor:
 
                 def get_images_dict(clip):

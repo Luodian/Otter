@@ -54,12 +54,8 @@ class EGO4D(AbstractDataset):
         final_images_dict = {}
 
         with ThreadPoolExecutor(max_workers=num_thread) as executor:
-            futures = [
-                executor.submit(get_image, video_path) for video_path in video_paths
-            ]
-            for images_dict in tqdm(
-                futures, desc="Processing videos into images", unit="video"
-            ):
+            futures = [executor.submit(get_image, video_path) for video_path in video_paths]
+            for images_dict in tqdm(futures, desc="Processing videos into images", unit="video"):
                 final_images_dict.update(images_dict.result())
 
         return final_images_dict
