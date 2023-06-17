@@ -5,7 +5,7 @@
 
 <div>
 <div align="center">
-    <a href='https://brianboli.com/' target='_blank'>Bo Li*<sup>,1</sup></a>&emsp;
+    <a href='https://brianboli.com/' target='_blank'>Bo Li*<sup>1</sup></a>&emsp;
     <a href='https://zhangyuanhan-ai.github.io/' target='_blank'>Yuanhan Zhang*<sup>,1</sup></a>&emsp;
     <a href='https://cliangyu.com/' target='_blank'>Liangyu Chen*<sup>,1</sup></a>&emsp;
     <a href='https://king159.github.io/' target='_blank'>Jinghao Wang*<sup>,1</sup></a>&emsp;
@@ -33,11 +33,22 @@
 
 **Video Demo:** [Otter's Conceptual Demo Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili 哔哩哔哩](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)
 
-**Interactive Demo:** [Otter Demo (image version only, video version upcoming)](https://otter.cliangyu.com/)
+**Interactive Demo:** 
 
-**Checkpoints:** [Checkpoints v0.1](https://huggingface.co/luodian/otter-9b-hf) | Checkpoints v0.2 (upcoming)
+- [Otter Demo (image version)](https://otter.cliangyu.com/)
+- [Otter Demo (video version)](https://ottervideo.cliangyu.com/)
+
+**Checkpoints:** 
+- [Checkpoints v0.1 (image version)](https://huggingface.co/luodian/otter-9b-hf)
+- [Checkpoints v0.2 (video version, trained on MIMIC-IT-DC)](https://huggingface.co/luodian/otter-9b-dc-hf)
+- [Checkpoints v0.2 (video version, trained on MIMIC-IT all videos, upcoming)]()
+- [Checkpoints v0.3 (Otter-E, visual assistant version, upcoming)]()
+
+Otter v0.1 supports multiple images inputs as in-context examples, which is **the first multi-modal instruction tuned model** that supports to organize inputs this way. 
 
 Otter v0.2 supports videos inputs (frames are arranged as original Flamingo's implementation) and multiple images inputs (they serve as in-context examples for each other). 
+
+Huge accolades to [Flamingo](https://www.deepmind.com/blog/tackling-multiple-tasks-with-a-single-visual-language-model) and [OpenFlamingo](https://github.com/mlfoundations/open_flamingo) team for the work on this great architecture.
 
 **Eval Results:** [Multi-Modal Arena](http://vlarena.opengvlab.com/) | Multi-Modal AGI Benchmark (Upcoming)
 
@@ -94,27 +105,24 @@ Otter is designed to support multi-modal in-context instruction tuning based on 
 
 We train Otter on MIMIC-IT dataset with approximately 2.8 million in-context instruction-response pairs, which are structured into a cohesive template to facilitate various tasks.
 
-The following template encompasses images, user instructions, and model-generated responses, utilizing the `Human` and `GPT` role labels to enable seamless user-assistant interactions.
+The following template encompasses images, user instructions, and model-generated responses, utilizing the `User` and `GPT` role labels to enable seamless user-assistant interactions.
 
-```
-<image>Human:{instruction} GPT:<answer>{response}<endofchunk>
+```python
+prompt = f"<image>User: {instruction} GPT:<answer> {response}<endofchunk>"
 ```
 
 Training the Otter model on the MIMIC-IT dataset allows it to acquire different capacities, as demonstrated by the LA and SD tasks. Trained on the LA task, the model exhibits exceptional scene comprehension, reasoning abilities, and multi-round conversation capabilities. 
 
 ```python
-<image>Human:{instruction} GPT:<answer>{response}<endofchunk>
+# multi-round of conversation
+prompt = f"<image>User: {first_instruction} GPT:<answer> {first_response}<endofchunk>User: {second_instruction} GPT:<answer>"
 ```
 
 Regarding the concept of organizing visual-language in-context examples, we demonstrate here the acquired ability of the Otter model to follow inter-contextual instructions after training on the LA-T2T task. The organized input data format is as follows:
 
 ```python
 # Multiple in-context example with similar instructions
-<image>Human:{instruction} GPT:<answer>{response}<|endofchunk|>
-# ....
-<image>Human:{instruction} GPT:<answer>{response}<|endofchunk|>
-# Query example
-<image>Human:{instruction} GPT:<answer>
+prompt = f"<image>User:{ict_first_instruction} GPT: <answer>{ict_first_response}<|endofchunk|><image>User:{ict_second_instruction} GPT: <answer>{ict_second_response}<|endofchunk|><image>User:{query_instruction} GPT: <answer>"
 ```
 
 For more details, please refer to our [paper](https://arxiv.org/abs/2306.05425)'s appendix for other tasks.
@@ -164,16 +172,16 @@ Then run the training script.
 ```bash
 accelerate launch --config_file=./accelerate_configs/accelerate_config_fsdp.yaml \
 pipeline/train/instruction_following.py \
---pretrained_model_name_or_path=path/to/otter_9b_hf  \
+--pretrained_model_name_or_path=path/to/otter_9b_hf_mm  \
 --dataset_resampled \
 --multi_instruct_path="path/to/instruction.json" \
 --images_path="path/to/image.json" \
---train_config_path="/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/DC/DC_train.json" \
+--train_config_path="path/to/train.json" \
 --batch_size=4 \
---num_epochs=3 \
+--num_epochs=9 \
 --report_to_wandb \
 --wandb_entity=ntu-slab \
---run_name=otter9B_DC_frame16 \
+--run_name=otter9B_dense_caption \
 --wandb_project=otter9B \
 --workers=1 \
 --cross_attn_every_n_layers=4 \
@@ -221,4 +229,9 @@ If you found this repository useful, please consider citing:
 
 ### 👨‍🏫 Acknowledgements
 
-We thank [Chunyuan Li](https://chunyuan.li/) and [Jack Hessel](https://jmhessel.com/) for their advise and support, as well as the [OpenFlamingo](https://github.com/mlfoundations/open_flamingo) team for their great contribution to the open source community.
+We thank [Jack Hessel](https://jmhessel.com/) for the advise and support, as well as the [OpenFlamingo](https://github.com/mlfoundations/open_flamingo) team for their great contribution to the open source community.
+
+### 📝 Related Projects
+
+- [LLaVA: Visual Instruction Tuning](https://github.com/haotian-liu/LLaVA)
+- [Instruction Tuning with GPT4](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)

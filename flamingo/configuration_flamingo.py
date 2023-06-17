@@ -47,27 +47,16 @@ class FlamingoConfig(PretrainedConfig):
     model_type = "flamingo"
     is_composition = True
 
-    def __init__(
-        self,
-        vision_config=None,
-        text_config=None,
-        cross_attn_every_n_layers: int = 4,
-        use_media_placement_augmentation: bool = True,
-        **kwargs
-    ):
+    def __init__(self, vision_config=None, text_config=None, cross_attn_every_n_layers: int = 4, use_media_placement_augmentation: bool = True, **kwargs):
         super().__init__(**kwargs)
 
         if vision_config is None:
             vision_config = {}
-            logger.info(
-                "vision_config is None. initializing the vision config with default values."
-            )
+            logger.info("vision_config is None. initializing the vision config with default values.")
 
         if text_config is None:
             text_config = {}
-            logger.info(
-                "text_config is None. Initializing the text config with default values."
-            )
+            logger.info("text_config is None. Initializing the text config with default values.")
 
         self.vision_config = CLIPVisionConfig(**vision_config)
         self.text_config = CONFIG_MAPPING[text_config.pop("model_type")](**text_config)
@@ -86,7 +75,5 @@ class FlamingoConfig(PretrainedConfig):
         output["text_config"] = self.text_config.to_dict()
         output["model_type"] = self.__class__.model_type
         output["cross_attn_every_n_layers"] = self.cross_attn_every_n_layers
-        output[
-            "use_media_placement_augmentation"
-        ] = self.use_media_placement_augmentation
+        output["use_media_placement_augmentation"] = self.use_media_placement_augmentation
         return output

@@ -71,20 +71,14 @@ def train_one_epoch(
     # cast_dtype = get_cast_dtype(args.precision)
 
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
-    endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)[
-        "input_ids"
-    ][-1]
+    endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)["input_ids"][-1]
     answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
 
     model.train()
 
     # setup logging
-    step_time_m = (
-        AverageMeter()
-    )  # time for one optimizer step (> 1 batch if using gradient accum)
-    data_time_m = (
-        AverageMeter()
-    )  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
+    step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
+    data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
 
     # loop through dataloader
@@ -112,9 +106,7 @@ def train_one_epoch(
         #     device_id, dtype=cast_dtype, non_blocking=True
         # )
 
-        images = (
-            batch_multi_instruct["net_input"]["patch_images"].unsqueeze(1).unsqueeze(1)
-        )
+        images = batch_multi_instruct["net_input"]["patch_images"].unsqueeze(1).unsqueeze(1)
         input_ids = batch_multi_instruct["net_input"]["input_ids"]
         attention_mask = batch_multi_instruct["net_input"]["attention_masks"]
 
@@ -125,9 +117,7 @@ def train_one_epoch(
         for i in range(labels.shape[0]):
             # remove loss for any token before <answer> token
             label_idx = 0
-            while (
-                label_idx < labels.shape[1] and labels[i][label_idx] != answer_token_id
-            ):
+            while label_idx < labels.shape[1] and labels[i][label_idx] != answer_token_id:
                 labels[i][label_idx] = -100
                 label_idx += 1
 
@@ -165,9 +155,7 @@ def train_one_epoch(
             def mask_embedding(m):
                 if m.weight.requires_grad:
                     zero_mask = torch.zeros_like(m.weight.grad)
-                    zero_mask[answer_token_id] = torch.ones_like(
-                        zero_mask[answer_token_id]
-                    )
+                    zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
                     m.weight.grad = m.weight.grad * zero_mask
 
             if args.mask_lm_head:
@@ -191,20 +179,11 @@ def train_one_epoch(
         step_time_m.update(time.time() - end)
         end = time.time()
 
-        if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (
-            num_steps == num_batches_per_epoch - 1
-        ):
+        if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (num_steps == num_batches_per_epoch - 1):
             if args.rank == 0 and args.report_to_wandb:
                 # compute within rank 0
-                multi_instruct_samples_per_second = (
-                    args.gradient_accumulation_steps
-                    * args.batch_size
-                    * args.world_size
-                    / step_time_m.val
-                )
-                multi_instruct_samples_per_second_per_gpu = (
-                    args.gradient_accumulation_steps * args.batch_size / step_time_m.val
-                )
+                multi_instruct_samples_per_second = args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.val
+                multi_instruct_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size / step_time_m.val
 
                 wandb.log(
                     {
@@ -266,9 +245,7 @@ def main():
     parser.add_argument("--use_media_placement_augmentation", action="store_true")
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--num_epochs", type=int, default=1)
-    parser.add_argument(
-        "--logging_steps", type=int, default=100, help="log loss every n steps"
-    )
+    parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
     # Sum of gradient optimization batch size
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
@@ -327,9 +304,7 @@ def main():
         type=str,
         help="url used to set up distributed training",
     )
-    parser.add_argument(
-        "--dist-backend", default="nccl", type=str, help="distributed backend"
-    )
+    parser.add_argument("--dist-backend", default="nccl", type=str, help="distributed backend")
     parser.add_argument(
         "--horovod",
         default=False,
@@ -396,9 +371,7 @@ def main():
     image_processor = CLIPImageProcessor()
 
     # add <answer> token to tokenizer
-    tokenizer.add_special_tokens(
-        {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
-    )
+    tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
 
     model.lang_encoder.resize_token_embeddings(len(tokenizer))
 
@@ -416,13 +389,7 @@ def main():
         params_with_wd, params_without_wd = [], []
 
         def apply_decay(x):
-            return (
-                "gated_cross_attn_layer" in x
-                and "ff_gate" not in x
-                and "attn_gate" not in x
-                and "norm" not in x
-                and "bias" not in x
-            )
+            return "gated_cross_attn_layer" in x and "ff_gate" not in x and "attn_gate" not in x and "norm" not in x and "bias" not in x
 
         for n, p in model.named_parameters():
             # if p.requires_grad:
@@ -442,11 +409,7 @@ def main():
     #     else args.train_num_samples
     # )
 
-    args.train_num_samples = (
-        multi_instruct_loader.num_samples
-        if args.train_num_samples is None
-        else args.train_num_samples
-    )
+    args.train_num_samples = multi_instruct_loader.num_samples if args.train_num_samples is None else args.train_num_samples
 
     # total_training_steps = (
     #     (args.train_num_samples) // (args.batch_size * args.world_size)
@@ -455,26 +418,14 @@ def main():
 
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
-    args.external_save_dir = (
-        os.path.join(args.external_save_dir, args.run_name)
-        if args.external_save_dir
-        else args.run_name
-    )
-    if (
-        os.path.exists(f"{args.external_save_dir}")
-        and args.resume_from_checkpoint is None
-        and args.pretrained_model_name_or_path is None
-    ):
+    args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
+    if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is None and args.pretrained_model_name_or_path is None:
         checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
         if len(checkpoint_list) == 0:
             print(f"Found no checkpoints for run {args.external_save_dir}.")
         else:
-            args.resume_from_checkpoint = sorted(
-                checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0])
-            )[-1]
-            print(
-                f"Found checkpoint {args.resume_from_checkpoint} for run {args.external_save_dir}."
-            )
+            args.resume_from_checkpoint = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
+            print(f"Found checkpoint {args.resume_from_checkpoint} for run {args.external_save_dir}.")
 
         if args.rank == 0:
             print(f"Loading checkpoint from {args.resume_from_checkpoint}")
@@ -486,9 +437,7 @@ def main():
 
     elif args.resume_from_checkpoint is not None:
         print(f"Loading checkpoint from {args.resume_from_checkpoint}")
-        model.load_state_dict(
-            torch.load(args.resume_from_checkpoint, map_location="cpu"), False
-        )
+        model.load_state_dict(torch.load(args.resume_from_checkpoint, map_location="cpu"), False)
 
     optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
     # model.gradient_checkpointing_enable()
@@ -496,11 +445,7 @@ def main():
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
 
-    args.warmup_steps = (
-        total_training_steps * args.warmup_steps_ratio
-        if args.warmup_steps_ratio is not None
-        else args.warmup_steps
-    )
+    args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
 
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
@@ -515,9 +460,7 @@ def main():
             num_training_steps=total_training_steps // args.gradient_accumulation_steps,
         )
     else:
-        lr_scheduler = get_constant_schedule_with_warmup(
-            optimizer, num_warmup_steps=args.warmup_steps
-        )
+        lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps)
 
     if args.rank == 0 and args.report_to_wandb:
         wandb.init(
@@ -528,13 +471,9 @@ def main():
         )
 
     # import pdb;pdb.set_trace()
-    accelerator = Accelerator(
-        gradient_accumulation_steps=args.gradient_accumulation_steps
-    )
+    accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps)
     # multi_instruct_loader = multi_instruct_dataset.dataloader
-    model, optimizer, lr_scheduler, multi_instruct_loader = accelerator.prepare(
-        model, optimizer, lr_scheduler, multi_instruct_loader
-    )
+    model, optimizer, lr_scheduler, multi_instruct_loader = accelerator.prepare(model, optimizer, lr_scheduler, multi_instruct_loader)
     model.train()
 
     # From yh

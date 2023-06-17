@@ -22,7 +22,7 @@ python -m pipeline.serve.controller --host 0.0.0.0 --port 10000
 # Init our 🦦 Otter model on GPU
 CUDA_VISIBLE_DEVICES=0,1 python -m pipeline.serve.model_worker --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model_name otter --checkpoint_path luodian/otter-9b-hf --num_gpus 2 --limit_model_concurrency 200
 # Init our 🦦 Otter video model on CPU
-CUDA_VISIBLE_DEVICES=0,1 python -m pipeline.serve.model_worker --controller http://localhost:10000 --port 40002 --worker http://localhost:40002 --model_name otter_video --checkpoint_path checkpoint/otter9B_DC_fullset_16frames/ --num_gpus 2 --limit_model_concurrency 200
+CUDA_VISIBLE_DEVICES=0,1 python -m pipeline.serve.model_worker --controller http://localhost:10000 --port 40002 --worker http://localhost:40002 --model_name otter_video --checkpoint_path checkpoint/otter9B_DC_fullset_16frames/ --num_gpus 2 --limit_model_concurrency 200 --load_bit 16
 # Init original open flamingo model on GPU
 CUDA_VISIBLE_DEVICES=2,3 python -m pipeline.serve.model_worker --controller http://localhost:10000 --port 40001 --worker http://localhost:40001 --model_name open_flamingo --checkpoint_path luodian/openflamingo-9b-hf --num_gpus 2 --limit_model_concurrency 200
 
@@ -101,7 +101,6 @@ print("Generated text: ", model.text_tokenizer.decode(generated_text[0]))
 ```
 
 An example for video.
-``` python
 ``` python
 import mimetypes
 import os
@@ -226,7 +225,7 @@ def get_response(input_data, prompt: str, model=None, image_processor=None) -> s
 
 if __name__ == "__main__":
     model = OtterForConditionalGeneration.from_pretrained(
-        "checkpoint/otter9B_DC_frame16",
+        "luodian/otter-9b-dc-hf",
     )
     model.text_tokenizer.padding_side = "left"
     tokenizer = model.text_tokenizer
@@ -234,7 +233,7 @@ if __name__ == "__main__":
     model.eval()
 
     while True:
-        video_url = "dc_demo.mp4"  # Replace with the path to your video file
+        video_url = "demo.mp4"  # Replace with the path to your video file
 
         frames_list = get_image(video_url)
 

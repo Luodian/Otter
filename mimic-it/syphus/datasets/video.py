@@ -57,9 +57,7 @@ class TVCaptions(AbstractDataset):
                 now_query_input = []
                 for disc_id, desc in enumerate(video["descs"], 1):
                     now_query_input.append(str(disc_id) + ". " + desc["desc"])
-                query_inputs.append(
-                    {"id": video_id, "sentences": "\n".join(now_query_input)}
-                )
+                query_inputs.append({"id": video_id, "sentences": "\n".join(now_query_input)})
         return query_inputs
 
 
@@ -106,9 +104,7 @@ class VisualStoryTelling(AbstractDataset):
             # add annotations to images
             for annotation_list in json_data["annotations"]:
                 for annotation in annotation_list:
-                    images[annotation["photo_flickr_id"]]["annotations"].append(
-                        annotation["text"]
-                    )
+                    images[annotation["photo_flickr_id"]]["annotations"].append(annotation["text"])
 
             # create albums dictionary and add basic information
             albums = {}

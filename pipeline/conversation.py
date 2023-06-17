@@ -35,7 +35,7 @@ class Conversation:
                 if message:
                     if type(message) is tuple:
                         message = message[0]
-                    ret += role + ": " + message + self.sep
+                    ret += role + ":" + message + self.sep
                 else:
                     ret += role + ":"
             return ret
@@ -47,12 +47,12 @@ class Conversation:
 
                 if message:
                     if type(message) is tuple:
-                        message = message[0]
+                        message = message[0].strip()
 
                     if role is None:
                         ret += message + seps[i % 2]
                     else:
-                        ret += role + ": " + message + seps[i % 2]
+                        ret += role + ":" + message + seps[i % 2]
                 else:
                     if role is not None:
                         ret += role + ":"
@@ -72,46 +72,39 @@ class Conversation:
                 for image in image_list:
                     if image is not None:
                         if isinstance(image, Image.Image):
-                            max_hw, min_hw = max(image.size), min(image.size)
-                            aspect_ratio = max_hw / min_hw
-                            max_len, min_len = 800, 400
-                            shortest_edge = int(
-                                min(max_len / aspect_ratio, min_len, min_hw)
-                            )
-                            longest_edge = int(shortest_edge * aspect_ratio)
+                            max_len, min_len = 1280, 400
                             H, W = image.size
-                            if H > W:
-                                H, W = longest_edge, shortest_edge
-                            else:
-                                H, W = shortest_edge, longest_edge
-                            image = image.resize((H, W))
+                            aspect_ratio = float(W) / float(H)
+
+                            if W > max_len:
+                                new_W = max_len
+                                new_H = int(new_W / aspect_ratio)
+                                image = image.resize((new_W, new_H))
+
                             buffered = BytesIO()
-                            image.save(buffered, format="JPEG")
-                            img_b64_str = base64.b64encode(buffered.getvalue()).decode()
+                            image.save(buffered, format="PNG")
+                            img_b64_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
                             images.append(img_b64_str)
+
                         elif isinstance(image, list):
                             frames = []
                             for frame in image:
-                                max_hw, min_hw = max(frame.size), min(frame.size)
-                                aspect_ratio = max_hw / min_hw
-                                max_len, min_len = 800, 400
-                                shortest_edge = int(
-                                    min(max_len / aspect_ratio, min_len, min_hw)
-                                )
-                                longest_edge = int(shortest_edge * aspect_ratio)
+                                max_len, min_len = 1280, 400
                                 H, W = frame.size
-                                if H > W:
-                                    H, W = longest_edge, shortest_edge
-                                else:
-                                    H, W = shortest_edge, longest_edge
-                                image = frame.resize((H, W))
+                                aspect_ratio = float(W) / float(H)
+
+                                if W > max_len:
+                                    new_W = max_len
+                                    new_H = int(new_W / aspect_ratio)
+                                    frame = frame.resize((new_W, new_H))
+
                                 buffered = BytesIO()
-                                image.save(buffered, format="JPEG")
-                                img_b64_str = base64.b64encode(
-                                    buffered.getvalue()
-                                ).decode()
+                                frame.save(buffered, format="PNG")
+                                img_b64_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
                                 frames.append(img_b64_str)
+
                             images.append(frames)
+
         return images
 
     def to_gradio_chatbot(self):
@@ -127,9 +120,7 @@ class Conversation:
                         max_hw, min_hw = max(image.size), min(image.size)
                         aspect_ratio = max_hw / min_hw
                         max_len, min_len = 800, 400
-                        shortest_edge = int(
-                            min(max_len / aspect_ratio, min_len, min_hw)
-                        )
+                        shortest_edge = int(min(max_len / aspect_ratio, min_len, min_hw))
                         longest_edge = int(shortest_edge * aspect_ratio)
                         H, W = image.size
                         if H > W:
@@ -170,9 +161,7 @@ class Conversation:
             return {
                 "system": self.system,
                 "roles": self.roles,
-                "messages": [
-                    [x, y[0] if type(y) is tuple else y] for x, y in self.messages
-                ],
+                "messages": [[x, y[0] if type(y) is tuple else y] for x, y in self.messages],
                 "offset": self.offset,
                 "sep": self.sep,
                 "sep2": self.sep2,
@@ -269,7 +258,7 @@ otter_v1 = Conversation(
     offset=0,
     sep_style=SeparatorStyle.TWO,
     sep=" ",
-    sep2="</s>",
+    sep2="<|endofchunk|>",
 )
 
 open_flamingo_v1 = Conversation(

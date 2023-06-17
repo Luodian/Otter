@@ -7,7 +7,7 @@ import time
 import uuid
 import gradio as gr
 import requests
-
+import re
 from pipeline.conversation import default_conversation, conv_templates, SeparatorStyle
 from pipeline.constants import LOGDIR
 from pipeline.serve.serving_utils import (
@@ -191,8 +191,20 @@ def add_text(
     image_3,
     request: gr.Request,
 ):
-    template_name = "otter" if "otter" in model_selector else "open_flamingo"
-    if "otter" in model_selector:
+    if text_demo_question_1 != "":
+        text_demo_question_1 = text_demo_question_1.strip()
+        if not re.search(r"[.,?]$", text_demo_question_1):
+            text_demo_question_1 += "."
+    if text_demo_answer_2 != "":
+        text_demo_question_2 = text_demo_question_2.strip()
+        if not re.search(r"[.,?]$", text_demo_question_1):
+            text_demo_question_1 += "."
+    if text_3 != "":
+        text_3 = text_3.strip()
+        if not re.search(r"[.,?]$", text_3):
+            text_3 += "."
+    template_name = "otter" if "otter" in model_selector.lower() else "open_flamingo"
+    if "otter" in model_selector.lower():
         DEFAULT_ANSWER_TOKEN = "<answer> "
         human_role_label = conv_templates[template_name].copy().roles[0] + ": "
         bot_role_label = " " + conv_templates[template_name].copy().roles[1] + ":"
@@ -202,12 +214,7 @@ def add_text(
         bot_role_label = ""
     text = text_3
     if conv_templates[template_name].copy().roles[1] is not None:
-        text += (
-            " "
-            + conv_templates[template_name].copy().roles[1]
-            + ":"
-            + DEFAULT_ANSWER_TOKEN
-        )
+        text += " " + conv_templates[template_name].copy().roles[1] + ":" + DEFAULT_ANSWER_TOKEN
     logger.info(f"add_text. ip: {request.client.host}. len: {len(text)}")
     if state is None:
         state = conv_templates[template_name].copy()
@@ -233,8 +240,19 @@ def add_text(
             )
 
     text = text[:1536]  # Hard cut-off
+    # first time to add the text
     if image_3 is not None:
         text = DEFAULT_IMAGE_TOKEN + human_role_label + text
+    # multi-round text conversation: if the lastest conv is only text then condition on previous image
+    if image_3 is None and len(state.messages) >= 2:
+        text = DEFAULT_IMAGE_TOKEN + human_role_label + text
+        image_3 = state.messages[-2][1][3]
+
+    # # clean state if it's a new conversation
+    # if image_3 is not None and state is not None:
+    #     state = conv_templates[template_name].copy()
+    #     logger.info(f"TEMPLATE. {state}")
+
     if text_demo_answer_2 != "":
         assert image_demo_2 is not None
         text = (
@@ -311,7 +329,7 @@ def http_bot(
     logger.info(f"http_bot. ip: {request.client.host}")
     start_tstamp = time.time()
     model_name = model_selector
-    template_name = "otter" if "otter" in model_selector else "open_flamingo"
+    template_name = "otter" if "otter" in model_selector.lower() else "open_flamingo"
 
     if state.skip_next:
         # This generate call is skipped due to invalid inputs
@@ -328,9 +346,7 @@ def http_bot(
 
     # Query worker address
     controller_url = args.controller_url
-    ret = requests.post(
-        controller_url + "/get_worker_address", json={"model": model_name}
-    )
+    ret = requests.post(controller_url + "/get_worker_address", json={"model": model_name})
     worker_addr = ret.json()["address"]
     logger.info(f"model_name: {model_name}, worker_addr: {worker_addr}")
 
@@ -472,20 +488,22 @@ a:link {
 
 <span style="font-size:larger;">
 
+### Note:
+Current Otter Image is **Otter-v0.1-LA-In-Context (0601)**, means it's trianed on [MIMIC-IT-LA-In-Context](https://github.com/Luodian/Otter/tree/main/mimic-it) at June 1st.
 
-
-### Note: 
-Following OpenFlamingo, you need to input at least one image in the first round of conversation with both Otter and OpenFlamingo.
-Current Otter model (ver. Apr 25) is under development. A model supporting better conversations will be released soon. If model repeatedly describes previous images, please click "clear history" to clean all image caches to make sure the model perform correctly.
+This version Otter Image demonstrates in-context learning ability to demonstrate more reasonable and coherent answer following given example instruction/response pairs. 
 </span>
 
-| Choose a model to chat with | |
-| --- | --- |
-| [Otter](https://github.com/Luodian/otter): a chat assistant fine-tuned from OpenFlamingo and in-context instructions. | [OpenFlamingo](https://github.com/mlfoundations/open_flamingo): a multimodal foundation model for in-context learning. |
+We currently **dont support language-only chat** (the model could but our code doesnt allow it for now). Since we aim to demonstrate the ability of chatting on videos, you may need to upload your video first and then ask it questions.
+
+Otter can read multiple images and answer multiple questions towards the same image (visually the image will appear in chatbox again due to our implementation).
+
+Sometimes we are experiencing server overload, and as the model is hosted on a dual-RTX-3090 machine. Please try again later if you encounter any error or contact drluodian@gmail.com for any problem. If you find it's interesting, please consider to star our [github](https://github.com/Luodian/Otter) and cite our [paper](https://arxiv.org/abs/2306.05425). What we do is all to make the community better and to approach the goal of AI for helping people's life.
+
 """
 
 tos_markdown = """
-### Terms of use
+### Terms of Use
 By using this service, users are required to agree to the following terms: The service is a research preview intended for non-commercial use only. It only provides limited safety measures and may generate offensive content. It must not be used for any illegal, harmful, violent, racist, or sexual purposes. The service may collect user dialogue data for future research.
 Please click the "Flag" button if you get any inappropriate answer! We will collect those to keep improving our moderator. For an optimal experience, please use desktop computers for this demo, as mobile devices may compromise its quality.
 """
@@ -531,9 +549,7 @@ def build_demo(embed_mode):
                 imagebox_3 = gr.Image(label="Image", type="pil")
 
                 with gr.Row():
-                    imagebox_demo_1 = gr.Image(
-                        label="Demo Image 1 (optional)", type="pil"
-                    )
+                    imagebox_demo_1 = gr.Image(label="Demo Image 1 (optional)", type="pil")
                     textbox_demo_question_1 = gr.Textbox(
                         label="Demo Text Query 1 (optional)",
                         show_label=True,
@@ -545,9 +561,7 @@ def build_demo(embed_mode):
                         placeholder="<Describe Demo Image 1>",
                     ).style(container=True)
                 with gr.Row():
-                    imagebox_demo_2 = gr.Image(
-                        label="Demo Image 2 (optional)", type="pil"
-                    )
+                    imagebox_demo_2 = gr.Image(label="Demo Image 2 (optional)", type="pil")
                     textbox_demo_question_2 = gr.Textbox(
                         label="Demo Text Query 2 (optional)",
                         show_label=True,
@@ -559,65 +573,18 @@ def build_demo(embed_mode):
                         placeholder="<Describe Demo Image 2>",
                     ).style(container=True)
 
-                with gr.Accordion(
-                    "Parameters", open=False, visible=False
-                ) as parameter_row:
-                    with gr.Row():
-                        max_new_tokens = gr.Slider(
-                            minimum=20,
-                            maximum=500,
-                            value=200,
-                            step=10,
-                            interactive=True,
-                            label="# generation tokens",
-                        )
-                        temperature = gr.Slider(
-                            minimum=0,
-                            maximum=1,
-                            value=1,
-                            step=0.1,
-                            interactive=True,
-                            label="temperature",
-                        )
-                        top_k = gr.Slider(
-                            minimum=0,
-                            maximum=10,
-                            value=0,
-                            step=1,
-                            interactive=True,
-                            label="top_k",
-                        )
-                        top_p = gr.Slider(
-                            minimum=0,
-                            maximum=1,
-                            value=1.0,
-                            step=0.1,
-                            interactive=True,
-                            label="top_p",
-                        )
-                        no_repeat_ngram_size = gr.Slider(
-                            minimum=1,
-                            maximum=10,
-                            value=3,
-                            step=1,
-                            interactive=True,
-                            label="no_repeat_ngram_size",
-                        )
-                        length_penalty = gr.Slider(
-                            minimum=1,
-                            maximum=5,
-                            value=1,
-                            step=0.1,
-                            interactive=True,
-                            label="length_penalty",
-                        )
-                        do_sample = gr.Checkbox(interactive=True, label="do_sample")
-                        early_stopping = gr.Checkbox(
-                            interactive=True, label="early_stopping"
-                        )
+                with gr.Accordion("Parameters", open=False, visible=False) as parameter_row:
+                    max_new_tokens = gr.Slider(minimum=16, maximum=512, value=512, step=1, interactive=True, label="# generation tokens")
+                    temperature = gr.Slider(minimum=0, maximum=1, value=1, step=0.1, interactive=True, label="temperature")
+                    top_k = gr.Slider(minimum=0, maximum=10, value=0, step=1, interactive=True, label="top_k")
+                    top_p = gr.Slider(minimum=0, maximum=1, value=1.0, step=0.1, interactive=True, label="top_p")
+                    no_repeat_ngram_size = gr.Slider(minimum=1, maximum=10, value=3, step=1, interactive=True, label="no_repeat_ngram_size")
+                    length_penalty = gr.Slider(minimum=1, maximum=5, value=1, step=0.1, interactive=True, label="length_penalty")
+                    do_sample = gr.Checkbox(interactive=True, label="do_sample")
+                    early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
 
             with gr.Column(scale=6):
-                chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=720)
+                chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=960)
                 with gr.Row():
                     with gr.Column(scale=8):
                         textbox_3 = gr.Textbox(
@@ -639,6 +606,17 @@ def build_demo(embed_mode):
         gr.Examples(
             examples=[
                 [
+                    f"{cur_dir}/examples/pepsi.png",
+                    "What's written on this image?",
+                    "pepsi, is pepsi ok?",
+                    f"{cur_dir}/examples/subway.png",
+                    "What's written on this image?",
+                    "SUBWAY, eat fresh",
+                    f"{cur_dir}/examples/think_different.png",
+                    "What's written on this image?",
+                    "Think Different",
+                ],
+                [
                     f"{cur_dir}/examples/cat.jpg",
                     "An image of",
                     "two cats.",
@@ -647,17 +625,17 @@ def build_demo(embed_mode):
                     "a bathroom sink.",
                     f"{cur_dir}/examples/dinner.jpg",
                     "An image of",
-                ],
-                [
-                    f"{cur_dir}/examples/tennis.jpg",
-                    "What is the danger of this sport?",
-                    "The player may get hitted by the tennis ball.",
-                    f"{cur_dir}/examples/baseball.jpg",
-                    "What is the danger of this sport?",
-                    "While chasing the baseball, the player may inadvertently collide with other players.",
-                    f"{cur_dir}/examples/soccer.png",
-                    "What is the danger of this sport?",
-                ],
+                ]
+                # [
+                #     f"{cur_dir}/examples/tennis.jpg",
+                #     "What's the danger of the sport in this image?",
+                #     "The player may get hitted by the tennis ball.",
+                #     f"{cur_dir}/examples/baseball.jpg",
+                #     "What's the danger of the sport in this image?",
+                #     "While chasing the baseball, the player may inadvertently collide with other players.",
+                #     f"{cur_dir}/examples/soccer.png",
+                #     "What's the potential danger of playing this sport in the dark? ",
+                # ],
             ],
             inputs=[
                 imagebox_demo_1,
@@ -851,9 +829,7 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default="7861")
     parser.add_argument("--controller_url", type=str, default="http://localhost:21001")
     parser.add_argument("--concurrency_count", type=int, default=16)
-    parser.add_argument(
-        "--model_list_mode", type=str, default="once", choices=["once", "reload"]
-    )
+    parser.add_argument("--model_list_mode", type=str, default="once", choices=["once", "reload"])
     parser.add_argument("--share", action="store_true")
     parser.add_argument("--moderate", action="store_true")
     parser.add_argument("--embed", action="store_true")
@@ -862,7 +838,7 @@ if __name__ == "__main__":
     models = get_model_list()
     logger.info(args)
     demo = build_demo(args.embed)
-    demo.queue(
-        concurrency_count=args.concurrency_count, status_update_rate=10, api_open=False
-    ).launch(server_name=args.host, server_port=args.port, share=args.share)
+    demo.queue(concurrency_count=args.concurrency_count, status_update_rate=10, api_open=False).launch(
+        server_name=args.host, server_port=args.port, share=args.share
+    )
     gr.close_all()

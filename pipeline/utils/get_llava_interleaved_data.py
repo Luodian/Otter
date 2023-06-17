@@ -17,9 +17,7 @@ with open(cur_file) as f:
     cur_file = json.load(f)
 
 
-target_json_path = (
-    "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACONV_instructions.json"
-)
+target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACONV_instructions.json"
 # target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json"
 # target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json"
 # target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
@@ -34,29 +32,16 @@ for cur_dict in tqdm(cur_file):
     if "CONV" in target_json_path:
         for cur_round in range(0, len(cur_dict["conversations"]), 2):
             real_round = int(cur_round / 2)
-            instruction_id = (
-                f"LACONV_00_INS_{cur_dict['id']}"  # LACONV_00_INS_000000033471_2
-            )
+            instruction_id = f"LACONV_00_INS_{cur_dict['id']}"  # LACONV_00_INS_000000033471_2
             instruction_id = f"{instruction_id}_{real_round}"
             instruction = (
-                cur_dict["conversations"][cur_round]["value"]
-                .strip()
-                .replace("<image>", "")
+                cur_dict["conversations"][cur_round]["value"].strip().replace("<image>", "")
             )  # .replace("\n","")#.replace("<image>\n","") #cur_meta[uniq_id]["question"]
             answer = (
-                cur_dict["conversations"][cur_round + 1]["value"]
-                .strip()
-                .replace("<image>", "")
+                cur_dict["conversations"][cur_round + 1]["value"].strip().replace("<image>", "")
             )  # .replace("\n","#").replace('\r','#').replace('\t','#') #cur_meta[uniq_id]["answer"]
             image_id = f"LA_00_IMG_{cur_dict['id']}"
-            in_context_example_ids = (
-                [
-                    f"LACONV_00_INS_{cur_dict['id']}_{prompt_id}"
-                    for prompt_id in range(real_round)
-                ]
-                if real_round != 0
-                else []
-            )
+            in_context_example_ids = [f"LACONV_00_INS_{cur_dict['id']}_{prompt_id}" for prompt_id in range(real_round)] if real_round != 0 else []
 
             target_json["data"][instruction_id] = {
                 "instruction": instruction,
@@ -70,17 +55,13 @@ for cur_dict in tqdm(cur_file):
         instruction_id = f"LACR_I2I_00_INS_{cur_dict['id']}"
         if instruction_id in target_json:
             continue
-        instruction = (
-            cur_dict["conversations"][0]["value"].strip().replace("<image>", "")
-        )  # .replace("\n","")#("<image>\n","") #cur_meta[uniq_id]["question"]
+        instruction = cur_dict["conversations"][0]["value"].strip().replace("<image>", "")  # .replace("\n","")#("<image>\n","") #cur_meta[uniq_id]["question"]
         answer = (
             cur_dict["conversations"][1]["value"].strip().replace("<image>", "")
         )  # .replace("\n","#").replace('\r','#').replace('\t','#') #cur_meta[uniq_id]["answer"]
         image_id = cur_dict["id"]
         in_context_example_ids = []
-        in_context_example_ids = [
-            f"LACR_I2I_00_INS_{prompt_id}" for prompt_id in cur_similarity[image_id]
-        ]
+        in_context_example_ids = [f"LACR_I2I_00_INS_{prompt_id}" for prompt_id in cur_similarity[image_id]]
         # in_context_example_ids = [f"LACR_T2T_00_INS_{prompt_id}" for prompt_id in cur_similarity[image_id]]
         # dataset_name = "LlavaDetailDescription"
         # dataset_name = "LlavaComplexReasoningT2T"

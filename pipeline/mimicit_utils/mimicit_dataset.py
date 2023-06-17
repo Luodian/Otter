@@ -8,7 +8,7 @@ from io import BytesIO
 import re
 import contextlib
 import os
-import json
+import orjson
 
 from PIL import ImageFile
 from torchvision import transforms
@@ -17,6 +17,10 @@ import random
 import sys
 
 from .transforms import *
+
+# sys.path.append("/mnt/lustre/yhzhang/Otter/pipeline/multi_instruct_data_utils")
+# from transforms import *
+
 
 from torch.utils.data import Dataset
 
@@ -94,26 +98,23 @@ class MimicitDataset(Dataset):
         self.images_path = cur_images_path
         self.train_config_path = cur_train_config_path
 
-        assert os.path.exists(
-            cur_multi_instruct_path
-        ), f"Error: The local multi_instruct_path {cur_multi_instruct_path} not exists!"
+        assert os.path.exists(cur_multi_instruct_path), f"Error: The local multi_instruct_path {cur_multi_instruct_path} not exists!"
 
-        assert os.path.exists(
-            cur_images_path
-        ), f"Error: The local images_path {cur_images_path} not exists!"
+        assert os.path.exists(cur_images_path), f"Error: The local images_path {cur_images_path} not exists!"
 
-        assert os.path.exists(
-            cur_train_config_path
-        ), f"Error: The local train_config_path {cur_train_config_path} not exists!"
+        assert os.path.exists(cur_train_config_path), f"Error: The local train_config_path {cur_train_config_path} not exists!"
 
-        with open(self.multi_instruct_path) as f:
-            self.dataset = json.load(f)["data"]
+        # Load the dataset
+        with open(self.multi_instruct_path, "rb") as f:
+            self.dataset = orjson.loads(f.read())["data"]
 
-        with open(self.images_path) as f:
-            self.images = json.load(f)
+        # Load the images
+        with open(self.images_path, "rb") as f:
+            self.images = orjson.loads(f.read())
 
-        with open(self.train_config_path) as f:
-            self.train_config = json.load(f)
+        # Load the train_config
+        with open(self.train_config_path, "rb") as f:
+            self.train_config = orjson.loads(f.read())
 
         self.train_data_list = list(self.train_config.keys())
 
@@ -123,9 +124,7 @@ class MimicitDataset(Dataset):
         self.eos_mask = torch.LongTensor([1])
 
     def pre_question(self, question, max_ques_words):
-        question = (
-            question.lower().lstrip(",.!?*#:;~").replace("-", " ").replace("/", " ")
-        )
+        question = question.lower().lstrip(",.!?*#:;~").replace("-", " ").replace("/", " ")
 
         question = re.sub(
             r"\s{2,}",
@@ -175,13 +174,7 @@ class MimicitDataset(Dataset):
         return return_answer
 
     def pre_caption(self, caption, max_words):
-        caption = (
-            caption.lower()
-            .lstrip(",.!?*#:;~")
-            .replace("-", " ")
-            .replace("/", " ")
-            .replace("<person>", "person")
-        )
+        caption = caption.lower().lstrip(",.!?*#:;~").replace("-", " ").replace("/", " ").replace("<person>", "person")
 
         caption = re.sub(
             r"\s{2,}",
@@ -201,33 +194,42 @@ class MimicitDataset(Dataset):
     def set_epoch(self, epoch, **unused):
         self.epoch = epoch
 
-    def process_llava(
-        self, instruction_id, instruction, answer, image_ids, in_context_example_ids
-    ):
+    def process_llava(self, instruction_id, instruction, answer, image_ids, in_context_example_ids):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
-        random.shuffle(all_instruction_ids)
-        for cur_instruction_id in all_instruction_ids[:]:
-            cur_instruction_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
-            cur_instruction = self.dataset[cur_instruction_id]["instruction"]
-            cur_answer = self.dataset[cur_instruction_id]["answer"]
-            cur_image = self.images[cur_instruction_image_id]
-            cur_image = Image.open(
-                BytesIO(base64.urlsafe_b64decode(cur_image))
-            ).convert("RGB")
-            cur_patch_image = (
-                self.patch_resize_transform(cur_image).unsqueeze(0).unsqueeze(0)
-            )
-            if len(patch_images) == 0:
-                patch_images = cur_patch_image
-            else:
-                patch_images = torch.cat((patch_images, cur_patch_image))
+        # random.shuffle(all_instruction_ids)
+        if "CONV" in instruction_id:
+            for cur_instruction_id in all_instruction_ids[:]:
+                cur_instruction_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
+                cur_instruction = self.dataset[cur_instruction_id]["instruction"]
+                cur_answer = self.dataset[cur_instruction_id]["answer"]
+                cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
+                cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+                cur_text = f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+                all_texts += cur_text
 
-            cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
-            cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
-            cur_text = f"<image>User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
-            all_texts += cur_text
+            all_texts = f"<image>{all_texts}"
+            cur_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
+            cur_image = self.images[cur_image_id]
+            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
+            patch_images = self.patch_resize_transform(cur_image).unsqueeze(0).unsqueeze(0)
+        else:
+            for cur_instruction_id in all_instruction_ids[:]:
+                cur_instruction_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
+                cur_instruction = self.dataset[cur_instruction_id]["instruction"]
+                cur_answer = self.dataset[cur_instruction_id]["answer"]
+                cur_image = self.images[cur_instruction_image_id]
+                cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
+                cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0).unsqueeze(0)
+                if len(patch_images) == 0:
+                    patch_images = cur_patch_image
+                else:
+                    patch_images = torch.cat((patch_images, cur_patch_image))
+                cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
+                cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+                cur_text = f"<image>User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+                all_texts += cur_text
         # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
         # incontext_text = "<image>User: What does this image descibe? GPT:<answer>The children in the image, along with the rest of the family. They are Skiing. <|endofchunk|>"
         # query_text = f"<image>User: What does this image descibe? GPT:<answer>"
@@ -235,9 +237,7 @@ class MimicitDataset(Dataset):
         # print(instruction_id, query_text, answer)
         return patch_images, all_texts  # incontext_text, query_text
 
-    def process_dense_caption(
-        self, instruction_id, instruction, answer, image_ids, in_context_example_ids
-    ):
+    def process_dense_caption(self, instruction_id, instruction, answer, image_ids, in_context_example_ids):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -247,9 +247,7 @@ class MimicitDataset(Dataset):
             cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
-            cur_text = (
-                f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
-            )
+            cur_text = f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
             all_texts += cur_text
 
         all_texts = f"<image>{all_texts}"
@@ -257,9 +255,7 @@ class MimicitDataset(Dataset):
         # <image>User: what does the image describe? GPT: XXX <|endofchunk|>User: Do you think this image is funny GPT:<answer> YYY <|endofchunk|>
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
-            cur_image = Image.open(
-                BytesIO(base64.urlsafe_b64decode(cur_image))
-            ).convert("RGB")
+            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
             cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
             if len(patch_images) == 0:
                 patch_images = cur_patch_image
@@ -269,9 +265,7 @@ class MimicitDataset(Dataset):
         patch_images = patch_images.unsqueeze(0)
         return patch_images, all_texts
 
-    def process_e4d(
-        self, instruction_id, instruction, answer, image_ids, in_context_example_ids
-    ):
+    def process_e4d(self, instruction_id, instruction, answer, image_ids, in_context_example_ids):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -281,9 +275,7 @@ class MimicitDataset(Dataset):
             cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
-            cur_text = (
-                f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
-            )
+            cur_text = f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
             all_texts += cur_text
 
         all_texts = f"<image>{all_texts}"
@@ -291,9 +283,7 @@ class MimicitDataset(Dataset):
         # <image>User: what does the image describe? GPT: XXX <|endofchunk|>User: Do you think this image is funny GPT:<answer> YYY <|endofchunk|>
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
-            cur_image = Image.open(
-                BytesIO(base64.urlsafe_b64decode(cur_image))
-            ).convert("RGB")
+            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
             cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
             if len(patch_images) == 0:
                 patch_images = cur_patch_image
@@ -303,17 +293,13 @@ class MimicitDataset(Dataset):
         patch_images = patch_images.unsqueeze(0)
         return patch_images, all_texts
 
-    def process_spot_the_difference(
-        self, instruction_id, instruction, answer, image_ids, in_context_example_ids
-    ):
+    def process_spot_the_difference(self, instruction_id, instruction, answer, image_ids, in_context_example_ids):
         patch_images = torch.tensor([])
         incontext_text = ""
         # <image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
-            cur_image = Image.open(
-                BytesIO(base64.urlsafe_b64decode(cur_image))
-            ).convert("RGB")
+            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
             cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
             if len(patch_images) == 0:
                 patch_images = cur_patch_image
@@ -327,20 +313,14 @@ class MimicitDataset(Dataset):
         all_texts = f"{incontext_text}{query_text}"
         return patch_images, all_texts
 
-    def process_scene_navigation(
-        self, instruction_id, instruction, answer, image_ids, in_context_example_ids
-    ):
+    def process_scene_navigation(self, instruction_id, instruction, answer, image_ids, in_context_example_ids):
         patch_images = torch.tensor([])
         incontext_text = ""
         for cur_incontext_id in in_context_example_ids:
             cur_incontext_instruction = self.dataset[cur_incontext_id]["instruction"]
-            cur_incontext_instruction = self.pre_question(
-                cur_incontext_instruction, self.max_src_length
-            )
+            cur_incontext_instruction = self.pre_question(cur_incontext_instruction, self.max_src_length)
             cur_incontext_answer = self.dataset[cur_incontext_id]["answer"]
-            cur_incontext_answer = self.pre_answer(
-                cur_incontext_answer, self.max_tgt_length
-            )
+            cur_incontext_answer = self.pre_answer(cur_incontext_answer, self.max_tgt_length)
             cur_incontext_text = f"User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>"
             incontext_text += cur_incontext_text
 
@@ -348,9 +328,7 @@ class MimicitDataset(Dataset):
         # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
-            cur_image = Image.open(
-                BytesIO(base64.urlsafe_b64decode(cur_image))
-            ).convert("RGB")
+            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
             cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
             if len(patch_images) == 0:
                 patch_images = cur_patch_image
@@ -364,9 +342,7 @@ class MimicitDataset(Dataset):
         all_texts = f"{incontext_text}{all_texts}"
         return patch_images, all_texts
 
-    def process_funqa(
-        self, instruction_id, instruction, answer, image_ids, in_context_example_ids
-    ):
+    def process_funqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -376,9 +352,7 @@ class MimicitDataset(Dataset):
             cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
-            cur_text = (
-                f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
-            )
+            cur_text = f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
             all_texts += cur_text
 
         all_texts = f"<image>{all_texts}"
@@ -386,9 +360,7 @@ class MimicitDataset(Dataset):
         # <image>User: what does the image describe? GPT: XXX <|endofchunk|>User: Do you think this image is funny GPT:<answer> YYY <|endofchunk|>
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
-            cur_image = Image.open(
-                BytesIO(base64.urlsafe_b64decode(cur_image))
-            ).convert("RGB")
+            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
             cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
             if len(patch_images) == 0:
                 patch_images = cur_patch_image
@@ -417,29 +389,17 @@ class MimicitDataset(Dataset):
         self.max_src_length = self.max_tgt_length = 256
 
         if cur_train_id.startswith("LA"):
-            patch_images, all_texts = self.process_llava(
-                instruction_id, instruction, answer, image_ids, in_context_example_ids
-            )
+            patch_images, all_texts = self.process_llava(instruction_id, instruction, answer, image_ids, in_context_example_ids)
         elif cur_train_id.startswith("DC"):
-            patch_images, all_texts = self.process_dense_caption(
-                instruction_id, instruction, answer, image_ids, in_context_example_ids
-            )
+            patch_images, all_texts = self.process_dense_caption(instruction_id, instruction, answer, image_ids, in_context_example_ids)
         elif cur_train_id.startswith("E4D"):
-            patch_images, all_texts = self.process_e4d(
-                instruction_id, instruction, answer, image_ids, in_context_example_ids
-            )
+            patch_images, all_texts = self.process_e4d(instruction_id, instruction, answer, image_ids, in_context_example_ids)
         elif cur_train_id.startswith("SD"):
-            patch_images, all_texts = self.process_spot_the_difference(
-                instruction_id, instruction, answer, image_ids, in_context_example_ids
-            )
+            patch_images, all_texts = self.process_spot_the_difference(instruction_id, instruction, answer, image_ids, in_context_example_ids)
         elif cur_train_id.startswith("SN"):
-            patch_images, all_texts = self.process_scene_navigation(
-                instruction_id, instruction, answer, image_ids, in_context_example_ids
-            )
+            patch_images, all_texts = self.process_scene_navigation(instruction_id, instruction, answer, image_ids, in_context_example_ids)
         elif cur_train_id.startswith("FunQA"):
-            patch_images, all_texts = self.process_funqa(
-                instruction_id, instruction, answer, image_ids, in_context_example_ids
-            )
+            patch_images, all_texts = self.process_funqa(instruction_id, instruction, answer, image_ids, in_context_example_ids)
 
         # print(instruction_id, incontext_text, query_text)
 
@@ -531,9 +491,7 @@ def collate_fn(samples, pad_idx, eos_idx):
     larger_incontext_num = max([s["patch_images"].size(0) for s in samples])
     # import pdb;pdb.set_trace()
     if samples[0].get("patch_images", None) is not None:
-        batch["net_input"]["patch_images"] = torch.stack(
-            [sample["patch_images"] for sample in samples], dim=0
-        )
+        batch["net_input"]["patch_images"] = torch.stack([sample["patch_images"] for sample in samples], dim=0)
 
     return batch
 
@@ -577,3 +535,75 @@ def collate_tokens(
     for i, v in enumerate(values):
         copy_tensor(v, res[i][size - len(v) :] if left_pad else res[i][: len(v)])
     return res
+
+
+if __name__ == "__main__":
+    from PIL import Image, ImageFile
+    from io import BytesIO
+    import base64
+    from tqdm import tqdm
+    import json
+    import argparse
+    import sys
+
+    sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/")
+    from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--multi_instruct_path",
+        type=str,
+        help="path to multi_instruct dataset, this should be a glob pattern such as vision_language_examples.tsv",
+    )
+    parser.add_argument("--offline", action="store_true")
+
+    args = parser.parse_args()
+
+    args.multi_instruct_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACR_I2I_instructions.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
+    args.images_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LA_00.json"
+    args.train_config_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACR_I2I_train.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
+    args.max_src_length = 256
+    args.max_tgt_length = 256
+    args.task = "pretrain"
+    args.pretrain_seed = 0
+    args.patch_image_size = 224
+
+    from transformers import LlamaTokenizer
+
+    with open("/mnt/petrelfs/zhangyuanhan/weights/flamingo_9b_hf/config.json") as f:
+        config = json.load(f)
+
+    tokenizer = LlamaTokenizer.from_pretrained("luodian/llama-7b-hf")
+
+    # add <answer> token to tokenizer
+    tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+
+    tokenizer.add_special_tokens({"pad_token": "<PAD>"})
+
+    args.tokenizer = tokenizer
+
+    cur_multi_instruct_path, cur_images_path, cur_train_config_path = args.multi_instruct_path, args.images_path, args.train_config_path
+
+    test_dataset = MimicitDataset(args, cur_multi_instruct_path, cur_images_path, cur_train_config_path)
+
+    uniq_id_dict = {}
+    samples = []
+    counter = 0
+    for _ in tqdm(test_dataset):
+        if counter > 0:
+            break
+        counter += 1
+        samples.append(_)
+    cur_data = test_dataset.collate(samples)
+    import pdb
+
+    pdb.set_trace()
+    # import pdb;pdb.set_trace()
+    # uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
+    # # index = random.choice(positive_caption_dict[uniq_id])
+    # # prompt_uniq_id, prompt_image, prompt_caption, prompt_question, prompt_refs, prompt_gt_objects, prompt_dataset_name, prompt_type = test_dataset.get_prompt_item(int(index))
+    # uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
+    # if uniq_id not in uniq_id_dict:
+    #     uniq_id_dict[uniq_id] = 0
+
+    # print(uniq_id, image, caption, question, refs, gt_objects, dataset_name, type)
