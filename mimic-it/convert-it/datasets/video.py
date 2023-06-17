@@ -45,15 +45,12 @@ class DenseCaptions(AbstractDataset):
         if len(videos) <= 100:
             raise ValueError("Not enough videos in the dataset, please check the path.")
         with ThreadPoolExecutor(max_workers=num_thread) as executor:
-            futures = {}
-            for video in videos:
-                futures[get_image_name(video)] = executor.submit(frame_video, video)
             results = {}
             process_bar = tqdm(
                 total=len(videos), desc="Processing videos into images", unit="video"
             )
-            for video, future in futures.items():
-                for index, result in enumerate(future.result()):
+            for video, framed_results in executor.map(lambda x: (get_image_name(x), frame_video(x)), videos):
+                for index, result in enumerate(framed_results):
                     # print("video", video)
                     name = video + "_" + str(index).zfill(4)
                     results[name] = result
