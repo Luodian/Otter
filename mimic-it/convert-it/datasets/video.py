@@ -49,7 +49,9 @@ class DenseCaptions(AbstractDataset):
             process_bar = tqdm(
                 total=len(videos), desc="Processing videos into images", unit="video"
             )
-            for video, framed_results in executor.map(lambda x: (get_image_name(x), frame_video(x)), videos):
+            for video, framed_results in executor.map(
+                lambda x: (get_image_name(x), frame_video(x)), videos
+            ):
                 for index, result in enumerate(framed_results):
                     # print("video", video)
                     name = video + "_" + str(index).zfill(4)
