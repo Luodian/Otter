@@ -141,7 +141,6 @@ def train_one_epoch(
             labels[labels == answer_token_id] = -100
             labels[labels == media_token_id] = -100
 
-            # import pdb;pdb.set_trace()
             # with accelerator.accumulate(model):
             # with autocast():
             with accelerator.autocast():
@@ -483,8 +482,6 @@ def main():
     model, optimizer, lr_scheduler, multi_instruct_loaders = accelerator.prepare(model, optimizer, lr_scheduler, multi_instruct_loaders)
     model.train()
 
-    # device_id = accelerator.device
-
     for epoch in range(resume_from_epoch, args.num_epochs):
         for cur_data_loader in multi_instruct_loaders:
             cur_data_loader.dataset.set_epoch(epoch)
@@ -517,6 +514,11 @@ def main():
             get_checkpoint(model=unwrapped_model),
             f"{args.external_save_dir}/final_weights.pt",
         )
+        # save the config
+        unwrapped_model.config.save_pretrained(args.external_save_dir)
+        if model.can_generate():
+            model_to_save.generation_config.save_pretrained(args.external_save_dir)
+
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
         if args.save_hf_model:
