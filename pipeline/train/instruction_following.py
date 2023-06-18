@@ -141,7 +141,6 @@ def train_one_epoch(
             labels[labels == answer_token_id] = -100
             labels[labels == media_token_id] = -100
 
-            # import pdb;pdb.set_trace()
             # with accelerator.accumulate(model):
             # with autocast():
             with accelerator.autocast():
@@ -161,6 +160,7 @@ def train_one_epoch(
         # import pdb;pdb.set_trace()
         #### BACKWARD PASS ####
         total_loss_sum = sum(total_losses)
+        mean_loss = total_loss_sum / len(total_losses)
         accelerator.backward(total_loss_sum.to(device_id))
 
         def mask_embedding(m):
@@ -205,7 +205,7 @@ def train_one_epoch(
 
                 wandb.log(
                     {
-                        "loss_multi_instruct": total_loss_sum.item(),
+                        "loss_multi_instruct": mean_loss.item(),
                         "global_step": global_step // args.gradient_accumulation_steps,
                     },
                     commit=True,
@@ -213,7 +213,7 @@ def train_one_epoch(
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
-            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {total_loss_sum.item():.3f}")
+            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {mean_loss.item():.3f}")
 
 
 def main():
@@ -376,7 +376,7 @@ def main():
                 device_map="auto",
                 local_files_only=args.offline,
             )
-        elif "flamingo" in args.pretrained_model_name:
+        elif "flamingo" in args.pretrained_model_name_or_path:
             model = FlamingoForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
                 device_map="auto",
@@ -482,8 +482,6 @@ def main():
     model, optimizer, lr_scheduler, multi_instruct_loaders = accelerator.prepare(model, optimizer, lr_scheduler, multi_instruct_loaders)
     model.train()
 
-    # device_id = accelerator.device
-
     for epoch in range(resume_from_epoch, args.num_epochs):
         for cur_data_loader in multi_instruct_loaders:
             cur_data_loader.dataset.set_epoch(epoch)
@@ -516,6 +514,11 @@ def main():
             get_checkpoint(model=unwrapped_model),
             f"{args.external_save_dir}/final_weights.pt",
         )
+        # save the config
+        unwrapped_model.config.save_pretrained(args.external_save_dir)
+        if model.can_generate():
+            model_to_save.generation_config.save_pretrained(args.external_save_dir)
+
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
         if args.save_hf_model:

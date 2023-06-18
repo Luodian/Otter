@@ -192,5 +192,6 @@ azure
 
 *.mp4
 checkpoints
+pipeline/serve/examples/*.png
 
 tools
