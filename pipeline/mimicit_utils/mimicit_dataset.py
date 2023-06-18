@@ -190,6 +190,12 @@ class MimicitDataset(Dataset):
     def set_epoch(self, epoch, **unused):
         self.epoch = epoch
 
+    def resample_frames(self, image_ids, resample_frames):
+        indices = np.linspace(0, len(image_ids) - 1, resample_frames, dtype=int)
+        image_ids = [image_ids[i] for i in indices]
+        assert len(image_ids) == resample_frames
+        return image_ids
+
     def process_llava(self, instruction_id, instruction, answer, image_ids, in_context_example_ids):
         patch_images = torch.tensor([])
         all_texts = ""
@@ -246,7 +252,7 @@ class MimicitDataset(Dataset):
         patch_images = patch_images.unsqueeze(0)
         return patch_images, all_texts
 
-    def process_tv_caption(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, downsample_frames=16):
+    def process_tv_caption(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=16):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -262,11 +268,9 @@ class MimicitDataset(Dataset):
         all_texts = f"<image>{all_texts}"
         # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
         # <image>User: what does the image describe? GPT: XXX <|endofchunk|>User: Do you think this image is funny GPT:<answer> YYY <|endofchunk|>
-        
+
         # make sure the frames are evenly sampled to certain number to enable batch processing
-        indices = np.linspace(0, len(image_ids) - 1, downsample_frames, dtype=int)
-        image_ids = [image_ids[i] for i in indices]
-        assert len(image_ids) == downsample_frames
+        self.resample_frames(image_ids, resample_frames)
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
             cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
@@ -278,8 +282,8 @@ class MimicitDataset(Dataset):
 
         patch_images = patch_images.unsqueeze(0)
         return patch_images, all_texts
-    
-    def process_e4d(self, instruction_id, instruction, answer, image_ids, in_context_example_ids):
+
+    def process_e4d(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=16):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -295,6 +299,8 @@ class MimicitDataset(Dataset):
         all_texts = f"<image>{all_texts}"
         # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
         # <image>User: what does the image describe? GPT: XXX <|endofchunk|>User: Do you think this image is funny GPT:<answer> YYY <|endofchunk|>
+        # make sure the frames are evenly sampled to certain number to enable batch processing
+        self.resample_frames(image_ids, resample_frames)
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
             cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
