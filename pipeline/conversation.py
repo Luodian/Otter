@@ -258,7 +258,7 @@ otter_v1 = Conversation(
     offset=0,
     sep_style=SeparatorStyle.TWO,
     sep=" ",
-    sep2="<|endofchunk|>",
+    sep2="<|endofchunk|></s>",
 )
 
 open_flamingo_v1 = Conversation(
