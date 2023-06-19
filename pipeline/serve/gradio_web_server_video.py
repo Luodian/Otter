@@ -209,10 +209,10 @@ def add_text(
     image_3,
     request: gr.Request,
 ):
-    if text_demo_question_2 != "":
+    if text_demo_question_1 != "":
         text_demo_question_1 = text_demo_question_1.strip()
-        if not re.search(r"[.,?]$", text_demo_question_2):
-            text_demo_question_2 += "."
+        if not re.search(r"[.,?]$", text_demo_question_1):
+            text_demo_question_1 += "."
     if text_demo_answer_2 != "":
         text_demo_question_2 = text_demo_question_2.strip()
         if not re.search(r"[.,?]$", text_demo_answer_2):
@@ -250,13 +250,14 @@ def add_text(
             return (state, state.to_gradio_chatbot()) + ("", "") * 2 + (moderation_msg, None) + (disable_btn,) * 5
 
     text = text[:1536]  # Hard cut-off
+    text = human_role_label + text
     if image_3 is not None:
-        text = DEFAULT_IMAGE_TOKEN + human_role_label + text
+        text = DEFAULT_IMAGE_TOKEN + text
         image_3 = get_image(image_3)
 
-    if image_3 is not None and state is not None:
-        state = conv_templates[template_name].copy()
-        logger.info(f"TEMPLATE. {state}")
+    # if image_3 is not None and state is not None:
+    #     state = conv_templates[template_name].copy()
+    #     logger.info(f"TEMPLATE. {state}")
 
     if text_demo_answer_2 != "":
         if text.startswith(DEFAULT_IMAGE_TOKEN):
