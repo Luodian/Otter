@@ -289,7 +289,7 @@ class MimicitDataset(Dataset):
         # <image>User: what does the image describe? GPT: XXX <|endofchunk|>User: Do you think this image is funny GPT:<answer> YYY <|endofchunk|>
 
         # make sure the frames are evenly sampled to certain number to enable batch processing
-        self.resample_frames(image_ids, resample_frames)
+        image_ids = self.resample_frames(image_ids, resample_frames)
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
             cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
@@ -319,7 +319,7 @@ class MimicitDataset(Dataset):
         # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
         # <image>User: what does the image describe? GPT: XXX <|endofchunk|>User: Do you think this image is funny GPT:<answer> YYY <|endofchunk|>
         # make sure the frames are evenly sampled to certain number to enable batch processing
-        self.resample_frames(image_ids, resample_frames)
+        image_ids = self.resample_frames(image_ids, resample_frames)
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
             cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
