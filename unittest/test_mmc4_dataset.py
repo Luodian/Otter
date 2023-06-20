@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import Mock
 from pipeline.mimicit_utils.mmc4_dataset import get_mmc4_dataset
 
+
 class TestGetMMC4Dataset(unittest.TestCase):
     def test_get_mmc4_dataset(self):
         # Mock the required inputs
