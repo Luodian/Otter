@@ -10,7 +10,7 @@ import torch
 import torch.nn
 import wandb
 from pipeline.train.data import get_data
-from pipeline.train.distributed import init_distributed_device, world_info_from_env
+from pipeline.train.distributed import world_info_from_env
 from transformers import (
     get_constant_schedule_with_warmup,
     get_cosine_schedule_with_warmup,
@@ -20,20 +20,16 @@ from transformers import (
 
 from pipeline.train.train_utils import (
     AverageMeter,
-    get_autocast,
-    get_cast_dtype,
     get_checkpoint,
 )
 
 from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
-from flamingo.configuration_flamingo import FlamingoConfig
 from otter.modeling_otter import OtterForConditionalGeneration
-from otter.configuration_otter import OtterConfig
 from tqdm import tqdm
 import time
 
 from pipeline.mimicit_utils.arguments import add_data_args
-from accelerate import Accelerator, load_checkpoint_and_dispatch, init_empty_weights
+from accelerate import Accelerator
 
 import sys
 
@@ -55,7 +51,7 @@ def train_one_epoch(
     args,
     model,
     epoch,
-    multi_instruct_loaders,
+    mmc4_loaders,
     tokenizer,
     optimizer,
     lr_scheduler,
@@ -63,7 +59,7 @@ def train_one_epoch(
     accelerator,
     wandb,
 ):
-    num_batches_per_epoch = len(multi_instruct_loaders[0])
+    num_batches_per_epoch = len(mmc4_loaders[0])
     total_training_steps = num_batches_per_epoch * args.num_epochs
 
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
@@ -78,8 +74,8 @@ def train_one_epoch(
     end = time.time()
 
     # loop through dataloader
-    for num_steps, (batch_multi_instructs) in tqdm(
-        enumerate(zip(*multi_instruct_loaders)),
+    for num_steps, (batch_mmc4s) in tqdm(
+        enumerate(zip(*mmc4_loaders)),
         disable=args.rank != 0,
         total=total_training_steps,
         initial=(epoch * num_batches_per_epoch),
@@ -87,12 +83,12 @@ def train_one_epoch(
         data_time_m.update(time.time() - end)
 
         global_step = num_steps + epoch * num_batches_per_epoch
-        #### MULTI_INSTRUCT FORWARD PASS ####
+        #### MMC4 FORWARD PASS ####
         total_losses = []
-        for batch_multi_instruct in batch_multi_instructs:
-            images = batch_multi_instruct["net_input"]["patch_images"]
-            input_ids = batch_multi_instruct["net_input"]["input_ids"]
-            attention_mask = batch_multi_instruct["net_input"]["attention_masks"]
+        for batch_mmc4 in batch_mmc4s:
+            images = batch_mmc4["net_input"]["patch_images"]
+            input_ids = batch_mmc4["net_input"]["input_ids"]
+            attention_mask = batch_mmc4["net_input"]["attention_masks"]
 
             labels = input_ids.clone()
             labels[labels == tokenizer.pad_token_id] = -100
@@ -144,19 +140,14 @@ def train_one_epoch(
             # with accelerator.accumulate(model):
             # with autocast():
             with accelerator.autocast():
-                loss_multi_instruct = model(
+                loss_mmc4 = model(
                     vision_x=images,
                     lang_x=input_ids,
                     attention_mask=attention_mask,
                     labels=labels,
                 )[0]
-                # loss_multi_instruct = model.generate(
-                #     vision_x=images.to(device_id),
-                #     lang_x=input_ids.to(device_id),
-                #     attention_mask=attention_mask.to(device_id),
-                #     max_length=256,
-                # )
-            total_losses.append(loss_multi_instruct)
+
+            total_losses.append(loss_mmc4)
         # import pdb;pdb.set_trace()
         #### BACKWARD PASS ####
         total_loss_sum = sum(total_losses)
@@ -187,15 +178,15 @@ def train_one_epoch(
         if accelerator.sync_gradients:
             if args.rank == 0 and args.report_to_wandb:
                 # compute within rank 0
-                multi_instruct_samples_per_second = args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.val
-                multi_instruct_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size / step_time_m.val
+                mmc4_samples_per_second = args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.val
+                mmc4_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size / step_time_m.val
 
                 wandb.log(
                     {
                         "data_time": data_time_m.avg,
                         "step_time": step_time_m.avg,
-                        "multi_instruct_samples_per_second": multi_instruct_samples_per_second,
-                        "multi_instruct_samples_per_second_per_gpu": multi_instruct_samples_per_second_per_gpu,
+                        "mmc4_samples_per_second": mmc4_samples_per_second,
+                        "mmc4_samples_per_second_per_gpu": mmc4_samples_per_second_per_gpu,
                         "lr": optimizer.param_groups[0]["lr"],
                     },
                     commit=False,
@@ -205,7 +196,7 @@ def train_one_epoch(
 
                 wandb.log(
                     {
-                        "loss_multi_instruct": mean_loss.item(),
+                        "loss_mmc4": mean_loss.item(),
                         "global_step": global_step // args.gradient_accumulation_steps,
                     },
                     commit=True,
@@ -219,50 +210,15 @@ def train_one_epoch(
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--cross_attn_every_n_layers",
-        type=int,
-        default=1,
-        help="how often to add a cross-attention layer after each transformer layer",
-    )
-    parser.add_argument(
         "--external_save_dir",
         type=str,
         default=None,
         help="set to save model to external path",
     )
     parser.add_argument(
-        "--run_name",
-        type=str,
-        default="otter_9b",
-        help="used to name saving directory and wandb run",
-    )
-    parser.add_argument("--use_media_placement_augmentation", action="store_true")
-    parser.add_argument("--offline", action="store_true")
-    parser.add_argument("--num_epochs", type=int, default=1)
-    parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
-    # Sum of gradient optimization batch size
-    parser.add_argument("--batch_size", type=int, default=128)
-
-    parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
-    parser.add_argument(
-        "--pretrained_model_name_or_path",
-        type=str,
-        help="path to huggingface model or model identifier from local path or huggingface.co",
-        default=None,
-    )
-    parser.add_argument(
-        "--load_from_original_checkpoint",
-        type=str,
-        help="path to openflamingo provided checkpoint, in .pt format",
-        default=None,
-    )
-    parser.add_argument(
         "--resume_from_checkpoint",
         action="store_true",
-    )
-    parser.add_argument(
-        "--overwrite_checkpoint",
-        action="store_true",
+        help="Whether to resume from checkpoint, if set True, will load models from --external_save_dir",
     )
     parser.add_argument(
         "--delete_previous_checkpoint",
@@ -270,19 +226,39 @@ def main():
         help="delete previous checkpoint when saving new checkpoint",
     )
     parser.add_argument(
-        "--multi_instruct_path",
+        "--run_name",
         type=str,
-        help="path to multi_instruct dataset, this should be a glob pattern such as vision_language_examples.tsv",
+        default="otter_9b",
+        help="used to name saving directory and wandb run",
     )
     parser.add_argument(
-        "--images_path",
+        "--mmc4_shards",
         type=str,
-        help="path to images_path dataset, this should be a glob pattern such as vision_language_examples.tsv",
+        help="path to c4 shards, this should be a glob pattern such as /path/to/shards/shard-{0000..0999}.tar",
     )
+    parser.add_argument("--train_num_samples_mmc4", type=int, default=10000)
+    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--dataset_resampled", action="store_true")
     parser.add_argument(
-        "--train_config_path",
+        "--mmc4_textsim_threshold",
+        default=0.32,
+        type=float,
+        help="threshold for filtering images in mmc4 based on image-text similarity",
+    )
+
+    parser.add_argument("--use_media_placement_augmentation", action="store_true")
+    parser.add_argument("--offline", action="store_true")
+    parser.add_argument("--num_epochs", type=int, default=1)
+    parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
+    # Sum of gradient optimization batch size
+
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
+    parser.add_argument(
+        "--pretrained_model_name_or_path",
         type=str,
-        help="path to train_config_path dataset, this should be a glob pattern such as vision_language_examples.tsv",
+        help="path to huggingface model or model identifier from local path or huggingface.co",
+        default=None,
     )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--learning_rate", default=1e-4, type=float)
@@ -292,7 +268,6 @@ def main():
         type=str,
         help="constant, linear, or cosine",
     )
-    parser.add_argument("--loss_multiplier_multi_instruct", type=float, default=1.0)
     parser.add_argument("--warmup_steps", default=1000, type=int)
     parser.add_argument("--warmup_steps_ratio", default=None, type=float)
     parser.add_argument("--weight_decay", default=0.1, type=float)
@@ -302,10 +277,6 @@ def main():
         default="amp",
         help="Floating point precision.",
     )
-    # data args
-    parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--train_num_samples", type=int, default=None)
-    parser.add_argument("--dataset_resampled", action="store_true")
     # distributed training args
     parser.add_argument(
         "--dist-url",
@@ -358,11 +329,6 @@ def main():
         os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
     args.local_rank, args.rank, args.world_size = world_info_from_env()
-
-    # if args.world_size > 1:
-    #     device_id = init_distributed_device(args)
-    # else:
-    #     device_id = 0
     accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps)
 
     device_id = accelerator.device
@@ -370,6 +336,7 @@ def main():
     random_seed(args.seed)
 
     if args.pretrained_model_name_or_path is not None:
+        # TODO-Yuanhan: load customized models for pretraining
         if "otter" in args.pretrained_model_name_or_path:
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
@@ -383,21 +350,6 @@ def main():
                 local_files_only=args.offline,
             )
             model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
-    else:
-        config = FlamingoConfig.from_json_file("./flamingo/config.json")
-        model = FlamingoForConditionalGeneration(config=config)
-
-        """
-        TODO: deprecate this option since the original checkpoints are not supported in future versions
-        TODO: all future checkpoints (even released from openflamingo), we will convert them and save to huggingface format.
-        TODO: supposedly using "args.pretrained_model_name_or_path" should be the best way to load the model.
-        """
-        if args.load_from_original_checkpoint is not None:
-            print(f"Loading checkpoint from {args.load_from_original_checkpoint}")
-            model.load_state_dict(
-                torch.load(args.load_from_original_checkpoint, map_location="cpu"),
-                False,
-            )
 
     model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
     args.tokenizer = model.text_tokenizer
@@ -407,8 +359,8 @@ def main():
     print(f"Start running training on rank {args.rank}.")
 
     # device_id = args.rank % torch.cuda.device_count()
-
-    multi_instruct_loaders = get_data(args, tokenizer, "multi_instruct")
+    image_processor = CLIPImageProcessor()
+    mmc4_loaders = get_data(args, image_processor, tokenizer, "mmc4")
 
     def get_grouped_params(model):
         params_with_wd, params_without_wd = [], []
@@ -428,7 +380,7 @@ def main():
             {"params": params_without_wd, "weight_decay": 0.0},
         ]
 
-    total_training_steps = len(multi_instruct_loaders[0]) * args.num_epochs
+    total_training_steps = len(mmc4_loaders[0]) * args.num_epochs
 
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
@@ -479,11 +431,11 @@ def main():
             config=vars(args),
         )
 
-    model, optimizer, lr_scheduler, multi_instruct_loaders = accelerator.prepare(model, optimizer, lr_scheduler, multi_instruct_loaders)
+    model, optimizer, lr_scheduler, mmc4_loaders = accelerator.prepare(model, optimizer, lr_scheduler, mmc4_loaders)
     model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
-        for cur_data_loader in multi_instruct_loaders:
+        for cur_data_loader in mmc4_loaders:
             cur_data_loader.dataset.set_epoch(epoch)
 
         train_one_epoch(
@@ -493,7 +445,7 @@ def main():
             tokenizer=tokenizer,
             optimizer=optimizer,
             lr_scheduler=lr_scheduler,
-            multi_instruct_loaders=multi_instruct_loaders,
+            mmc4_loaders=mmc4_loaders,
             accelerator=accelerator,
             device_id=device_id,
             wandb=wandb,
@@ -501,6 +453,21 @@ def main():
         if args.rank == 0:
             if not os.path.exists(args.external_save_dir):
                 os.makedirs(args.external_save_dir)
+
+            unwrapped_model = accelerator.unwrap_model(model)
+            checkpoint_dict = {
+                "epoch": epoch,
+                "model_state_dict": get_checkpoint(unwrapped_model),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+            }
+            print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
+            accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+            # save the config
+            unwrapped_model.config.save_pretrained(args.external_save_dir)
+            if args.delete_previous_checkpoint:
+                if epoch > 0:
+                    os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
 
         accelerator.wait_for_everyone()
 
@@ -516,8 +483,8 @@ def main():
         )
         # save the config
         unwrapped_model.config.save_pretrained(args.external_save_dir)
-        if model.can_generate():
-            model_to_save.generation_config.save_pretrained(args.external_save_dir)
+        # if model.can_generate():
+        #     model_to_save.generation_config.save_pretrained(args.external_save_dir)
 
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")

@@ -35,11 +35,6 @@ TINY_IMAGE_SIZE_THRESHOLD = 1
 N_CHANNELS = 3
 INTERLEAVED_IMAGE_SIZE = 224
 
-try:
-    import horovod.torch as hvd
-except ImportError:
-    hvd = None
-
 
 class SharedEpoch:
     def __init__(self, epoch: int = 0):
@@ -613,8 +608,7 @@ import json
 from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
 
 
-def get_multi_instruction_dataset(args, tokenizer, epoch=0, floor=False):
-    multi_instruct_path = args.multi_instruct_path
+def get_mimicit_dataset(args, tokenizer, epoch=0, floor=False):
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     args.task = "pretrain"
     args.tokenizer = tokenizer
@@ -668,8 +662,8 @@ def get_dataset_fn(dataset_type):
         return get_mmc4_dataset
     elif dataset_type == "coco_vqa":
         return get_coco_vqa_dataset
-    elif dataset_type == "multi_instruct":
-        return get_multi_instruction_dataset
+    elif dataset_type == "mimicit":
+        return get_mimicit_dataset
     else:
         raise ValueError(f"Unsupported dataset type: {dataset_type}")
 
