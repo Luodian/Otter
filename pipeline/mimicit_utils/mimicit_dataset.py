@@ -98,11 +98,15 @@ class MimicitDataset(Dataset):
         self.images_path = cur_images_path
         self.train_config_path = cur_train_config_path
 
-        assert os.path.exists(cur_multi_instruct_path), f"Error: The local multi_instruct_path {cur_multi_instruct_path} not exists!"
+        assert os.path.exists(
+            cur_multi_instruct_path
+        ), f"Error: The local multi_instruct_path {cur_multi_instruct_path} not exists!"
 
         assert os.path.exists(cur_images_path), f"Error: The local images_path {cur_images_path} not exists!"
 
-        assert os.path.exists(cur_train_config_path), f"Error: The local train_config_path {cur_train_config_path} not exists!"
+        assert os.path.exists(
+            cur_train_config_path
+        ), f"Error: The local train_config_path {cur_train_config_path} not exists!"
 
         # Load the dataset
         with open(self.multi_instruct_path, "rb") as f:
@@ -123,8 +127,21 @@ class MimicitDataset(Dataset):
         self.bos_mask = torch.LongTensor([1])
         self.eos_mask = torch.LongTensor([1])
 
+    def random_init_case(self, question):
+        if len(question) == 0:
+            return question
+
+        first_letter = question[0]
+        if random.choice([True, False]):
+            first_letter = first_letter.upper()
+        else:
+            first_letter = first_letter.lower()
+
+        return first_letter + question[1:]
+
     def pre_question(self, question, max_ques_words):
         question = question.lower().lstrip(",.!?*#:;~").replace("-", " ").replace("/", " ")
+        question = self.random_init_case(question)
 
         question = re.sub(
             r"\s{2,}",
@@ -271,7 +288,9 @@ class MimicitDataset(Dataset):
         patch_images = patch_images.unsqueeze(0)
         return patch_images, all_texts
 
-    def process_tv_caption(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=16):
+    def process_tv_caption(
+        self, instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=16
+    ):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -428,19 +447,33 @@ class MimicitDataset(Dataset):
         self.max_src_length = self.max_tgt_length = 256
 
         if cur_train_id.startswith("LA"):
-            patch_images, all_texts = self.process_llava(instruction_id, instruction, answer, image_ids, in_context_example_ids)
+            patch_images, all_texts = self.process_llava(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids
+            )
         elif cur_train_id.startswith("DC"):
-            patch_images, all_texts = self.process_dense_caption(instruction_id, instruction, answer, image_ids, in_context_example_ids)
+            patch_images, all_texts = self.process_dense_caption(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids
+            )
         elif cur_train_id.startswith("TVC"):
-            patch_images, all_texts = self.process_tv_caption(instruction_id, instruction, answer, image_ids, in_context_example_ids)
+            patch_images, all_texts = self.process_tv_caption(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids
+            )
         elif cur_train_id.startswith("E4D"):
-            patch_images, all_texts = self.process_e4d(instruction_id, instruction, answer, image_ids, in_context_example_ids)
+            patch_images, all_texts = self.process_e4d(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids
+            )
         elif cur_train_id.startswith("SD"):
-            patch_images, all_texts = self.process_spot_the_difference(instruction_id, instruction, answer, image_ids, in_context_example_ids)
+            patch_images, all_texts = self.process_spot_the_difference(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids
+            )
         elif cur_train_id.startswith("SN"):
-            patch_images, all_texts = self.process_scene_navigation(instruction_id, instruction, answer, image_ids, in_context_example_ids)
+            patch_images, all_texts = self.process_scene_navigation(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids
+            )
         elif cur_train_id.startswith("FunQA"):
-            patch_images, all_texts = self.process_funqa(instruction_id, instruction, answer, image_ids, in_context_example_ids)
+            patch_images, all_texts = self.process_funqa(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids
+            )
 
         # print(instruction_id, incontext_text, query_text)
 
