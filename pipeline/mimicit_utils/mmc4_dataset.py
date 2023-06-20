@@ -67,9 +67,7 @@ def get_dataset_size(shards):
     len_filename = os.path.join(dir_path, "__len__")
     if os.path.exists(sizes_filename):
         sizes = json.load(open(sizes_filename, "r"))
-        total_size = sum(
-            [int(sizes[os.path.basename(shard)]) if os.path.basename(shard) in sizes else 0 for shard in shards_list]
-        )
+        total_size = sum([int(sizes[os.path.basename(shard)]) if os.path.basename(shard) in sizes else 0 for shard in shards_list])
     elif os.path.exists(len_filename):
         # FIXME this used to be eval(open(...)) but that seemed rather unsafe
         total_size = ast.literal_eval(open(len_filename, "r").read())
@@ -307,18 +305,13 @@ def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold):
     text = " ".join(sentences)
     text = text.replace("<|endofchunk|>", "", 1)  # but remove first eoc
     # whitespace cleanup
-    text = (
-        text.replace(" <|endofchunk|>", "<|endofchunk|>").replace("<image> ", "<image>").replace(" <image>", "<image>")
-    )
+    text = text.replace(" <|endofchunk|>", "<|endofchunk|>").replace("<image> ", "<image>").replace(" <image>", "<image>")
     text = f"{text}<|endofchunk|>{tokenizer.eos_token}"
     tokenizer.padding_side = "right"
     text_tensor = tokenizer(text, max_length=256, truncation=True, padding="max_length", return_tensors="pt")
 
     # reject sequences with too few images (after truncation)
-    num_images = torch.count_nonzero(
-        text_tensor["input_ids"]
-        == tokenizer.additional_special_tokens_ids[tokenizer.additional_special_tokens.index("<image>")]
-    )
+    num_images = torch.count_nonzero(text_tensor["input_ids"] == tokenizer.additional_special_tokens_ids[tokenizer.additional_special_tokens.index("<image>")])
 
     if num_images == 0:
         raise ValueError("No images in sample")
@@ -432,7 +425,7 @@ if __name__ == "__main__":
         def test_get_mmc4_dataset(self):
             # Mock the required inputs
             args = Mock(
-                mmc4_shards=["/home/luodian/projects/Otter/archived/000000000.tar"],
+                mmc4_shards="/home/luodian/projects/Otter/archived/000000000.tar",
                 train_num_samples_mmc4=1000,
                 mmc4_textsim_threshold=0.32,
                 batch_size_mmc4=10,
@@ -449,3 +442,5 @@ if __name__ == "__main__":
             # Check if the dataloader's attributes are as expected
             self.assertEqual(data_info.dataloader.num_batches, 100)
             self.assertEqual(data_info.dataloader.num_samples, 1000)
+            
+    unittest.main()
