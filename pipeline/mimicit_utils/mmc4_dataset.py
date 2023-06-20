@@ -34,6 +34,7 @@ TINY_IMAGE_SIZE_THRESHOLD = 1
 N_CHANNELS = 3
 INTERLEAVED_IMAGE_SIZE = 224
 
+
 class SharedEpoch:
     def __init__(self, epoch: int = 0):
         self.shared_epoch = Value("i", epoch)
@@ -67,12 +68,7 @@ def get_dataset_size(shards):
     if os.path.exists(sizes_filename):
         sizes = json.load(open(sizes_filename, "r"))
         total_size = sum(
-            [
-                int(sizes[os.path.basename(shard)])
-                if os.path.basename(shard) in sizes
-                else 0
-                for shard in shards_list
-            ]
+            [int(sizes[os.path.basename(shard)]) if os.path.basename(shard) in sizes else 0 for shard in shards_list]
         )
     elif os.path.exists(len_filename):
         # FIXME this used to be eval(open(...)) but that seemed rather unsafe
@@ -99,24 +95,18 @@ def count_samples(dataloader):
 
 
 def filter_no_caption_or_no_image(sample):
-    return ("txt" in sample) and (
-        "png" in sample or "jpg" in sample or "jpeg" in sample
-    )
+    return ("txt" in sample) and ("png" in sample or "jpg" in sample or "jpeg" in sample)
 
 
 def log_and_continue(exn):
     """Call in an exception handler to ignore any exception, issue a warning, and continue."""
-    if "No images in sample" in str(exn) or "Only one image in sample" in str(
-        exn
-    ):  # Avoid spamming logs with these
+    if "No images in sample" in str(exn) or "Only one image in sample" in str(exn):  # Avoid spamming logs with these
         return True
     logging.warning(f"Handling webdataset error ({repr(exn)}). Ignoring.")
     return True
 
 
-def group_by_keys_nothrow(
-    data, keys=base_plus_ext, lcase=True, suffixes=None, handler=None
-):
+def group_by_keys_nothrow(data, keys=base_plus_ext, lcase=True, suffixes=None, handler=None):
     """Return function over iterator that groups key, value pairs into samples.
 
     :param keys: function that splits the key into key and extension (base_plus_ext)
@@ -134,11 +124,7 @@ def group_by_keys_nothrow(
         # FIXME webdataset version throws if suffix in current_sample, but we have a potential for
         #  this happening in the current LAION400m dataset if a tar ends with same prefix as the next
         #  begins, rare, but can happen since prefix aren't unique across tar files in that dataset
-        if (
-            current_sample is None
-            or prefix != current_sample["__key__"]
-            or suffix in current_sample
-        ):
+        if current_sample is None or prefix != current_sample["__key__"] or suffix in current_sample:
             if valid_sample(current_sample):
                 yield current_sample
             current_sample = dict(__key__=prefix, __url__=filesample["__url__"])
@@ -266,9 +252,7 @@ def preprocess_image(sample, image_processor):
 
 def preprocess_text(sample, tokenizer):
     tokenizer.padding_side = "right"
-    sample = [
-        (f"<image>{s.strip()}<|endofchunk|>{tokenizer.eos_token}") for s in sample
-    ]
+    sample = [(f"<image>{s.strip()}<|endofchunk|>{tokenizer.eos_token}") for s in sample]
     text = tokenizer(
         sample,
         max_length=32,
@@ -312,9 +296,7 @@ def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold):
 
     # pad to 5 images
     if len(images_tensors) < MAX_NUM_IMAGES:
-        zero_padding = torch.zeros(
-            (MAX_NUM_IMAGES - len(images_tensors), 3, 224, 224), dtype=torch.float
-        )
+        zero_padding = torch.zeros((MAX_NUM_IMAGES - len(images_tensors), 3, 224, 224), dtype=torch.float)
         images_tensors = torch.cat((images_tensors, zero_padding), dim=0)
 
     # add in <image> and <eoc> tokens
@@ -326,29 +308,21 @@ def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold):
     text = text.replace("<|endofchunk|>", "", 1)  # but remove first eoc
     # whitespace cleanup
     text = (
-        text.replace(" <|endofchunk|>", "<|endofchunk|>")
-        .replace("<image> ", "<image>")
-        .replace(" <image>", "<image>")
+        text.replace(" <|endofchunk|>", "<|endofchunk|>").replace("<image> ", "<image>").replace(" <image>", "<image>")
     )
     text = f"{text}<|endofchunk|>{tokenizer.eos_token}"
     tokenizer.padding_side = "right"
-    text_tensor = tokenizer(
-        text, max_length=256, truncation=True, padding="max_length", return_tensors="pt"
-    )
+    text_tensor = tokenizer(text, max_length=256, truncation=True, padding="max_length", return_tensors="pt")
 
     # reject sequences with too few images (after truncation)
     num_images = torch.count_nonzero(
         text_tensor["input_ids"]
-        == tokenizer.additional_special_tokens_ids[
-            tokenizer.additional_special_tokens.index("<image>")
-        ]
+        == tokenizer.additional_special_tokens_ids[tokenizer.additional_special_tokens.index("<image>")]
     )
 
     if num_images == 0:
         raise ValueError("No images in sample")
-    elif (
-        num_images == 1 and random.random() <= 0.5
-    ):  # 50% chance of keeping single image samples
+    elif num_images == 1 and random.random() <= 0.5:  # 50% chance of keeping single image samples
         raise ValueError("Only one image in sample")
 
     return (
@@ -375,9 +349,7 @@ def get_mmc4_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     # create a shared epoch store to sync epoch to dataloader worker proc
     shared_epoch = SharedEpoch(epoch=epoch)
     if resampled:
-        pipeline = [
-            ResampledShards2(input_shards, deterministic=True, epoch=shared_epoch)
-        ]
+        pipeline = [ResampledShards2(input_shards, deterministic=True, epoch=shared_epoch)]
     else:
         pipeline = [wds.SimpleShardList(input_shards)]
 
@@ -424,9 +396,7 @@ def get_mmc4_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
 
     dataset = wds.DataPipeline(*pipeline)
     if not resampled:
-        assert (
-            num_shards >= args.workers * args.world_size
-        ), "number of shards must be >= total workers"
+        assert num_shards >= args.workers * args.world_size, "number of shards must be >= total workers"
     # roll over and repeat a few samples to get same number of full batches on each node
     round_fn = math.floor if floor else math.ceil
     global_batch_size = args.batch_size_mmc4 * args.world_size
@@ -451,3 +421,31 @@ def get_mmc4_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     dataloader.num_samples = num_samples
 
     return DataInfo(dataloader=dataloader, shared_epoch=shared_epoch)
+
+
+import unittest
+from unittest.mock import Mock
+
+if __name__ == "__main__":
+
+    class TestGetMMC4Dataset(unittest.TestCase):
+        def test_get_mmc4_dataset(self):
+            # Mock the required inputs
+            args = Mock(
+                mmc4_shards=["/home/luodian/projects/Otter/archived/000000000.tar"],
+                train_num_samples_mmc4=1000,
+                mmc4_textsim_threshold=0.32,
+                batch_size_mmc4=10,
+                seed=0,
+                workers=2,
+                world_size=1,
+            )
+            image_processor = Mock()
+            tokenizer = Mock()
+
+            # Call the function to test
+            data_info = get_mmc4_dataset(args, image_processor, tokenizer)
+
+            # Check if the dataloader's attributes are as expected
+            self.assertEqual(data_info.dataloader.num_batches, 100)
+            self.assertEqual(data_info.dataloader.num_samples, 1000)
