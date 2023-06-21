@@ -222,7 +222,6 @@ def main():
         "--cross_attn_every_n_layers",
         type=int,
         default=1,
-        help="how often to add a cross-attention layer after each transformer layer",
     )
     parser.add_argument(
         "--external_save_dir",
@@ -236,7 +235,6 @@ def main():
         default="otter_9b",
         help="used to name saving directory and wandb run",
     )
-    parser.add_argument("--use_media_placement_augmentation", action="store_true")
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--num_epochs", type=int, default=1)
     parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
@@ -251,38 +249,19 @@ def main():
         default=None,
     )
     parser.add_argument(
-        "--load_from_original_checkpoint",
+        "--multi_instruct_path",
         type=str,
-        help="path to openflamingo provided checkpoint, in .pt format",
-        default=None,
-    )
-    parser.add_argument(
-        "--resume_from_checkpoint",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--overwrite_checkpoint",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--delete_previous_checkpoint",
-        action="store_true",
-        help="delete previous checkpoint when saving new checkpoint",
-    )
-    parser.add_argument(
-        "--mimicit_path",
-        type=str,
-        help="path to mimicit dataset, this should be a glob pattern such as vision_language_examples.tsv",
+        help="path to multi_instruct dataset, this should be /path/to/DC_instruction.json",
     )
     parser.add_argument(
         "--images_path",
         type=str,
-        help="path to images_path dataset, this should be a glob pattern such as vision_language_examples.tsv",
+        help="path to images_path dataset, this should be /path/to/DC.json",
     )
     parser.add_argument(
         "--train_config_path",
         type=str,
-        help="path to train_config_path dataset, this should be a glob pattern such as vision_language_examples.tsv",
+        help="path to train_config_path dataset, this should be /path/to/DC/DC_train.json",
     )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--learning_rate", default=1e-4, type=float)
@@ -292,20 +271,11 @@ def main():
         type=str,
         help="constant, linear, or cosine",
     )
-    parser.add_argument("--loss_multiplier_mimicit", type=float, default=1.0)
     parser.add_argument("--warmup_steps", default=1000, type=int)
     parser.add_argument("--warmup_steps_ratio", default=None, type=float)
     parser.add_argument("--weight_decay", default=0.1, type=float)
-    parser.add_argument(
-        "--precision",
-        choices=["amp_bf16", "amp_bfloat16", "bf16", "amp", "fp16", "fp32"],
-        default="amp",
-        help="Floating point precision.",
-    )
     # data args
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--train_num_samples", type=int, default=None)
-    parser.add_argument("--dataset_resampled", action="store_true")
     # distributed training args
     parser.add_argument(
         "--dist-url",
@@ -359,10 +329,6 @@ def main():
 
     args.local_rank, args.rank, args.world_size = world_info_from_env()
 
-    # if args.world_size > 1:
-    #     device_id = init_distributed_device(args)
-    # else:
-    #     device_id = 0
     accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps)
 
     device_id = accelerator.device
