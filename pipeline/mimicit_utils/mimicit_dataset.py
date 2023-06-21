@@ -123,8 +123,21 @@ class MimicitDataset(Dataset):
         self.bos_mask = torch.LongTensor([1])
         self.eos_mask = torch.LongTensor([1])
 
+    def random_init_case(self, question):
+        if len(question) == 0:
+            return question
+
+        first_letter = question[0]
+        if random.choice([True, False]):
+            first_letter = first_letter.upper()
+        else:
+            first_letter = first_letter.lower()
+
+        return first_letter + question[1:]
+
     def pre_question(self, question, max_ques_words):
         question = question.lower().lstrip(",.!?*#:;~").replace("-", " ").replace("/", " ")
+        question = self.random_init_case(question)
 
         question = re.sub(
             r"\s{2,}",
