@@ -59,7 +59,7 @@ def train_one_epoch(
     accelerator,
     wandb,
 ):
-    num_batches_per_epoch = len(mmc4_loaders[0])
+    num_batches_per_epoch = mmc4_loaders.num_batches
     total_training_steps = num_batches_per_epoch * args.num_epochs
 
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
@@ -74,8 +74,8 @@ def train_one_epoch(
     end = time.time()
 
     # loop through dataloader
-    for num_steps, (batch_mmc4s) in tqdm(
-        enumerate(zip(*mmc4_loaders)),
+    for num_steps, (batch_mmc4) in tqdm(
+        enumerate(mmc4_loaders),
         disable=args.rank != 0,
         total=total_training_steps,
         initial=(epoch * num_batches_per_epoch),
@@ -83,72 +83,51 @@ def train_one_epoch(
         data_time_m.update(time.time() - end)
 
         global_step = num_steps + epoch * num_batches_per_epoch
-        #### MMC4 FORWARD PASS ####
         total_losses = []
-        for batch_mmc4 in batch_mmc4s:
-            images = batch_mmc4["net_input"]["patch_images"]
-            input_ids = batch_mmc4["net_input"]["input_ids"]
-            attention_mask = batch_mmc4["net_input"]["attention_masks"]
+        #### MMC4 FORWARD PASS ####
+        images = (batch_mmc4[0].to(device_id, non_blocking=True).unsqueeze(2))
+        input_ids = torch.stack([x[0] for x in batch_mmc4[1]]).squeeze(1)
+        attention_mask = torch.stack([x[1] for x in batch_mmc4[1]]).squeeze(1)
 
-            labels = input_ids.clone()
-            labels[labels == tokenizer.pad_token_id] = -100
-            labels[:, 0] = -100
+        # NOTE: irena: expected shape of clip_text_input_ids / attention_mask is (N, I, max_seq_len)
+        labels = input_ids.clone()
+        labels[labels == tokenizer.pad_token_id] = -100
+        labels[:, 0] = -100
 
+        for i in range(labels.shape[0]):
             # remove loss for any token before the first <image> token
-            for i in range(labels.shape[0]):
-                label_idx = 0
-                while label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id:
-                    labels[i][label_idx] = -100
-                    label_idx += 1
+            label_idx = 0
+            while (
+                label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id
+            ):
+                labels[i][label_idx] = -100
+                label_idx += 1
 
-            # # remove loss for any token between <|endofchunk|> and <image>
-            # endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
-            # for endofchunk_idx in endofchunk_idxs:
-            #     token_idx = endofchunk_idx + 1
-            #     while (
-            #         token_idx < labels.shape[1]
-            #         and labels[i][token_idx] != media_token_id
-            #     ):
-            #         labels[i][token_idx] = -100
-            #         token_idx += 1
-
-            # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
-            # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
-
-            # remove loss for any token between first <image> and first <answer>
+            # get index of all endofchunk tokens in the sequence
             endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
-            media_idxs = torch.where(labels[i] == media_token_id)[0]
-            for media_idx in media_idxs[:1]:
-                token_idx = media_idx + 1
-                while token_idx < labels.shape[1] and labels[i][token_idx] != answer_token_id:
+            for endofchunk_idx in endofchunk_idxs:
+                token_idx = endofchunk_idx + 1
+                while (
+                    token_idx < labels.shape[1]
+                    and labels[i][token_idx] != media_token_id
+                ):
                     labels[i][token_idx] = -100
                     token_idx += 1
 
-            # remove loss for any token between <|endofchunk|> and <answer>, except <image>
-            for endofchunk_idx in endofchunk_idxs:
-                token_idx = endofchunk_idx + 1
-                while token_idx < labels.shape[1] and labels[i][token_idx] != answer_token_id:
-                    if labels[i][token_idx] == media_token_id:
-                        pass
-                    else:
-                        labels[i][token_idx] = -100
-                    token_idx += 1
+        labels[labels == media_token_id] = -100
+        labels.to(device_id)
 
-            labels[labels == answer_token_id] = -100
-            labels[labels == media_token_id] = -100
+        # with accelerator.accumulate(model):
+        # with autocast():
+        with accelerator.autocast():
+            loss_mmc4 = model(
+                vision_x=images,
+                lang_x=input_ids,
+                attention_mask=attention_mask,
+                labels=labels,
+            )[0]
 
-            # with accelerator.accumulate(model):
-            # with autocast():
-            with accelerator.autocast():
-                loss_mmc4 = model(
-                    vision_x=images,
-                    lang_x=input_ids,
-                    attention_mask=attention_mask,
-                    labels=labels,
-                )[0]
-
-            total_losses.append(loss_mmc4)
-        # import pdb;pdb.set_trace()
+        total_losses.append(loss_mmc4)
         #### BACKWARD PASS ####
         total_loss_sum = sum(total_losses)
         mean_loss = total_loss_sum / len(total_losses)
@@ -178,8 +157,8 @@ def train_one_epoch(
         if accelerator.sync_gradients:
             if args.rank == 0 and args.report_to_wandb:
                 # compute within rank 0
-                mmc4_samples_per_second = args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.val
-                mmc4_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size / step_time_m.val
+                mmc4_samples_per_second = args.gradient_accumulation_steps * args.batch_size_mmc4 * args.world_size / step_time_m.val
+                mmc4_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_mmc4 / step_time_m.val
 
                 wandb.log(
                     {
@@ -236,8 +215,8 @@ def main():
         type=str,
         help="path to c4 shards, this should be a glob pattern such as /path/to/shards/shard-{0000..0999}.tar",
     )
-    parser.add_argument("--train_num_samples_mmc4", type=int, default=10000)
-    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--train_num_samples_mmc4", type=int, default=10)
+    parser.add_argument("--batch_size_mmc4", type=int, default=128)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--dataset_resampled", action="store_true")
     parser.add_argument(
@@ -360,7 +339,8 @@ def main():
 
     # device_id = args.rank % torch.cuda.device_count()
     image_processor = CLIPImageProcessor()
-    mmc4_loaders = get_data(args, image_processor, tokenizer, "mmc4")
+    mmc4_dataset = get_data(args, image_processor, tokenizer, "mmc4")
+    mmc4_loaders = mmc4_dataset.dataloader
 
     def get_grouped_params(model):
         params_with_wd, params_without_wd = [], []
@@ -380,7 +360,8 @@ def main():
             {"params": params_without_wd, "weight_decay": 0.0},
         ]
 
-    total_training_steps = len(mmc4_loaders[0]) * args.num_epochs
+    total_training_steps = ((args.train_num_samples_mmc4) // (args.batch_size_mmc4 * args.world_size)) * args.num_epochs
+    # total_training_steps = len(mmc4_dataset[0]) * args.num_epochs
 
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
@@ -435,8 +416,8 @@ def main():
     model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
-        for cur_data_loader in mmc4_loaders:
-            cur_data_loader.dataset.set_epoch(epoch)
+        # for cur_data_loader in mmc4_loaders:
+        #     cur_data_loader.dataset.set_epoch(epoch)
 
         train_one_epoch(
             args=args,
