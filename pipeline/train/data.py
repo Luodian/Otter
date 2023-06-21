@@ -67,9 +67,7 @@ def get_dataset_size(shards):
     len_filename = os.path.join(dir_path, "__len__")
     if os.path.exists(sizes_filename):
         sizes = json.load(open(sizes_filename, "r"))
-        total_size = sum(
-            [int(sizes[os.path.basename(shard)]) if os.path.basename(shard) in sizes else 0 for shard in shards_list]
-        )
+        total_size = sum([int(sizes[os.path.basename(shard)]) if os.path.basename(shard) in sizes else 0 for shard in shards_list])
     elif os.path.exists(len_filename):
         # FIXME this used to be eval(open(...)) but that seemed rather unsafe
         total_size = ast.literal_eval(open(len_filename, "r").read())
@@ -241,7 +239,7 @@ class ResampledShards2(IterableDataset):
 
 
 def preprocess_image(sample, image_processor):
-    image = [image_processor.preprocess(s, return_tensors='pt')['pixel_values'] for s in sample]
+    image = [image_processor.preprocess(s, return_tensors="pt")["pixel_values"] for s in sample]
     image = torch.cat(image, dim=0)
     # apply random horizontal flip and color jitter
     image = torchvision.transforms.RandomHorizontalFlip(p=0.5)(image)
@@ -308,18 +306,13 @@ def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold):
     text = " ".join(sentences)
     text = text.replace("<|endofchunk|>", "", 1)  # but remove first eoc
     # whitespace cleanup
-    text = (
-        text.replace(" <|endofchunk|>", "<|endofchunk|>").replace("<image> ", "<image>").replace(" <image>", "<image>")
-    )
+    text = text.replace(" <|endofchunk|>", "<|endofchunk|>").replace("<image> ", "<image>").replace(" <image>", "<image>")
     text = f"{text}<|endofchunk|>{tokenizer.eos_token}"
     tokenizer.padding_side = "right"
     text_tensor = tokenizer(text, max_length=256, truncation=True, padding="max_length", return_tensors="pt")
 
     # reject sequences with too few images (after truncation)
-    num_images = torch.count_nonzero(
-        text_tensor["input_ids"]
-        == tokenizer.additional_special_tokens_ids[tokenizer.additional_special_tokens.index("<image>")]
-    )
+    num_images = torch.count_nonzero(text_tensor["input_ids"] == tokenizer.additional_special_tokens_ids[tokenizer.additional_special_tokens.index("<image>")])
 
     if num_images == 0:
         raise ValueError("No images in sample")
@@ -683,16 +676,12 @@ def get_mimicit_dataset(args, tokenizer, epoch=0, floor=False):
     images_paths = args.images_path.split(",")
     train_config_paths = args.train_config_path.split(",")
     unified_datasets = []
-    for cur_multi_instruct_path, cur_images_path, cur_train_config_path in zip(
-        multi_instruct_paths, images_paths, train_config_paths
-    ):
+    for cur_multi_instruct_path, cur_images_path, cur_train_config_path in zip(multi_instruct_paths, images_paths, train_config_paths):
         unified_dataset = MimicitDataset(args, cur_multi_instruct_path, cur_images_path, cur_train_config_path)
         unified_datasets.append(unified_dataset)
 
     args.train_num_samples = (
-        sum(len(dataset) for dataset in unified_datasets) / len(unified_datasets)
-        if args.train_num_samples is None
-        else args.train_num_samples
+        sum(len(dataset) for dataset in unified_datasets) / len(unified_datasets) if args.train_num_samples is None else args.train_num_samples
     )
     round_fn = math.floor if floor else math.ceil
     global_batch_size = args.batch_size * args.world_size

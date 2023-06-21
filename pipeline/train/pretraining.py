@@ -85,7 +85,7 @@ def train_one_epoch(
         global_step = num_steps + epoch * num_batches_per_epoch
         total_losses = []
         #### MMC4 FORWARD PASS ####
-        images = (batch_mmc4[0].to(device_id, non_blocking=True).unsqueeze(2))
+        images = batch_mmc4[0].to(device_id, non_blocking=True).unsqueeze(2)
         input_ids = torch.stack([x[0] for x in batch_mmc4[1]]).squeeze(1)
         attention_mask = torch.stack([x[1] for x in batch_mmc4[1]]).squeeze(1)
 
@@ -97,9 +97,7 @@ def train_one_epoch(
         for i in range(labels.shape[0]):
             # remove loss for any token before the first <image> token
             label_idx = 0
-            while (
-                label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id
-            ):
+            while label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id:
                 labels[i][label_idx] = -100
                 label_idx += 1
 
@@ -107,10 +105,7 @@ def train_one_epoch(
             endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
             for endofchunk_idx in endofchunk_idxs:
                 token_idx = endofchunk_idx + 1
-                while (
-                    token_idx < labels.shape[1]
-                    and labels[i][token_idx] != media_token_id
-                ):
+                while token_idx < labels.shape[1] and labels[i][token_idx] != media_token_id:
                     labels[i][token_idx] = -100
                     token_idx += 1
 
