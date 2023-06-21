@@ -35,11 +35,6 @@ TINY_IMAGE_SIZE_THRESHOLD = 1
 N_CHANNELS = 3
 INTERLEAVED_IMAGE_SIZE = 224
 
-try:
-    import horovod.torch as hvd
-except ImportError:
-    hvd = None
-
 
 class SharedEpoch:
     def __init__(self, epoch: int = 0):
@@ -67,8 +62,7 @@ class DataInfo:
 
 def get_dataset_size(shards):
     shards_list = list(braceexpand.braceexpand(shards))
-    shards_list = shards
-    dir_path = os.path.dirname(shards[0])
+    dir_path = os.path.dirname(shards_list[0])
     sizes_filename = os.path.join(dir_path, "sizes.json")
     len_filename = os.path.join(dir_path, "__len__")
     if os.path.exists(sizes_filename):
@@ -245,7 +239,7 @@ class ResampledShards2(IterableDataset):
 
 
 def preprocess_image(sample, image_processor):
-    image = [image_processor(s).unsqueeze(0) for s in sample]
+    image = [image_processor.preprocess(s, return_tensors="pt")["pixel_values"] for s in sample]
     image = torch.cat(image, dim=0)
     # apply random horizontal flip and color jitter
     image = torchvision.transforms.RandomHorizontalFlip(p=0.5)(image)
@@ -268,39 +262,36 @@ def preprocess_text(sample, tokenizer):
 
 MIN_KB = 10
 MAX_NUM_IMAGES = 5
+import base64
 
 
 def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold):
     info = json.loads(sample[0])
-    tar_file_obj = io.BytesIO(sample[1])
-    image_tar = tarfile.open(fileobj=tar_file_obj)
     sentences = info["text_list"]
 
-    images, image_idxs = [], []
-    for image_path, sim in zip(info["image_info"], info["similarity_matrix"]):
-        # pick one image per sentence
-        if info["image_info"][image_path]["matched_text_index"] in image_idxs:
-            continue
-        rawbytes = image_tar.extractfile(os.path.join(image_tar.getnames()[0], image_path)).read()
+    images, sentence_ixs = [], []
+    for sample_image in info["image_info"]:
+        image_base64 = sample_image["image_base64"]
+        rawbytes = base64.b64decode(image_base64)
 
         # filter to images >= 10KB
         if len(rawbytes) // 1000 <= MIN_KB:
             continue
-        if sim[info["image_info"][image_path]["matched_text_index"]] < sim_threshold:
+        if sample_image["matched_sim"] < sim_threshold:
             continue
         image = Image.open(io.BytesIO(rawbytes)).convert("RGB")
 
         images.append(image)
-        image_idxs.append(info["image_info"][image_path]["matched_text_index"])
+        sentence_ixs.append(sample_image["matched_text_index"])
 
     if len(images) == 0:
         raise ValueError("No images in sample")
 
-    # filter out images that are exact duplicates
+    # images -> tensors
     images_tensors = preprocess_image(images, clip_processor)
     keep_ixs = range(min(len(images_tensors), MAX_NUM_IMAGES))
     images_tensors = images_tensors[keep_ixs]
-    image_idxs = [image_idxs[ix] for ix in keep_ixs]
+    sentence_ixs = [sentence_ixs[ix] for ix in keep_ixs]
 
     # pad to 5 images
     if len(images_tensors) < MAX_NUM_IMAGES:
@@ -309,7 +300,7 @@ def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold):
 
     # add in <image> and <eoc> tokens
     # eoc after sentence = "sentence loss"
-    for ix in image_idxs:
+    for ix in sentence_ixs:
         sentences[ix] = f"<|endofchunk|><image>{sentences[ix]}"
 
     text = " ".join(sentences)
@@ -391,7 +382,7 @@ def get_mmc4_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
 
     pipeline.extend(
         [
-            wds.to_tuple("json", "tar", handler=log_and_continue),
+            wds.to_tuple("json", handler=log_and_continue),
             wds.map(preprocess_fn, handler=log_and_continue),
             wds.batched(args.batch_size_mmc4, partial=False),
         ]
@@ -613,8 +604,7 @@ import json
 from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
 
 
-def get_multi_instruction_dataset(args, tokenizer, epoch=0, floor=False):
-    multi_instruct_path = args.multi_instruct_path
+def get_mimicit_dataset(args, tokenizer, epoch=0, floor=False):
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     args.task = "pretrain"
     args.tokenizer = tokenizer
@@ -668,11 +658,11 @@ def get_dataset_fn(dataset_type):
         return get_mmc4_dataset
     elif dataset_type == "coco_vqa":
         return get_coco_vqa_dataset
-    elif dataset_type == "multi_instruct":
-        return get_multi_instruction_dataset
+    elif dataset_type == "mimicit":
+        return get_mimicit_dataset
     else:
         raise ValueError(f"Unsupported dataset type: {dataset_type}")
 
 
-def get_data(args, tokenizer, dataset_type, epoch=0):
-    return get_dataset_fn(dataset_type)(args, epoch=epoch, tokenizer=tokenizer)
+def get_data(args, image_processor, tokenizer, dataset_type, epoch=0):
+    return get_dataset_fn(dataset_type)(args, image_processor=image_processor, epoch=epoch, tokenizer=tokenizer)

@@ -55,7 +55,7 @@ def train_one_epoch(
     args,
     model,
     epoch,
-    multi_instruct_loaders,
+    mimicit_loaders,
     tokenizer,
     optimizer,
     lr_scheduler,
@@ -63,7 +63,7 @@ def train_one_epoch(
     accelerator,
     wandb,
 ):
-    num_batches_per_epoch = len(multi_instruct_loaders[0])
+    num_batches_per_epoch = len(mimicit_loaders[0])
     total_training_steps = num_batches_per_epoch * args.num_epochs
 
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
@@ -78,8 +78,8 @@ def train_one_epoch(
     end = time.time()
 
     # loop through dataloader
-    for num_steps, (batch_multi_instructs) in tqdm(
-        enumerate(zip(*multi_instruct_loaders)),
+    for num_steps, (batch_mimicits) in tqdm(
+        enumerate(zip(*mimicit_loaders)),
         disable=args.rank != 0,
         total=total_training_steps,
         initial=(epoch * num_batches_per_epoch),
@@ -87,12 +87,12 @@ def train_one_epoch(
         data_time_m.update(time.time() - end)
 
         global_step = num_steps + epoch * num_batches_per_epoch
-        #### MULTI_INSTRUCT FORWARD PASS ####
+        #### MIMIC-IT FORWARD PASS ####
         total_losses = []
-        for batch_multi_instruct in batch_multi_instructs:
-            images = batch_multi_instruct["net_input"]["patch_images"]
-            input_ids = batch_multi_instruct["net_input"]["input_ids"]
-            attention_mask = batch_multi_instruct["net_input"]["attention_masks"]
+        for batch_mimicit in batch_mimicits:
+            images = batch_mimicit["net_input"]["patch_images"]
+            input_ids = batch_mimicit["net_input"]["input_ids"]
+            attention_mask = batch_mimicit["net_input"]["attention_masks"]
 
             labels = input_ids.clone()
             labels[labels == tokenizer.pad_token_id] = -100
@@ -144,19 +144,19 @@ def train_one_epoch(
             # with accelerator.accumulate(model):
             # with autocast():
             with accelerator.autocast():
-                loss_multi_instruct = model(
+                loss_mimicit = model(
                     vision_x=images,
                     lang_x=input_ids,
                     attention_mask=attention_mask,
                     labels=labels,
                 )[0]
-                # loss_multi_instruct = model.generate(
+                # loss_mimicit = model.generate(
                 #     vision_x=images.to(device_id),
                 #     lang_x=input_ids.to(device_id),
                 #     attention_mask=attention_mask.to(device_id),
                 #     max_length=256,
                 # )
-            total_losses.append(loss_multi_instruct)
+            total_losses.append(loss_mimicit)
         # import pdb;pdb.set_trace()
         #### BACKWARD PASS ####
         total_loss_sum = sum(total_losses)
@@ -187,15 +187,15 @@ def train_one_epoch(
         if accelerator.sync_gradients:
             if args.rank == 0 and args.report_to_wandb:
                 # compute within rank 0
-                multi_instruct_samples_per_second = args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.val
-                multi_instruct_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size / step_time_m.val
+                mimicit_samples_per_second = args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.val
+                mimicit_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size / step_time_m.val
 
                 wandb.log(
                     {
                         "data_time": data_time_m.avg,
                         "step_time": step_time_m.avg,
-                        "multi_instruct_samples_per_second": multi_instruct_samples_per_second,
-                        "multi_instruct_samples_per_second_per_gpu": multi_instruct_samples_per_second_per_gpu,
+                        "mimicit_samples_per_second": mimicit_samples_per_second,
+                        "mimicit_samples_per_second_per_gpu": mimicit_samples_per_second_per_gpu,
                         "lr": optimizer.param_groups[0]["lr"],
                     },
                     commit=False,
@@ -205,7 +205,7 @@ def train_one_epoch(
 
                 wandb.log(
                     {
-                        "loss_multi_instruct": mean_loss.item(),
+                        "loss_mimicit": mean_loss.item(),
                         "global_step": global_step // args.gradient_accumulation_steps,
                     },
                     commit=True,
@@ -222,7 +222,6 @@ def main():
         "--cross_attn_every_n_layers",
         type=int,
         default=1,
-        help="how often to add a cross-attention layer after each transformer layer",
     )
     parser.add_argument(
         "--external_save_dir",
@@ -236,7 +235,6 @@ def main():
         default="otter_9b",
         help="used to name saving directory and wandb run",
     )
-    parser.add_argument("--use_media_placement_augmentation", action="store_true")
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--num_epochs", type=int, default=1)
     parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
@@ -251,38 +249,19 @@ def main():
         default=None,
     )
     parser.add_argument(
-        "--load_from_original_checkpoint",
-        type=str,
-        help="path to openflamingo provided checkpoint, in .pt format",
-        default=None,
-    )
-    parser.add_argument(
-        "--resume_from_checkpoint",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--overwrite_checkpoint",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--delete_previous_checkpoint",
-        action="store_true",
-        help="delete previous checkpoint when saving new checkpoint",
-    )
-    parser.add_argument(
         "--multi_instruct_path",
         type=str,
-        help="path to multi_instruct dataset, this should be a glob pattern such as vision_language_examples.tsv",
+        help="path to multi_instruct dataset, this should be /path/to/DC_instruction.json",
     )
     parser.add_argument(
         "--images_path",
         type=str,
-        help="path to images_path dataset, this should be a glob pattern such as vision_language_examples.tsv",
+        help="path to images_path dataset, this should be /path/to/DC.json",
     )
     parser.add_argument(
         "--train_config_path",
         type=str,
-        help="path to train_config_path dataset, this should be a glob pattern such as vision_language_examples.tsv",
+        help="path to train_config_path dataset, this should be /path/to/DC/DC_train.json",
     )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--learning_rate", default=1e-4, type=float)
@@ -292,20 +271,11 @@ def main():
         type=str,
         help="constant, linear, or cosine",
     )
-    parser.add_argument("--loss_multiplier_multi_instruct", type=float, default=1.0)
     parser.add_argument("--warmup_steps", default=1000, type=int)
     parser.add_argument("--warmup_steps_ratio", default=None, type=float)
     parser.add_argument("--weight_decay", default=0.1, type=float)
-    parser.add_argument(
-        "--precision",
-        choices=["amp_bf16", "amp_bfloat16", "bf16", "amp", "fp16", "fp32"],
-        default="amp",
-        help="Floating point precision.",
-    )
     # data args
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--train_num_samples", type=int, default=None)
-    parser.add_argument("--dataset_resampled", action="store_true")
     # distributed training args
     parser.add_argument(
         "--dist-url",
@@ -359,10 +329,6 @@ def main():
 
     args.local_rank, args.rank, args.world_size = world_info_from_env()
 
-    # if args.world_size > 1:
-    #     device_id = init_distributed_device(args)
-    # else:
-    #     device_id = 0
     accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps)
 
     device_id = accelerator.device
@@ -408,7 +374,7 @@ def main():
 
     # device_id = args.rank % torch.cuda.device_count()
 
-    multi_instruct_loaders = get_data(args, tokenizer, "multi_instruct")
+    mimicit_loaders = get_data(args, tokenizer, "mimicit")
 
     def get_grouped_params(model):
         params_with_wd, params_without_wd = [], []
@@ -428,7 +394,7 @@ def main():
             {"params": params_without_wd, "weight_decay": 0.0},
         ]
 
-    total_training_steps = len(multi_instruct_loaders[0]) * args.num_epochs
+    total_training_steps = len(mimicit_loaders[0]) * args.num_epochs
 
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
@@ -479,11 +445,11 @@ def main():
             config=vars(args),
         )
 
-    model, optimizer, lr_scheduler, multi_instruct_loaders = accelerator.prepare(model, optimizer, lr_scheduler, multi_instruct_loaders)
+    model, optimizer, lr_scheduler, mimicit_loaders = accelerator.prepare(model, optimizer, lr_scheduler, mimicit_loaders)
     model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
-        for cur_data_loader in multi_instruct_loaders:
+        for cur_data_loader in mimicit_loaders:
             cur_data_loader.dataset.set_epoch(epoch)
 
         train_one_epoch(
@@ -493,7 +459,7 @@ def main():
             tokenizer=tokenizer,
             optimizer=optimizer,
             lr_scheduler=lr_scheduler,
-            multi_instruct_loaders=multi_instruct_loaders,
+            mimicit_loaders=mimicit_loaders,
             accelerator=accelerator,
             device_id=device_id,
             wandb=wandb,
@@ -516,8 +482,8 @@ def main():
         )
         # save the config
         unwrapped_model.config.save_pretrained(args.external_save_dir)
-        if model.can_generate():
-            model_to_save.generation_config.save_pretrained(args.external_save_dir)
+        # if model.can_generate():
+        #     model_to_save.generation_config.save_pretrained(args.external_save_dir)
 
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
