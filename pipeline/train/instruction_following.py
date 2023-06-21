@@ -276,6 +276,7 @@ def main():
     parser.add_argument("--weight_decay", default=0.1, type=float)
     # data args
     parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--train_num_samples", type=int, default=None)
     # distributed training args
     parser.add_argument(
         "--dist-url",
