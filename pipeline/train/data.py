@@ -67,7 +67,9 @@ def get_dataset_size(shards):
     len_filename = os.path.join(dir_path, "__len__")
     if os.path.exists(sizes_filename):
         sizes = json.load(open(sizes_filename, "r"))
-        total_size = sum([int(sizes[os.path.basename(shard)]) if os.path.basename(shard) in sizes else 0 for shard in shards_list])
+        total_size = sum(
+            [int(sizes[os.path.basename(shard)]) if os.path.basename(shard) in sizes else 0 for shard in shards_list]
+        )
     elif os.path.exists(len_filename):
         # FIXME this used to be eval(open(...)) but that seemed rather unsafe
         total_size = ast.literal_eval(open(len_filename, "r").read())
@@ -306,13 +308,18 @@ def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold):
     text = " ".join(sentences)
     text = text.replace("<|endofchunk|>", "", 1)  # but remove first eoc
     # whitespace cleanup
-    text = text.replace(" <|endofchunk|>", "<|endofchunk|>").replace("<image> ", "<image>").replace(" <image>", "<image>")
+    text = (
+        text.replace(" <|endofchunk|>", "<|endofchunk|>").replace("<image> ", "<image>").replace(" <image>", "<image>")
+    )
     text = f"{text}<|endofchunk|>{tokenizer.eos_token}"
     tokenizer.padding_side = "right"
     text_tensor = tokenizer(text, max_length=256, truncation=True, padding="max_length", return_tensors="pt")
 
     # reject sequences with too few images (after truncation)
-    num_images = torch.count_nonzero(text_tensor["input_ids"] == tokenizer.additional_special_tokens_ids[tokenizer.additional_special_tokens.index("<image>")])
+    num_images = torch.count_nonzero(
+        text_tensor["input_ids"]
+        == tokenizer.additional_special_tokens_ids[tokenizer.additional_special_tokens.index("<image>")]
+    )
 
     if num_images == 0:
         raise ValueError("No images in sample")
@@ -323,70 +330,6 @@ def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold):
         images_tensors,
         (text_tensor["input_ids"], text_tensor["attention_mask"]),
     )
-
-
-# def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold):
-#     info = json.loads(sample[0])
-#     tar_file_obj = io.BytesIO(sample[1])
-#     image_tar = tarfile.open(fileobj=tar_file_obj)
-#     sentences = info["text_list"]
-
-#     images, image_idxs = [], []
-#     for image_path, sim in zip(info["image_info"], info["similarity_matrix"]):
-#         # pick one image per sentence
-#         if info["image_info"][image_path]["matched_text_index"] in image_idxs:
-#             continue
-#         rawbytes = image_tar.extractfile(os.path.join(image_tar.getnames()[0], image_path)).read()
-
-#         # filter to images >= 10KB
-#         if len(rawbytes) // 1000 <= MIN_KB:
-#             continue
-#         if sim[info["image_info"][image_path]["matched_text_index"]] < sim_threshold:
-#             continue
-#         image = Image.open(io.BytesIO(rawbytes)).convert("RGB")
-
-#         images.append(image)
-#         image_idxs.append(info["image_info"][image_path]["matched_text_index"])
-
-#     if len(images) == 0:
-#         raise ValueError("No images in sample")
-
-#     # filter out images that are exact duplicates
-#     images_tensors = preprocess_image(images, clip_processor)
-#     keep_ixs = range(min(len(images_tensors), MAX_NUM_IMAGES))
-#     images_tensors = images_tensors[keep_ixs]
-#     image_idxs = [image_idxs[ix] for ix in keep_ixs]
-
-#     # pad to 5 images
-#     if len(images_tensors) < MAX_NUM_IMAGES:
-#         zero_padding = torch.zeros((MAX_NUM_IMAGES - len(images_tensors), 3, 224, 224), dtype=torch.float)
-#         images_tensors = torch.cat((images_tensors, zero_padding), dim=0)
-
-#     # add in <image> and <eoc> tokens
-#     # eoc after sentence = "sentence loss"
-#     for ix in image_idxs:
-#         sentences[ix] = f"<|endofchunk|><image>{sentences[ix]}"
-
-#     text = " ".join(sentences)
-#     text = text.replace("<|endofchunk|>", "", 1)  # but remove first eoc
-#     # whitespace cleanup
-#     text = text.replace(" <|endofchunk|>", "<|endofchunk|>").replace("<image> ", "<image>").replace(" <image>", "<image>")
-#     text = f"{text}<|endofchunk|>{tokenizer.eos_token}"
-#     tokenizer.padding_side = "right"
-#     text_tensor = tokenizer(text, max_length=256, truncation=True, padding="max_length", return_tensors="pt")
-
-#     # reject sequences with too few images (after truncation)
-#     num_images = torch.count_nonzero(text_tensor["input_ids"] == tokenizer.additional_special_tokens_ids[tokenizer.additional_special_tokens.index("<image>")])
-
-#     if num_images == 0:
-#         raise ValueError("No images in sample")
-#     elif num_images == 1 and random.random() <= 0.5:  # 50% chance of keeping single image samples
-#         raise ValueError("Only one image in sample")
-
-#     return (
-#         images_tensors,
-#         (text_tensor["input_ids"], text_tensor["attention_mask"]),
-#     )
 
 
 def get_mmc4_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
@@ -676,12 +619,16 @@ def get_mimicit_dataset(args, tokenizer, epoch=0, floor=False):
     images_paths = args.images_path.split(",")
     train_config_paths = args.train_config_path.split(",")
     unified_datasets = []
-    for cur_multi_instruct_path, cur_images_path, cur_train_config_path in zip(multi_instruct_paths, images_paths, train_config_paths):
+    for cur_multi_instruct_path, cur_images_path, cur_train_config_path in zip(
+        multi_instruct_paths, images_paths, train_config_paths
+    ):
         unified_dataset = MimicitDataset(args, cur_multi_instruct_path, cur_images_path, cur_train_config_path)
         unified_datasets.append(unified_dataset)
 
     args.train_num_samples = (
-        sum(len(dataset) for dataset in unified_datasets) / len(unified_datasets) if args.train_num_samples is None else args.train_num_samples
+        sum(len(dataset) for dataset in unified_datasets) / len(unified_datasets)
+        if args.train_num_samples is None
+        else args.train_num_samples
     )
     round_fn = math.floor if floor else math.ceil
     global_batch_size = args.batch_size * args.world_size
