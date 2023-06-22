@@ -31,8 +31,6 @@ class Llava(AbstractDataset):
         self.image_root = image_root
         super().__init__(name, short_name, image_path, num_threads)
 
-        
-
     def _load_images(self, image_path: str, num_thread: int) -> dict[str, Image.Image]:
         """
         Loads the images from the dataset.
@@ -44,6 +42,7 @@ class Llava(AbstractDataset):
         Returns:
             dict[str, Image.Image]: A dictionary where the keys are image identifiers and the values are PIL.Image.Image objects.
         """
+
         def read_image(file_name) -> Image.Image:
             return Image.open(file_name)
 
