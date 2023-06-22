@@ -13,7 +13,7 @@ MIMIC-IT enables the application of egocentric visual assistant model that can s
 MIMIC-IT provides multilingual instructions, supporting English, Chinese, Korean, Japanese, German, French, Spanish, and Arabic, thereby allowing a larger global audience to altogether enjoy from the convenience brought about by advancements in artificial intelligence.
 
 <p align="center" width="100%">
-<img src="https://i.postimg.cc/4x66gHhw/mimic-it.jpg"  width="80%" height="80%">
+<img src="https://i.postimg.cc/4x66gHhw/mimic-it.jpg"  width="100%" height="100%">
 </p>
 
 ## Using MIMIC-IT Dataset
@@ -91,13 +91,13 @@ Things could be tricky since some image/video sources are not easy to get the ac
 | TVC (TV) | lang./vis. | 86K / 577K | 86K | 92K  |  
 | E4D (General Ego.) | lang./vis. | 400K / 6.4M | 1.8M | 2.4M  |  
 | Total | lang./vis. | 502K / 8.1M | 2.2M | 2.8M |   -->
-## Create Your Own Dataset with Syphus
+## Syphus: the hero behind MIMIC-IT
 
 <p align="center" width="100%">
 <img src="https://i.postimg.cc/RCGp0vQ1/syphus.png"  width="80%" height="80%">
 </p>
 
-Embracing Syphus, the hero behind MIMIC-IT dataset, an automated pipeline that generates top-tier instruction-response pairs in various languages. 
+Embracing Syphus, an automated pipeline that generates top-tier instruction-response pairs in various languages. 
 
 Syphus builds on the LLaVA framework and uses ChatGPT to produce pairs based on visual content. It ensures quality by incorporating system messages for tone and style, visual annotations for essential image information, and in-context examples to assist ChatGPT in contextual learning. During the cold-start stage, in-context examples are collected using a heuristic approach with system messages and visual annotations. This stage concludes only when a satisfactory in-context examples are identified.
 
