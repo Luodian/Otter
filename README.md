@@ -174,7 +174,7 @@ accelerate launch --config_file=./accelerate_configs/accelerate_config_fsdp.yaml
 pipeline/train/instruction_following.py \
 --pretrained_model_name_or_path=path/to/otter_9b_hf_mm  \
 --dataset_resampled \
---multi_instruct_path="path/to/instruction.json" \
+--mimicit_path="path/to/instruction.json" \
 --images_path="path/to/image.json" \
 --train_config_path="path/to/train.json" \
 --batch_size=4 \
