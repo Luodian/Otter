@@ -608,12 +608,12 @@ def get_mimicit_dataset(args, tokenizer, epoch=0, floor=False):
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     args.task = "pretrain"
     args.tokenizer = tokenizer
-    multi_instruct_paths = args.multi_instruct_path.split(",")
+    mimicit_paths = args.mimicit_path.split(",")
     images_paths = args.images_path.split(",")
     train_config_paths = args.train_config_path.split(",")
     unified_datasets = []
-    for cur_multi_instruct_path, cur_images_path, cur_train_config_path in zip(multi_instruct_paths, images_paths, train_config_paths):
-        unified_dataset = MimicitDataset(args, cur_multi_instruct_path, cur_images_path, cur_train_config_path)
+    for cur_mimicit_path, cur_images_path, cur_train_config_path in zip(mimicit_paths, images_paths, train_config_paths):
+        unified_dataset = MimicitDataset(args, cur_mimicit_path, cur_images_path, cur_train_config_path)
         unified_datasets.append(unified_dataset)
 
     args.train_num_samples = (
