@@ -2,6 +2,31 @@
 
 ## How to Use
 
+### Llava-incontext
+
+Download the [coco2017](https://cocodataset.org/#download) images (coco2014 might also be work), put the images in a folder with the path `<image_root>`. Download the [meta](XXX) for the training image ids, put the meta file at the path `<meta>`.
+
+The folder structure should be like this:
+
+```plain
+<image_root>/
+    annotations/
+    val2017/
+    train2017/
+        000000498792.jpg
+        XXXXXXXXXXXX.jpg
+    ...
+```
+
+Run the following command:
+
+```bash
+python main.py --name=2d.Llava --image_path=<meta>  --image_root=<image_root>/train2017 [--num_threads=<num_threads>]
+```
+
+The output will be saved in `output/LA.json`.
+
+
 ### Dense Captions
 
 Download the [Dense Captions](https://cs.stanford.edu/people/ranjaykrishna/densevid/) videos in [ActivityNet](http://activity-net.org/challenges/2016/download.html#c3d), put the videos in a folder with the path `<image_path>` 
