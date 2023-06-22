@@ -11,6 +11,8 @@ from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 from einops import rearrange, repeat
 from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
+from falcon.modelling_RW import RWForCausalLM
+
 from .configuration_flamingo import FlamingoConfig
 
 __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
@@ -20,6 +22,7 @@ __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
     "gpt-j": "transformer.h",
     "pythia": "gpt_neox.layers",
     "llama": "model.layers",
+    "RWForCausalLM": "transformer.h",
 }
 
 
@@ -663,11 +666,10 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         # vision_encoder = AutoModel.from_config(config.vision_config).vision_model
         # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
         # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
-
-        text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
-        lang_encoder = LlamaForCausalLM(config=config.text_config)
+        
+        text_tokenizer = AutoTokenizer.from_pretrained("/mnt/petrelfs/share_data/zhangyuanhan/falcon-7b")
+        lang_encoder = RWForCausalLM(config=config.text_config)
         vision_encoder = CLIPVisionModel(config=config.vision_config)
-
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
         if text_tokenizer.pad_token is None:
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
@@ -681,7 +683,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         lang_encoder.resize_token_embeddings(len(text_tokenizer))
         self.lang_encoder = lang_encoder
 
-        self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
+        self.cross_attn_every_n_layers = config.cross_attn_every_n_layers if hasattr(config, "cross_attn_every_n_layers") else 4
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
         self.only_attend_previous = config.only_attend_previous
 
