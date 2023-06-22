@@ -78,6 +78,7 @@ def get_json_data(images: dict[str, Image.Image], dataset_name: str, num_thread:
             key, img = args
             new_key = get_image_id(key, dataset_name)
             result = process_image(img)
+            
             process_bar.update(1)
             return new_key, result
 

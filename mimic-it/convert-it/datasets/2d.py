@@ -28,12 +28,12 @@ class Llava(AbstractDataset):
             image_root (str): The path to the coco image train split
             num_threads (int): The number of threads to use for processing the images.
         """
+        self.image_root = image_root
         super().__init__(name, short_name, image_path, num_threads)
 
         
-        self.images: Dict[str, Image.Image] = self._load_images(image_root, image_path, num_threads)
 
-    def _load_images(self, image_root: str, image_path: str, num_thread: int) -> dict[str, Image.Image]:
+    def _load_images(self, image_path: str, num_thread: int) -> dict[str, Image.Image]:
         """
         Loads the images from the dataset.
 
@@ -52,6 +52,6 @@ class Llava(AbstractDataset):
             image_ids = json.load(f).keys()
 
         for cur_image_id in image_ids:
-            images[cur_image_id] = read_image(f"{image_root}/{cur_image_id}.jpg")
+            images[cur_image_id] = read_image(f"{self.image_root}/{cur_image_id}.jpg")
 
         return images
