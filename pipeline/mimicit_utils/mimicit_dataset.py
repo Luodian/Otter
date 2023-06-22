@@ -60,7 +60,7 @@ class MimicitDataset(Dataset):
     def __init__(
         self,
         args,
-        cur_multi_instruct_path,
+        cur_mimicit_path,
         cur_images_path,
         cur_train_config_path,
         is_test=False,
@@ -94,18 +94,18 @@ class MimicitDataset(Dataset):
             ]
         )
 
-        self.multi_instruct_path = cur_multi_instruct_path
+        self.mimicit_path = cur_mimicit_path
         self.images_path = cur_images_path
         self.train_config_path = cur_train_config_path
 
-        assert os.path.exists(cur_multi_instruct_path), f"Error: The local multi_instruct_path {cur_multi_instruct_path} not exists!"
+        assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!"
 
         assert os.path.exists(cur_images_path), f"Error: The local images_path {cur_images_path} not exists!"
 
         assert os.path.exists(cur_train_config_path), f"Error: The local train_config_path {cur_train_config_path} not exists!"
 
         # Load the dataset
-        with open(self.multi_instruct_path, "rb") as f:
+        with open(self.mimicit_path, "rb") as f:
             self.dataset = orjson.loads(f.read())["data"]
 
         # Load the images

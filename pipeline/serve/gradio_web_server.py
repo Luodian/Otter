@@ -245,7 +245,7 @@ def add_text(
     if image_3 is not None:
         text = DEFAULT_IMAGE_TOKEN + text
     if image_3 is None and len(state.messages) >= 2:
-        text = DEFAULT_IMAGE_TOKEN + text
+        # text = DEFAULT_IMAGE_TOKEN + text
         image_3 = state.messages[-2][1][3]
 
     # # clean state if it's a new conversation
@@ -489,7 +489,7 @@ a:link {
 <span style="font-size:larger;">
 
 ### Note:
-Current Otter Image is **Otter-v0.1-LA-In-Context (0601)**, means it's trianed on [MIMIC-IT-LA-In-Context](https://github.com/Luodian/Otter/tree/main/mimic-it) at June 1st.
+Current Otter Image is **Otter-v0.1-LA-In-Context (0618)**, means it's trianed on [MIMIC-IT-LA-In-Context](https://github.com/Luodian/Otter/tree/main/mimic-it) at June 18th.
 
 This version Otter Image demonstrates in-context learning ability to demonstrate more reasonable and coherent answer following given example instruction/response pairs. 
 </span>
