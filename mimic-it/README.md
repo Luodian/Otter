@@ -47,7 +47,9 @@ Additionally, we are in the process of providing the scripts used to convert pub
 | **Spot The Difference (Subtle Difference)** | Processing | 3.1GB |Cleaning | 5.0MB |
 | **EGO4D** | Processing | ~500GB |Cleaning | 3.2GB |
 
-The data is available on [NTU-Onedrive](https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/Eo9bgNV5cjtEswfA-HfjNNABL6Eazh7Fm1dX5VlI0Bqsrg?e=cMvZ1a). The JSON files are compressed into ZIP files to save space. After downloading, unzip the files and verify the MD5 checksums to ensure their integrity. The MD5 Checksums for the released annotations are:
+The data is available on [NTU-Onedrive](https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/Eo9bgNV5cjtEswfA-HfjNNABiKsjDzSWAl5QYAlRZPiuZA?e=M9isDT). The JSON files are compressed into ZIP files to save space. After downloading, unzip the files and verify the MD5 checksums to ensure their integrity. The MD5 Checksums for the released annotations are:
+
+
 
 1. LA_instructions.json (json not the zip file) -> f9bc559391d15727b35f3df306b12e31
 2. DC_instructions.json -> bb0d1f9f7d100c99869f79d13b3a3beb
