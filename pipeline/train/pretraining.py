@@ -318,12 +318,14 @@ def main():
                 local_files_only=args.offline,
             )
         elif "flamingo" in args.pretrained_model_name_or_path:
-            model = FlamingoForConditionalGeneration.from_pretrained(
-                args.pretrained_model_name_or_path,
-                device_map="auto",
-                local_files_only=args.offline,
-            )
-            model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+            # model = FlamingoForConditionalGeneration.from_pretrained(
+            #     args.pretrained_model_name_or_path,
+            #     device_map="auto",
+            #     local_files_only=args.offline,
+            # )
+            # model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+            
+            model = FlamingoForConditionalGeneration(config="/mnt/petrelfs/share_data/zhangyuanhan/flamingo-falcon/config.json")
 
     model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
     args.tokenizer = model.text_tokenizer
