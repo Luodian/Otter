@@ -107,7 +107,9 @@ def dump_hf_model(old_ckpt_path: str, new_folder_path: str) -> None:
     if old_ckpt.get("model", None) is not None:
         old_ckpt = old_ckpt["model"]
     new_ckpt = rename_old_checkpoint(old_ckpt)
-    config = OtterConfig.from_json_file("otter/config.json")
+    folder_path = os.path.dirname(old_ckpt_path)
+    config_path = os.path.join(folder_path, "config.json") if os.path.exists(os.path.join(folder_path, "config.json")) else "otter/config.json"
+    config = OtterConfig.from_json_file(config_path)
     model = OtterModel(config)
     model.load_state_dict(new_ckpt, strict=False)
     print(f"Saving HF model to {new_folder_path}")
