@@ -50,10 +50,6 @@ Otter v0.2 supports videos inputs (frames are arranged as original Flamingo's im
 
 **Eval Results:** [Multi-Modal Arena](http://vlarena.opengvlab.com/) | Multi-Modal AGI Benchmark (upcoming)
 
-<div style="text-align:center">
-<img src="https://i.postimg.cc/Tw1Z0BCW/otterv0-2-demo.png"  width="100%" height="100%">
-</div>
-
 ## 🦾 Update
 
 **[2023-06-23]**
@@ -71,6 +67,10 @@ Otter v0.2 supports videos inputs (frames are arranged as original Flamingo's im
 **[2023-05-08]**
 1. Check our Arxiv release paper at [Otter: A Multi-Modal Model with In-Context Instruction Tuning](https://arxiv.org/abs/2305.03726) !
 2. We support `xformers` for memory efficient attention.
+
+<div style="text-align:center">
+<img src="https://i.postimg.cc/Tw1Z0BCW/otterv0-2-demo.png"  width="100%" height="100%">
+</div>
 
 ## 🦦 Why In-Context Instruction Tuning?
 
