@@ -8,7 +8,8 @@ import transformers
 from PIL import Image
 import sys
 
-sys.path.append("..")
+sys.path.append("../..")
+# make sure you can properly access the otter folder
 from otter.modeling_otter import OtterForConditionalGeneration
 
 # Disable warnings
@@ -134,17 +135,16 @@ image_processor = transformers.CLIPImageProcessor()
 model.eval()
 
 while True:
-    video_url = "/path/to/your_video.mp4"  # Replace with the path to your video file, could be any common format.
+    video_url = input("Enter video path: ")  # Replace with the path to your video file, could be any common format.
 
     frames_list = get_image(video_url)
 
-    prompts_input = input("Enter prompts (comma-separated): ")
-    prompts = [prompt.strip() for prompt in prompts_input.split(",")]
+    while True:
+        prompts_input = input("Enter prompts: ")
 
-    for prompt in prompts:
-        print(f"\nPrompt: {prompt}")
-        response = get_response(frames_list, prompt, model, image_processor, tensor_dtype)
+        if prompts_input.lower() == "quit":
+            break
+
+        print(f"\nPrompt: {prompts_input}")
+        response = get_response(frames_list, prompts_input, model, image_processor, tensor_dtype)
         print(f"Response: {response}")
-
-    if prompts_input.lower() == "quit":
-        break
