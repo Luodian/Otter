@@ -84,7 +84,7 @@ The `DC_train.json` contains instructions IDs and their associated related instr
 
 ### Eggs (Coming Soon)
 
-Things could be tricky since some image/video sources are not easy to get the access to download them. We also provide the converted `xx.json` files for you to download directly. You need to agree the same terms and conditions as the original dataset. Please refer to [Google form]() to apply for the access to download the converted `xx.json` files.
+Things could be tricky since some image/video sources are not easy to get the access to download them. We also provide the converted `xx.json` files for you to download directly. You need to agree the same terms and conditions as the original dataset, as well as recognize and appreciate the contributions made by these data sources. Please refer to [Google form]() to apply for the access to download the converted `xx.json` files.
 
 <!-- ### Dataset Statistics
 
