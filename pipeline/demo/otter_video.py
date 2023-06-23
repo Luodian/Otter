@@ -117,7 +117,7 @@ def get_response(input_data, prompt: str, model=None, image_processor=None, tens
 
 
 # ------------------- Main Function -------------------
-load_bit = "fp16"
+load_bit = "fp32"
 if load_bit == "fp16":
     precision = {"torch_dtype": torch.float16}
 elif load_bit == "bf16":
