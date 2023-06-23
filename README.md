@@ -48,9 +48,6 @@ Otter v0.1 supports multiple images inputs as in-context examples, which is **th
 
 Otter v0.2 supports videos inputs (frames are arranged as original Flamingo's implementation) and multiple images inputs (they serve as in-context examples for each other).
 
-**Local Inference Demo**
-If your machine has over 16G GPU memory, you can run our model locally in fp16 mode for tasks like video labeling and identifying harmful content. For machines with over 36G GPU memory (achieved by combining multiple cards), you can run our model in the more accurate fp32 mode. For details, please refer to [Local Inference](./pipeline/demo).
-
 **Eval Results:** [Multi-Modal Arena](http://vlarena.opengvlab.com/) | Multi-Modal AGI Benchmark (upcoming)
 
 <div style="text-align:center">
@@ -60,7 +57,8 @@ If your machine has over 16G GPU memory, you can run our model locally in fp16 m
 ## 🦾 Update
 
 **[2023-06-23]**
-1. 🧨 MIMIC-IT can be downloaded from [here](https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/Eo9bgNV5cjtEswfA-HfjNNABiKsjDzSWAl5QYAlRZPiuZA?e=M9isDT). For more details on navigating the dataset, please refer to [MIMIC-IT Dataset README](mimic-it/README.md).
+1. 🧨 [Download MIMIC-IT](https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/Eo9bgNV5cjtEswfA-HfjNNABiKsjDzSWAl5QYAlRZPiuZA?e=M9isDT). For more details on navigating the dataset, please refer to [MIMIC-IT Dataset README](mimic-it/README.md).
+2. 🏎️ [Run Otter Locally](./pipeline/demo). You can run our model locally with at least 16G GPU mem for tasks like image/video tagging and captioning and identifying harmful content. For details, please refer to the [code](./pipeline/demo).
 
 **[2023-06-08]**
 1. Introducing Project Otter's brand new homepage: https://otter-ntu.github.io/. Check it out now!
