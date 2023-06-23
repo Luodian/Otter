@@ -42,14 +42,14 @@ You can download the `instructions.json` and `train.json` files, from our provid
 
 | Tasks/Scenes | Zip File MD5 Checksum | Unzipped File Size |
 | :--- | :---: | :---: |
-| **LA-In-Context**  | | 338 MB |
-| **DC** | | 171 MB | 
-| **TVC** |  | 230 MB |
-| **VST** |  | 32 MB |
-| **SN** |  | 8 MB |
+| **LA-In-Context**  | fdc2427451bcfd8a04bab7a1c2305259 | 338 MB |
+| **DC** | 0d373a5f511fd1d9f03ac81bb12e04fe | 171 MB | 
+| **TVC** | bef96b900f1b64f7150d8cd1b923a2a2 | 230 MB |
+| **VST** | 988569e39aaa24da0df547644514b0d4 | 32 MB |
+| **SN** | 1c4751c5b2c0bcaaeb94dbc5fb39e7a6 | 8 MB |
 | **SD (General Diff)** | TBD | 81 MB |
-| **SD (Subtle Diff)** |  | 5 MB |
-| **E4D (1st Part)** | | 710 MB/3.2 GB |
+| **SD (Subtle Diff)** | 5175198daebb997672a21307e8b18a96 | 5 MB |
+| **E4D (1st Part)** | 504b779dbc852c943adbe7862d6924d7 | 710 MB/3.2 GB |
 
 After downloading, unzip the files and place them in the `mimicit_data` folder. The folder structure should be as follows:
 
