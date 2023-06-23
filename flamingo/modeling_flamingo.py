@@ -666,7 +666,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         # vision_encoder = AutoModel.from_config(config.vision_config).vision_model
         # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
         # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
-        
+
         text_tokenizer = AutoTokenizer.from_pretrained("/mnt/petrelfs/share_data/zhangyuanhan/falcon-7b")
         lang_encoder = RWForCausalLM(config=config.text_config)
         vision_encoder = CLIPVisionModel(config=config.vision_config)

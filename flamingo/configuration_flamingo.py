@@ -2,9 +2,11 @@ import copy
 
 from transformers.configuration_utils import PretrainedConfig
 from transformers.utils import logging
+
 # from transformers.models.auto import CONFIG_MAPPING
 from transformers.models.clip import CLIPVisionConfig
 import sys
+
 # sys.path.append("/mnt/lustre/yhzhang/Otter/")
 from falcon.configuration_RW import RWConfig
 
@@ -50,7 +52,7 @@ class FlamingoConfig(PretrainedConfig):
     model_type = "flamingo"
     is_composition = True
 
-    def __init__(self, vision_config=None, text_config=None,cross_attn_every_n_layers: int = 4, use_media_placement_augmentation: bool = True, **kwargs):
+    def __init__(self, vision_config=None, text_config=None, cross_attn_every_n_layers: int = 4, use_media_placement_augmentation: bool = True, **kwargs):
         super().__init__(**kwargs)
         if vision_config is None:
             vision_config = {}
@@ -59,7 +61,6 @@ class FlamingoConfig(PretrainedConfig):
         if text_config is None:
             text_config = {}
             logger.info("text_config is None. Initializing the text config with default values.")
-
 
         self.vision_config = CLIPVisionConfig(**vision_config)
         self.text_config = RWConfig(**text_config)
