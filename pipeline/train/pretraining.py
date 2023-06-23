@@ -327,7 +327,6 @@ def main():
             )
             model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
 
-
             ## The following code is used for intergrating MPT lanuage model and clip vision model into flamingo style model, the new model will be saved in /mnt/petrelfs/share_data/zhangyuanhan/flamingo-MPT/
             ## You need to first prepare the config.json in /mnt/petrelfs/share_data/zhangyuanhan/flamingo-MPT/, and the text_config key in flamingo-MPT/config.json is from MPT-XB/config.json, others keys in flamingo-MPT/config.json are from flamingo_9b_hf/config, user need to build this config by yourself
             ## The following code is used before the flamingo pre-training, after the flamingo-MPT model is saved, please comment here.
@@ -337,7 +336,7 @@ def main():
             ##          text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})"
 
             # config = FlamingoConfig.from_json_file("/mnt/petrelfs/share_data/zhangyuanhan/flamingo-mpt/config.json")
-            # with init_empty_weights(): 
+            # with init_empty_weights():
             #     model = FlamingoForConditionalGeneration(config=config)
 
             # state_dict_1 = torch.load("/mnt/petrelfs/share_data/libo/mpt-7b-instruct/pytorch_model-00001-of-00002.bin", map_location="cpu")
@@ -370,7 +369,6 @@ def main():
             # print(_[0])
             # print(_[1])
             # # model.save_pretrained(f"/mnt/petrelfs/share_data/zhangyuanhan/flamingo-mpt/")
-
 
             # ## The following code is used for intergrating falcon lanuage model and clip vision model into flamingo style model, the new model will be saved in /mnt/petrelfs/share_data/zhangyuanhan/flamingo-falcon/
             # ## You need to first prepare the config.json in /mnt/petrelfs/share_data/zhangyuanhan/flamingo-falcon/, and the text_config key in flamingo-falcon/config.json is from falcon-XB/config.json, others keys in flamingo-falcon/config.json are from flamingo_9b_hf/config, user need to build this config by yourself

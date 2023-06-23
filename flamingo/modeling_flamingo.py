@@ -25,8 +25,7 @@ __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
     "pythia": "gpt_neox.layers",
     "llama": "model.layers",
     "RWForCausalLM": "transformer.h",
-    "MPTForCausalLM": "transformer.blocks"
-
+    "MPTForCausalLM": "transformer.blocks",
 }
 
 
@@ -671,7 +670,9 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
         # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
 
-        import pdb;pdb.set_trace()
+        import pdb
+
+        pdb.set_trace()
         if config.text_config.architectures[0] == "MPTForCausalLM":
             text_tokenizer = AutoTokenizer.from_pretrained("/mnt/petrelfs/share_data/libo/mpt-7b-instruct")
             lang_encoder = MPTForCausalLM(config=config.text_config)
@@ -679,8 +680,10 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
             text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
             lang_encoder = RWForCausalLM(config=config.text_config)
         else:
-            import pdb;pdb.set_trace()
-       
+            import pdb
+
+            pdb.set_trace()
+
         vision_encoder = CLIPVisionModel(config=config.vision_config)
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
         if text_tokenizer.pad_token is None:
