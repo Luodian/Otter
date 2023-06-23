@@ -20,7 +20,7 @@
     <sup>1</sup>S-Lab, Nanyang Technological University&emsp;
     <sup>2</sup>Microsoft Research, Redmond
     </br>
-    <sup>♠</sup> Project Lead&emsp;
+    <sup>♠</sup> Co-Project Lead&emsp;
     <sup>*</sup> Equal Contribution&emsp;
     <sup>&#x2709</sup> Corresponding Author
     
