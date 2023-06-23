@@ -7,6 +7,7 @@ import torch
 import transformers
 from PIL import Image
 import sys
+
 sys.path.append("..")
 from otter.modeling_otter import OtterForConditionalGeneration
 
@@ -90,6 +91,7 @@ def get_response(input_data, prompt: str, model=None, image_processor=None, tens
         return_tensors="pt",
     )
 
+    bad_words_id = model.text_tokenizer(["User:", "GPT1:", "GFT:", "GPT:"], add_special_tokens=False).input_ids
     generated_text = model.generate(
         vision_x=vision_x.to(model.device, dtype=tensor_dtype),
         lang_x=lang_x["input_ids"].to(model.device),
@@ -97,6 +99,7 @@ def get_response(input_data, prompt: str, model=None, image_processor=None, tens
         max_new_tokens=512,
         num_beams=3,
         no_repeat_ngram_size=3,
+        bad_words_ids=bad_words_id,
     )
     parsed_output = (
         model.text_tokenizer.decode(generated_text[0])
@@ -110,6 +113,7 @@ def get_response(input_data, prompt: str, model=None, image_processor=None, tens
         .rstrip('"')
     )
     return parsed_output
+
 
 # ------------------- Main Function -------------------
 load_bit = "fp16"
