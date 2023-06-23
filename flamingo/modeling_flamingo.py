@@ -670,9 +670,9 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         text_tokenizer = AutoTokenizer.from_pretrained("/mnt/petrelfs/share_data/zhangyuanhan/falcon-7b")
         lang_encoder = RWForCausalLM(config=config.text_config)
         vision_encoder = CLIPVisionModel(config=config.vision_config)
-        text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
-        if text_tokenizer.pad_token is None:
-            text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
+        # text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
+        # if text_tokenizer.pad_token is None:
+        #     text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
         self.text_tokenizer = text_tokenizer
         self.eoc_token_id = text_tokenizer.encode("<|endofchunk|>")[-1]
         self.media_token_id = text_tokenizer.encode("<image>")[-1]
