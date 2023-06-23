@@ -2,7 +2,14 @@
 <img src="https://i.postimg.cc/sxy8v9PS/mimicit-logo.png"  width="80%" height="80%">
 </p>
 
-[TOC]
+- [🌳 MIMIC-IT Overview](#-mimic-it-overview)
+- [Using MIMIC-IT Dataset](#using-mimic-it-dataset)
+  - [Convert It](#convert-it)
+  - [Download It](#download-it)
+  - [Eggs (Coming Soon)](#eggs-coming-soon)
+- [Syphus: the hero behind MIMIC-IT](#syphus-the-hero-behind-mimic-it)
+  - [Syphus on your own dataset](#syphus-on-your-own-dataset)
+- [Multilingual Instruction-Response Pairs](#multilingual-instruction-response-pairs)
 
 ## 🌳 MIMIC-IT Overview
 
