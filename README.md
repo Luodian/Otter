@@ -59,6 +59,9 @@ If your machine has over 16G GPU memory, you can run our model locally in fp16 m
 
 ## 🦾 Update
 
+**[2023-06-23]**
+1. 🧨 MIMIC-IT can be downloaded from [here](https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/Eo9bgNV5cjtEswfA-HfjNNABiKsjDzSWAl5QYAlRZPiuZA?e=M9isDT). For more details on navigating the dataset, please refer to [MIMIC-IT Dataset README](mimic-it/README.md).
+
 **[2023-06-08]**
 1. Introducing Project Otter's brand new homepage: https://otter-ntu.github.io/. Check it out now!
 2. Check our [paper](https://arxiv.org/abs/2306.05425) introducing MIMIC-IT in details. Meet MIMIC-IT, the first multimodal in-context instruction tuning dataset with 2.8M instructions! Designed to create diverse vision-language instructions that align with real-world visual content, MIMIC-IT spans across seven image and video datasets covering a vast array of scenes. From general scene understanding to spotting subtle differences and enhancing egocentric view comprehension for AR headsets, our MIMIC-IT dataset has it all. Discover more about the MIMIC-IT dataset now!
