@@ -327,6 +327,51 @@ def main():
             )
             model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
 
+
+            ## The following code is used for intergrating MPT lanuage model and clip vision model into flamingo style model, the new model will be saved in /mnt/petrelfs/share_data/zhangyuanhan/flamingo-MPT/
+            ## You need to first prepare the config.json in /mnt/petrelfs/share_data/zhangyuanhan/flamingo-MPT/, and the text_config key in flamingo-MPT/config.json is from MPT-XB/config.json, others keys in flamingo-MPT/config.json are from flamingo_9b_hf/config, user need to build this config by yourself
+            ## The following code is used before the flamingo pre-training, after the flamingo-MPT model is saved, please comment here.
+            ## When using this code, please comment the following three lines in the modeling_flamingo.py, then uncomment them when pre-training is beginning.
+            ##      text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
+            ##      if text_tokenizer.pad_token is None:
+            ##          text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})"
+
+            # config = FlamingoConfig.from_json_file("/mnt/petrelfs/share_data/zhangyuanhan/flamingo-mpt/config.json")
+            # with init_empty_weights(): 
+            #     model = FlamingoForConditionalGeneration(config=config)
+
+            # state_dict_1 = torch.load("/mnt/petrelfs/share_data/libo/mpt-7b-instruct/pytorch_model-00001-of-00002.bin", map_location="cpu")
+            # state_dict_2 = torch.load("/mnt/petrelfs/share_data/libo/mpt-7b-instruct/pytorch_model-00002-of-00002.bin", map_location="cpu")
+            # state_dict_1.update(state_dict_2)
+            # del state_dict_2
+            # state_dict_3 = torch.load("/mnt/petrelfs/share_data/basemodel/checkpoints/multimodality/flamingo_9b_hf/pytorch_model-00004-of-00004.bin", map_location="cpu")
+            # for cur_key in list(state_dict_3.keys()):
+            #     if "vision_encoder" not in cur_key:
+            #         del state_dict_3[cur_key]
+
+            # _ = model.load_state_dict(
+            #         state_dict_3,
+            #         False,
+            #     )
+            # print(_[1])
+
+            # save_state_dict_1 = {}
+            # for key in state_dict_1:
+            #     if ".blocks." in key:
+            #         _,_,layer_num,*remain_names = key.split(".")
+            #         target_key = f"transformer.blocks.{layer_num}.decoder_layer.{'.'.join(remain_names)}"
+            #     else:
+            #         target_key = key
+            #     save_state_dict_1[f"{target_key}"] = state_dict_1[key]
+            # _ = model.lang_encoder.load_state_dict(
+            #         save_state_dict_1,
+            #         False,
+            #     )
+            # print(_[0])
+            # print(_[1])
+            # # model.save_pretrained(f"/mnt/petrelfs/share_data/zhangyuanhan/flamingo-mpt/")
+
+
             # ## The following code is used for intergrating falcon lanuage model and clip vision model into flamingo style model, the new model will be saved in /mnt/petrelfs/share_data/zhangyuanhan/flamingo-falcon/
             # ## You need to first prepare the config.json in /mnt/petrelfs/share_data/zhangyuanhan/flamingo-falcon/, and the text_config key in flamingo-falcon/config.json is from falcon-XB/config.json, others keys in flamingo-falcon/config.json are from flamingo_9b_hf/config, user need to build this config by yourself
             # ## The following code is used before the flamingo pre-training, after the flamingo-falcon model is saved, please comment here.
@@ -354,7 +399,6 @@ def main():
             # print(_[1])
 
             # save_state_dict_1 = {}
-            # save_state_dict_2 = {}
             # for key in state_dict_1:
             #     if ".h." in key:
             #         _,_,layer_num,*remain_names = key.split(".")

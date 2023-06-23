@@ -13,6 +13,8 @@ from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
 from falcon.modelling_RW import RWForCausalLM
 
+from mpt.modeling_mpt import MPTForCausalLM
+
 from .configuration_flamingo import FlamingoConfig
 
 __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
@@ -23,6 +25,8 @@ __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
     "pythia": "gpt_neox.layers",
     "llama": "model.layers",
     "RWForCausalLM": "transformer.h",
+    "MPTForCausalLM": "transformer.blocks"
+
 }
 
 
@@ -667,12 +671,20 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
         # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
 
-        text_tokenizer = AutoTokenizer.from_pretrained("/mnt/petrelfs/share_data/zhangyuanhan/falcon-7b")
-        lang_encoder = RWForCausalLM(config=config.text_config)
+        import pdb;pdb.set_trace()
+        if config.text_config.architectures[0] == "MPTForCausalLM":
+            text_tokenizer = AutoTokenizer.from_pretrained("/mnt/petrelfs/share_data/libo/mpt-7b-instruct")
+            lang_encoder = MPTForCausalLM(config=config.text_config)
+        elif config.text_config.architectures[0] == "RWForCausalLM":
+            text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
+            lang_encoder = RWForCausalLM(config=config.text_config)
+        else:
+            import pdb;pdb.set_trace()
+       
         vision_encoder = CLIPVisionModel(config=config.vision_config)
-        # text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
-        # if text_tokenizer.pad_token is None:
-        #     text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
+        text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
+        if text_tokenizer.pad_token is None:
+            text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
         self.text_tokenizer = text_tokenizer
         self.eoc_token_id = text_tokenizer.encode("<|endofchunk|>")[-1]
         self.media_token_id = text_tokenizer.encode("<image>")[-1]
@@ -680,7 +692,8 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         extend_instance(lang_encoder, FlamingoLMMixin)
         decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
         lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        lang_encoder.resize_token_embeddings(len(text_tokenizer))
+        if lang_encoder.__class__.__name__ != "MPTForCausalLM":
+            lang_encoder.resize_token_embeddings(len(text_tokenizer))
         self.lang_encoder = lang_encoder
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers if hasattr(config, "cross_attn_every_n_layers") else 4
@@ -730,7 +743,9 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
                 param.requires_grad = False
         # Unfreeze LM input embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
-        self.lang_encoder.lm_head.requires_grad_(True)
+        ## MPTForCausalLM is tied word embedding
+        if self.lang_encoder.__class__.__name__ != "MPTForCausalLM":
+            self.lang_encoder.lm_head.requires_grad_(True)
         # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
         print(f"Trainable param: {sum(p.numel() for p in self.parameters() if p.requires_grad)}")
 

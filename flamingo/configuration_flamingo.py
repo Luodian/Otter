@@ -10,6 +10,9 @@ import sys
 # sys.path.append("/mnt/lustre/yhzhang/Otter/")
 from falcon.configuration_RW import RWConfig
 
+from mpt.configuration_mpt import MPTConfig
+
+
 logger = logging.get_logger(__name__)
 
 
@@ -63,7 +66,13 @@ class FlamingoConfig(PretrainedConfig):
             logger.info("text_config is None. Initializing the text config with default values.")
 
         self.vision_config = CLIPVisionConfig(**vision_config)
-        self.text_config = RWConfig(**text_config)
+        # for mpt
+        if text_config['architectures'][0] = "MPTForCausalLM":
+            self.text_config = MPTConfig(**text_config)
+        elif text_config['architectures'][0] = "RWForCausalLM":
+            self.text_config = RWConfig(**text_config)
+        else:
+            import pdb;pdb.set_trace()
         self.cross_attn_every_n_layers = cross_attn_every_n_layers
         self.use_media_placement_augmentation = use_media_placement_augmentation
 
