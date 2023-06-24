@@ -278,9 +278,12 @@ def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold):
 
         # Check if the image is in palette mode and has transparency
         if image.mode == "P":
-            alpha = image.getchannel("A")
-            if alpha.mode == "L":
-                image = image.convert("RGBA")
+            try:
+                alpha = image.getchannel("A")
+                if alpha.mode == "L":
+                    image = image.convert("RGBA")
+            except ValueError:
+                pass
 
         image = image.convert("RGB")
 
