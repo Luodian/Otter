@@ -312,12 +312,6 @@ def main():
 
     device_id = accelerator.device
 
-    # print(device_id)
-
-    # print(torch.cuda.current_device())
-
-    # exit()
-
     random_seed(args.seed)
 
     if args.pretrained_model_name_or_path is not None:
