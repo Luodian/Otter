@@ -453,7 +453,7 @@ class FlamingoLMMixin(nn.Module):
         #     (random.random() < 0.5) if self.use_media_placement_augmentation else False
         # )
         attend_previous = self.only_attend_previous
-        
+
         if self.__class__.__name__ != "MPTForCausalLM":
             for layer in self.get_decoder().layers:
                 layer.condition_media_locations(media_locations)
@@ -461,7 +461,7 @@ class FlamingoLMMixin(nn.Module):
         else:
             for layer in self.get_decoder().blocks:
                 layer.condition_media_locations(media_locations)
-                layer.condition_attend_previous(attend_previous)          
+                layer.condition_attend_previous(attend_previous)
         return super().forward(*input, **kwargs)  # Call the other parent's forward method
 
     def is_conditioned(self) -> bool:

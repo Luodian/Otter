@@ -483,7 +483,9 @@ class OtterLMMixin(nn.Module):
         # )
         attend_previous = self.only_attend_previous
 
-        import pdb;pdb.set_trace()
+        import pdb
+
+        pdb.set_trace()
         for layer in self.get_decoder().layers:
             layer.condition_media_locations(media_locations)
             layer.condition_attend_previous(attend_previous)

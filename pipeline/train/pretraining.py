@@ -35,6 +35,7 @@ from accelerate import Accelerator, init_empty_weights
 import sys
 
 import os
+
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -215,7 +216,7 @@ def main():
         help="path to c4 shards, this should be a glob pattern such as /path/to/shards/shard-{0000..0999}.tar",
     )
     parser.add_argument("--train_num_samples_mmc4", type=int, default=10)
-    parser.add_argument("--batch_size_mmc4", type=int, default=128)
+    parser.add_argument("--batch_size_mmc4", type=int, default=2)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--dataset_resampled", action="store_true")
     parser.add_argument(
@@ -311,6 +312,12 @@ def main():
 
     device_id = accelerator.device
 
+    # print(device_id)
+
+    # print(torch.cuda.current_device())
+
+    # exit()
+
     random_seed(args.seed)
 
     if args.pretrained_model_name_or_path is not None:
@@ -322,9 +329,10 @@ def main():
                 local_files_only=args.offline,
             )
         elif "flamingo" in args.pretrained_model_name_or_path:
+            # import pdb;pdb.set_trace()
             model = FlamingoForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
-                device_map="auto",
+                device_map={"": device_id},
                 local_files_only=args.offline,
             )
             model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
@@ -413,7 +421,7 @@ def main():
             # model.save_pretrained(f"/mnt/petrelfs/share_data/zhangyuanhan/flamingo-falcon/")
     if model.lang_encoder.__class__.__name__ != "MPTForCausalLM":
         model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
-    
+
     args.tokenizer = model.text_tokenizer
     tokenizer = model.text_tokenizer
     random_seed(args.seed, args.rank)
@@ -441,8 +449,8 @@ def main():
             {"params": params_without_wd, "weight_decay": 0.0},
         ]
 
-    total_training_steps = ((args.train_num_samples_mmc4) // (args.batch_size_mmc4 * args.world_size)) * args.num_epochs
-    import pdb;pdb.set_trace()
+    # total_training_steps = ((args.train_num_samples_mmc4) // (args.batch_size_mmc4 * args.world_size)) * args.num_epochs
+    total_training_steps = mmc4_dataset.dataloader.num_batches * args.num_epochs
 
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
@@ -499,7 +507,6 @@ def main():
     for epoch in range(resume_from_epoch, args.num_epochs):
         mmc4_dataset.set_epoch(epoch)
         mmc4_loader = mmc4_dataset.dataloader
-
 
         train_one_epoch(
             args=args,
