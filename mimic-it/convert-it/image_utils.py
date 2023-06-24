@@ -39,17 +39,18 @@ def resize_image(image, target_size=(224, 224)):
     return image
 
 
-def process_image(img: Image.Image):
+def process_image(img: bytes):
     """
     Processes the input image by resizing it, converting it to RGB mode, and encoding it as base64.
 
     Args:
-        image (PIL.Image.Image): The input image to be processed.
+        image (bytes): The input image to be processed.
 
     Returns:
         str: The base64 encoded string representation of the processed image.
     """
-    resized_img = resize_image(img)
+    with Image.open(BytesIO(img)) as img:
+        resized_img = resize_image(img)
     if resized_img.mode != "RGB":
         resized_img = resized_img.convert("RGB")
     buffer = BytesIO()
@@ -58,12 +59,12 @@ def process_image(img: Image.Image):
     return img_base64
 
 
-def get_json_data(images: dict[str, Image.Image], dataset_name: str, num_thread: int) -> dict[str, str]:
+def get_json_data(images: dict[str, bytes], dataset_name: str, num_thread: int) -> dict[str, str]:
     """
     Converts a dictionary of images to a JSON-compatible dictionary with base64 encoded strings.
 
     Args:
-        images (Dict[str, Image.Image]): A dictionary of images, where the keys are image identifiers and the values are PIL.Image.Image objects.
+        images (Dict[str, Image.Image]): A dictionary of images, where the keys are image identifiers and the values are byte strings.
         dataset_name (str): The name of the dataset.
         num_threads (int): The number of threads to use for processing the images.
 
@@ -101,7 +102,7 @@ def frame_video(video_file: str, fps=1):
         fps (int): The frame rate at which frames should be extracted. Defaults to 1 frame per second.
 
     Returns:
-        List[Image]: A list of PIL.Image.Image objects representing the extracted frames.
+        List[byte]: A list of byte strings representing the extracted frames.
     """
     if not os.path.exists(video_file):
         raise FileNotFoundError(f"Video file {video_file} does not exist.")
@@ -122,7 +123,8 @@ def frame_video(video_file: str, fps=1):
         if frame_count % (video_fps // fps) == 0:
             # convert frame to base64
             _, buffer = cv2.imencode(".jpg", frame)
-            frames.append(resize_image(Image.open(BytesIO(buffer))))
+            with Image.open(BytesIO(buffer)) as img:
+                frames.append(process_image(img.tobytes()))
             saved_frame_count += 1
 
         frame_count += 1

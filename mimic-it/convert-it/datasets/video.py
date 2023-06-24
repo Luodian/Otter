@@ -151,7 +151,8 @@ class TVCaptions(AbstractDataset):
                     image_id = f"{clip_name}_{image_name}"
                 else:
                     image_id = f"{frame_name}_{clip_name}_{image_name}"
-                images[image_id] = resize_image(Image.open(frame))
+                with Image.open(frame) as img:
+                    images[image_id] = resize_image(img).tobytes()
             return images
 
         frames = glob(os.path.join(image_path, "*"))

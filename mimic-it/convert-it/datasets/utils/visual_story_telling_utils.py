@@ -14,14 +14,12 @@ def get_url(image: dict[str]):
         return image["url_m"]
 
 
-def download_single_image(image: dict[str]):
+def download_single_image(image: dict[str]) -> tuple[str, bytes]:
     url = get_url(image)
     id = image["id"]
     pic = requests.get(url)
-    return (
-        id,
-        resize_image(Image.open(BytesIO(pic.content))),
-    )
+    with Image.open(BytesIO(pic.content)) as img:
+        return id, resize_image(img).tobytes()
 
 
 def download(images: list[dict[str]], num_threads: int):

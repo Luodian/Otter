@@ -5,6 +5,7 @@ from abstract_dataset import AbstractDataset
 from PIL import Image
 from tqdm import tqdm
 from glob import glob
+from concurrent.futures import ThreadPoolExecutor
 from image_utils import create_folder
 
 
@@ -28,7 +29,7 @@ class SpotTheDifference(AbstractDataset):
         """
         super().__init__(name, short_name, image_path, num_threads)
 
-    def _load_images(self, image_path: str, num_thread: int) -> dict[str, Image.Image]:
+    def _load_images(self, image_path: str, num_thread: int) -> dict[str, bytes]:
         """
         Loads the images from the dataset.
 
@@ -45,7 +46,7 @@ class SpotTheDifference(AbstractDataset):
             image_name = file_name.split("/")[-1].split(".")[0]
             id = image_name.split("_")[0]
             names.add(id)
-        ids = list(sorted(list(names)))[:5]
+        ids = list(sorted(list(names)))
 
         jpgs_path = glob(os.path.join(image_path, "*.jpg"))
         jpegs_path = glob(os.path.join(image_path, "*.jpeg"))
@@ -69,8 +70,9 @@ class SpotTheDifference(AbstractDataset):
                 # print("===================================", file_name)
                 raise Exception("File not found")
 
-        def read_image(file_name) -> Image.Image:
-            return Image.open(file_name)
+        def read_image(file_name) -> bytes:
+            with open(file_name, "rb") as f:
+                return f.read()
 
         file_not_found = []
 
@@ -91,5 +93,56 @@ class SpotTheDifference(AbstractDataset):
         create_folder("log")
         with open("log/file_not_found.log", "w") as f:
             json.dump(file_not_found, f, indent=4)
+
+        return images
+
+
+class CocoGeneralDifference(AbstractDataset):
+    def __init__(
+        self,
+        name: str = "CocoGeneralDifference",
+        short_name="CGD",
+        *,
+        image_path: str,
+        num_threads: int,
+    ):
+        """
+        Initializes a SpotTheDifference dataset.
+
+        Args:
+            name (str): The name of the dataset. Defaults to "CocoGeneralDifference".
+            short_name (str): The short name of the dataset. Defaults to "CGD".
+            image_path (str): The path containing the dataset images, downloaded from http://images.cocodataset.org/zips/train2017.zip.
+            num_threads (int): The number of threads to use for processing the images.
+        """
+        super().__init__(name, short_name, image_path, num_threads)
+
+    def _load_images(self, image_path: str, num_thread: int) -> dict[str, bytes]:
+        """
+        Loads the images from the dataset.
+
+        Args:
+            image_path (str): The path to the dictionary containing the dataset images.
+            num_threads (int): The number of threads to use for processing the images.
+
+        Returns:
+            dict[str, Image.Image]: A dictionary where the keys are image identifiers and the values are PIL.Image.Image objects.
+        """
+        file_names = glob(os.path.join(image_path, "*"))
+
+        def read_image(file_name):
+            image_name = os.path.basename(file_name).split(".")[0]
+            with open(file_name, "rb") as f:
+                return image_name, f.read()
+
+        images = {}
+
+        pbar = tqdm(total=len(file_names), desc="Loading images", unit="image")
+
+        with ThreadPoolExecutor(max_workers=num_thread) as executor:
+            for image_name, image in executor.map(read_image, file_names):
+                images[image_name] = image
+                pbar.update(1)
+        pbar.close()
 
         return images

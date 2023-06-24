@@ -30,7 +30,7 @@ class EGO4D(AbstractDataset):
         """
         super().__init__(name, short_name, image_path, num_threads)
 
-    def _load_images(self, image_path: str, num_thread: int) -> dict[str, Image.Image]:
+    def _load_images(self, image_path: str, num_thread: int) -> dict[str, bytes]:
         """
         Loads the images from the dataset.
 
@@ -54,8 +54,10 @@ class EGO4D(AbstractDataset):
         final_images_dict = {}
 
         with ThreadPoolExecutor(max_workers=num_thread) as executor:
-            futures = [executor.submit(get_image, video_path) for video_path in video_paths]
-            for images_dict in tqdm(futures, desc="Processing videos into images", unit="video"):
-                final_images_dict.update(images_dict.result())
+            process_bar = tqdm(total=len(video_paths), unit="video", desc="Processing videos into images")
+            for images_dict in executor.map(get_image, video_paths):
+                final_images_dict.update(images_dict)
+                process_bar.update()
+            process_bar.close()
 
         return final_images_dict
