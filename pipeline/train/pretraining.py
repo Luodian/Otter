@@ -34,6 +34,9 @@ from accelerate import Accelerator, init_empty_weights
 
 import sys
 
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 
 # The flag below controls whether to allow TF32 on matmul. This flag defaults to False
 # in PyTorch 1.12 and later.
@@ -53,7 +56,7 @@ def train_one_epoch(
     args,
     model,
     epoch,
-    mmc4_loaders,
+    mmc4_loader,
     tokenizer,
     optimizer,
     lr_scheduler,
@@ -61,7 +64,7 @@ def train_one_epoch(
     accelerator,
     wandb,
 ):
-    num_batches_per_epoch = mmc4_loaders.num_batches
+    num_batches_per_epoch = mmc4_loader.num_batches
     total_training_steps = num_batches_per_epoch * args.num_epochs
 
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
@@ -77,7 +80,7 @@ def train_one_epoch(
 
     # loop through dataloader
     for num_steps, (batch_mmc4) in tqdm(
-        enumerate(mmc4_loaders),
+        enumerate(mmc4_loader),
         disable=args.rank != 0,
         total=total_training_steps,
         initial=(epoch * num_batches_per_epoch),
@@ -115,7 +118,6 @@ def train_one_epoch(
         labels.to(device_id)
 
         # with accelerator.accumulate(model):
-        # with autocast():
         with accelerator.autocast():
             loss_mmc4 = model(
                 vision_x=images,
@@ -172,7 +174,7 @@ def train_one_epoch(
 
                 wandb.log(
                     {
-                        "loss_mmc4": mean_loss.item(),
+                        "mean_loss": mean_loss.item(),
                         "global_step": global_step // args.gradient_accumulation_steps,
                     },
                     commit=True,
@@ -180,7 +182,7 @@ def train_one_epoch(
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
-            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {mean_loss.item():.3f}")
+            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Mean Loss: {mean_loss.item():.3f}")
 
 
 def main():
@@ -313,7 +315,7 @@ def main():
 
     if args.pretrained_model_name_or_path is not None:
         # TODO-Yuanhan: load customized models for pretraining
-        if "otter" in args.pretrained_model_name_or_path:
+        if "otter" in args.pretrained_model_name_or_path or "OTTER" in args.pretrained_model_name_or_path:
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
                 device_map="auto",
@@ -327,17 +329,16 @@ def main():
             )
             model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
 
-            ## The following code is used for intergrating MPT lanuage model and clip vision model into flamingo style model, the new model will be saved in /mnt/petrelfs/share_data/zhangyuanhan/flamingo-MPT/
-            ## You need to first prepare the config.json in /mnt/petrelfs/share_data/zhangyuanhan/flamingo-MPT/, and the text_config key in flamingo-MPT/config.json is from MPT-XB/config.json, others keys in flamingo-MPT/config.json are from flamingo_9b_hf/config, user need to build this config by yourself
-            ## The following code is used before the flamingo pre-training, after the flamingo-MPT model is saved, please comment here.
-            ## When using this code, please comment the following three lines in the modeling_flamingo.py, then uncomment them when pre-training is beginning.
-            ##      text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
-            ##      if text_tokenizer.pad_token is None:
-            ##          text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})"
+            # # The following code is used for intergrating MPT lanuage model and clip vision model into flamingo style model, the new model will be saved in /mnt/petrelfs/share_data/zhangyuanhan/flamingo-MPT/
+            # # You need to first prepare the config.json in /mnt/petrelfs/share_data/zhangyuanhan/flamingo-MPT/, and the text_config key in flamingo-MPT/config.json is from MPT-XB/config.json, others keys in flamingo-MPT/config.json are from flamingo_9b_hf/config, user need to build this config by yourself
+            # # The following code is used before the flamingo pre-training, after the flamingo-MPT model is saved, please comment here.
+            # # When using this code, please comment the following three lines in the modeling_flamingo.py, then uncomment them when pre-training is beginning.
+            # #      text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
+            # #      if text_tokenizer.pad_token is None:
+            # #          text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})"
 
             # config = FlamingoConfig.from_json_file("/mnt/petrelfs/share_data/zhangyuanhan/flamingo-mpt/config.json")
-            # with init_empty_weights():
-            #     model = FlamingoForConditionalGeneration(config=config)
+            # model = FlamingoForConditionalGeneration(config=config)
 
             # state_dict_1 = torch.load("/mnt/petrelfs/share_data/libo/mpt-7b-instruct/pytorch_model-00001-of-00002.bin", map_location="cpu")
             # state_dict_2 = torch.load("/mnt/petrelfs/share_data/libo/mpt-7b-instruct/pytorch_model-00002-of-00002.bin", map_location="cpu")
@@ -366,9 +367,9 @@ def main():
             #         save_state_dict_1,
             #         False,
             #     )
-            # print(_[0])
             # print(_[1])
-            # # model.save_pretrained(f"/mnt/petrelfs/share_data/zhangyuanhan/flamingo-mpt/")
+            # model.save_pretrained(f"/mnt/petrelfs/share_data/zhangyuanhan/flamingo-mpt/")
+            # exit()
 
             # ## The following code is used for intergrating falcon lanuage model and clip vision model into flamingo style model, the new model will be saved in /mnt/petrelfs/share_data/zhangyuanhan/flamingo-falcon/
             # ## You need to first prepare the config.json in /mnt/petrelfs/share_data/zhangyuanhan/flamingo-falcon/, and the text_config key in flamingo-falcon/config.json is from falcon-XB/config.json, others keys in flamingo-falcon/config.json are from flamingo_9b_hf/config, user need to build this config by yourself
@@ -410,18 +411,17 @@ def main():
             #     )
             # print(_[1])
             # model.save_pretrained(f"/mnt/petrelfs/share_data/zhangyuanhan/flamingo-falcon/")
-
-    model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
+    if model.lang_encoder.__class__.__name__ != "MPTForCausalLM":
+        model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
+    
     args.tokenizer = model.text_tokenizer
     tokenizer = model.text_tokenizer
     random_seed(args.seed, args.rank)
 
     print(f"Start running training on rank {args.rank}.")
 
-    # device_id = args.rank % torch.cuda.device_count()
     image_processor = CLIPImageProcessor()
     mmc4_dataset = get_data(args, image_processor, tokenizer, "mmc4")
-    mmc4_loaders = mmc4_dataset.dataloader
 
     def get_grouped_params(model):
         params_with_wd, params_without_wd = [], []
@@ -442,7 +442,7 @@ def main():
         ]
 
     total_training_steps = ((args.train_num_samples_mmc4) // (args.batch_size_mmc4 * args.world_size)) * args.num_epochs
-    # total_training_steps = len(mmc4_dataset[0]) * args.num_epochs
+    import pdb;pdb.set_trace()
 
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
@@ -493,12 +493,13 @@ def main():
             config=vars(args),
         )
 
-    model, optimizer, lr_scheduler, mmc4_loaders = accelerator.prepare(model, optimizer, lr_scheduler, mmc4_loaders)
+    model, optimizer, lr_scheduler = accelerator.prepare(model, optimizer, lr_scheduler)
     model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
-        # for cur_data_loader in mmc4_loaders:
-        #     cur_data_loader.dataset.set_epoch(epoch)
+        mmc4_dataset.set_epoch(epoch)
+        mmc4_loader = mmc4_dataset.dataloader
+
 
         train_one_epoch(
             args=args,
@@ -507,7 +508,7 @@ def main():
             tokenizer=tokenizer,
             optimizer=optimizer,
             lr_scheduler=lr_scheduler,
-            mmc4_loaders=mmc4_loaders,
+            mmc4_loader=mmc4_loader,
             accelerator=accelerator,
             device_id=device_id,
             wandb=wandb,

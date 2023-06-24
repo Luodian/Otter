@@ -453,11 +453,15 @@ class FlamingoLMMixin(nn.Module):
         #     (random.random() < 0.5) if self.use_media_placement_augmentation else False
         # )
         attend_previous = self.only_attend_previous
-
-        for layer in self.get_decoder().layers:
-            layer.condition_media_locations(media_locations)
-            layer.condition_attend_previous(attend_previous)
-
+        
+        if self.__class__.__name__ != "MPTForCausalLM":
+            for layer in self.get_decoder().layers:
+                layer.condition_media_locations(media_locations)
+                layer.condition_attend_previous(attend_previous)
+        else:
+            for layer in self.get_decoder().blocks:
+                layer.condition_media_locations(media_locations)
+                layer.condition_attend_previous(attend_previous)          
         return super().forward(*input, **kwargs)  # Call the other parent's forward method
 
     def is_conditioned(self) -> bool:
@@ -670,9 +674,6 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
         # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
 
-        import pdb
-
-        pdb.set_trace()
         if config.text_config.architectures[0] == "MPTForCausalLM":
             text_tokenizer = AutoTokenizer.from_pretrained("/mnt/petrelfs/share_data/libo/mpt-7b-instruct")
             lang_encoder = MPTForCausalLM(config=config.text_config)
