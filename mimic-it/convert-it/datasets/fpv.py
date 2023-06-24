@@ -1,6 +1,5 @@
 import os
 
-from PIL import Image
 from glob import glob
 
 from abstract_dataset import AbstractDataset

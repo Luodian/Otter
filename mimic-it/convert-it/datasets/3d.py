@@ -1,5 +1,3 @@
-from PIL import Image
-
 from abstract_dataset import AbstractDataset
 
 

@@ -2,7 +2,6 @@ import os
 import json
 
 from abstract_dataset import AbstractDataset
-from PIL import Image
 from tqdm import tqdm
 from glob import glob
 from concurrent.futures import ThreadPoolExecutor

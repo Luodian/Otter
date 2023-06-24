@@ -1,6 +1,5 @@
 import os
 
-from PIL import Image
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 
