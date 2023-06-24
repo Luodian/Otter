@@ -92,10 +92,6 @@ def get_dataset_by_path(path: str, dataset_args: dict[str, str]) -> AbstractData
     module_path, dataset_name = path.split(".")
     module_path = "datasets." + module_path
 
-    # TODO:remove later, Print module and class names for debugging
-    print(f"Loading module: {module_path}")
-    print(f"Loading class: {dataset_name}")
-
     # Import the module and load the class
     imported_module = importlib.import_module(module_path)
     dataset_class = getattr(imported_module, dataset_name)

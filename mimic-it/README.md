@@ -1,108 +1,118 @@
 <p align="center" width="100%">
-<img src="./docs/mimicit_logo.png"  width="80%" height="80%">
+<img src="https://i.postimg.cc/sxy8v9PS/mimicit-logo.png"  width="80%" height="80%">
 </p>
+
+- [🌳 MIMIC-IT Overview](#-mimic-it-overview)
+- [Using MIMIC-IT Dataset](#using-mimic-it-dataset)
+  - [Convert It](#convert-it)
+  - [Download It](#download-it)
+  - [Eggs (Coming Soon)](#eggs-coming-soon)
+- [Syphus: the hero behind MIMIC-IT](#syphus-the-hero-behind-mimic-it)
+  - [Syphus on your own dataset](#syphus-on-your-own-dataset)
+- [Multilingual Instruction-Response Pairs](#multilingual-instruction-response-pairs)
 
 ## 🌳 MIMIC-IT Overview
 
-High-quality instructions are essential for the zero-shot performance of large language models on interactive natural language tasks. For interactive vision-language tasks involving intricate visual scenes, a large quantity of diverse and creative instructions should be imperative to tune vision-language models (VLMs). Nevertheless, the current availability of vision-language instructions in terms of quantity, diversity, and creativity remains limited, posing challenges to the generalization of interactive VLMs. Here we present **MIMIC-IT**, a dataset comprising 2.8M multi-modal instructions-response pairs based on images and videos. Each instruction-response pair is accompanied by multi-modal in-context information, forming conversational contexts aimed at empowering VLMs in perception, reasoning, and planning. The instruction-response collection process, dubbed as **Syphus**, is scaled using an automatic annotation pipeline that combines human expertise with GPT's capabilities.
+MIMIC-IT offers a diverse and extensive dataset of 2.8M multimodal instruction-response pairs, designed to enhance the performance of Vision-Language Models (VLMs) in real-life scenarios, enabling VLMs to excel in perception, reasoning, and planning while also catering to a multilingual audience. 
 
-MIMIC-IT covers a vast array of real-life scenarios that empower Vision-Language Models (VLMs) to not only comprehend general scenes, but also to reason about context and astutely differentiate between observations. MIMIC-IT also enables the application of egocentric visual assistant model that can serve that can answer your questions like **Hey, Do you think I left my keys on the table?**. In addition to English, MIMIC-IT is also multilingual, supporting Chinese, Korean, Japanese, German, French, Spanish, and Arabic, thereby allowing a larger global audience to altogether enjoy from the convenience brought about by advancements in artificial intelligence.
+MIMIC-IT enables the application of egocentric visual assistant model that can serve that can answer your questions like **Hey, Do you think I left my keys on the table?**. Harness the power of MIMIC-IT to unlock the full potential of your AI-driven visual assistant and elevate your interactive vision-language tasks to new heights.
+
+MIMIC-IT provides multilingual instructions, supporting English, Chinese, Korean, Japanese, German, French, Spanish, and Arabic, thereby allowing a larger global audience to altogether enjoy from the convenience brought about by advancements in artificial intelligence.
 
 <p align="center" width="100%">
-<img src="https://i.postimg.cc/4x66gHhw/mimic-it.jpg"  width="80%" height="80%">
+<img src="https://i.postimg.cc/4x66gHhw/mimic-it.jpg"  width="100%" height="100%">
 </p>
 
-## Dataset Statistics
+## Using MIMIC-IT Dataset
+
+You can following the steps to obtain the MIMIC-IT dataset. Each task (e.g. `DC`, `LA`) in MIMIC-IT is composed of three parts, including:
+1. `xx.json` file: the images in base64 format.
+2. `xx_instructions.json` file: the instruction-response pairs (also includes image ids and related instructions ids for each instruction-response pair) for each task.
+3. `xx_train.json` file: the customized related instruction-response pairs for each instruction.
+
+The following steps will introduce you how to gather them together.
+
+### Convert It
+
+You may need to refer to the [Convert-It](./convert-it/README.md) to convert the image sources from public dataset to the format of `xx.json`. If you find it is hard to download from the original image sources, you can refer to the [Eggs](#eggs) section to seek help there.
+
+### Download It
+
+You can download the `instructions.json` and `train.json` files, from our provided [OneDrive folder](https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/Eo9bgNV5cjtEswfA-HfjNNABiKsjDzSWAl5QYAlRZPiuZA?e=M9isDT).
+
+| Tasks/Scenes | Zip File MD5 Checksum | Unzipped File Size |
+| :--- | :---: | :---: |
+| **LA-In-Context**  | fdc2427451bcfd8a04bab7a1c2305259 | 338 MB |
+| **DC** | 0d373a5f511fd1d9f03ac81bb12e04fe | 171 MB | 
+| **TVC** | 122b5cb0bd51c658625b7ea8c7d8c04c | 230 MB |
+| **VST** | 988569e39aaa24da0df547644514b0d4 | 32 MB |
+| **SN** | 1c4751c5b2c0bcaaeb94dbc5fb39e7a6 | 8 MB |
+| **SD (General Diff)** | TBD | 81 MB |
+| **SD (Subtle Diff)** | 5175198daebb997672a21307e8b18a96 | 5 MB |
+| **E4D (1st Part)** | 504b779dbc852c943adbe7862d6924d7 | 710 MB/3.2 GB |
+
+After downloading, unzip the files and place them in the `mimicit_data` folder. The folder structure should be as follows:
+
+```bash
+mimicit_data/DC/DC_instructions.json
+mimicit_data/DC/DC_train.json
+```
+The `DC_instructions.json` includes a meta object with version, time, and author information. The data object contains instruction-response pairs, each with a unique identifier (e.g., "DC_INS_00001"). Each pair consists of an instruction, an answer, an array of associated image IDs, and an array of related instruction IDs (which can be arranged as in-context examples).
+```json
+{   
+    "meta":{"virson":"0.0.1","time":"2023-06","author":"ntu"},
+    "data": {
+        "DC_INS_00001": {
+            "instruction":"Who is the main focus of the video?",
+            "answer":"The main focus of the video is a police officer riding a horse down the street.",
+            "image_ids":["DC_IMG_v_N1c3C_Npr-E_0000","DC_IMG_v_N1c3C_Npr-E_0001","DC_IMG_v_N1c3C_Npr-E_0002",..."],
+            "rel_ins_ids":["DC_INS_00002","DC_INS_00003","DC_INS_00004","DC_INS_00005","DC_INS_00006","DC_INS_00007","DC_INS_00008"]
+        },
+    }
+    ...
+}  
+```
+
+The `DC_train.json` contains instructions IDs and their associated related instruction IDs. Each instruction is associated with its related instructions. We provide it for more flexibly define each instruction's related instructions. It serves for different in-context learning objectives. In default, the related instructions ids are from `rel_ins_ids` at `DC_instructions.json`. But you can define your own related instructions ids for each instruction by just creating your own `DC_train.json` file.
+
+```json
+{
+    "DC_INS_00001": ["DC_INS_00002", "DC_INS_00003", "DC_INS_00004", "DC_INS_00005", "DC_INS_00006", "DC_INS_00007", "DC_INS_00008"],
+    ...
+}
+```
+
+### Eggs (Coming Soon)
+
+Things could be tricky since some image/video sources are not easy to get the access to download them. We also provide the converted `xx.json` files for you to download directly. You need to agree the same terms and conditions as the original dataset, as well as recognize and appreciate the contributions made by these data sources. Please refer to [Google form]() to apply for the access to download the converted `xx.json` files.
+
+<!-- ### Dataset Statistics
 
 | **Visual Sources (Scenes)** | **In-context** | **#Clips/Images** | **#Uni. Inst.** | **#Instances** |  
 |---------------------------|----------------|------------------|-----------------|----------------|  
 | COCO (General) | lang./vis. | - / 81K | 261K | 345K |  
-| SD~(Surveillance) | lang./vis. | - / 9K | 10K | 15K  |  
-| SN~(Indoor Ego.) | lang./vis. | - / 0.5K | 4.8K | 6K  |  
-| DC~(General) | lang./vis. | 16K / 1M | 40K | 62K  |  
-| VIST~(Story) | lang./vis. | - / 16K | 32K | 33K  |  
-| TVC~(TV) | lang./vis. | 86K / 577K | 86K | 92K  |  
-| E4D~(General Ego.) | lang./vis. | 400K / 6.4M | 1.8M | 2.4M  |  
-| Total | lang./vis. | 502K / 8.1M | 2.2M | 2.8M |  
-
-## Download Links
-
-The initial release includes LA and DC instruction-response pairs for the MIMIC-IT dataset. We plan to release additional datasets with a larger number of instruction pairs and more information after further examination.
-
-We are contacting the image sources (those public datasets we used) to ask if we can directly release their image/video data in our Otter training format (base64 format within a large JSON file), we will put these data in following link if there would not be any legal/license issue. 
-
-This process may take some time. If you are interested in using this data, please leave an issue in this repository or email drluodian@gmail.com, and we will keep you updated.
-
-Additionally, we are in the process of providing the scripts used to convert public dataset images and extract specific frames from corresponding videos into the MIMIC-IT input format. This will help map the original dataset to our annotations UUIDs (e.g. from COCO's `000000215677.jpg` -> ours `LA_00_IMG_000000215677`).
-
-
-| Scenes | Images/Videos | Size | Annotations | Size |
-| :--- | :---: | :---: | :---: | :---: |
-| **LA In-context** | Processing | 5.2GB |[link](https://entuedu-my.sharepoint.com/:u:/r/personal/libo0013_e_ntu_edu_sg/Documents/MIMIC-IT-Release/LA_instructions.json.zip?csf=1&web=1&e=SvaKh3) | 269.3MB |
-| **Dense Caption** | Processing | 86.4GB |[link](https://entuedu-my.sharepoint.com/:u:/r/personal/libo0013_e_ntu_edu_sg/Documents/MIMIC-IT-Release/DC_instructions.json.zip?csf=1&web=1&e=jM4gGB) | 269.1MB | 
-| **TV Caption** | Processing | 17.0GB | Cleaning | 55.6MB |
-| **Visual Story Telling** | Processing | 16.2GB |Cleaning | 33.4MB |
-| **Scene Navigation (Indoor Event Planning)** | Processing | 2.3GB |Cleaning | 7.6MB |
-| **Spot The Difference (COCO's General Difference)** | Processing | 5.2GB |Cleaning | 80.5MB |
-| **Spot The Difference (Subtle Difference)** | Processing | 3.1GB |Cleaning | 5.0MB |
-| **EGO4D** | Processing | ~500GB |Cleaning | 3.2GB |
-
-The data is available on [NTU-Onedrive](https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/Eo9bgNV5cjtEswfA-HfjNNABL6Eazh7Fm1dX5VlI0Bqsrg?e=cMvZ1a). The JSON files are compressed into ZIP files to save space. After downloading, unzip the files and verify the MD5 checksums to ensure their integrity. The MD5 Checksums for the released annotations are:
-
-1. LA_instructions.json (json not the zip file) -> f9bc559391d15727b35f3df306b12e31
-2. DC_instructions.json -> bb0d1f9f7d100c99869f79d13b3a3beb
-
-The MIMIC-IT dataset is stored in the following format:
-```json
-{  
-  "meta": {  
-    "version": "0.0.1",  
-    "time": "2023-06",  
-    "author": "ntu"  
-  },  
-  "data": {  
-    "DC_04_INS_00001": {  
-      "instruction": "Who is the main focus of the video?",  
-      "answer": "The main focus of the video is a police officer riding a horse down the street.",  
-      "image_ids": [  
-        "DC_04_IMG_v_N1c3C_Npr-E_0000",  
-        "DC_04_IMG_v_N1c3C_Npr-E_0001",  
-        ...  
-        "DC_04_IMG_v_N1c3C_Npr-E_0067"  
-      ],  
-      "rel_ins_ids": [  
-        "DC_04_INS_00002",  
-        "DC_04_INS_00003",  
-        ...  
-        "DC_04_INS_00008"  
-      ]  
-    },  
-    ...  
-  }  
-}  
-```
-
-This JSON file includes a meta object with version, time, and author information. The data object contains instruction-response pairs, each with a unique identifier (e.g., "DC_04_INS_00001"). Each pair consists of an instruction, an answer, an array of associated image IDs, and an array of related instruction IDs (which can be arranged as in-context examples).
-
-## Multilingual Instruction-Response Pairs
-
-We will release  multilingual instruction-response pairs in the following languages:
-
-<p align="center" width="100%">
-<img src="https://i.postimg.cc/nLwQtfZ1/multilingual.png"  width="80%" height="80%">
-</p>
-
-## Syphus Overview
+| SD (Surveillance) | lang./vis. | - / 9K | 10K | 15K  |  
+| SN (Indoor Ego.) | lang./vis. | - / 0.5K | 4.8K | 6K  |  
+| DC (General) | lang./vis. | 16K / 1M | 40K | 62K  |  
+| VIST (Story) | lang./vis. | - / 16K | 32K | 33K  |  
+| TVC (TV) | lang./vis. | 86K / 577K | 86K | 92K  |  
+| E4D (General Ego.) | lang./vis. | 400K / 6.4M | 1.8M | 2.4M  |  
+| Total | lang./vis. | 502K / 8.1M | 2.2M | 2.8M |   -->
+## Syphus: the hero behind MIMIC-IT
 
 <p align="center" width="100%">
 <img src="https://i.postimg.cc/RCGp0vQ1/syphus.png"  width="80%" height="80%">
 </p>
 
-Syphus, an automated pipeline for generating high-quality instruction-response pairs in multiple languages. Building upon the framework proposed by LLaVA, we utilize ChatGPT to generate instruction-response pairs based on visual content. To ensure the quality of the generated instruction-response pairs, our pipeline incorporates system messages, visual annotations, and in-context examples as prompts for ChatGPT. System messages define the desired tone and style of the generated instruction-response pairs, while visual annotations provide essential image information such as bounding boxes and image descriptions. In-context examples assist ChatGPT in learning within the context.  During cold-start stage, in-context examples are collected by prompting ChatGPT solely through system messages and visual annotations, employing a heuristic approach. This stage concludes only when a satisfactory in-context examples are identified. In step 4, once the instruction-response pairs are obtained, the pipeline expands them into Chinese (zh), Japanese (ja), Spanish (es), German (de), French (fr), Korean (ko), and Arabic (ar).
+Embracing Syphus, an automated pipeline that generates top-tier instruction-response pairs in various languages. 
 
-## Syphus on your own dataset
+Syphus builds on the LLaVA framework and uses ChatGPT to produce pairs based on visual content. It ensures quality by incorporating system messages for tone and style, visual annotations for essential image information, and in-context examples to assist ChatGPT in contextual learning. During the cold-start stage, in-context examples are collected using a heuristic approach with system messages and visual annotations. This stage concludes only when a satisfactory in-context examples are identified.
 
-We provide source code of the framework in [syphus](Syphus) folder. You can use it to generate instruction-response pairs on your own dataset following the steps below.
+Finally, the pipeline expands the instruction-response pairs into languages like Chinese, Japanese, Spanish, German, French, Korean, and Arabic.
+
+### Syphus on your own dataset
+
+We provide source code of the framework in [syphus](./syphus/) folder. You can use it to generate instruction-response pairs on your own dataset following the steps below.
 
 1. Configure openai key. Create the following environment variables in your system.
 
@@ -127,7 +137,13 @@ export OPENAI_API_ENGINE="chatgpt0301"
 6. You are done! Run the following command to generate instruction-response pairs on your own dataset.
 
 ``` bash
-python  main.py --name YourDataset.your_dataset --num_threads 4
+python  main.py --name YourDataset.your_dataset --num_threads 64
 ```
 
-## 📝 Citation
+## Multilingual Instruction-Response Pairs
+
+We will release  multilingual instruction-response pairs in the following languages:
+
+<p align="center" width="100%">
+<img src="https://i.postimg.cc/nLwQtfZ1/multilingual.png"  width="80%" height="80%">
+</p>

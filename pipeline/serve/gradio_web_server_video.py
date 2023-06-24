@@ -255,9 +255,9 @@ def add_text(
         text = DEFAULT_IMAGE_TOKEN + text
         image_3 = get_image(image_3)
 
-    # if image_3 is not None and state is not None:
-    #     state = conv_templates[template_name].copy()
-    #     logger.info(f"TEMPLATE. {state}")
+    if image_3 is not None and state is not None:
+        state = conv_templates[template_name].copy()
+        logger.info(f"TEMPLATE. {state}")
 
     if text_demo_answer_2 != "":
         if text.startswith(DEFAULT_IMAGE_TOKEN):
