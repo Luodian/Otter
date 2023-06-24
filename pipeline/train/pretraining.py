@@ -4,37 +4,24 @@ import argparse
 import glob
 import os
 import random
+import time
 
 import numpy as np
 import torch
+import torch.distributed as dist
 import torch.nn
+from accelerate import Accelerator, DistributedType
+from tqdm import tqdm
+from transformers import CLIPImageProcessor, get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup, get_linear_schedule_with_warmup
+
 import wandb
+from flamingo.configuration_flamingo import FlamingoConfig
+from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
+from otter.modeling_otter import OtterForConditionalGeneration
+from pipeline.mimicit_utils.arguments import add_data_args
 from pipeline.train.data import get_data
 from pipeline.train.distributed import world_info_from_env
-from transformers import (
-    get_constant_schedule_with_warmup,
-    get_cosine_schedule_with_warmup,
-    get_linear_schedule_with_warmup,
-    CLIPImageProcessor,
-)
-
-from pipeline.train.train_utils import (
-    AverageMeter,
-    get_checkpoint,
-)
-
-from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
-from flamingo.configuration_flamingo import FlamingoConfig
-from otter.modeling_otter import OtterForConditionalGeneration
-from tqdm import tqdm
-import time
-
-from pipeline.mimicit_utils.arguments import add_data_args
-from accelerate import Accelerator, init_empty_weights
-
-import sys
-
-import os
+from pipeline.train.train_utils import AverageMeter, get_checkpoint
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -45,6 +32,119 @@ torch.backends.cuda.matmul.allow_tf32 = True
 
 # The flag below controls whether to allow TF32 on cuDNN. This flag defaults to True.
 torch.backends.cudnn.allow_tf32 = True
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--external_save_dir",
+        type=str,
+        default=None,
+        help="set to save model to external path",
+    )
+    parser.add_argument(
+        "--resume_from_checkpoint",
+        action="store_true",
+        help="Whether to resume from checkpoint, if set True, will load models from --external_save_dir",
+    )
+    parser.add_argument(
+        "--delete_previous_checkpoint",
+        action="store_true",
+        help="delete previous checkpoint when saving new checkpoint",
+    )
+    parser.add_argument(
+        "--run_name",
+        type=str,
+        default="otter_9b",
+        help="used to name saving directory and wandb run",
+    )
+    parser.add_argument(
+        "--mmc4_shards",
+        type=str,
+        help="path to c4 shards, this should be a glob pattern such as /path/to/shards/shard-{0000..0999}.tar",
+    )
+    parser.add_argument("--train_num_samples_mmc4", type=int, default=1000000)
+    parser.add_argument("--batch_size_mmc4", type=int, default=8)
+    parser.add_argument("--workers", type=int, default=8)
+    parser.add_argument("--dataset_resampled", action="store_true")
+    parser.add_argument(
+        "--mmc4_textsim_threshold",
+        default=0.32,
+        type=float,
+        help="threshold for filtering images in mmc4 based on image-text similarity",
+    )
+
+    parser.add_argument("--use_media_placement_augmentation", action="store_true")
+    parser.add_argument("--offline", action="store_true")
+    parser.add_argument("--num_epochs", type=int, default=1)
+    parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
+    # Sum of gradient optimization batch size
+
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
+    parser.add_argument(
+        "--pretrained_model_name_or_path",
+        type=str,
+        help="path to huggingface model or model identifier from local path or huggingface.co",
+        default=None,
+    )
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--learning_rate", default=1e-4, type=float)
+    parser.add_argument(
+        "--lr_scheduler",
+        default="constant",
+        type=str,
+        help="constant, linear, or cosine",
+    )
+    parser.add_argument("--warmup_steps", default=1000, type=int)
+    parser.add_argument("--warmup_steps_ratio", default=None, type=float)
+    parser.add_argument("--weight_decay", default=0.1, type=float)
+    parser.add_argument(
+        "--precision",
+        choices=["amp_bf16", "amp_bfloat16", "bf16", "amp", "fp16", "fp32"],
+        default="amp",
+        help="Floating point precision.",
+    )
+    # distributed training args
+    parser.add_argument(
+        "--dist-url",
+        default="env://",
+        type=str,
+        help="url used to set up distributed training",
+    )
+    parser.add_argument("--dist-backend", default="nccl", type=str, help="distributed backend")
+    parser.add_argument(
+        "--horovod",
+        default=False,
+        action="store_true",
+        help="Use horovod for distributed training.",
+    )
+    parser.add_argument(
+        "--no-set-device-rank",
+        default=False,
+        action="store_true",
+        help="Don't set device index from local rank (when CUDA_VISIBLE_DEVICES restricted to one per proc).",
+    )
+    # YH: Training detail
+    parser.add_argument("--mask_lm_head", action="store_true")
+    # this could potentially save 33GB of all model parameters for otter-9b, including the language and vision model.
+    parser.add_argument("--save_hf_model", default=False, action="store_true")
+    # wandb args
+    parser.add_argument("--report_to_wandb", default=False, action="store_true")
+    parser.add_argument(
+        "--wandb_project",
+        type=str,
+    )
+    parser.add_argument(
+        "--wandb_entity",
+        type=str,
+    )
+    parser.add_argument(
+        "--save_checkpoints_to_wandb",
+        default=False,
+        action="store_true",
+        help="save checkpoints to wandb",
+    )
+    return parser
 
 
 def random_seed(seed=42, rank=0):
@@ -187,116 +287,7 @@ def train_one_epoch(
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--external_save_dir",
-        type=str,
-        default=None,
-        help="set to save model to external path",
-    )
-    parser.add_argument(
-        "--resume_from_checkpoint",
-        action="store_true",
-        help="Whether to resume from checkpoint, if set True, will load models from --external_save_dir",
-    )
-    parser.add_argument(
-        "--delete_previous_checkpoint",
-        action="store_true",
-        help="delete previous checkpoint when saving new checkpoint",
-    )
-    parser.add_argument(
-        "--run_name",
-        type=str,
-        default="otter_9b",
-        help="used to name saving directory and wandb run",
-    )
-    parser.add_argument(
-        "--mmc4_shards",
-        type=str,
-        help="path to c4 shards, this should be a glob pattern such as /path/to/shards/shard-{0000..0999}.tar",
-    )
-    parser.add_argument("--train_num_samples_mmc4", type=int, default=10)
-    parser.add_argument("--batch_size_mmc4", type=int, default=2)
-    parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--dataset_resampled", action="store_true")
-    parser.add_argument(
-        "--mmc4_textsim_threshold",
-        default=0.32,
-        type=float,
-        help="threshold for filtering images in mmc4 based on image-text similarity",
-    )
-
-    parser.add_argument("--use_media_placement_augmentation", action="store_true")
-    parser.add_argument("--offline", action="store_true")
-    parser.add_argument("--num_epochs", type=int, default=1)
-    parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
-    # Sum of gradient optimization batch size
-
-    parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
-    parser.add_argument(
-        "--pretrained_model_name_or_path",
-        type=str,
-        help="path to huggingface model or model identifier from local path or huggingface.co",
-        default=None,
-    )
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--learning_rate", default=1e-4, type=float)
-    parser.add_argument(
-        "--lr_scheduler",
-        default="constant",
-        type=str,
-        help="constant, linear, or cosine",
-    )
-    parser.add_argument("--warmup_steps", default=1000, type=int)
-    parser.add_argument("--warmup_steps_ratio", default=None, type=float)
-    parser.add_argument("--weight_decay", default=0.1, type=float)
-    parser.add_argument(
-        "--precision",
-        choices=["amp_bf16", "amp_bfloat16", "bf16", "amp", "fp16", "fp32"],
-        default="amp",
-        help="Floating point precision.",
-    )
-    # distributed training args
-    parser.add_argument(
-        "--dist-url",
-        default="env://",
-        type=str,
-        help="url used to set up distributed training",
-    )
-    parser.add_argument("--dist-backend", default="nccl", type=str, help="distributed backend")
-    parser.add_argument(
-        "--horovod",
-        default=False,
-        action="store_true",
-        help="Use horovod for distributed training.",
-    )
-    parser.add_argument(
-        "--no-set-device-rank",
-        default=False,
-        action="store_true",
-        help="Don't set device index from local rank (when CUDA_VISIBLE_DEVICES restricted to one per proc).",
-    )
-    # YH: Training detail
-    parser.add_argument("--mask_lm_head", action="store_true")
-    # this could potentially save 33GB of all model parameters for otter-9b, including the language and vision model.
-    parser.add_argument("--save_hf_model", default=False, action="store_true")
-    # wandb args
-    parser.add_argument("--report_to_wandb", default=False, action="store_true")
-    parser.add_argument(
-        "--wandb_project",
-        type=str,
-    )
-    parser.add_argument(
-        "--wandb_entity",
-        type=str,
-    )
-    parser.add_argument(
-        "--save_checkpoints_to_wandb",
-        default=False,
-        action="store_true",
-        help="save checkpoints to wandb",
-    )
-
+    parser = parse_args()
     parser = add_data_args(parser)
     args = parser.parse_args()
 
@@ -312,121 +303,60 @@ def main():
 
     device_id = accelerator.device
 
-    # print(device_id)
-
-    # print(torch.cuda.current_device())
-
-    # exit()
-
     random_seed(args.seed)
-
     if args.pretrained_model_name_or_path is not None:
-        # TODO-Yuanhan: load customized models for pretraining
-        if "otter" in args.pretrained_model_name_or_path or "OTTER" in args.pretrained_model_name_or_path:
+        accelerator.print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
+        if "otter" in args.run_name.lower():
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
                 device_map="auto",
                 local_files_only=args.offline,
             )
-        elif "flamingo" in args.pretrained_model_name_or_path:
-            # import pdb;pdb.set_trace()
+            config = model.config
+        elif "flamingo" in args.run_name.lower():
             model = FlamingoForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
                 device_map={"": device_id},
                 local_files_only=args.offline,
             )
+            config = model.config
             model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+    else:
+        model = None
+        config = None
 
-            # # The following code is used for intergrating MPT lanuage model and clip vision model into flamingo style model, the new model will be saved in /mnt/petrelfs/share_data/zhangyuanhan/flamingo-MPT/
-            # # You need to first prepare the config.json in /mnt/petrelfs/share_data/zhangyuanhan/flamingo-MPT/, and the text_config key in flamingo-MPT/config.json is from MPT-XB/config.json, others keys in flamingo-MPT/config.json are from flamingo_9b_hf/config, user need to build this config by yourself
-            # # The following code is used before the flamingo pre-training, after the flamingo-MPT model is saved, please comment here.
-            # # When using this code, please comment the following three lines in the modeling_flamingo.py, then uncomment them when pre-training is beginning.
-            # #      text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
-            # #      if text_tokenizer.pad_token is None:
-            # #          text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})"
+    accelerator.wait_for_everyone()
+    # # Synchronize the model state across all the ranks
+    # if accelerator.state.distributed_type != DistributedType.NO:
+    #     # Broadcast the config from rank 0 to all other ranks
+    #     config = dist.broadcast(config, src=0)
 
-            # config = FlamingoConfig.from_json_file("/mnt/petrelfs/share_data/zhangyuanhan/flamingo-mpt/config.json")
-            # model = FlamingoForConditionalGeneration(config=config)
+    #     # Unwrap the model if it's wrapped by the accelerator
+    #     unwrapped_model = accelerator.unwrap_model(model) if model is not None else None
 
-            # state_dict_1 = torch.load("/mnt/petrelfs/share_data/libo/mpt-7b-instruct/pytorch_model-00001-of-00002.bin", map_location="cpu")
-            # state_dict_2 = torch.load("/mnt/petrelfs/share_data/libo/mpt-7b-instruct/pytorch_model-00002-of-00002.bin", map_location="cpu")
-            # state_dict_1.update(state_dict_2)
-            # del state_dict_2
-            # state_dict_3 = torch.load("/mnt/petrelfs/share_data/basemodel/checkpoints/multimodality/flamingo_9b_hf/pytorch_model-00004-of-00004.bin", map_location="cpu")
-            # for cur_key in list(state_dict_3.keys()):
-            #     if "vision_encoder" not in cur_key:
-            #         del state_dict_3[cur_key]
+    #     # Use a barrier to ensure all processes are ready for the broadcast
+    #     dist.barrier()
 
-            # _ = model.load_state_dict(
-            #         state_dict_3,
-            #         False,
-            #     )
-            # print(_[1])
+    #     # Initialize an empty model on non-rank 0 processes
+    #     if not accelerator.is_local_main_process:
+    #         if "otter" in args.run_name.lower():
+    #             unwrapped_model = OtterForConditionalGeneration(config)
+    #         elif "flamingo" in args.run_name.lower():
+    #             unwrapped_model = FlamingoForConditionalGeneration(config)
 
-            # save_state_dict_1 = {}
-            # for key in state_dict_1:
-            #     if ".blocks." in key:
-            #         _,_,layer_num,*remain_names = key.split(".")
-            #         target_key = f"transformer.blocks.{layer_num}.decoder_layer.{'.'.join(remain_names)}"
-            #     else:
-            #         target_key = key
-            #     save_state_dict_1[f"{target_key}"] = state_dict_1[key]
-            # _ = model.lang_encoder.load_state_dict(
-            #         save_state_dict_1,
-            #         False,
-            #     )
-            # print(_[1])
-            # model.save_pretrained(f"/mnt/petrelfs/share_data/zhangyuanhan/flamingo-mpt/")
-            # exit()
+    #     # Broadcast the model state from rank 0 to all other ranks
+    #     for tensor in unwrapped_model.state_dict().values():
+    #         dist.broadcast(tensor, src=0)
 
-            # ## The following code is used for intergrating falcon lanuage model and clip vision model into flamingo style model, the new model will be saved in /mnt/petrelfs/share_data/zhangyuanhan/flamingo-falcon/
-            # ## You need to first prepare the config.json in /mnt/petrelfs/share_data/zhangyuanhan/flamingo-falcon/, and the text_config key in flamingo-falcon/config.json is from falcon-XB/config.json, others keys in flamingo-falcon/config.json are from flamingo_9b_hf/config, user need to build this config by yourself
-            # ## The following code is used before the flamingo pre-training, after the flamingo-falcon model is saved, please comment here.
-            # ## When using this code, please comment the following three lines in the modeling_flamingo.py, then uncomment them when pre-training is beginning.
-            # ##      text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
-            # ##      if text_tokenizer.pad_token is None:
-            # ##          text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})"
+    #     # Wrap the model again using the accelerator
+    #     model = accelerator.prepare(unwrapped_model)
 
-            # config = FlamingoConfig.from_json_file("/mnt/petrelfs/share_data/zhangyuanhan/flamingo-falcon/config.json")
-            # model = FlamingoForConditionalGeneration(config=config)
-
-            # state_dict_1 = torch.load("/mnt/petrelfs/share_data/zhangyuanhan/falcon-7b/pytorch_model-00001-of-00002.bin", map_location="cpu")
-            # state_dict_2 = torch.load("/mnt/petrelfs/share_data/zhangyuanhan/falcon-7b/pytorch_model-00002-of-00002.bin", map_location="cpu")
-            # state_dict_1.update(state_dict_2)
-            # del state_dict_2
-            # state_dict_3 = torch.load("/mnt/petrelfs/share_data/basemodel/checkpoints/multimodality/flamingo_9b_hf/pytorch_model-00004-of-00004.bin", map_location="cpu")
-            # for cur_key in list(state_dict_3.keys()):
-            #     if "vision_encoder" not in cur_key:
-            #         del state_dict_3[cur_key]
-
-            # _ = model.load_state_dict(
-            #         state_dict_3,
-            #         False,
-            #     )
-            # print(_[1])
-
-            # save_state_dict_1 = {}
-            # for key in state_dict_1:
-            #     if ".h." in key:
-            #         _,_,layer_num,*remain_names = key.split(".")
-            #         target_key = f"transformer.h.{layer_num}.decoder_layer.{'.'.join(remain_names)}"
-            #     else:
-            #         target_key = key
-            #     save_state_dict_1[f"{target_key}"] = state_dict_1[key]
-            # _ = model.lang_encoder.load_state_dict(
-            #         save_state_dict_1,
-            #         False,
-            #     )
-            # print(_[1])
-            # model.save_pretrained(f"/mnt/petrelfs/share_data/zhangyuanhan/flamingo-falcon/")
     if model.lang_encoder.__class__.__name__ != "MPTForCausalLM":
         model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
 
     args.tokenizer = model.text_tokenizer
     tokenizer = model.text_tokenizer
     random_seed(args.seed, args.rank)
-
-    print(f"Start running training on rank {args.rank}.")
 
     image_processor = CLIPImageProcessor()
     mmc4_dataset = get_data(args, image_processor, tokenizer, "mmc4")
@@ -553,8 +483,6 @@ def main():
         )
         # save the config
         unwrapped_model.config.save_pretrained(args.external_save_dir)
-        # if model.can_generate():
-        #     model_to_save.generation_config.save_pretrained(args.external_save_dir)
 
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")

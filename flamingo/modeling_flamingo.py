@@ -11,9 +11,9 @@ from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 from einops import rearrange, repeat
 from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
-from falcon.modelling_RW import RWForCausalLM
+from flamingo.falcon.modelling_RW import RWForCausalLM
 
-from mpt.modeling_mpt import MPTForCausalLM
+from flamingo.mpt.modeling_mpt import MPTForCausalLM
 
 from .configuration_flamingo import FlamingoConfig
 
@@ -675,7 +675,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
 
         if config.text_config.architectures[0] == "MPTForCausalLM":
-            text_tokenizer = AutoTokenizer.from_pretrained("/mnt/petrelfs/share_data/libo/mpt-7b-instruct")
+            text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
             lang_encoder = MPTForCausalLM(config=config.text_config)
         elif config.text_config.architectures[0] == "RWForCausalLM":
             text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
@@ -751,7 +751,8 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         if self.lang_encoder.__class__.__name__ != "MPTForCausalLM":
             self.lang_encoder.lm_head.requires_grad_(True)
         # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
-        print(f"Trainable param: {sum(p.numel() for p in self.parameters() if p.requires_grad)}")
+        # print model size in billions of parameters in 2 decimal places
+        print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
 
     def forward(
         self,

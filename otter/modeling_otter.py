@@ -25,12 +25,14 @@ import torch.distributed as dist
 XFORMERS_AVAIL = False
 XFORMERS_MSG_PRINTED = False  # Add this global variable
 try:
-    import xformers.ops as xops
-    from xformers_model import CLIPVisionModel, LlamaForCausalLM
-    from transformers import LlamaTokenizer
+    if not XFORMERS_MSG_PRINTED:  # Check if the message has been printed before
+        import xformers.ops as xops
+        from xformers_model import CLIPVisionModel, LlamaForCausalLM
+        from transformers import LlamaTokenizer
 
-    _xformers_version = importlib_metadata.version("xformers")
-    print(f"Successfully imported xformers version {_xformers_version}")
+        _xformers_version = importlib_metadata.version("xformers")
+        if dist.is_initialized() and dist.get_rank() == 0:  # Check if the current process rank is 0
+            print(f"Successfully imported xformers version {_xformers_version}")
 except ImportError as e:
     if not XFORMERS_MSG_PRINTED:  # Check if the message has been printed before
         from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
@@ -482,9 +484,6 @@ class OtterLMMixin(nn.Module):
         # )
         attend_previous = self.only_attend_previous
 
-        import pdb
-
-        pdb.set_trace()
         for layer in self.get_decoder().layers:
             layer.condition_media_locations(media_locations)
             layer.condition_attend_previous(attend_previous)

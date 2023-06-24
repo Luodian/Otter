@@ -10,17 +10,17 @@ import csv
 
 
 # cur_file = "/mnt/lustre/yhzhang/data/LLaVA-Instruct-150K/complex_reasoning_77k.json"
-cur_file = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/conversation_58k.json"
+cur_file = "./data/LLaVA-Instruct-150K/conversation_58k.json"
 # cur_file = "/mnt/lustre/yhzhang/data/LLaVA-Instruct-150K/detail_23k.json"
 
 with open(cur_file) as f:
     cur_file = json.load(f)
 
 
-target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACONV_instructions.json"
-# target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json"
-# target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json"
-# target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
+target_json_path = "./data/LLaVA-Instruct-150K/LA/LACONV_instructions.json"
+# target_json_path = "./data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json"
+# target_json_path = "./data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json"
+# target_json_path = "./data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
 
 
 target_json = {}
