@@ -130,7 +130,23 @@ The output will be saved in `output/SD.json`.
 
 ## Spot The Difference (COCO General Difference Version)
 
-TBD
+Download the COCO 2017 train dataset from [COCO website](http://images.cocodataset.org/zips/train2017.zip), let `<image_path>` be the path of the dataset.
+
+The folder structure should be like this:
+
+```plain
+<image_path>/
+    <image>.jpg
+    ...
+```
+
+Run the following command:
+
+```bash
+python main.py --name=change.CocoGeneralDifference --image_path=<image_path> [--num_threads=<num_threads>]
+```
+
+The output will be saved in `output/CGD.json`.
 
 ## EGO4D
 
