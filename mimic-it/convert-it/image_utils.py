@@ -22,7 +22,7 @@ def get_image_id(image_name: str, dataset_name: str) -> str:
     return f"{dataset_name}_IMG_{get_image_name(image_name)}"
 
 
-def resize_image(image, target_size=(224, 224)):
+def resize_image(image: Image.Image, target_size: tuple[int, int] = (224, 224)) -> Image.Image:
     """
     Resizes the given image to the target size using the Lanczos algorithm.
 
@@ -39,7 +39,7 @@ def resize_image(image, target_size=(224, 224)):
     return image
 
 
-def process_image(img: bytes):
+def process_image(image: bytes) -> str:
     """
     Processes the input image by resizing it, converting it to RGB mode, and encoding it as base64.
 
@@ -49,7 +49,7 @@ def process_image(img: bytes):
     Returns:
         str: The base64 encoded string representation of the processed image.
     """
-    with Image.open(BytesIO(img)) as img:
+    with Image.open(BytesIO(image)) as img:
         resized_img = resize_image(img)
     if resized_img.mode != "RGB":
         resized_img = resized_img.convert("RGB")
@@ -59,19 +59,19 @@ def process_image(img: bytes):
     return img_base64
 
 
-def get_json_data(images: dict[str, bytes], dataset_name: str, num_thread: int) -> dict[str, str]:
+def get_json_data(images: dict[str, bytes], dataset_name: str, num_threads: int) -> dict[str, str]:
     """
     Converts a dictionary of images to a JSON-compatible dictionary with base64 encoded strings.
 
     Args:
-        images (Dict[str, Image.Image]): A dictionary of images, where the keys are image identifiers and the values are byte strings.
+        images (Dict[str, bytes]): A dictionary of images, where the keys are image identifiers and the values are byte strings.
         dataset_name (str): The name of the dataset.
         num_threads (int): The number of threads to use for processing the images.
 
     Returns:
         Dict[str, str]: A dictionary where the keys are formatted as "{dataset_name}_IMG_{key}" and the values are base64 encoded string representations of the processed images.
     """
-    with ThreadPoolExecutor(max_workers=num_thread) as executor:
+    with ThreadPoolExecutor(max_workers=num_threads) as executor:
         process_bar = tqdm(total=len(images), desc="Processing images", unit="image")
         results = {}
 
@@ -93,7 +93,7 @@ def get_json_data(images: dict[str, bytes], dataset_name: str, num_thread: int) 
         return results
 
 
-def frame_video(video_file: str, fps=1):
+def frame_video(video_file: str, fps: int = 1) -> list[bytes]:
     """
     Extracts frames from a video file at a specified frame rate and returns them as base64 encoded strings.
 
@@ -102,7 +102,7 @@ def frame_video(video_file: str, fps=1):
         fps (int): The frame rate at which frames should be extracted. Defaults to 1 frame per second.
 
     Returns:
-        List[byte]: A list of byte strings representing the extracted frames.
+        List[bytes]: A list of byte strings representing the extracted frames.
     """
     if not os.path.exists(video_file):
         raise FileNotFoundError(f"Video file {video_file} does not exist.")

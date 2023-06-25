@@ -17,7 +17,7 @@ AVAILABLE_DATASETS: List[str] = [
 class AbstractDataset(ABC):
     def __init__(self, name: str, short_name: str, image_path: str, num_threads: int):
         """
-        Constructor.
+        Initialize an AbstractDataset object.
 
         Args:
             name (str): The name of the dataset.
@@ -45,7 +45,7 @@ class AbstractDataset(ABC):
 
     def __getitem__(self, key: str) -> Dict[str, Any]:
         """
-        Return the item at the given index as a dictionary.
+        Get the item at the given key as a dictionary.
 
         Args:
             key (str): The key of the item to retrieve.
