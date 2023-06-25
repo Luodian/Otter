@@ -326,30 +326,6 @@ def main():
         config = None
 
     accelerator.wait_for_everyone()
-    # # Synchronize the model state across all the ranks
-    # if accelerator.state.distributed_type != DistributedType.NO:
-    #     # Broadcast the config from rank 0 to all other ranks
-    #     config = dist.broadcast(config, src=0)
-
-    #     # Unwrap the model if it's wrapped by the accelerator
-    #     unwrapped_model = accelerator.unwrap_model(model) if model is not None else None
-
-    #     # Use a barrier to ensure all processes are ready for the broadcast
-    #     dist.barrier()
-
-    #     # Initialize an empty model on non-rank 0 processes
-    #     if not accelerator.is_local_main_process:
-    #         if "otter" in args.run_name.lower():
-    #             unwrapped_model = OtterForConditionalGeneration(config)
-    #         elif "flamingo" in args.run_name.lower():
-    #             unwrapped_model = FlamingoForConditionalGeneration(config)
-
-    #     # Broadcast the model state from rank 0 to all other ranks
-    #     for tensor in unwrapped_model.state_dict().values():
-    #         dist.broadcast(tensor, src=0)
-
-    #     # Wrap the model again using the accelerator
-    #     model = accelerator.prepare(unwrapped_model)
 
     if model.lang_encoder.__class__.__name__ != "MPTForCausalLM":
         model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
