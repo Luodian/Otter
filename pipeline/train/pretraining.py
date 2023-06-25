@@ -319,6 +319,9 @@ def main():
                 local_files_only=args.offline,
             )
             model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+    else:
+        model = None
+        config = None
 
     accelerator.wait_for_everyone()
 
