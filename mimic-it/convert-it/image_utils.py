@@ -121,10 +121,10 @@ def frame_video(video_file: str, fps: int = 1) -> list[bytes]:
             break
 
         if frame_count % (video_fps // fps) == 0:
-            # convert frame to base64
-            _, buffer = cv2.imencode(".jpg", frame)
-            with Image.open(BytesIO(buffer)) as img:
-                frames.append(process_image(img.tobytes()))
+            success, buffer = cv2.imencode(".jpg", frame)
+            if not success:
+                print(f"Failed to encode frame {frame_count} of video {video_file}.")
+            frames.append(process_image(buffer))
             saved_frame_count += 1
 
         frame_count += 1
