@@ -26,4 +26,4 @@ model = FlamingoForConditionalGeneration.from_pretrained(pretrained_model_path, 
 
 # save model to same folder
 checkpoint_path = pretrained_model_path + f"-{load_bit}"
-model.save_pretrained(checkpoint_path)
+model.save_pretrained(checkpoint_path, max_shard_size="10GB")
