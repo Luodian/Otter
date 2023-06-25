@@ -59,7 +59,7 @@
             "name": "kaiming_normal_",
             "verbose": 0
         },
-        "init_device": "meta",
+        "init_device": "cpu",
         "is_decoder": false,
         "is_encoder_decoder": false,
         "label2id": {
