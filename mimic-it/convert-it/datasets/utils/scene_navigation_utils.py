@@ -3,7 +3,7 @@ import os
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 
-from image_utils import resize_image
+from image_utils import process_image
 
 
 def process(cur_dir, img_root):
@@ -27,7 +27,7 @@ def process(cur_dir, img_root):
         with open(file_name, "rb") as f:
             img = f.read()
         image_id = f"{cur_dir}_color_{cur_file[:-4]}"
-        images[image_id] = resize_image(img)
+        images[image_id] = process_image(img)
     return images
 
 

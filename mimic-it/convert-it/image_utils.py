@@ -55,7 +55,7 @@ def process_image(image: bytes) -> bytes:
             resized_img = resized_img.convert("RGB")
         # Save the processed image as a byte string
         buffer = BytesIO()
-        resized_img.save(buffer, format="JPEG")
+        resized_img.save(buffer, format="PNG")
         processed_image = buffer.getvalue()
     return processed_image
 
