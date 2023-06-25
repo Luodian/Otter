@@ -337,7 +337,6 @@ def main():
             # #     mpt-Xb-instruct/
             # #     flamingo_9b_hf/
 
-
             # config = FlamingoConfig.from_json_file("/PATH/flamingo-MPT-7b/config.json")
             # model = FlamingoForConditionalGeneration(config=config)
 
