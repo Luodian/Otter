@@ -8,7 +8,7 @@ from .modeling_flamingo import FlamingoForConditionalGeneration
 
 parser = argparse.ArgumentParser(description="Load model with precision")
 parser.add_argument("--load_bit", type=str, choices=["fp16", "bf16"], required=True, help="Choose either 'fp16' or 'bf16'")
-parser.add_argument("--pretrained_model_path", type=str, default="/home/luodian/projects/checkpoints/flamingo-mpt-7B-instruct-init", required=True)
+parser.add_argument("--pretrained_model_path", type=str, default="/home/luodian/projects/checkpoints/flamingo-mpt-7B-instruct-init")
 args = parser.parse_args()
 
 load_bit = args.load_bit
