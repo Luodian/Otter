@@ -1,9 +1,16 @@
-from .configuration_flamingo import FlamingoConfig
-from .modeling_flamingo import FlamingoForConditionalGeneration
-import torch
+import argparse
 import os
 
-load_bit = "bf16"
+import torch
+
+from .configuration_flamingo import FlamingoConfig
+from .modeling_flamingo import FlamingoForConditionalGeneration
+
+parser = argparse.ArgumentParser(description="Load model with precision")
+parser.add_argument("--load_bit", type=str, choices=["fp16", "bf16"], required=True, help="Choose either 'fp16' or 'bf16'")
+args = parser.parse_args()
+
+load_bit = args.load_bit
 
 if load_bit == "fp16":
     precision = {"torch_dtype": torch.float16}
