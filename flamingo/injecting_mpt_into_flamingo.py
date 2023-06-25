@@ -9,13 +9,13 @@ from .modeling_flamingo import FlamingoForConditionalGeneration
 
 parser = argparse.ArgumentParser(description="Convert MPT model")
 parser.add_argument("--model_choice", type=str, choices=["7B", "30B"], required=True, help="Choose either '7B' or '30B'")
-parser.add_argument("--save_root_dir", type=str, default="/home/luodian/projects/checkpoints", required=True)
+parser.add_argument("--mpt_root_dir", type=str, default="/home/luodian/projects/checkpoints")
+parser.add_argument("--save_root_dir", type=str, default="/home/luodian/projects/checkpoints")
 args = parser.parse_args()
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-root_dir = os.environ["AZP"]
-print(root_dir)
 
+root_dir = args.mpt_root_dir
 model_choice = args.model_choice
 save_root_dir = args.save_root_dir
 
@@ -24,20 +24,20 @@ save_root_dir = args.save_root_dir
 if model_choice == "30B":
     config_file = "./flamingo/flamingo-mpt-30B.json"
     state_dict_files = [
-        f"{root_dir}/otter/checkpoints/mpt-30b-instruct/pytorch_model-00001-of-00007.bin",
-        f"{root_dir}/otter/checkpoints/mpt-30b-instruct/pytorch_model-00002-of-00007.bin",
-        f"{root_dir}/otter/checkpoints/mpt-30b-instruct/pytorch_model-00003-of-00007.bin",
-        f"{root_dir}/otter/checkpoints/mpt-30b-instruct/pytorch_model-00004-of-00007.bin",
-        f"{root_dir}/otter/checkpoints/mpt-30b-instruct/pytorch_model-00005-of-00007.bin",
-        f"{root_dir}/otter/checkpoints/mpt-30b-instruct/pytorch_model-00006-of-00007.bin",
-        f"{root_dir}/otter/checkpoints/mpt-30b-instruct/pytorch_model-00007-of-00007.bin",
+        f"{root_dir}/mpt-30b-instruct/pytorch_model-00001-of-00007.bin",
+        f"{root_dir}/mpt-30b-instruct/pytorch_model-00002-of-00007.bin",
+        f"{root_dir}/mpt-30b-instruct/pytorch_model-00003-of-00007.bin",
+        f"{root_dir}/mpt-30b-instruct/pytorch_model-00004-of-00007.bin",
+        f"{root_dir}/mpt-30b-instruct/pytorch_model-00005-of-00007.bin",
+        f"{root_dir}/mpt-30b-instruct/pytorch_model-00006-of-00007.bin",
+        f"{root_dir}/mpt-30b-instruct/pytorch_model-00007-of-00007.bin",
     ]
     save_path = f"{save_root_dir}/flamingo-mpt-30B-instruct-init"
 elif model_choice == "7B":
     config_file = "./flamingo/flamingo-mpt-7B.json"
     state_dict_files = [
-        f"{root_dir}/otter/checkpoints/mpt-7b-instruct/pytorch_model-00001-of-00002.bin",
-        f"{root_dir}/otter/checkpoints/mpt-7b-instruct/pytorch_model-00002-of-00002.bin",
+        f"{root_dir}/mpt-7b-instruct/pytorch_model-00001-of-00002.bin",
+        f"{root_dir}/mpt-7b-instruct/pytorch_model-00002-of-00002.bin",
     ]
     save_path = f"{save_root_dir}/flamingo-mpt-7B-instruct-init"
 else:
@@ -53,7 +53,8 @@ for file in tqdm(state_dict_files, desc="Loading state dict"):
 
 # load flamingo's vision encoder from last checkpoint.
 # you can visit https://huggingface.co/luodian/openflamingo-9b-hf/tree/main to download the checkpoint.
-state_dict_3 = torch.load(f"{root_dir}/otter/checkpoints/flamingo_9b_hf/pytorch_model-00004-of-00004.bin", map_location="cpu")
+AZP = os.environ["AZP"]
+state_dict_3 = torch.load(f"{AZP}/otter/checkpoints/flamingo_9b_hf/pytorch_model-00004-of-00004.bin", map_location="cpu")
 for cur_key in list(state_dict_3.keys()):
     if "vision_encoder" not in cur_key:
         del state_dict_3[cur_key]
