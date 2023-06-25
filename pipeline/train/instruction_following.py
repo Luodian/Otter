@@ -249,7 +249,7 @@ def main():
         default=None,
     )
     parser.add_argument(
-        "--multi_instruct_path",
+        "--mimicit_path",
         type=str,
         help="path to multi_instruct dataset, this should be /path/to/DC_instruction.json",
     )
