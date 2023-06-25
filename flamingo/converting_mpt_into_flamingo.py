@@ -7,7 +7,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 root_dir = os.environ["AZP"]
 print(root_dir)
 
-config = FlamingoConfig.from_json_file(f"{root_dir}/otter/checkpoints/flamingo-mpt/config.json")
+config = FlamingoConfig.from_json_file("./flamingo/flamingo-mpt-30B.json")
 model = FlamingoForConditionalGeneration(config=config)
 
 
