@@ -5,10 +5,10 @@ import csv
 
 rel_ins_ids_num = 2
 
-cur_file_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACONV_instructions.json"
-# cur_file_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json"
-# cur_file_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json"
-# cur_file_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
+cur_file_path = "./data/LLaVA-Instruct-150K/LA/LACONV_instructions.json"
+# cur_file_path = "./data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json"
+# cur_file_path = "./data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json"
+# cur_file_path = "./data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
 
 
 with open(cur_file_path) as f:
@@ -26,10 +26,10 @@ if "CONV" in cur_file_path:
         conversation_dict[conversation_id] = max(int(round_id), conversation_dict[conversation_id])
 
 
-target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACONV_train.json"
-# target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json"
-# target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json"
-# target_json_path = "/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
+target_json_path = "./data/LLaVA-Instruct-150K/LA/LACONV_train.json"
+# target_json_path = "./data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json"
+# target_json_path = "./data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json"
+# target_json_path = "./data/LLaVA-Instruct-150K/LA/LADD_train.json"
 
 
 target_json = {}

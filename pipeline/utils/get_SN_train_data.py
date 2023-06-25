@@ -2,7 +2,7 @@ import json
 from tqdm import tqdm
 import csv
 
-cur_file_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/SN/SN_instructions.json"
+cur_file_path = "./data/mimicit/SN/SN_instructions.json"
 
 
 with open(cur_file_path) as f:
@@ -20,7 +20,7 @@ for cur_id in cur_file:
         conversation_dict[conversation_id] = 0
     conversation_dict[conversation_id] = max(int(round_id[-1]), conversation_dict[conversation_id])
 
-target_json_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/SN/SN_train.json"
+target_json_path = "./data/mimicit/SN/SN_train.json"
 
 
 target_json = {}

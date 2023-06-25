@@ -16,17 +16,11 @@ import torch
 import torch.utils
 import torchvision
 import webdataset as wds
-from PIL import Image
-from torch.utils.data import DataLoader, IterableDataset, get_worker_info
+from PIL import Image, ImageSequence
+from torch.utils.data import DataLoader, IterableDataset, RandomSampler, get_worker_info
 from torch.utils.data.distributed import DistributedSampler
-from torch.utils.data import RandomSampler
 from webdataset.filters import _shuffle
-from webdataset.tariterators import (
-    base_plus_ext,
-    tar_file_expander,
-    url_opener,
-    valid_sample,
-)
+from webdataset.tariterators import base_plus_ext, tar_file_expander, url_opener, valid_sample
 
 Image.MAX_IMAGE_PIXELS = 1000000000
 MAX_NUM_TOKENS = 256
@@ -270,6 +264,7 @@ def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold):
     sentences = info["text_list"]
 
     images, sentence_ixs = [], []
+
     for sample_image in info["image_info"]:
         image_base64 = sample_image["image_base64"]
         rawbytes = base64.b64decode(image_base64)
@@ -279,7 +274,18 @@ def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold):
             continue
         if sample_image["matched_sim"] < sim_threshold:
             continue
-        image = Image.open(io.BytesIO(rawbytes)).convert("RGB")
+        image = Image.open(io.BytesIO(rawbytes))
+
+        # Check if the image is in palette mode and has transparency
+        if image.mode == "P":
+            try:
+                alpha = image.getchannel("A")
+                if alpha.mode == "L":
+                    image = image.convert("RGBA")
+            except ValueError:
+                pass
+
+        image = image.convert("RGB")
 
         images.append(image)
         sentence_ixs.append(sample_image["matched_text_index"])
@@ -599,8 +605,10 @@ def get_coco_vqa_dataset(args, image_processor, tokenizer, epoch=0, floor=False)
     return DataInfo(dataloader=dataloader, shared_epoch=shared_epoch)
 
 
-from PIL import Image, ImageFile
 import json
+
+from PIL import Image, ImageFile
+
 from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
 
 
