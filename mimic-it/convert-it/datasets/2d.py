@@ -19,8 +19,10 @@ class Llava(AbstractDataset):
         Args:
             name (str): The name of the dataset. Defaults to "Llava".
             short_name (str): The short name of the dataset. Defaults to "LA".
-            image_path (str): The path containing the dataset images, downloaded from https://drive.google.com/file/d/1OVb4_3Uec_xbyUk90aWC6LFpKsIOtR7v/view?usp=sharing.
-            image_root (str): The path to the coco image train split
+            image_root (str): The root path to the COCO image train split.
+            image_path (str): The path to the JSON file containing the dataset images.
+                              The images can be downloaded from:
+                              https://drive.google.com/file/d/1OVb4_3Uec_xbyUk90aWC6LFpKsIOtR7v/view?usp=sharing.
             num_threads (int): The number of threads to use for processing the images.
         """
         self.image_root = image_root
@@ -31,11 +33,11 @@ class Llava(AbstractDataset):
         Loads the images from the dataset.
 
         Args:
-            image_path (str): The path to the dictionary containing the dataset images.
+            image_path (str): The path to the JSON file containing the dataset images.
             num_threads (int): The number of threads to use for processing the images.
 
         Returns:
-            dict[str, Image.Image]: A dictionary where the keys are image identifiers and the values are PIL.Image.Image objects.
+            dict[str, bytes]: A dictionary where the keys are image identifiers and the values are bytes objects representing the images.
         """
 
         def read_image(file_name) -> bytes:

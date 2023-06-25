@@ -30,16 +30,16 @@ class DenseCaptions(AbstractDataset):
         """
         super().__init__(name, short_name, image_path, num_threads)
 
-    def _load_images(self, image_path: str, num_thread: int) -> dict[str, Image.Image]:
+    def _load_images(self, image_path: str, num_thread: int) -> dict[str, bytes]:
         """
         Loads the images from the dataset.
 
         Args:
-            image_path (str): The path to the directory containing the all the videos downloaded from ActivityNet (in mp4 format).
+            image_path (str): The path to the directory containing the dataset images.
             num_threads (int): The number of threads to use for processing the images.
 
         Returns:
-            dict[str, Image.Image]: A dictionary where the keys are image identifiers and the values are PIL.Image.Image objects.
+            dict[str, bytes]: A dictionary where the keys are image identifiers and the values are image bytes.
         """
         videos = glob(f"{image_path}/*.mp4")
         if len(videos) <= 100:
@@ -70,23 +70,23 @@ class VisualStoryTelling(AbstractDataset):
         Initializes a VisualStoryTelling dataset.
 
         Args:
-            name (str): The name of the dataset. Defaults to "VisualStroryTelling".
+            name (str): The name of the dataset. Defaults to "VisualStoryTelling".
             short_name (str): The short name of the dataset. Defaults to "VST".
-            image_path (str): The json file (train.story-in-sequence.json) containing the dataset images, downloaded from https://visionandlanguage.net/VIST.
+            image_path (str): The path to the JSON file containing the dataset images.
             num_threads (int): The number of threads to use for processing the images.
         """
         super().__init__(name, short_name, image_path, num_threads)
 
-    def _load_images(self, image_path: str, num_thread: int) -> dict[str, Image.Image]:
+    def _load_images(self, image_path: str, num_thread: int) -> dict[str, bytes]:
         """
-        Load the images from the VisualStoryTelling dataset.
+        Loads the images from the VisualStoryTelling dataset.
 
         Args:
             image_path (str): The path to the JSON file containing the dataset images.
-            num_thread (int): The number of threads to use for loading the images.
+            num_threads (int): The number of threads to use for processing the images.
 
         Returns:
-            Dict[str, Image.Image]: A dictionary of images, where the keys are the IDs of the images.
+            dict[str, bytes]: A dictionary of images, where the keys are the IDs of the images.
         """
         from datasets.utils.visual_story_telling_utils import download
 
@@ -115,20 +115,30 @@ class TVCaptions(AbstractDataset):
         """
         super().__init__(name, short_name, image_path, num_threads)
 
-    def _load_images(self, image_path: str, num_thread: int) -> dict[str, Image.Image]:
+    def _load_images(self, image_path: str, num_thread: int) -> dict[str, bytes]:
         """
         Load the images from the TVCaptions dataset.
 
         Args:
             image_path (str): The path to the directory containing the dataset images, downloaded from https://tvqa.cs.unc.edu/download_tvqa.html#tvqa-download-4.
-            num_thread (int): The number of threads to use for loading the images.
+            num_threads (int): The number of threads to use for loading the images.
 
         Returns:
             Dict[str, Image.Image]: A dictionary of images, where the keys are the IDs of the images.
-
         """
 
         def get_frames(directory, frames=16):
+            """
+            Generate a list of image filenames.
+
+            Args:
+                directory (str): The directory path containing the frames.
+                frames (int): The number of frames to sample. Defaults to 16.
+
+            Returns:
+                list[str]: A list of image filenames.
+            """
+
             # Generate a list of image filenames
             image_filenames = natsorted(glob(os.path.join(directory, "*")))
 
@@ -144,6 +154,18 @@ class TVCaptions(AbstractDataset):
             return sampled_images
 
         def get_images(frames, frame_name, clip_name):
+            """
+            Load and resize images from frames.
+
+            Args:
+                frames (list[str]): List of image filenames.
+                frame_name (str): Name of the frame.
+                clip_name (str): Name of the clip.
+
+            Returns:
+                dict[str, bytes]: A dictionary where the keys are image identifiers and the values are image bytes.
+            """
+
             images = {}
             for frame in frames:
                 image_name = os.path.basename(frame).split(".")[0]

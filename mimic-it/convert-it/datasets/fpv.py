@@ -19,7 +19,7 @@ class EGO4D(AbstractDataset):
         num_threads: int,
     ):
         """
-        Initializes a EGO4D dataset.
+        Initializes an EGO4D dataset.
 
         Args:
             name (str): The name of the dataset. Defaults to "EGO4D".
@@ -38,7 +38,10 @@ class EGO4D(AbstractDataset):
             num_threads (int): The number of threads to use for processing the images.
 
         Returns:
-            dict[str, Image.Image]: A dictionary where the keys are image identifiers and the values are PIL.Image.Image objects.
+            dict[str, bytes]: A dictionary where the keys are image identifiers and the values are image bytes.
+
+        Raises:
+            FileNotFoundError: If the specified image path does not exist.
         """
         video_paths = glob(os.path.join(image_path, "*"))
 

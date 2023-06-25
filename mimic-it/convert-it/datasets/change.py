@@ -23,7 +23,8 @@ class SpotTheDifference(AbstractDataset):
         Args:
             name (str): The name of the dataset. Defaults to "SpotTheDifference".
             short_name (str): The short name of the dataset. Defaults to "SD".
-            image_path (str): The path containing the dataset images, downloaded from https://drive.google.com/file/d/1OVb4_3Uec_xbyUk90aWC6LFpKsIOtR7v/view?usp=sharing.
+            image_path (str): The path containing the dataset images, downloaded from
+                https://drive.google.com/file/d/1OVb4_3Uec_xbyUk90aWC6LFpKsIOtR7v/view?usp=sharing.
             num_threads (int): The number of threads to use for processing the images.
         """
         super().__init__(name, short_name, image_path, num_threads)
@@ -33,11 +34,11 @@ class SpotTheDifference(AbstractDataset):
         Loads the images from the dataset.
 
         Args:
-            image_path (str): The path to the dictionary containing the dataset images.
+            image_path (str): The path to the directory containing the dataset images.
             num_threads (int): The number of threads to use for processing the images.
 
         Returns:
-            dict[str, Image.Image]: A dictionary where the keys are image identifiers and the values are PIL.Image.Image objects.
+            dict[str, bytes]: A dictionary where the keys are image identifiers and the values are image bytes.
         """
         file_names = glob(os.path.join(image_path, "*"))
         names = set()
@@ -106,12 +107,13 @@ class CocoGeneralDifference(AbstractDataset):
         num_threads: int,
     ):
         """
-        Initializes a SpotTheDifference dataset.
+        Initializes a CocoGeneralDifference dataset.
 
         Args:
             name (str): The name of the dataset. Defaults to "CocoGeneralDifference".
             short_name (str): The short name of the dataset. Defaults to "CGD".
-            image_path (str): The path containing the dataset images, downloaded from http://images.cocodataset.org/zips/train2017.zip.
+            image_path (str): The path containing the dataset images, downloaded from
+                http://images.cocodataset.org/zips/train2017.zip.
             num_threads (int): The number of threads to use for processing the images.
         """
         super().__init__(name, short_name, image_path, num_threads)
@@ -121,11 +123,11 @@ class CocoGeneralDifference(AbstractDataset):
         Loads the images from the dataset.
 
         Args:
-            image_path (str): The path to the dictionary containing the dataset images.
+            image_path (str): The path to the directory containing the dataset images.
             num_threads (int): The number of threads to use for processing the images.
 
         Returns:
-            dict[str, Image.Image]: A dictionary where the keys are image identifiers and the values are PIL.Image.Image objects.
+            dict[str, bytes]: A dictionary where the keys are image identifiers and the values are image bytes.
         """
         file_names = glob(os.path.join(image_path, "*"))
 

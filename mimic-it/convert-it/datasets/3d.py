@@ -30,7 +30,7 @@ class SceneNavigation(AbstractDataset):
             num_threads (int): The number of threads to use for processing the images.
 
         Returns:
-            dict[str, bytes]: A dictionary where the keys are image identifiers and the values are byte strings.
+            dict[str, bytes]: A dictionary where the keys are image identifiers and the values are byte strings representing the images.
         """
         from datasets.utils.scene_navigation_utils import process_data
 
