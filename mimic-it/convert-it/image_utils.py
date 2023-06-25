@@ -39,24 +39,38 @@ def resize_image(image: Image.Image, target_size: tuple[int, int] = (224, 224)) 
     return image
 
 
-def process_image(image: bytes) -> str:
+def process_image(image: bytes) -> bytes:
     """
-    Processes the input image by resizing it, converting it to RGB mode, and encoding it as base64.
+    Processes the input image by resizing it, converting it to RGB mode, and save as byte string.
 
     Args:
         image (bytes): The input image to be processed.
 
     Returns:
-        str: The base64 encoded string representation of the processed image.
+        bytes: The processed image as a byte string.
     """
     with Image.open(BytesIO(image)) as img:
         resized_img = resize_image(img)
-    if resized_img.mode != "RGB":
-        resized_img = resized_img.convert("RGB")
-    buffer = BytesIO()
-    resized_img.save(buffer, format="PNG")
-    img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
-    return img_base64
+        if resized_img.mode != "RGB":
+            resized_img = resized_img.convert("RGB")
+        # Save the processed image as a byte string
+        buffer = BytesIO()
+        resized_img.save(buffer, format="JPEG")
+        processed_image = buffer.getvalue()
+    return processed_image
+
+
+def get_b64_data(image: bytes) -> str:
+    """
+    Converts an image to a base64 encoded string.
+
+    Args:
+        image (bytes): the image to be converted.
+
+    Returns:
+        str: the base64 encoded string representation of the image.
+    """
+    return base64.b64encode(image).decode("utf-8")
 
 
 def get_json_data(images: dict[str, bytes], dataset_name: str, num_threads: int) -> dict[str, str]:
@@ -78,14 +92,12 @@ def get_json_data(images: dict[str, bytes], dataset_name: str, num_threads: int)
         def process_image_wrapper(args):
             key, img = args
             new_key = get_image_id(key, dataset_name)
-            result = process_image(img)
+            result = get_b64_data(process_image(img))
 
             process_bar.update(1)
             return new_key, result
 
-        processed_images = executor.map(process_image_wrapper, images.items())
-
-        for key, result in processed_images:
+        for key, result in executor.map(process_image_wrapper, images.items()):
             results[key] = result
 
         process_bar.close()
