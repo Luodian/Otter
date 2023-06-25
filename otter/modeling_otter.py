@@ -706,6 +706,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
         self.only_attend_previous = config.only_attend_previous
         self.max_num_frames = config.max_num_frames if hasattr(config, "max_num_frames") else None
+        print(self.max_num_frames)
 
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder

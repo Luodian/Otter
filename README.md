@@ -152,16 +152,16 @@ First, run, and answer the questions asked. This will generate a config file and
 accelerate config
 ```
 
-Then run the training script.
+Then run the training script. You may need to use a specialized converted weights at [luodian/OTTER-9B-INIT](https://huggingface.co/luodian/OTTER-9B-INIT). This is for initilizing training for Otter. It's directly converted from Openflamingo, and we added tokens for downstream instruction tuning. And you may use any trained weights to start with your training on top of ours, see weights at [Otter Weights](https://huggingface.co/luodian), and [MIMIC-IT](https://github.com/Luodian/Otter/tree/main/mimic-it) for preparing json files.
 
 ```bash
-accelerate launch --config_file=./accelerate_configs/accelerate_config_fsdp.yaml \
+accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_fsdp.yaml \
 pipeline/train/instruction_following.py \
---pretrained_model_name_or_path=path/to/otter_9b_hf_mm  \
+--pretrained_model_name_or_path=luodian/OTTER-9B-INIT  \
 --dataset_resampled \
---mimicit_path="path/to/instruction.json" \
---images_path="path/to/image.json" \
---train_config_path="path/to/train.json" \
+--mimicit_path="path/to/DC_instruction.json" \
+--images_path="path/to/DC.json" \
+--train_config_path="path/to/DC_train.json" \
 --batch_size=4 \
 --num_epochs=9 \
 --report_to_wandb \
