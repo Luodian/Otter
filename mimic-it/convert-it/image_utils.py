@@ -94,11 +94,10 @@ def get_json_data(images: dict[str, bytes], dataset_name: str, num_threads: int)
             new_key = get_image_id(key, dataset_name)
             result = get_b64_data(process_image(img))
 
-            process_bar.update(1)
+            process_bar.update()
             return new_key, result
 
-        for key, result in executor.map(process_image_wrapper, images.items()):
-            results[key] = result
+        results = dict(executor.map(process_image_wrapper, images.items()))
 
         process_bar.close()
 
@@ -133,7 +132,7 @@ def frame_video(video_file: str, fps: int = 1) -> list[bytes]:
             break
 
         if frame_count % (video_fps // fps) == 0:
-            success, buffer = cv2.imencode(".jpg", frame)
+            success, buffer = cv2.imencode(".png", frame)
             if not success:
                 print(f"Failed to encode frame {frame_count} of video {video_file}.")
             frames.append(process_image(buffer))
