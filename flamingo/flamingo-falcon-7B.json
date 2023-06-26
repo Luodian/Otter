@@ -3,7 +3,6 @@
   "architectures": [
     "FlamingoModel"
   ],
-  "only_attend_previous": true,
   "cross_attn_every_n_layers": 4,
   "model_type": "flamingo",
   "text_config": {
