@@ -5,7 +5,6 @@
     ],
     "cross_attn_every_n_layers": 4,
     "model_type": "flamingo",
-    "only_attend_previous": true,
     "text_config": {
         "_name_or_path": "",
         "add_cross_attention": false,

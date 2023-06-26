@@ -63,7 +63,7 @@ def parse_args():
         type=str,
         help="path to c4 shards, this should be a glob pattern such as /path/to/shards/shard-{0000..0999}.tar",
     )
-    parser.add_argument("--train_num_samples_mmc4", type=int, default=1000000)
+    parser.add_argument("--train_num_samples_mmc4", type=int, default=100)
     parser.add_argument("--batch_size_mmc4", type=int, default=8)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--dataset_resampled", action="store_true")
@@ -74,7 +74,7 @@ def parse_args():
         help="threshold for filtering images in mmc4 based on image-text similarity",
     )
 
-    parser.add_argument("--use_media_placement_augmentation", action="store_true")
+    # parser.add_argument("--use_media_placement_augmentation", action="store_true")
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--num_epochs", type=int, default=1)
     parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
@@ -259,7 +259,6 @@ def train_one_epoch(
                 # compute within rank 0
                 mmc4_samples_per_second = args.gradient_accumulation_steps * args.batch_size_mmc4 * args.world_size / step_time_m.val
                 mmc4_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_mmc4 / step_time_m.val
-
                 wandb.log(
                     {
                         "data_time": data_time_m.avg,
@@ -406,6 +405,10 @@ def main():
         )
 
     model, optimizer, lr_scheduler = accelerator.prepare(model, optimizer, lr_scheduler)
+
+    # YH: hardcode for ddp, reason is related to "split_batch" in accelerator. Currently just fix this bug, need to dig further.
+    lr_scheduler.split_batches = True
+
     model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
@@ -424,24 +427,24 @@ def main():
             device_id=device_id,
             wandb=wandb,
         )
-        if args.rank == 0:
-            if not os.path.exists(args.external_save_dir):
-                os.makedirs(args.external_save_dir)
+        # if args.rank == 0:
+        #     if not os.path.exists(args.external_save_dir):
+        #         os.makedirs(args.external_save_dir)
 
-            unwrapped_model = accelerator.unwrap_model(model)
-            checkpoint_dict = {
-                "epoch": epoch,
-                "model_state_dict": get_checkpoint(unwrapped_model),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "lr_scheduler_state_dict": lr_scheduler.state_dict(),
-            }
-            print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
-            accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
-            # save the config
-            unwrapped_model.config.save_pretrained(args.external_save_dir)
-            if args.delete_previous_checkpoint:
-                if epoch > 0:
-                    os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
+        #     unwrapped_model = accelerator.unwrap_model(model)
+        #     checkpoint_dict = {
+        #         "epoch": epoch,
+        #         "model_state_dict": get_checkpoint(unwrapped_model),
+        #         "optimizer_state_dict": optimizer.state_dict(),
+        #         "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+        #     }
+        #     print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
+        #     accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+        #     # save the config
+        #     unwrapped_model.config.save_pretrained(args.external_save_dir)
+        #     if args.delete_previous_checkpoint:
+        #         if epoch > 0:
+        #             os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
 
         accelerator.wait_for_everyone()
 
