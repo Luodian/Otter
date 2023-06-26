@@ -1,5 +1,6 @@
 import os
 
+from glob import glob
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 
@@ -44,7 +45,8 @@ def process_data(img_root: str, num_threads: int):
         for each image, and the values are the processed images.
 
     """
-    keys = os.listdir(img_root)
+    keys_dir = glob(os.path.join(img_root, "scene*_00"))
+    keys = list(map(os.path.basename, keys_dir))
     all_images = {}
     process_bar = tqdm(total=len(keys), unit="image", desc="Loading images")
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
