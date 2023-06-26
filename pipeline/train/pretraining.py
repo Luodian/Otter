@@ -312,12 +312,18 @@ def main():
                 local_files_only=args.offline,
             )
         elif "flamingo" in args.run_name.lower():
-            model = FlamingoForConditionalGeneration.from_pretrained(
-                args.pretrained_model_name_or_path,
-                # device_map={"": device_id},
-                device_map="auto",
-                local_files_only=args.offline,
-            )
+            if accelerator.num_processes > 1:
+                model = FlamingoForConditionalGeneration.from_pretrained(
+                    args.pretrained_model_name_or_path,
+                    device_map={"": device_id},
+                    local_files_only=args.offline,
+                )
+            else:
+                model = FlamingoForConditionalGeneration.from_pretrained(
+                    args.pretrained_model_name_or_path,
+                    device_map="auto",
+                    local_files_only=args.offline,
+                )
             model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
     else:
         model = None
@@ -408,7 +414,8 @@ def main():
     model, optimizer, lr_scheduler = accelerator.prepare(model, optimizer, lr_scheduler)
 
     # YH: hardcode for ddp, reason is related to "split_batch" in accelerator. Currently just fix this bug, need to dig further.
-    lr_scheduler.split_batches = True
+    if accelerator.num_processes > 1:
+        lr_scheduler.split_batches = True
 
     model.train()
 
