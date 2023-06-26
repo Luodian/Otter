@@ -3,7 +3,7 @@
     "architectures": [
         "FlamingoForConditionalGeneration"
     ],
-    "cross_attn_every_n_layers": 4,
+    "cross_attn_every_n_layers": 7,
     "model_type": "flamingo",
     "only_attend_previous": true,
     "text_config": {

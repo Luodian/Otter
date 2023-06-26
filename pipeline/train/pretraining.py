@@ -315,7 +315,8 @@ def main():
         elif "flamingo" in args.run_name.lower():
             model = FlamingoForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
-                device_map={"": device_id},
+                # device_map={"": device_id},
+                device_map="auto",
                 local_files_only=args.offline,
             )
             model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
