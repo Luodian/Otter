@@ -1,8 +1,8 @@
 import argparse
-import json
+import orjson
 
 from abstract_dataset import get_dataset_by_path
-from image_utils import get_json_data, create_folder
+from image_utils import get_json_data_generator, create_folder
 
 
 if __name__ == "__main__":
@@ -23,7 +23,26 @@ if __name__ == "__main__":
     dataset = get_dataset_by_path(args.name, dataset_args)
     dataset_short_name = dataset.short_name
     dataset = dict(dataset)
-    json_data = get_json_data(dataset, dataset_short_name, args.num_threads)
     create_folder("output")
+    # Open the output JSON file in text mode, since we'll be writing strings
     with open(f"output/{dataset_short_name}.json", "w") as f:
-        json.dump(json_data, f)
+        # Write the opening brace for the JSON object
+        f.write("{")
+
+        # Use a flag to track whether a comma is needed before the next key-value pair
+        need_comma = False
+
+        # Iterate over the generator, which yields key-value pairs one at a time
+        for image_key, base64_data in get_json_data_generator(dataset, dataset_short_name, args.num_threads):
+            # Write a comma before the next key-value pair if needed
+            if need_comma:
+                f.write(", ")
+
+            # Write the key-value pair as a string to the file
+            f.write(f'"{image_key}": "{base64_data}"')
+
+            # Set the flag to True so that a comma is written before the next key-value pair
+            need_comma = True
+
+        # Write the closing brace for the JSON object
+        f.write("}")

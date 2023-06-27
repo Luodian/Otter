@@ -1,11 +1,12 @@
 import base64
 import os
-import cv2
-
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
+from typing import Generator, Tuple
+
+import cv2
 from PIL import Image
 from tqdm import tqdm
-from concurrent.futures import ThreadPoolExecutor
 
 
 def get_image_id(image_name: str, dataset_name: str) -> str:
@@ -57,6 +58,7 @@ def process_image(image: bytes) -> bytes:
         buffer = BytesIO()
         resized_img.save(buffer, format="PNG")
         processed_image = buffer.getvalue()
+        # del buffer
     return processed_image
 
 
@@ -73,10 +75,10 @@ def get_b64_data(image: bytes) -> str:
     return base64.b64encode(image).decode("utf-8")
 
 
-def get_json_data(images: dict[str, bytes], dataset_name: str, num_threads: int) -> dict[str, str]:
+def get_json_data_generator(images: dict[str, bytes], dataset_name: str, num_threads: int) -> Generator[Tuple[str, str], None, None]:
     """
     Converts a dictionary of images to a JSON-compatible dictionary with base64 encoded strings.
-
+    This generator function will yield the processed image data one at a time, allowing you to write the results to a file without needing to store the entire dictionary in memory.
     Args:
         images (Dict[str, bytes]): A dictionary of images, where the keys are image identifiers and the values are byte strings.
         dataset_name (str): The name of the dataset.
@@ -87,7 +89,6 @@ def get_json_data(images: dict[str, bytes], dataset_name: str, num_threads: int)
     """
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
         process_bar = tqdm(total=len(images), desc="Processing images", unit="image")
-        results = {}
 
         def process_image_wrapper(args):
             key, img = args
@@ -97,11 +98,11 @@ def get_json_data(images: dict[str, bytes], dataset_name: str, num_threads: int)
             process_bar.update()
             return new_key, result
 
-        results = dict(executor.map(process_image_wrapper, images.items()))
+        for result in executor.map(process_image_wrapper, images.items()):
+            process_bar.update()
+            yield result
 
         process_bar.close()
-
-        return results
 
 
 def frame_video(video_file: str, fps: int = 1) -> list[bytes]:
@@ -138,14 +139,14 @@ def frame_video(video_file: str, fps: int = 1) -> list[bytes]:
             frames.append(process_image(buffer))
             saved_frame_count += 1
 
-            del buffer
+            # del buffer
 
         frame_count += 1
 
-        del frame
+        # del frame
 
     cap.release()
-
+    cv2.destroyAllWindows()
     return frames
 
 
