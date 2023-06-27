@@ -1,5 +1,6 @@
 import json
 import os
+import gc
 
 from abstract_dataset import AbstractDataset
 from PIL import Image
@@ -47,12 +48,20 @@ class DenseCaptions(AbstractDataset):
         with ThreadPoolExecutor(max_workers=num_thread) as executor:
             results = {}
             process_bar = tqdm(total=len(videos), desc="Processing videos into images", unit="video")
+            cnt = 0
             for video, framed_results in executor.map(lambda x: (get_image_name(x), frame_video(x)), videos):
                 for index, result in enumerate(framed_results):
                     # print("video", video)
                     name = video + "_" + str(index).zfill(4)
                     results[name] = result
                 process_bar.update(1)
+
+                cnt = cnt + 1
+                if cnt % 100 == 0:
+                    gc.collect()
+                    # import sys
+                    # size = sys.getsizeof(results)
+                    # print("size", size / 1024 / 1024 / 1024, "GB")
             process_bar.close()
             return results
 
