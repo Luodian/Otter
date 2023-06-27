@@ -25,7 +25,7 @@ def get_image_id(image_name: str, dataset_name: str) -> str:
 
 def image_to_bytes(image: Image.Image) -> bytes:
     image_stream = BytesIO()
-    image.save(image_stream, format='PNG')
+    image.save(image_stream, format="PNG")
     image_bytes = image_stream.getvalue()
     image_stream.close()
     return image_bytes

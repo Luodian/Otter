@@ -205,6 +205,5 @@ class TVCaptions(AbstractDataset):
                     # print("The type of all_images is", type(all_images))
                     # print("The types of the keys and values of all_images are", type(list(all_images.keys())[0]), type(list(all_images.values())[0]))
             progress_bar.close()
-        
 
         return all_images
