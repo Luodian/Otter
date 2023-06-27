@@ -24,6 +24,7 @@ if __name__ == "__main__":
     dataset_short_name = dataset.short_name
     dataset = dict(dataset)
     create_folder("output")
+
     # Open the output JSON file in text mode, since we'll be writing strings
     with open(f"output/{dataset_short_name}.json", "w") as f:
         # Write the opening brace for the JSON object

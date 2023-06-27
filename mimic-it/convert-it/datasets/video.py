@@ -59,9 +59,6 @@ class DenseCaptions(AbstractDataset):
                 cnt = cnt + 1
                 if cnt % 100 == 0:
                     gc.collect()
-                    # import sys
-                    # size = sys.getsizeof(results)
-                    # print("size", size / 1024 / 1024 / 1024, "GB")
             process_bar.close()
             return results
 

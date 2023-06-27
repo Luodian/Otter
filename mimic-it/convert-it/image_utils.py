@@ -75,6 +75,10 @@ def get_b64_data(image: bytes) -> str:
     return base64.b64encode(image).decode("utf-8")
 
 
+from memory_profiler import profile
+
+
+@profile
 def get_json_data_generator(images: dict[str, bytes], dataset_name: str, num_threads: int) -> Generator[Tuple[str, str], None, None]:
     """
     Converts a dictionary of images to a JSON-compatible dictionary with base64 encoded strings.
@@ -99,7 +103,6 @@ def get_json_data_generator(images: dict[str, bytes], dataset_name: str, num_thr
             return new_key, result
 
         for result in executor.map(process_image_wrapper, images.items()):
-            process_bar.update()
             yield result
 
         process_bar.close()
@@ -133,20 +136,23 @@ def frame_video(video_file: str, fps: int = 1) -> list[bytes]:
             break
 
         if frame_count % (video_fps // fps) == 0:
+            # Check if the frame resolution is not 224x224 and resize if necessary
+            if frame.shape[0] != 224 or frame.shape[1] != 224:
+                frame = cv2.resize(frame, (224, 224))
+
             success, buffer = cv2.imencode(".png", frame)
             if not success:
                 print(f"Failed to encode frame {frame_count} of video {video_file}.")
             frames.append(process_image(buffer))
             saved_frame_count += 1
 
-            # del buffer
+            del buffer
 
         frame_count += 1
 
-        # del frame
+        del frame
 
     cap.release()
-    cv2.destroyAllWindows()
     return frames
 
 
