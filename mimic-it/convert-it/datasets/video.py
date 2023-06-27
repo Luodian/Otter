@@ -7,7 +7,7 @@ from PIL import Image
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from glob import glob
-from image_utils import frame_video, get_image_name, resize_image
+from image_utils import frame_video, get_image_name, resize_image, image_to_bytes
 from natsort import natsorted
 
 
@@ -175,12 +175,15 @@ class TVCaptions(AbstractDataset):
             images = {}
             for frame in frames:
                 image_name = os.path.basename(frame).split(".")[0]
+                # print(frame_name, clip_name, image_name)
                 if clip_name.startswith(frame_name):
                     image_id = f"{clip_name}_{image_name}"
                 else:
                     image_id = f"{frame_name}_{clip_name}_{image_name}"
-                with Image.open(frame) as img:
-                    images[image_id] = resize_image(img).tobytes()
+                # print(image_id)
+                with open(frame, "rb") as f:
+                    frame_bytes = f.read()
+                images[image_id] = resize_image(frame_bytes)
             return images
 
         frames = glob(os.path.join(image_path, "*"))
@@ -198,7 +201,10 @@ class TVCaptions(AbstractDataset):
 
                 for images in executor.map(get_images_dict, clips):
                     all_images.update(images)
-                    progress_bar.update(1)
+                    progress_bar.update()
+                    # print("The type of all_images is", type(all_images))
+                    # print("The types of the keys and values of all_images are", type(list(all_images.keys())[0]), type(list(all_images.values())[0]))
             progress_bar.close()
+        
 
         return all_images

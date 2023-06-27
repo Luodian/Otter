@@ -23,24 +23,25 @@ def get_image_id(image_name: str, dataset_name: str) -> str:
     return f"{dataset_name}_IMG_{get_image_name(image_name)}"
 
 
-def resize_image(image: Image.Image, target_size: tuple[int, int] = (224, 224)) -> Image.Image:
-    """
-    Resizes the given image to the target size using the Lanczos algorithm.
-
-    Args:
-        image (PIL.Image.Image): The input image to be resized.
-        target_size (tuple[int, int]): The target size to which the image should be resized.
-            Defaults to (224, 224).
-
-    Returns:
-        PIL.Image.Image: The resized image.
-    """
-    if image.size != target_size:
-        return image.resize(target_size, Image.LANCZOS)
-    return image
+def image_to_bytes(image: Image.Image) -> bytes:
+    image_stream = BytesIO()
+    image.save(image_stream, format='PNG')
+    image_bytes = image_stream.getvalue()
+    image_stream.close()
+    return image_bytes
 
 
-def process_image(image: bytes) -> bytes:
+def resize_image(img: bytes, target_size: tuple[int, int] = (224, 224)) -> bytes:
+    with Image.open(BytesIO(img)) as image:
+        if image.size != target_size:
+            resized_image = image.resize(target_size, Image.LANCZOS)
+            image.close()
+            image = resized_image
+        resized_image_bytes = image_to_bytes(image)
+    return resized_image_bytes
+
+
+def process_image(image: bytes, target_size=(224, 224)) -> bytes:
     """
     Processes the input image by resizing it, converting it to RGB mode, and save as byte string.
 
@@ -51,14 +52,15 @@ def process_image(image: bytes) -> bytes:
         bytes: The processed image as a byte string.
     """
     with Image.open(BytesIO(image)) as img:
-        resized_img = resize_image(img)
-        if resized_img.mode != "RGB":
-            resized_img = resized_img.convert("RGB")
-        # Save the processed image as a byte string
-        buffer = BytesIO()
-        resized_img.save(buffer, format="PNG")
-        processed_image = buffer.getvalue()
-        # del buffer
+        if img.size != target_size:
+            resized_img = img.resize(target_size, Image.LANCZOS)
+            img.close()
+            img = resized_img
+        if img.mode != "RGB":
+            converted_img = img.convert("RGB")
+            img.close()
+            img = converted_img
+        processed_image = image_to_bytes(img)
     return processed_image
 
 

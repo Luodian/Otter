@@ -4,7 +4,7 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
 from io import BytesIO
-from image_utils import resize_image
+from image_utils import resize_image, image_to_bytes
 
 
 def get_url(image: dict[str]):
@@ -38,8 +38,7 @@ def download_single_image(image: dict[str]) -> tuple[str, bytes]:
     url = get_url(image)
     id = image["id"]
     pic = requests.get(url)
-    with Image.open(BytesIO(pic.content)) as img:
-        return id, resize_image(img).tobytes()
+    return id, resize_image(pic.content)
 
 
 def download(images: list[dict[str]], num_threads: int):
