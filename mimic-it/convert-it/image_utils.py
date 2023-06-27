@@ -137,13 +137,13 @@ def frame_video(video_file: str, fps: int = 1) -> list[bytes]:
                 print(f"Failed to encode frame {frame_count} of video {video_file}.")
             frames.append(process_image(buffer))
             saved_frame_count += 1
-            
+
             del buffer
-        
+
         frame_count += 1
-    
+
         del frame
-    
+
     cap.release()
 
     return frames
