@@ -77,10 +77,6 @@ def get_b64_data(image: bytes) -> str:
     return base64.b64encode(image).decode("utf-8")
 
 
-from memory_profiler import profile
-
-
-@profile
 def get_json_data_generator(images: dict[str, bytes], dataset_name: str, num_threads: int) -> Generator[Tuple[str, str], None, None]:
     """
     Converts a dictionary of images to a JSON-compatible dictionary with base64 encoded strings.
