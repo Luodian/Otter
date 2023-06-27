@@ -4,7 +4,7 @@ This guide provides detailed instructions on how to convert various datasets fro
 
 ## LLaVA-In-Context
 
-Download the [coco2017](https://cocodataset.org/#download) images (coco2014 might also be work), put the images in a folder with the path `<image_root>`. Download the [meta](XXX) for the training image ids, put the meta file at the path `<meta>`.
+Download the [coco2017](https://cocodataset.org/#download) images (coco2014 might also be work), put the images in a folder with the path `<image_root>`. Download the [meta](https://drive.google.com/file/d/1iNHe8BUOALEdzuhRQ0ow0CGTvuD7JvQL/view?usp=sharing) for the training image ids, put the meta file at the path `<meta>`.
 
 The folder structure should be like this:
 
