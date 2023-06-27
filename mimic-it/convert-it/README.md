@@ -52,7 +52,7 @@ The output will be saved in `output/DC.json`.
 Download the [Visual Storytelling Dataset](https://visionandlanguage.net/VIST/dataset.html) and extract the `train.story-in-sequence.json` to a path, let `<json_path>` be the path of the json file, and run the following command:
 
 ```bash
-python main.py --name=video.VisualStorytelling --image_path=<json_path> [--num_threads=<num_threads>]
+python main.py --name=video.VisualStoryTelling --image_path=<json_path> [--num_threads=<num_threads>]
 ```
 
 The output will be saved in `output/VST.json`.
