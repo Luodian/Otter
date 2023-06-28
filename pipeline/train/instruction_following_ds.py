@@ -28,7 +28,7 @@ from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from tqdm import tqdm
 import time
 
-from pipeline.multi_instruct_data_utils.arguments import add_data_args
+from pipeline.mimicit_data_utils.arguments import add_data_args
 from accelerate import Accelerator
 from flamingo.configuration_flamingo import FlamingoConfig
 
@@ -43,7 +43,7 @@ def train_one_epoch(
     args,
     model,
     epoch,
-    multi_instruct_loader,
+    mimicit_loader,
     tokenizer,
     optimizer,
     lr_scheduler,
@@ -51,8 +51,8 @@ def train_one_epoch(
     accelerator,
     wandb,
 ):
-    # num_batches_per_epoch = multi_instruct_loader.num_batches
-    num_batches_per_epoch = len(multi_instruct_loader)
+    # num_batches_per_epoch = mimicit_loader.num_batches
+    num_batches_per_epoch = len(mimicit_loader)
     total_training_steps = num_batches_per_epoch * args.num_epochs
 
     autocast = get_autocast(args.precision)
@@ -75,8 +75,8 @@ def train_one_epoch(
     #         orig_embeds_params[name] = param.ds_tensor.clone()
 
     # loop through dataloader
-    for num_steps, (batch_multi_instruct) in tqdm(
-        enumerate(multi_instruct_loader),
+    for num_steps, (batch_mimicit) in tqdm(
+        enumerate(mimicit_loader),
         disable=args.rank != 0,
         total=total_training_steps,
         initial=(epoch * num_batches_per_epoch),
@@ -86,9 +86,9 @@ def train_one_epoch(
         global_step = num_steps + epoch * num_batches_per_epoch
         #### MULTI_INSTRUCT FORWARD PASS ####
 
-        images = batch_multi_instruct["net_input"]["patch_images"].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(1).unsqueeze(1)
-        input_ids = batch_multi_instruct["net_input"]["input_ids"].to(device_id, dtype=cast_dtype, non_blocking=True)
-        attention_mask = batch_multi_instruct["net_input"]["attention_masks"].to(device_id, dtype=cast_dtype, non_blocking=True)
+        images = batch_mimicit["net_input"]["patch_images"].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(1).unsqueeze(1)
+        input_ids = batch_mimicit["net_input"]["input_ids"].to(device_id, dtype=cast_dtype, non_blocking=True)
+        attention_mask = batch_mimicit["net_input"]["attention_masks"].to(device_id, dtype=cast_dtype, non_blocking=True)
 
         labels = input_ids.clone()
         labels[labels == tokenizer.pad_token_id] = -100
@@ -107,17 +107,17 @@ def train_one_epoch(
         labels.to(device_id, dtype=cast_dtype, non_blocking=True)
 
         with autocast():
-            loss_multi_instruct = model(
+            loss_mimicit = model(
                 vision_x=images,
                 lang_x=input_ids,
                 attention_mask=attention_mask,
                 labels=labels,
             )[0]
 
-        divided_loss_multi_instruct = loss_multi_instruct / args.gradient_accumulation_steps
+        divided_loss_mimicit = loss_mimicit / args.gradient_accumulation_steps
 
         #### BACKWARD PASS ####
-        accelerator.backward(divided_loss_multi_instruct)
+        accelerator.backward(divided_loss_mimicit)
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
         # step optimizer and log
@@ -142,15 +142,15 @@ def train_one_epoch(
 
             if args.rank == 0 and args.report_to_wandb:
                 # compute within rank 0
-                multi_instruct_samples_per_second = args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.val
-                multi_instruct_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size / step_time_m.val
+                mimicit_samples_per_second = args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.val
+                mimicit_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size / step_time_m.val
 
                 wandb.log(
                     {
                         "data_time": data_time_m.avg,
                         "step_time": step_time_m.avg,
-                        "multi_instruct_samples_per_second": multi_instruct_samples_per_second,
-                        "multi_instruct_samples_per_second_per_gpu": multi_instruct_samples_per_second_per_gpu,
+                        "mimicit_samples_per_second": mimicit_samples_per_second,
+                        "mimicit_samples_per_second_per_gpu": mimicit_samples_per_second_per_gpu,
                         "lr": optimizer.param_groups[0]["lr"],
                     },
                     commit=False,
@@ -160,7 +160,7 @@ def train_one_epoch(
 
                 wandb.log(
                     {
-                        "loss_multi_instruct": divided_loss_multi_instruct.item(),
+                        "loss_mimicit": divided_loss_mimicit.item(),
                         "global_step": global_step,
                     },
                     commit=True,
@@ -169,7 +169,7 @@ def train_one_epoch(
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
             print(
-                f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {loss_multi_instruct.item():.3f}"
+                f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {loss_mimicit.item():.3f}"
             )
 
 
@@ -209,7 +209,7 @@ def main():
     parser.add_argument(
         "--mimicit_path",
         type=str,
-        help="path to multi_instruct dataset, this should be /path/to/DC_instruction.json",
+        help="path to mimicit dataset, this should be /path/to/DC_instruction.json",
     )
     parser.add_argument(
         "--images_path",
@@ -321,7 +321,8 @@ def main():
 
     device_id = args.rank % torch.cuda.device_count()
 
-    multi_instruct_dataset = get_data(args, image_processor, tokenizer, "multi_instruct")
+    image_processor = CLIPImageProcessor()
+    mimicit_loaders = get_data(args, image_processor, tokenizer, "mimicit")
 
     def get_grouped_params(model):
         params_with_wd, params_without_wd = [], []
@@ -341,7 +342,7 @@ def main():
             {"params": params_without_wd, "weight_decay": 0.0},
         ]
 
-    args.train_num_samples = multi_instruct_dataset.dataloader.num_samples if args.train_num_samples is None else args.train_num_samples
+    args.train_num_samples = mimicit_dataset.dataloader.num_samples if args.train_num_samples is None else args.train_num_samples
     total_training_steps = ((args.train_num_samples) // (args.batch_size * args.world_size)) * args.num_epochs
 
     resume_from_epoch = 0
@@ -376,8 +377,8 @@ def main():
     accelerator = Accelerator()
     if accelerator.state.deepspeed_plugin is not None:
         accelerator.state.deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = args.batch_size
-    multi_instruct_loader = multi_instruct_dataset.dataloader
-    model, optimizer, multi_instruct_loader = accelerator.prepare(model, optimizer, multi_instruct_loader)
+    mimicit_loader = mimicit_dataset.dataloader
+    model, optimizer, mimicit_loader = accelerator.prepare(model, optimizer, mimicit_loader)
     model.train()
     # model.gradient_checkpointing_enable()
 
@@ -400,7 +401,7 @@ def main():
         lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps)
 
     for epoch in range(resume_from_epoch, args.num_epochs):
-        multi_instruct_dataset.set_epoch(epoch)
+        mimicit_dataset.set_epoch(epoch)
 
         train_one_epoch(
             args=args,
@@ -409,7 +410,7 @@ def main():
             tokenizer=tokenizer,
             optimizer=optimizer,
             lr_scheduler=lr_scheduler,
-            multi_instruct_loader=multi_instruct_loader,
+            mimicit_loader=mimicit_loader,
             accelerator=accelerator,
             device_id=device_id,
             wandb=wandb,
