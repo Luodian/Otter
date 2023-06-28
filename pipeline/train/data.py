@@ -16,11 +16,13 @@ import torch
 import torch.utils
 import torchvision
 import webdataset as wds
-from PIL import Image, ImageSequence
+from PIL import Image, ImageSequence, ImageFile
 from torch.utils.data import DataLoader, IterableDataset, RandomSampler, get_worker_info
 from torch.utils.data.distributed import DistributedSampler
 from webdataset.filters import _shuffle
 from webdataset.tariterators import base_plus_ext, tar_file_expander, url_opener, valid_sample
+sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/")
+from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
 
 Image.MAX_IMAGE_PIXELS = 1000000000
 MAX_NUM_TOKENS = 256
@@ -87,7 +89,27 @@ def count_samples(dataloader):
 
 
 def filter_no_caption_or_no_image(sample):
+    # print (sample)
+    # exit()
     return ("txt" in sample) and ("png" in sample or "jpg" in sample or "jpeg" in sample)
+
+
+def decode_base64_image(key,value):
+    print(key)
+    if not key.endswith(".png"):
+        return None
+    rawbytes = base64.b64decode(value)
+    image = Image.open(io.BytesIO(rawbytes))
+    # Check if the image is in palette mode and has transparency
+    if image.mode == "P":
+        try:
+            alpha = image.getchannel("A")
+            if alpha.mode == "L":
+                image = image.convert("RGBA")
+        except ValueError:
+            pass
+    image = image.convert("RGB")
+    return image
 
 
 def log_and_continue(exn):
@@ -131,6 +153,7 @@ def tarfile_to_samples_nothrow(src, handler=log_and_continue):
     streams = url_opener(src, handler=handler)
     files = tar_file_expander(streams, handler=handler)
     samples = group_by_keys_nothrow(files, handler=handler)
+    print(samples)
     return samples
 
 
@@ -478,7 +501,7 @@ def get_laion_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     pipeline.extend(
         [
             wds.select(filter_no_caption_or_no_image),
-            wds.decode("pilrgb", handler=log_and_continue),
+            wds.decode(decode_base64_image, only="png",handler=log_and_continue),
             wds.to_tuple("jpg;png;jpeg", "txt", handler=log_and_continue),
             wds.batched(args.batch_size_laion, partial=False),
             wds.map_tuple(preprocess_image_fn, preprocess_text_fn, handler=log_and_continue),
@@ -513,12 +536,6 @@ def get_laion_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
 
     return DataInfo(dataloader=dataloader, shared_epoch=shared_epoch)
 
-
-import json
-
-from PIL import Image, ImageFile
-
-from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
 
 
 def get_mimicit_dataset(args, tokenizer, epoch=0, floor=False):
@@ -585,6 +602,78 @@ def get_data(args, image_processor, tokenizer, dataset_type, epoch=0):
 
 
 if __name__ == "__main__":
+    from PIL import Image, ImageFile
+    from io import BytesIO
+    import base64
+    from tqdm import tqdm
+    import json
+    import argparse
+    import sys
     from transformers import CLIPImageProcessor
+    sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/")
+    from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
+    from pipeline.train.distributed import world_info_from_env
 
-    laion = get_laion_dataset(CLIPImageProcessor)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--multi_instruct_path",
+        type=str,
+        help="path to multi_instruct dataset, this should be a glob pattern such as vision_language_examples.tsv",
+    )
+    parser.add_argument("--offline", action="store_true")
+
+    args = parser.parse_args()
+
+    from transformers import LlamaTokenizer
+
+    args.local_rank, args.rank, args.world_size = world_info_from_env()
+    
+    with open( "/mnt/petrelfs/zhangyuanhan/weights/flamingo_9b_hf/config.json") as f:
+        config = json.load(f)
+
+    tokenizer = LlamaTokenizer.from_pretrained(
+           "luodian/llama-7b-hf"
+        )
+
+    # add <answer> token to tokenizer
+    tokenizer.add_special_tokens(
+        {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
+    )
+
+    tokenizer.add_special_tokens({"pad_token": "<PAD>"})
+
+    args.tokenizer = tokenizer
+
+    args.laion_shards = "/mnt/petrelfs/zhangyuanhan/data/laion-400m//000000000.tar"
+
+    args.train_num_samples_laion = 10
+
+    args.seed = 10
+
+    args.workers = 1
+
+    args.batch_size_laion = 1
+
+    a = Image.open("/mnt/petrelfs/zhangyuanhan/FzPvFWxaUAEnMbk.jpeg")
+
+    image_processor = CLIPImageProcessor(do_normalize=False)
+    
+    laion = get_laion_dataset(args,image_processor,tokenizer).dataloader
+
+    for _ in laion:
+        print(_)
+        import torchvision.transforms as T
+        transform = T.ToPILImage()
+        img = transform(_[0].squeeze())
+        img.save('text.png')
+        print(tokenizer.batch_decode(_[1][0]))
+        import pdb;pdb.set_trace()
+        # uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
+        # # index = random.choice(positive_caption_dict[uniq_id])
+        # # prompt_uniq_id, prompt_image, prompt_caption, prompt_question, prompt_refs, prompt_gt_objects, prompt_dataset_name, prompt_type = test_dataset.get_prompt_item(int(index))
+        # uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
+        # if uniq_id not in uniq_id_dict:
+        #     uniq_id_dict[uniq_id] = 0
+
+        # print(uniq_id, image, caption, question, refs, gt_objects, dataset_name, type)

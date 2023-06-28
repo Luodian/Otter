@@ -13,13 +13,12 @@ import os.path as op
 import base64
 from PIL import Image
 from io import BytesIO
-
-
-
-
+import multiprocessing
+from multiprocessing import Pool
 
 arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument("--output_dir", type=str)
+arg_parser.add_argument("--mp_num", type=int)
 arg_parser.add_argument(
     "--tsv_root",
     type=str,
@@ -168,34 +167,34 @@ class TSVFile(object):
             self.pid = os.getpid()
 
 
+def convert_tsv(tsv_id, tsv_root, output_dir):
+    try:
+        with wds.ShardWriter(output_dir + f"/{tsv_id.replace('.tsv','.').split('-')[-1]}%09d.tar", maxcount=100, maxsize=1e9) as sink:
+            cur_tsv_image = TSVFile(tsv_root=tsv_root, tsv_file=tsv_id)
+            cur_tsv_caption = TSVFile(tsv_root=tsv_root, tsv_file=tsv_id.replace("image","text"))
+            for _ in tqdm(range(cur_tsv_image.__len__()),desc="Converting image"):
+                cur_image = cur_tsv_image[_]
+                cur_caption = cur_tsv_caption[_]
+                assert cur_image[0] == cur_caption[0], f"the file name of {cur_image[0]} does not equals to {cur_caption[0]}"
+                key_str = uuid.uuid4().hex
+                sink.write({"__key__": key_str, "png": cur_image[1], "txt": eval(cur_caption[1])["captions"][0].encode('utf-8', 'replace').decode()})
+ 
+    except Exception as e:
+        print(e)
+        return
+
 def main(args, start_number=0):
     os.makedirs(args.output_dir, exist_ok=True)
     tsv_root = args.tsv_root
     tsv_id_list = list(set(cur_file for cur_file in os.listdir(tsv_root) if "tsv" in cur_file and "image" in cur_file))
-    with wds.ShardWriter(args.output_dir + f"/%09d.tar", maxcount=100, maxsize=1e9) as sink:
-        # for idx in tqdm(range(0, len(tsv_id_list)), desc="Converting tsv"):
-        for idx in tqdm(range(0, 1), desc="Converting tsv"):
-            print(tsv_id_list[idx])
-            cur_tsv_image = TSVFile(tsv_root=tsv_root, tsv_file=tsv_id_list[idx])
-            cur_tsv_caption = TSVFile(tsv_root=tsv_root, tsv_file=tsv_id_list[idx].replace("image","text"))
-            # Read the JSONL file
-            try:
-                for _ in tqdm(range(cur_tsv_image.__len__()),desc="Converting image"):
-                    cur_image = cur_tsv_image[_]
-                    cur_caption = cur_tsv_caption[_]
-                    assert cur_image[0] == cur_caption[0], f"the file name of {cur_image[0]} does not equals to {cur_caption[0]}"
-                    key_str = uuid.uuid4().hex
-                    # try:
-                        # import pdb;pdb.set_trace()
-                    sink.write({"__key__": key_str, "png": cur_image[1], "txt": eval(cur_caption[1])["captions"][0].encode('utf-8', 'replace').decode()})
-                # except:
-                #     import pdb;pdb.set_trace()
-                #     continue
-            except Exception as e:
-                print(e)
-                continue
-
-
+    tsv_id_list = tsv_id_list + tsv_id_list
+    # Set up multiprocessing pool
+    pool = Pool(processes=args.mp_num)
+    for idx in tqdm(range(0, len(tsv_id_list)), desc="Converting tsv"):
+        tsv_id = tsv_id_list[idx]
+        pool.apply_async(convert_tsv, args=(tsv_id, tsv_root,args.output_dir))
+    pool.close()
+    pool.join()
 
 if __name__ == "__main__":
     main(args=args)
