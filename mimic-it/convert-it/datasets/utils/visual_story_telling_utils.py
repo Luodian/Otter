@@ -1,10 +1,9 @@
+import json
 import requests
 
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
-from PIL import Image
-from io import BytesIO
-from image_utils import resize_image, image_to_bytes
+from image_utils import resize_image, create_folder
 
 
 def get_url(image: dict[str]):
@@ -37,8 +36,11 @@ def download_single_image(image: dict[str]) -> tuple[str, bytes]:
     """
     url = get_url(image)
     id = image["id"]
-    pic = requests.get(url)
-    return id, resize_image(pic.content)
+    try:
+        pic = requests.get(url)
+        return id, resize_image(pic.content)
+    except:
+        return id, None
 
 
 def download(images: list[dict[str]], num_threads: int):
@@ -55,9 +57,16 @@ def download(images: list[dict[str]], num_threads: int):
     """
     output = {}
     process_bar = tqdm(total=len(images), unit="image", desc="Downloading images")
+    expired_images = []
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
         for id, image in executor.map(download_single_image, images):
-            output[id] = image
+            if image is not None:
+                output[id] = image
+            else:
+                expired_images.append(id)
             process_bar.update(1)
     process_bar.close()
+    create_folder("output")
+    with open("output/expired_images.json", "w") as f:
+        json.dump(expired_images, f, indent=4)
     return output
