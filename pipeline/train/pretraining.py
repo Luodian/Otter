@@ -4,34 +4,27 @@ import argparse
 import glob
 import os
 import random
+import time
 
 import numpy as np
 import torch
+import torch.distributed as dist
 import torch.nn
+from accelerate import Accelerator, DistributedType
+from tqdm import tqdm
+from transformers import CLIPImageProcessor, get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup, get_linear_schedule_with_warmup
+
 import wandb
-from pipeline.train.data import get_data
-from pipeline.train.distributed import world_info_from_env
-from transformers import (
-    get_constant_schedule_with_warmup,
-    get_cosine_schedule_with_warmup,
-    get_linear_schedule_with_warmup,
-    CLIPImageProcessor,
-)
-
-from pipeline.train.train_utils import (
-    AverageMeter,
-    get_checkpoint,
-)
-
+from flamingo.configuration_flamingo import FlamingoConfig
 from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from otter.modeling_otter import OtterForConditionalGeneration
-from tqdm import tqdm
-import time
-
 from pipeline.mimicit_utils.arguments import add_data_args
-from accelerate import Accelerator
+from pipeline.train.data import get_data
+from pipeline.train.distributed import world_info_from_env
+from pipeline.train.train_utils import AverageMeter, get_checkpoint
 
-import sys
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 
 # The flag below controls whether to allow TF32 on matmul. This flag defaults to False
 # in PyTorch 1.12 and later.
@@ -41,147 +34,7 @@ torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
 
 
-def random_seed(seed=42, rank=0):
-    torch.manual_seed(seed + rank)
-    np.random.seed(seed + rank)
-    random.seed(seed + rank)
-
-
-def train_one_epoch(
-    args,
-    model,
-    epoch,
-    mmc4_loaders,
-    tokenizer,
-    optimizer,
-    lr_scheduler,
-    device_id,
-    accelerator,
-    wandb,
-):
-    num_batches_per_epoch = mmc4_loaders.num_batches
-    total_training_steps = num_batches_per_epoch * args.num_epochs
-
-    media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
-    endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)["input_ids"][-1]
-    answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
-
-    model.train()
-
-    # setup logging
-    step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
-    data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
-    end = time.time()
-
-    # loop through dataloader
-    for num_steps, (batch_mmc4) in tqdm(
-        enumerate(mmc4_loaders),
-        disable=args.rank != 0,
-        total=total_training_steps,
-        initial=(epoch * num_batches_per_epoch),
-    ):
-        data_time_m.update(time.time() - end)
-
-        global_step = num_steps + epoch * num_batches_per_epoch
-        total_losses = []
-        #### MMC4 FORWARD PASS ####
-        images = batch_mmc4[0].to(device_id, non_blocking=True).unsqueeze(2)
-        input_ids = torch.stack([x[0] for x in batch_mmc4[1]]).squeeze(1)
-        attention_mask = torch.stack([x[1] for x in batch_mmc4[1]]).squeeze(1)
-
-        # NOTE: irena: expected shape of clip_text_input_ids / attention_mask is (N, I, max_seq_len)
-        labels = input_ids.clone()
-        labels[labels == tokenizer.pad_token_id] = -100
-        labels[:, 0] = -100
-
-        for i in range(labels.shape[0]):
-            # remove loss for any token before the first <image> token
-            label_idx = 0
-            while label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id:
-                labels[i][label_idx] = -100
-                label_idx += 1
-
-            # get index of all endofchunk tokens in the sequence
-            endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
-            for endofchunk_idx in endofchunk_idxs:
-                token_idx = endofchunk_idx + 1
-                while token_idx < labels.shape[1] and labels[i][token_idx] != media_token_id:
-                    labels[i][token_idx] = -100
-                    token_idx += 1
-
-        labels[labels == media_token_id] = -100
-        labels.to(device_id)
-
-        # with accelerator.accumulate(model):
-        # with autocast():
-        with accelerator.autocast():
-            loss_mmc4 = model(
-                vision_x=images,
-                lang_x=input_ids,
-                attention_mask=attention_mask,
-                labels=labels,
-            )[0]
-
-        total_losses.append(loss_mmc4)
-        #### BACKWARD PASS ####
-        total_loss_sum = sum(total_losses)
-        mean_loss = total_loss_sum / len(total_losses)
-        accelerator.backward(total_loss_sum.to(device_id))
-
-        def mask_embedding(m):
-            if m.weight.requires_grad:
-                zero_mask = torch.zeros_like(m.weight.grad)
-                zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
-                m.weight.grad = m.weight.grad * zero_mask
-
-        if args.mask_lm_head:
-            model.module.lang_encoder.model.embed_tokens.apply(mask_embedding)
-            model.module.lang_encoder.lm_head.apply(mask_embedding)
-
-        if accelerator.sync_gradients:
-            accelerator.clip_grad_norm_(model.parameters(), 1.0)
-
-        optimizer.step()
-        lr_scheduler.step()
-        optimizer.zero_grad()
-
-        # step time and reset end outside of rank 0
-        step_time_m.update(time.time() - end)
-        end = time.time()
-
-        if accelerator.sync_gradients:
-            if args.rank == 0 and args.report_to_wandb:
-                # compute within rank 0
-                mmc4_samples_per_second = args.gradient_accumulation_steps * args.batch_size_mmc4 * args.world_size / step_time_m.val
-                mmc4_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_mmc4 / step_time_m.val
-
-                wandb.log(
-                    {
-                        "data_time": data_time_m.avg,
-                        "step_time": step_time_m.avg,
-                        "mmc4_samples_per_second": mmc4_samples_per_second,
-                        "mmc4_samples_per_second_per_gpu": mmc4_samples_per_second_per_gpu,
-                        "lr": optimizer.param_groups[0]["lr"],
-                    },
-                    commit=False,
-                )
-                step_time_m.reset()
-                data_time_m.reset()
-
-                wandb.log(
-                    {
-                        "loss_mmc4": mean_loss.item(),
-                        "global_step": global_step // args.gradient_accumulation_steps,
-                    },
-                    commit=True,
-                )
-
-        # Log loss to console
-        if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
-            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {mean_loss.item():.3f}")
-
-
-def main():
+def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--external_save_dir",
@@ -210,9 +63,9 @@ def main():
         type=str,
         help="path to c4 shards, this should be a glob pattern such as /path/to/shards/shard-{0000..0999}.tar",
     )
-    parser.add_argument("--train_num_samples_mmc4", type=int, default=10)
-    parser.add_argument("--batch_size_mmc4", type=int, default=128)
-    parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--train_num_samples_mmc4", type=int, default=100)
+    parser.add_argument("--batch_size_mmc4", type=int, default=8)
+    parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--dataset_resampled", action="store_true")
     parser.add_argument(
         "--mmc4_textsim_threshold",
@@ -221,7 +74,7 @@ def main():
         help="threshold for filtering images in mmc4 based on image-text similarity",
     )
 
-    parser.add_argument("--use_media_placement_augmentation", action="store_true")
+    # parser.add_argument("--use_media_placement_augmentation", action="store_true")
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--num_epochs", type=int, default=1)
     parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
@@ -291,7 +144,149 @@ def main():
         action="store_true",
         help="save checkpoints to wandb",
     )
+    return parser
 
+
+def random_seed(seed=42, rank=0):
+    torch.manual_seed(seed + rank)
+    np.random.seed(seed + rank)
+    random.seed(seed + rank)
+
+
+def train_one_epoch(
+    args,
+    model,
+    epoch,
+    mmc4_loader,
+    tokenizer,
+    optimizer,
+    lr_scheduler,
+    device_id,
+    accelerator,
+    wandb,
+):
+    num_batches_per_epoch = mmc4_loader.num_batches
+    total_training_steps = num_batches_per_epoch * args.num_epochs
+
+    media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
+    endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)["input_ids"][-1]
+    answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
+
+    model.train()
+
+    # setup logging
+    step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
+    data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
+    end = time.time()
+
+    # loop through dataloader
+    for num_steps, (batch_mmc4) in tqdm(
+        enumerate(mmc4_loader),
+        disable=args.rank != 0,
+        total=total_training_steps,
+        initial=(epoch * num_batches_per_epoch),
+    ):
+        data_time_m.update(time.time() - end)
+
+        global_step = num_steps + epoch * num_batches_per_epoch
+        total_losses = []
+        #### MMC4 FORWARD PASS ####
+        images = batch_mmc4[0].to(device_id, non_blocking=True).unsqueeze(2)
+        input_ids = torch.stack([x[0] for x in batch_mmc4[1]]).squeeze(1)
+        attention_mask = torch.stack([x[1] for x in batch_mmc4[1]]).squeeze(1)
+
+        # NOTE: irena: expected shape of clip_text_input_ids / attention_mask is (N, I, max_seq_len)
+        labels = input_ids.clone()
+        labels[labels == tokenizer.pad_token_id] = -100
+        labels[:, 0] = -100
+
+        for i in range(labels.shape[0]):
+            # remove loss for any token before the first <image> token
+            label_idx = 0
+            while label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id:
+                labels[i][label_idx] = -100
+                label_idx += 1
+
+            # get index of all endofchunk tokens in the sequence
+            endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
+            for endofchunk_idx in endofchunk_idxs:
+                token_idx = endofchunk_idx + 1
+                while token_idx < labels.shape[1] and labels[i][token_idx] != media_token_id:
+                    labels[i][token_idx] = -100
+                    token_idx += 1
+
+        labels[labels == media_token_id] = -100
+        labels.to(device_id)
+
+        # with accelerator.accumulate(model):
+        with accelerator.autocast():
+            loss_mmc4 = model(
+                vision_x=images,
+                lang_x=input_ids,
+                attention_mask=attention_mask,
+                labels=labels,
+            )[0]
+
+        total_losses.append(loss_mmc4)
+        #### BACKWARD PASS ####
+        total_loss_sum = sum(total_losses)
+        mean_loss = total_loss_sum / len(total_losses)
+        accelerator.backward(total_loss_sum.to(device_id))
+
+        def mask_embedding(m):
+            if m.weight.requires_grad:
+                zero_mask = torch.zeros_like(m.weight.grad)
+                zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
+                m.weight.grad = m.weight.grad * zero_mask
+
+        if args.mask_lm_head:
+            model.module.lang_encoder.model.embed_tokens.apply(mask_embedding)
+            model.module.lang_encoder.lm_head.apply(mask_embedding)
+
+        if accelerator.sync_gradients:
+            accelerator.clip_grad_norm_(model.parameters(), 1.0)
+
+        optimizer.step()
+        lr_scheduler.step()
+        optimizer.zero_grad()
+
+        # step time and reset end outside of rank 0
+        step_time_m.update(time.time() - end)
+        end = time.time()
+
+        if accelerator.sync_gradients:
+            if args.rank == 0 and args.report_to_wandb:
+                # compute within rank 0
+                mmc4_samples_per_second = args.gradient_accumulation_steps * args.batch_size_mmc4 * args.world_size / step_time_m.val
+                mmc4_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_mmc4 / step_time_m.val
+                wandb.log(
+                    {
+                        "data_time": data_time_m.avg,
+                        "step_time": step_time_m.avg,
+                        "mmc4_samples_per_second": mmc4_samples_per_second,
+                        "mmc4_samples_per_second_per_gpu": mmc4_samples_per_second_per_gpu,
+                        "lr": optimizer.param_groups[0]["lr"],
+                    },
+                    commit=False,
+                )
+                step_time_m.reset()
+                data_time_m.reset()
+
+                wandb.log(
+                    {
+                        "mean_loss": mean_loss.item(),
+                        "global_step": global_step // args.gradient_accumulation_steps,
+                    },
+                    commit=True,
+                )
+
+        # Log loss to console
+        if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
+            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Mean Loss: {mean_loss.item():.3f}")
+
+
+def main():
+    parser = parse_args()
     parser = add_data_args(parser)
     args = parser.parse_args()
 
@@ -308,34 +303,43 @@ def main():
     device_id = accelerator.device
 
     random_seed(args.seed)
-
     if args.pretrained_model_name_or_path is not None:
-        # TODO-Yuanhan: load customized models for pretraining
-        if "otter" in args.pretrained_model_name_or_path:
+        accelerator.print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
+        if "otter" in args.run_name.lower():
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
                 device_map="auto",
                 local_files_only=args.offline,
             )
-        elif "flamingo" in args.pretrained_model_name_or_path:
-            model = FlamingoForConditionalGeneration.from_pretrained(
-                args.pretrained_model_name_or_path,
-                device_map="auto",
-                local_files_only=args.offline,
-            )
+        elif "flamingo" in args.run_name.lower():
+            if accelerator.num_processes > 1:
+                model = FlamingoForConditionalGeneration.from_pretrained(
+                    args.pretrained_model_name_or_path,
+                    device_map={"": device_id},
+                    local_files_only=args.offline,
+                )
+            else:
+                model = FlamingoForConditionalGeneration.from_pretrained(
+                    args.pretrained_model_name_or_path,
+                    device_map="auto",
+                    local_files_only=args.offline,
+                )
             model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+    else:
+        model = None
+        config = None
 
-    model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
+    accelerator.wait_for_everyone()
+
+    if model.lang_encoder.__class__.__name__ != "MPTForCausalLM":
+        model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
+
     args.tokenizer = model.text_tokenizer
     tokenizer = model.text_tokenizer
     random_seed(args.seed, args.rank)
 
-    print(f"Start running training on rank {args.rank}.")
-
-    # device_id = args.rank % torch.cuda.device_count()
     image_processor = CLIPImageProcessor()
     mmc4_dataset = get_data(args, image_processor, tokenizer, "mmc4")
-    mmc4_loaders = mmc4_dataset.dataloader
 
     def get_grouped_params(model):
         params_with_wd, params_without_wd = [], []
@@ -355,8 +359,8 @@ def main():
             {"params": params_without_wd, "weight_decay": 0.0},
         ]
 
-    total_training_steps = ((args.train_num_samples_mmc4) // (args.batch_size_mmc4 * args.world_size)) * args.num_epochs
-    # total_training_steps = len(mmc4_dataset[0]) * args.num_epochs
+    # total_training_steps = ((args.train_num_samples_mmc4) // (args.batch_size_mmc4 * args.world_size)) * args.num_epochs
+    total_training_steps = mmc4_dataset.dataloader.num_batches * args.num_epochs
 
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
@@ -407,12 +411,17 @@ def main():
             config=vars(args),
         )
 
-    model, optimizer, lr_scheduler, mmc4_loaders = accelerator.prepare(model, optimizer, lr_scheduler, mmc4_loaders)
+    model, optimizer, lr_scheduler = accelerator.prepare(model, optimizer, lr_scheduler)
+
+    # YH: hardcode for ddp, reason is related to "split_batch" in accelerator. Currently just fix this bug, need to dig further.
+    if accelerator.num_processes > 1:
+        lr_scheduler.split_batches = True
+
     model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
-        # for cur_data_loader in mmc4_loaders:
-        #     cur_data_loader.dataset.set_epoch(epoch)
+        mmc4_dataset.set_epoch(epoch)
+        mmc4_loader = mmc4_dataset.dataloader
 
         train_one_epoch(
             args=args,
@@ -421,7 +430,7 @@ def main():
             tokenizer=tokenizer,
             optimizer=optimizer,
             lr_scheduler=lr_scheduler,
-            mmc4_loaders=mmc4_loaders,
+            mmc4_loader=mmc4_loader,
             accelerator=accelerator,
             device_id=device_id,
             wandb=wandb,
@@ -459,8 +468,6 @@ def main():
         )
         # save the config
         unwrapped_model.config.save_pretrained(args.external_save_dir)
-        # if model.can_generate():
-        #     model_to_save.generation_config.save_pretrained(args.external_save_dir)
 
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
