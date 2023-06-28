@@ -11,10 +11,6 @@ from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 from einops import rearrange, repeat
 from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
-from flamingo.falcon.modelling_RW import RWForCausalLM
-
-from flamingo.mpt.modeling_mpt import MPTForCausalLM
-
 from .configuration_flamingo import FlamingoConfig
 
 __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
@@ -24,8 +20,6 @@ __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
     "gpt-j": "transformer.h",
     "pythia": "gpt_neox.layers",
     "llama": "model.layers",
-    "RWForCausalLM": "transformer.h",
-    "MPTForCausalLM": "transformer.blocks",
 }
 
 
@@ -193,6 +187,7 @@ class FlamingoMaskedCrossAttention(nn.Module):
         dim_head: int = 64,
         heads: int = 8,
         only_attend_immediate_media: bool = True,
+        only_attend_previous: bool = True,
     ):
         super().__init__()
         self.scale = dim_head**-0.5
@@ -207,6 +202,7 @@ class FlamingoMaskedCrossAttention(nn.Module):
 
         # whether for text to only attend to immediate preceding image, or all previous images
         self.only_attend_immediate_media = only_attend_immediate_media
+        self.only_attend_previous = only_attend_previous
 
     def forward(
         self,
@@ -294,6 +290,7 @@ class FlamingoGatedCrossAttentionBlock(nn.Module):
         heads: int = 8,
         ff_mult: int = 4,
         only_attend_immediate_media: bool = True,
+        only_attend_previous: bool = True,
     ):
         super().__init__()
         self.attn = FlamingoMaskedCrossAttention(
@@ -302,6 +299,7 @@ class FlamingoGatedCrossAttentionBlock(nn.Module):
             dim_head=dim_head,
             heads=heads,
             only_attend_immediate_media=only_attend_immediate_media,
+            only_attend_previous=only_attend_previous,
         )
         self.attn_gate = nn.Parameter(torch.tensor([0.0]))
         self.feed_forward = nn.ModuleList(
@@ -406,6 +404,7 @@ class FlamingoLMMixin(nn.Module):
         vis_hidden_size: int,
         cross_attn_every_n_layers: int,
         use_media_placement_augmentation: bool,
+        only_attend_previous: bool,
     ):
         """
         Initialize Flamingo by adding a new gated cross attn to the decoder. Store the media token id for computing the media locations.
@@ -416,6 +415,7 @@ class FlamingoLMMixin(nn.Module):
                 FlamingoGatedCrossAttentionBlock(
                     dim=self.config.hidden_size,
                     dim_visual=vis_hidden_size,
+                    only_attend_previous=only_attend_previous,
                 )
                 if (layer_idx + 1) % cross_attn_every_n_layers == 0
                 else None
@@ -432,6 +432,7 @@ class FlamingoLMMixin(nn.Module):
         )
         self.media_token_id = media_token_id
         self.use_media_placement_augmentation = use_media_placement_augmentation
+        self.only_attend_previous = only_attend_previous
         self.initialized_flamingo = True
 
     def forward(self, *input, **kwargs):
@@ -445,17 +446,12 @@ class FlamingoLMMixin(nn.Module):
         # attend_previous = (
         #     (random.random() < 0.5) if self.use_media_placement_augmentation else False
         # )
-        attend_previous = (random.random() < 0.5) if self.use_media_placement_augmentation else True
-        # attend_previous = self.only_attend_previous
+        attend_previous = self.only_attend_previous
 
-        if self.__class__.__name__ != "MPTForCausalLM":
-            for layer in self.get_decoder().layers:
-                layer.condition_media_locations(media_locations)
-                layer.condition_attend_previous(attend_previous)
-        else:
-            for layer in self.get_decoder().blocks:
-                layer.condition_media_locations(media_locations)
-                layer.condition_attend_previous(attend_previous)
+        for layer in self.get_decoder().layers:
+            layer.condition_media_locations(media_locations)
+            layer.condition_attend_previous(attend_previous)
+
         return super().forward(*input, **kwargs)  # Call the other parent's forward method
 
     def is_conditioned(self) -> bool:
@@ -520,6 +516,7 @@ class FlamingoModel(FlamingoPreTrainedModel):
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
+        self.only_attend_previous = config.only_attend_previous
 
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder
@@ -532,6 +529,7 @@ class FlamingoModel(FlamingoPreTrainedModel):
             vis_hidden_size=self.vis_dim,
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
             use_media_placement_augmentation=self.use_media_placement_augmentation,
+            only_attend_previous=self.only_attend_previous,
         )
         self.post_init()
 
@@ -666,18 +664,10 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
         # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
 
-        if config.text_config.architectures[0] == "MPTForCausalLM":
-            text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
-            lang_encoder = MPTForCausalLM(config=config.text_config)
-        elif config.text_config.architectures[0] == "RWForCausalLM":
-            text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
-            lang_encoder = RWForCausalLM(config=config.text_config)
-        else:
-            import pdb
-
-            pdb.set_trace()
-
+        text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+        lang_encoder = LlamaForCausalLM(config=config.text_config)
         vision_encoder = CLIPVisionModel(config=config.vision_config)
+
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
         if text_tokenizer.pad_token is None:
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
@@ -688,12 +678,12 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         extend_instance(lang_encoder, FlamingoLMMixin)
         decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
         lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        if lang_encoder.__class__.__name__ != "MPTForCausalLM":
-            lang_encoder.resize_token_embeddings(len(text_tokenizer))
+        lang_encoder.resize_token_embeddings(len(text_tokenizer))
         self.lang_encoder = lang_encoder
 
-        self.cross_attn_every_n_layers = config.cross_attn_every_n_layers if hasattr(config, "cross_attn_every_n_layers") else 4
+        self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
+        self.only_attend_previous = config.only_attend_previous
 
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder
@@ -706,6 +696,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
             vis_hidden_size=self.vis_dim,
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
             use_media_placement_augmentation=self.use_media_placement_augmentation,
+            only_attend_previous=self.only_attend_previous,
         )
         self.post_init()
 
@@ -737,12 +728,9 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
                 param.requires_grad = False
         # Unfreeze LM input embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
-        ## MPTForCausalLM is tied word embedding
-        if self.lang_encoder.__class__.__name__ != "MPTForCausalLM":
-            self.lang_encoder.lm_head.requires_grad_(True)
+        self.lang_encoder.lm_head.requires_grad_(True)
         # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
-        # print model size in billions of parameters in 2 decimal places
-        print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
+        print(f"Trainable param: {sum(p.numel() for p in self.parameters() if p.requires_grad)}")
 
     def forward(
         self,

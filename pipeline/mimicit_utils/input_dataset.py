@@ -4,7 +4,6 @@ import os
 import pickle
 
 
-# Thsi file is legacy code from the original MIMIC-IT pipeline. It is not used in the current pipeline.
 class FileDataset(object):
     def __init__(
         self,
