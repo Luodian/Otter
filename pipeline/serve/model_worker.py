@@ -183,12 +183,8 @@ class ModelWorker:
         if images is not None:
             assert type(images) is list
             if len(images) > 0:
-                if type(images[0]) is list:  # currently support single video only
-                    images = images[-1]  # reserve the last video
-                    # Split the string from the right side using rsplit()
-                    split_prompt = prompt.rsplit(DEFAULT_IMAGE_TOKEN, -1)
-                    # Join the string back together, leaving out all occurrences of DEFAULT_IMAGE_TOKEN except the last one, reserve the last DEFAULT_IMAGE_TOKEN
-                    prompt = DEFAULT_IMAGE_TOKEN.join(split_prompt[:-1]) + split_prompt[-1]
+                if type(images[0]) is list:  # current support single video
+                    images = images[-1]
                     is_video = True
                 else:
                     is_video = False
@@ -208,6 +204,7 @@ class ModelWorker:
                 vision_x = None
 
         streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
+        logger.info(f"Input prompt: {prompt}")
         inputs = tokenizer(
             [prompt],
             return_tensors="pt",
