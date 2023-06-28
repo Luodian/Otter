@@ -665,17 +665,21 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         # vision_encoder = AutoModel.from_config(config.vision_config).vision_model
         # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
         # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
+        if "llama" not in config.text_config._name_or_path:
+            if config.text_config.architectures[0] == "MPTForCausalLM":
+                text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
+                lang_encoder = MPTForCausalLM(config=config.text_config)
+            elif config.text_config.architectures[0] == "RWForCausalLM":
+                text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
+                lang_encoder = RWForCausalLM(config=config.text_config)
+            else:
+                import pdb
 
-        if config.text_config.architectures[0] == "MPTForCausalLM":
-            text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
-            lang_encoder = MPTForCausalLM(config=config.text_config)
-        elif config.text_config.architectures[0] == "RWForCausalLM":
-            text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
-            lang_encoder = RWForCausalLM(config=config.text_config)
+                pdb.set_trace()
         else:
-            import pdb
+            text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+            lang_encoder = LlamaForCausalLM(config=config.text_config)
 
-            pdb.set_trace()
 
         vision_encoder = CLIPVisionModel(config=config.vision_config)
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})

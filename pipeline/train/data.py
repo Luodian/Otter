@@ -569,7 +569,7 @@ def get_mimicit_dataset(args, tokenizer, epoch=0, floor=False):
 
 
 def get_dataset_fn(dataset_type):
-    if dataset_type == "image_text":
+    if dataset_type == "laion":
         return get_laion_dataset
     elif dataset_type == "mmc4":
         return get_mmc4_dataset
@@ -581,3 +581,10 @@ def get_dataset_fn(dataset_type):
 
 def get_data(args, image_processor, tokenizer, dataset_type, epoch=0):
     return get_dataset_fn(dataset_type)(args, image_processor=image_processor, epoch=epoch, tokenizer=tokenizer)
+
+
+
+if __name__ == "__main__":
+    from transformers import CLIPImageProcessor
+
+    laion = get_laion_dataset(CLIPImageProcessor)

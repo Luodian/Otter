@@ -172,7 +172,7 @@ def main(args, start_number=0):
     os.makedirs(args.output_dir, exist_ok=True)
     tsv_root = args.tsv_root
     tsv_id_list = list(set(cur_file for cur_file in os.listdir(tsv_root) if "tsv" in cur_file and "image" in cur_file))
-    with wds.ShardWriter(args.output_dir + f"/%09d.tar", maxcount=30000, maxsize=1e10) as sink:
+    with wds.ShardWriter(args.output_dir + f"/%09d.tar", maxcount=100, maxsize=1e9) as sink:
         for idx in tqdm(range(0, len(tsv_id_list)), desc="Converting tsv"):
             cur_tsv_image = TSVFile(tsv_root=tsv_root, tsv_file=tsv_id_list[idx])
             cur_tsv_caption = TSVFile(tsv_root=tsv_root, tsv_file=tsv_id_list[idx].replace("image","text"))

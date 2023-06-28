@@ -64,7 +64,7 @@ def parse_args():
         help="path to c4 shards, this should be a glob pattern such as /path/to/shards/shard-{0000..0999}.tar",
     )
     parser.add_argument(
-        "-laion_shards",
+        "--laion_shards",
         type=str,
         help="path to laion shards, this should be a glob pattern such as /path/to/shards/shard-{0000..0999}.tar",
     )
@@ -102,6 +102,8 @@ def parse_args():
         type=str,
         help="constant, linear, or cosine",
     )
+    parser.add_argument("--loss_multiplier_mmc4", type=float, default=1.0)
+    parser.add_argument("--loss_multiplier_laion", type=float, default=0.2)
     parser.add_argument("--warmup_steps", default=1000, type=int)
     parser.add_argument("--warmup_steps_ratio", default=None, type=float)
     parser.add_argument("--weight_decay", default=0.1, type=float)
@@ -165,15 +167,26 @@ def train_one_epoch(
     model,
     epoch,
     mmc4_loader,
+    laion_loader,
     tokenizer,
     optimizer,
     lr_scheduler,
     device_id,
     accelerator,
     wandb,
-):
-    num_batches_per_epoch = mmc4_loader.num_batches
+):  
+    num_batches_per_epoch_laion = laion_loader.num_batches
+    num_batches_per_epoch_mmc4 = mmc4_loader.num_batches
+
+
+    assert (
+        num_batches_per_epoch_laion == num_batches_per_epoch_mmc4
+    ), "Number of batches in laion and mmc4 datasets must be the same"
+
+
+    num_batches_per_epoch = num_batches_per_epoch_mmc4
     total_training_steps = num_batches_per_epoch * args.num_epochs
+
 
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
     endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)["input_ids"][-1]
@@ -187,8 +200,8 @@ def train_one_epoch(
     end = time.time()
 
     # loop through dataloader
-    for num_steps, (batch_mmc4) in tqdm(
-        enumerate(mmc4_loader),
+    for num_steps, (bathc_laion,batch_mmc4) in tqdm(
+        enumerate(zip(laion_loader, mmc4_loader)),
         disable=args.rank != 0,
         total=total_training_steps,
         initial=(epoch * num_batches_per_epoch),
@@ -197,6 +210,36 @@ def train_one_epoch(
 
         global_step = num_steps + epoch * num_batches_per_epoch
         total_losses = []
+
+        #### LAION FORWARD PASS ####
+        images = (
+            batch_laion[0]
+            .to(device_id, dtype=cast_dtype, non_blocking=True)
+            .unsqueeze(1)
+            .unsqueeze(1)
+        )
+
+        input_ids = batch_laion[1][0].to(device_id, dtype=cast_dtype, non_blocking=True)
+        attention_mask = batch_laion[1][1].to(
+            device_id, dtype=cast_dtype, non_blocking=True
+        )
+
+        labels = input_ids.clone()
+        labels[labels == tokenizer.pad_token_id] = -100
+        labels[:, 0] = -100
+        labels[labels == media_token_id] = -100
+        labels.to(device_id)
+
+        with accelerator.autocast():
+            loss_laion = model(
+                vision_x=images,
+                lang_x=input_ids,
+                attention_mask=attention_mask,
+                labels=labels,
+            )[0]
+        total_losses.append(args.loss_multiplier_laion*loss_laion)
+        import pdb;pdb.set_trace()
+
         #### MMC4 FORWARD PASS ####
         images = batch_mmc4[0].to(device_id, non_blocking=True).unsqueeze(2)
         input_ids = torch.stack([x[0] for x in batch_mmc4[1]]).squeeze(1)
@@ -234,7 +277,7 @@ def train_one_epoch(
                 labels=labels,
             )[0]
 
-        total_losses.append(loss_mmc4)
+        total_losses.append(args.loss_multiplier_mmc4*loss_mmc4)
         #### BACKWARD PASS ####
         total_loss_sum = sum(total_losses)
         mean_loss = total_loss_sum / len(total_losses)
@@ -346,7 +389,9 @@ def main():
     random_seed(args.seed, args.rank)
 
     image_processor = CLIPImageProcessor()
+
     mmc4_dataset = get_data(args, image_processor, tokenizer, "mmc4")
+    laion_dataset = get_data(args, image_processor, tokenizer, "laion")
 
     def get_grouped_params(model):
         params_with_wd, params_without_wd = [], []
@@ -427,6 +472,9 @@ def main():
     model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
+        laion_dataset.set_epoch(epoch)
+        laion_loader = laion_dataset.dataloader
+
         mmc4_dataset.set_epoch(epoch)
         mmc4_loader = mmc4_dataset.dataloader
 
@@ -438,6 +486,7 @@ def main():
             optimizer=optimizer,
             lr_scheduler=lr_scheduler,
             mmc4_loader=mmc4_loader,
+            laion_loader=laion_loader,
             accelerator=accelerator,
             device_id=device_id,
             wandb=wandb,
