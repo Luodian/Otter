@@ -63,8 +63,15 @@ def parse_args():
         type=str,
         help="path to c4 shards, this should be a glob pattern such as /path/to/shards/shard-{0000..0999}.tar",
     )
+    parser.add_argument(
+        "-laion_shards",
+        type=str,
+        help="path to laion shards, this should be a glob pattern such as /path/to/shards/shard-{0000..0999}.tar",
+    )
     parser.add_argument("--train_num_samples_mmc4", type=int, default=100)
+    parser.add_argument("--train_num_samples_laion", type=int, default=100)
     parser.add_argument("--batch_size_mmc4", type=int, default=8)
+    parser.add_argument("--batch_size_laion", type=int, default=8)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--dataset_resampled", action="store_true")
     parser.add_argument(
