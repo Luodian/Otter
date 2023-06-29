@@ -1,10 +1,7 @@
 import argparse
 import json
 import os
-import tarfile
 import uuid
-import sys
-import braceexpand
 import webdataset as wds
 from typing import List
 import logging
@@ -27,6 +24,7 @@ arg_parser.add_argument(
 args = arg_parser.parse_args()
 
 from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor
 
 
 class TSVFile(object):
@@ -203,6 +201,19 @@ def main(args, start_number=0):
         pool.apply_async(convert_tsv, args=(tsv_id, tsv_root,args.output_dir))
     pool.close()
     pool.join()
+
+arg_parser = argparse.ArgumentParser()
+arg_parser.add_argument("--output_dir", type=str, required=True)
+arg_parser.add_argument("--mp_num", type=int, default=1)
+arg_parser.add_argument("--shard", type=int, default=800, help="Shard number")
+arg_parser.add_argument("--interval", type=int, default=20, help="Interval between shards")
+arg_parser.add_argument(
+    "--tsv_root",
+    type=str,
+    required=True,
+    help="Pass in a root of tsv",
+)
+args = arg_parser.parse_args()
 
 if __name__ == "__main__":
     main(args=args)
