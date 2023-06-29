@@ -93,7 +93,7 @@ def filter_no_caption_or_no_image(sample):
     return ("txt" in sample) and ("png" in sample or "jpg" in sample or "jpeg" in sample)
 
 
-def decode_base64_image(key,value):
+def decode_base64_image(key, value):
     print(key)
     if not key.endswith(".png"):
         return None
@@ -498,7 +498,7 @@ def get_laion_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     pipeline.extend(
         [
             wds.select(filter_no_caption_or_no_image),
-            wds.decode(decode_base64_image, only="png",handler=log_and_continue),
+            wds.decode(decode_base64_image, only="png", handler=log_and_continue),
             wds.to_tuple("jpg;png;jpeg", "txt", handler=log_and_continue),
             wds.batched(args.batch_size_laion, partial=False),
             wds.map_tuple(preprocess_image_fn, preprocess_text_fn, handler=log_and_continue),
@@ -603,7 +603,6 @@ def get_data(args, image_processor, tokenizer, dataset_type, epoch=0):
     return get_dataset_fn(dataset_type)(args, image_processor=image_processor, epoch=epoch, tokenizer=tokenizer)
 
 
-
 if __name__ == "__main__":
     from PIL import Image, ImageFile
     from io import BytesIO
@@ -613,10 +612,10 @@ if __name__ == "__main__":
     import argparse
     import sys
     from transformers import CLIPImageProcessor
+
     sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/")
     from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
     from pipeline.train.distributed import world_info_from_env
-
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -631,18 +630,14 @@ if __name__ == "__main__":
     from transformers import LlamaTokenizer
 
     args.local_rank, args.rank, args.world_size = world_info_from_env()
-    
-    with open( "/mnt/petrelfs/zhangyuanhan/weights/flamingo_9b_hf/config.json") as f:
+
+    with open("/mnt/petrelfs/zhangyuanhan/weights/flamingo_9b_hf/config.json") as f:
         config = json.load(f)
 
-    tokenizer = LlamaTokenizer.from_pretrained(
-           "luodian/llama-7b-hf"
-        )
+    tokenizer = LlamaTokenizer.from_pretrained("luodian/llama-7b-hf")
 
     # add <answer> token to tokenizer
-    tokenizer.add_special_tokens(
-        {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
-    )
+    tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
 
     tokenizer.add_special_tokens({"pad_token": "<PAD>"})
 
@@ -661,17 +656,20 @@ if __name__ == "__main__":
     a = Image.open("/mnt/petrelfs/zhangyuanhan/FzPvFWxaUAEnMbk.jpeg")
 
     image_processor = CLIPImageProcessor(do_normalize=False)
-    
-    laion = get_laion_dataset(args,image_processor,tokenizer).dataloader
+
+    laion = get_laion_dataset(args, image_processor, tokenizer).dataloader
 
     for _ in laion:
         print(_)
         import torchvision.transforms as T
+
         transform = T.ToPILImage()
         img = transform(_[0].squeeze())
-        img.save('text.png')
+        img.save("text.png")
         print(tokenizer.batch_decode(_[1][0]))
-        import pdb;pdb.set_trace()
+        import pdb
+
+        pdb.set_trace()
         # uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
         # # index = random.choice(positive_caption_dict[uniq_id])
         # # prompt_uniq_id, prompt_image, prompt_caption, prompt_question, prompt_refs, prompt_gt_objects, prompt_dataset_name, prompt_type = test_dataset.get_prompt_item(int(index))
