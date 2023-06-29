@@ -189,22 +189,44 @@ class TSVFile(object):
             self.pid = os.getpid()
 
 
+def process_image(index, cur_tsv_image, cur_tsv_caption, sink):
+    try:
+        cur_image = cur_tsv_image.__getitem__(index)
+        cur_caption = cur_tsv_caption.__getitem__(index)
+    except Exception as e:
+        print(f"Error at index {index}: {e}")
+        return
+
+    assert cur_image[0] == cur_caption[0], f"the file name of {cur_image[0]} does not equal {cur_caption[0]}"
+    key_str = uuid.uuid4().hex
+    sink.write(
+        {
+            "__key__": key_str,
+            "png": cur_image[1],
+            "txt": eval(cur_caption[1])["captions"][0].encode("utf-8", "replace").decode(),
+        }
+    )
+
+
 def convert_tsv(tsv_id, tsv_root, output_dir):
     with wds.ShardWriter(output_dir + f"/{tsv_id.replace('.tsv','.').split('-')[-1]}%03d.tar", maxcount=500000, maxsize=2e10) as sink:
         cur_tsv_image = TSVFile(tsv_root=tsv_root, tsv_file=tsv_id)
         cur_tsv_caption = TSVFile(tsv_root=tsv_root, tsv_file=tsv_id.replace("image", "text"))
         for _ in tqdm(range(cur_tsv_image.__len__()), desc="Converting image"):
-            cur_image = cur_tsv_image[_]
-            cur_caption = cur_tsv_caption[_]
-            assert cur_image[0] == cur_caption[0], f"the file name of {cur_image[0]} does not equals to {cur_caption[0]}"
-            key_str = uuid.uuid4().hex
-            sink.write(
-                {
-                    "__key__": key_str,
-                    "png": cur_image[1],
-                    "txt": eval(cur_caption[1])["captions"][0].encode("utf-8", "replace").decode(),
-                }
-            )
+            try:
+                cur_image = cur_tsv_image[_]
+                cur_caption = cur_tsv_caption[_]
+                assert cur_image[0] == cur_caption[0], f"the file name of {cur_image[0]} does not equals to {cur_caption[0]}"
+                key_str = uuid.uuid4().hex
+                sink.write(
+                    {
+                        "__key__": key_str,
+                        "png": cur_image[1],
+                        "txt": eval(cur_caption[1])["captions"][0].encode("utf-8", "replace").decode(),
+                    }
+                )
+            except Exception as e:
+                print(f"Error at index {_}: {e}")
 
 
 # Define the main function
