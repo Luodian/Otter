@@ -10,6 +10,7 @@ from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 from .configuration_otter import OtterConfig
 
 import sys
+import random
 
 # The package importlib_metadata is in a different place, depending on the python version.
 if sys.version_info < (3, 8):
@@ -167,6 +168,7 @@ class OtterPerceiverResampler(nn.Module):
         dim_head: int = 64,
         heads: int = 8,
         num_latents: int = 64,
+        # max_num_frames: int = 128,
         max_num_media: Optional[int] = None,
         max_num_frames: Optional[int] = None,
         ff_mult: int = 4,
@@ -698,6 +700,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
         self.max_num_frames = config.max_num_frames if hasattr(config, "max_num_frames") else None
+        print(self.max_num_frames)
 
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder

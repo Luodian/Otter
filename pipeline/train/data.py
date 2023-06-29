@@ -21,7 +21,6 @@ from torch.utils.data import DataLoader, IterableDataset, RandomSampler, get_wor
 from torch.utils.data.distributed import DistributedSampler
 from webdataset.filters import _shuffle
 from webdataset.tariterators import base_plus_ext, tar_file_expander, url_opener, valid_sample
-sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/")
 from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
 
 Image.MAX_IMAGE_PIXELS = 1000000000
@@ -300,11 +299,9 @@ def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold):
         image = Image.open(io.BytesIO(rawbytes))
 
         # Check if the image is in palette mode and has transparency
-        if image.mode == "P":
+        if image.mode == "P" and "transparency" in image.info:
             try:
-                alpha = image.getchannel("A")
-                if alpha.mode == "L":
-                    image = image.convert("RGBA")
+                image = image.convert("RGBA")
             except ValueError:
                 pass
 
@@ -536,6 +533,12 @@ def get_laion_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
 
     return DataInfo(dataloader=dataloader, shared_epoch=shared_epoch)
 
+
+import json
+
+from PIL import Image, ImageFile
+
+from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
 
 
 def get_mimicit_dataset(args, tokenizer, epoch=0, floor=False):

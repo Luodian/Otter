@@ -21,7 +21,7 @@ from otter.modeling_otter import OtterForConditionalGeneration
 from pipeline.mimicit_utils.arguments import add_data_args
 from pipeline.train.data import get_data
 from pipeline.train.distributed import world_info_from_env
-from pipeline.train.train_utils import AverageMeter, get_checkpoint
+from pipeline.train.train_utils import AverageMeter, get_cast_dtype, get_checkpoint
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -174,19 +174,14 @@ def train_one_epoch(
     device_id,
     accelerator,
     wandb,
-):  
+):
     num_batches_per_epoch_laion = laion_loader.num_batches
     num_batches_per_epoch_mmc4 = mmc4_loader.num_batches
 
-
-    assert (
-        num_batches_per_epoch_laion == num_batches_per_epoch_mmc4
-    ), "Number of batches in laion and mmc4 datasets must be the same"
-
+    assert num_batches_per_epoch_laion == num_batches_per_epoch_mmc4, "Number of batches in laion and mmc4 datasets must be the same"
 
     num_batches_per_epoch = num_batches_per_epoch_mmc4
     total_training_steps = num_batches_per_epoch * args.num_epochs
-
 
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
     endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)["input_ids"][-1]
@@ -200,7 +195,7 @@ def train_one_epoch(
     end = time.time()
 
     # loop through dataloader
-    for num_steps, (bathc_laion,batch_mmc4) in tqdm(
+    for num_steps, (batch_laion, batch_mmc4) in tqdm(
         enumerate(zip(laion_loader, mmc4_loader)),
         disable=args.rank != 0,
         total=total_training_steps,
@@ -212,17 +207,10 @@ def train_one_epoch(
         total_losses = []
 
         #### LAION FORWARD PASS ####
-        images = (
-            batch_laion[0]
-            .to(device_id, dtype=cast_dtype, non_blocking=True)
-            .unsqueeze(1)
-            .unsqueeze(1)
-        )
+        images = batch_laion[0].to(device_id, non_blocking=True).unsqueeze(1).unsqueeze(1)
 
-        input_ids = batch_laion[1][0].to(device_id, dtype=cast_dtype, non_blocking=True)
-        attention_mask = batch_laion[1][1].to(
-            device_id, dtype=cast_dtype, non_blocking=True
-        )
+        input_ids = batch_laion[1][0].to(device_id, non_blocking=True)
+        attention_mask = batch_laion[1][1].to(device_id, non_blocking=True)
 
         labels = input_ids.clone()
         labels[labels == tokenizer.pad_token_id] = -100
@@ -237,8 +225,10 @@ def train_one_epoch(
                 attention_mask=attention_mask,
                 labels=labels,
             )[0]
-        total_losses.append(args.loss_multiplier_laion*loss_laion)
-        import pdb;pdb.set_trace()
+        total_losses.append(args.loss_multiplier_laion * loss_laion)
+        import pdb
+
+        pdb.set_trace()
 
         #### MMC4 FORWARD PASS ####
         images = batch_mmc4[0].to(device_id, non_blocking=True).unsqueeze(2)
@@ -277,7 +267,7 @@ def train_one_epoch(
                 labels=labels,
             )[0]
 
-        total_losses.append(args.loss_multiplier_mmc4*loss_mmc4)
+        total_losses.append(args.loss_multiplier_mmc4 * loss_mmc4)
         #### BACKWARD PASS ####
         total_loss_sum = sum(total_losses)
         mean_loss = total_loss_sum / len(total_losses)
@@ -491,24 +481,24 @@ def main():
             device_id=device_id,
             wandb=wandb,
         )
-        # if args.rank == 0:
-        #     if not os.path.exists(args.external_save_dir):
-        #         os.makedirs(args.external_save_dir)
+        if args.rank == 0:
+            if not os.path.exists(args.external_save_dir):
+                os.makedirs(args.external_save_dir)
 
-        #     unwrapped_model = accelerator.unwrap_model(model)
-        #     checkpoint_dict = {
-        #         "epoch": epoch,
-        #         "model_state_dict": get_checkpoint(unwrapped_model),
-        #         "optimizer_state_dict": optimizer.state_dict(),
-        #         "lr_scheduler_state_dict": lr_scheduler.state_dict(),
-        #     }
-        #     print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
-        #     accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
-        #     # save the config
-        #     unwrapped_model.config.save_pretrained(args.external_save_dir)
-        #     if args.delete_previous_checkpoint:
-        #         if epoch > 0:
-        #             os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
+            unwrapped_model = accelerator.unwrap_model(model)
+            checkpoint_dict = {
+                "epoch": epoch,
+                "model_state_dict": get_checkpoint(unwrapped_model),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+            }
+            print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
+            accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+            # save the config
+            unwrapped_model.config.save_pretrained(args.external_save_dir)
+            if args.delete_previous_checkpoint:
+                if epoch > 0:
+                    os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
 
         accelerator.wait_for_everyone()
 

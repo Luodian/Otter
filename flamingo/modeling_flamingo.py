@@ -680,6 +680,16 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
             text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
             lang_encoder = LlamaForCausalLM(config=config.text_config)
 
+        if config.text_config.architectures[0] == "MPTForCausalLM":
+            text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
+            lang_encoder = MPTForCausalLM(config=config.text_config)
+        elif config.text_config.architectures[0] == "RWForCausalLM":
+            text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
+            lang_encoder = RWForCausalLM(config=config.text_config)
+        else:
+            import pdb
+
+            pdb.set_trace()
 
         vision_encoder = CLIPVisionModel(config=config.vision_config)
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})

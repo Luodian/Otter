@@ -374,7 +374,8 @@ def main():
 
     # device_id = args.rank % torch.cuda.device_count()
 
-    mimicit_loaders = get_data(args, tokenizer, "mimicit")
+    image_processor = CLIPImageProcessor()
+    mimicit_loaders = get_data(args, image_processor, tokenizer, "mimicit")
 
     def get_grouped_params(model):
         params_with_wd, params_without_wd = [], []
