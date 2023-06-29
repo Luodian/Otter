@@ -489,7 +489,7 @@ a:link {
 <span style="font-size:larger;">
 
 ### Note:
-Current Otter Image is **Otter-v0.1-LA-In-Context (0618)**, means it's trianed on [MIMIC-IT-LA-In-Context](https://github.com/Luodian/Otter/tree/main/mimic-it) at June 18th.
+Current Otter Image is **Otter-v0.1-LA-In-Context (0619)**, means it's trianed on [MIMIC-IT-LA-In-Context](https://github.com/Luodian/Otter/tree/main/mimic-it) at June 19th.
 
 This version Otter Image demonstrates in-context learning ability to demonstrate more reasonable and coherent answer following given example instruction/response pairs. 
 </span>
@@ -498,8 +498,11 @@ We currently **dont support language-only chat** (the model could but our code d
 
 Otter can read multiple images and answer multiple questions towards the same image (visually the image will appear in chatbox again due to our implementation).
 
-Sometimes we are experiencing server overload, and as the model is hosted on a dual-RTX-3090 machine. Please try again later if you encounter any error or contact drluodian@gmail.com for any problem. If you find it's interesting, please consider to star our [github](https://github.com/Luodian/Otter) and cite our [paper](https://arxiv.org/abs/2306.05425). What we do is all to make the community better and to approach the goal of AI for helping people's life.
+If you find it's interesting, please consider to star our [github](https://github.com/Luodian/Otter) and cite our [paper](https://arxiv.org/abs/2306.05425). What we do is all to make the community better and to approach the goal of AI for helping people's life.
 
+Sometimes we are experiencing server overload, and as the model is hosted on a dual-RTX-3090 machine. Please try again later if you encounter any error or contact drluodian@gmail.com for any problem.
+
+Sometimes the model may behave weirdly if you didnt clear the chat history. Please do clear the chat history to make sure Otter reads your inputs correctly.
 """
 
 tos_markdown = """
