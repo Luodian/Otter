@@ -1,33 +1,14 @@
 import argparse
 import json
 import os
-import tarfile
 import uuid
-import sys
-import braceexpand
 import webdataset as wds
 from typing import List
 import logging
 import gc
 import os.path as op
-import base64
-from PIL import Image
-from io import BytesIO
-from concurrent.futures import ThreadPoolExecutor
-
-arg_parser = argparse.ArgumentParser()
-arg_parser.add_argument("--output_dir", type=str, required=True)
-arg_parser.add_argument("--mp_num", type=int, default=1)
-arg_parser.add_argument("--start_number", type=int, default=0)
-arg_parser.add_argument(
-    "--tsv_root",
-    type=str,
-    required=True,
-    help="Pass in a root of tsv",
-)
-args = arg_parser.parse_args()
-
 from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor
 
 
 def generate_lineidx(filein: str, idxout: str) -> None:
@@ -189,25 +170,6 @@ class TSVFile(object):
             self.pid = os.getpid()
 
 
-def process_image(index, cur_tsv_image, cur_tsv_caption, sink):
-    try:
-        cur_image = cur_tsv_image.__getitem__(index)
-        cur_caption = cur_tsv_caption.__getitem__(index)
-    except Exception as e:
-        print(f"Error at index {index}: {e}")
-        return
-
-    assert cur_image[0] == cur_caption[0], f"the file name of {cur_image[0]} does not equal {cur_caption[0]}"
-    key_str = uuid.uuid4().hex
-    sink.write(
-        {
-            "__key__": key_str,
-            "png": cur_image[1],
-            "txt": eval(cur_caption[1])["captions"][0].encode("utf-8", "replace").decode(),
-        }
-    )
-
-
 def convert_tsv(tsv_id, tsv_root, output_dir):
     with wds.ShardWriter(output_dir + f"/{tsv_id.replace('.tsv','.').split('-')[-1]}%03d.tar", maxcount=500000, maxsize=2e10) as sink:
         cur_tsv_image = TSVFile(tsv_root=tsv_root, tsv_file=tsv_id)
@@ -233,8 +195,12 @@ def convert_tsv(tsv_id, tsv_root, output_dir):
 def main(args):
     os.makedirs(args.output_dir, exist_ok=True)
     tsv_root = args.tsv_root
-    start_number = args.start_number
     tsv_id_list = [cur_file for cur_file in os.listdir(tsv_root) if "tsv" in cur_file and "image" in cur_file]
+
+    # Select files from shard to shard + interval
+    start_index = args.shard
+    end_index = min(args.shard + args.interval, len(tsv_id_list))
+    tsv_id_list = tsv_id_list[start_index:end_index]
 
     # Set up ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=args.mp_num) as executor:
@@ -242,11 +208,23 @@ def main(args):
         tasks = []
 
         # Use tqdm to show progress
-        for idx in tqdm(range(start_number, len(tsv_id_list)), desc="Converting TSV"):
-            tsv_id = tsv_id_list[idx]
-            task = executor.submit(convert_tsv, tsv_id, tsv_root, args.output_dir)
+        for idx in tqdm((tsv_id_list), desc="Converting TSV"):
+            task = executor.submit(convert_tsv, idx, tsv_root, args.output_dir)
             tasks.append(task)
 
+
+arg_parser = argparse.ArgumentParser()
+arg_parser.add_argument("--output_dir", type=str, required=True)
+arg_parser.add_argument("--mp_num", type=int, default=1)
+arg_parser.add_argument("--shard", type=int, default=800, help="Shard number")
+arg_parser.add_argument("--interval", type=int, default=20, help="Interval between shards")
+arg_parser.add_argument(
+    "--tsv_root",
+    type=str,
+    required=True,
+    help="Pass in a root of tsv",
+)
+args = arg_parser.parse_args()
 
 if __name__ == "__main__":
     main(args=args)
