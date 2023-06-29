@@ -189,7 +189,7 @@ def convert_tsv(tsv_id, tsv_root, output_dir):
                     print(e)
                     print(f"the caption of index {_} have problem, continue")
                     continue
-                sink.write({"__key__": key_str, "png": cur_image[1], "txt": caption.encode('utf-8', 'replace').decode()})
+                sink.write({"__key__": key_str, "png": cur_image[1], "txt": caption.encode("utf-8", "replace").decode()})
             except Exception as e:
                 print(f"Error at index {_}: {e}")
 

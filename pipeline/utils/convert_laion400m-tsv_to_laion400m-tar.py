@@ -204,7 +204,7 @@ def main(args, start_number=0):
                         print(e)
                         print(f"the caption of line {_} have problem")
                         continue
-                    sink.write({"__key__": key_str, "png": cur_image[1], "txt": caption.encode('utf-8', 'replace').decode()})
+                    sink.write({"__key__": key_str, "png": cur_image[1], "txt": caption.encode("utf-8", "replace").decode()})
                 # except:
                 #     import pdb;pdb.set_trace()
                 #     continue

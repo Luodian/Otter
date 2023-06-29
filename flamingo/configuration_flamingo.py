@@ -70,11 +70,12 @@ class FlamingoConfig(PretrainedConfig):
             if text_config["architectures"][0] == "MPTForCausalLM":
                 self.text_config = MPTConfig(**text_config)
             elif text_config["architectures"][0] == "RWForCausalLM":
-                self.text_config = RWConfig(**text_config) 
+                self.text_config = RWConfig(**text_config)
             elif text_config["architectures"][0] == "LlamaForCausalLM":
-                 self.text_config = CONFIG_MAPPING[text_config.pop("model_type")](**text_config)
+                self.text_config = CONFIG_MAPPING[text_config.pop("model_type")](**text_config)
             else:
                 import pdb
+
                 pdb.set_trace()
         else:
             self.text_config = CONFIG_MAPPING[text_config.pop("model_type")](**text_config)

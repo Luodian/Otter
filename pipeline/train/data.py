@@ -88,11 +88,10 @@ def count_samples(dataloader):
 
 
 def filter_no_caption_or_no_image(sample):
-
     return ("txt" in sample) and ("png" in sample or "jpg" in sample or "jpeg" in sample)
 
 
-def decode_base64_image(key,value):
+def decode_base64_image(key, value):
     if not key.endswith(".png"):
         return None
     rawbytes = base64.b64decode(value)

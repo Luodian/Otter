@@ -676,11 +676,11 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
                 lang_encoder = RWForCausalLM(config=config.text_config)
             else:
                 import pdb
+
                 pdb.set_trace()
         else:
             text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
             lang_encoder = LlamaForCausalLM(config=config.text_config)
-            
 
         vision_encoder = CLIPVisionModel(config=config.vision_config)
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})

@@ -225,7 +225,7 @@ def train_one_epoch(
                 attention_mask=attention_mask,
                 labels=labels,
             )[0]
-        total_losses.append(args.loss_multiplier_laion*loss_laion)
+        total_losses.append(args.loss_multiplier_laion * loss_laion)
         # import pdb;pdb.set_trace()
 
         #### MMC4 FORWARD PASS ####
@@ -286,7 +286,9 @@ def train_one_epoch(
                 model.module.lang_encoder.model.embed_tokens.apply(mask_embedding)
                 model.module.lang_encoder.lm_head.apply(mask_embedding)
             else:
-                import pdb;pdb.set_trace()
+                import pdb
+
+                pdb.set_trace()
 
         if accelerator.sync_gradients:
             accelerator.clip_grad_norm_(model.parameters(), 1.0)
