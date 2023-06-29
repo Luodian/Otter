@@ -280,11 +280,12 @@ def train_one_epoch(
                 m.weight.grad = m.weight.grad * zero_mask
 
         if args.mask_lm_head:
-            if model.module.lang_encoder.__class__.__name__ == "MPTForCausalLM":
-                model.module.lang_encoder.transformer.wte.apply(mask_embedding)
-            elif model.module.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
-                model.module.lang_encoder.model.embed_tokens.apply(mask_embedding)
-                model.module.lang_encoder.lm_head.apply(mask_embedding)
+            unwrapped_model = accelerator.unwrap_model(model)
+            if unwrapped_model.lang_encoder.__class__.__name__ == "MPTForCausalLM":
+                unwrapped_model.lang_encoder.transformer.wte.apply(mask_embedding)
+            elif munwrapped_model.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+                unwrapped_model.lang_encoder.model.embed_tokens.apply(mask_embedding)
+                unwrapped_model.lang_encoder.lm_head.apply(mask_embedding)
             else:
                 import pdb
 

@@ -1,11 +1,12 @@
 {
   "_commit_hash": null,
-  "_name_or_path": "/mnt/petrelfs/share_data/zhangyuanhan/flamingo-mpt-7B-instruct-init",
+  "_name_or_path": "/mnt/petrelfs/share_data/zhangyuanhan/flamingo-mpt-7B-instruct-init-bf16",
   "architectures": [
     "FlamingoForConditionalGeneration"
   ],
   "cross_attn_every_n_layers": 4,
   "model_type": "flamingo",
+  "only_attend_previous": true,
   "text_config": {
     "_name_or_path": "",
     "add_cross_attention": false,
@@ -113,7 +114,7 @@
     "verbose": 0,
     "vocab_size": 50432
   },
-  "torch_dtype": "float32",
+  "torch_dtype": "bfloat16",
   "transformers_version": null,
   "use_media_placement_augmentation": true,
   "vision_config": {
