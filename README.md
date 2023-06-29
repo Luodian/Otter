@@ -5,8 +5,8 @@
 
 <div>
 <div align="center">
-    <a href='https://brianboli.com/' target='_blank'>Bo Li<sup>*,&,1</sup></a>&emsp;
-    <a href='https://zhangyuanhan-ai.github.io/' target='_blank'>Yuanhan Zhang<sup>*,&,1</sup></a>&emsp;
+    <a href='https://brianboli.com/' target='_blank'>Bo Li<sup>*,♠,1</sup></a>&emsp;
+    <a href='https://zhangyuanhan-ai.github.io/' target='_blank'>Yuanhan Zhang<sup>*,♠,1</sup></a>&emsp;
     <a href='https://cliangyu.com/' target='_blank'>Liangyu Chen<sup>*,1</sup></a>&emsp;
     <a href='https://king159.github.io/' target='_blank'>Jinghao Wang<sup>*,1</sup></a>&emsp;
     <a href='https://pufanyi.github.io/' target='_blank'>Fanyi Pu<sup>*,1</sup></a>&emsp;
@@ -20,7 +20,7 @@
     <sup>1</sup>S-Lab, Nanyang Technological University&emsp;
     <sup>2</sup>Microsoft Research, Redmond
     </br>
-    <sup>&</sup> Co-Project Lead&emsp;
+    <sup>♠</sup> Co-Project Lead&emsp;
     <sup>*</sup> Equal Contribution&emsp;
     <sup>&#x2709</sup> Corresponding Author
     

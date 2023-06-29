@@ -2,8 +2,16 @@ import copy
 
 from transformers.configuration_utils import PretrainedConfig
 from transformers.utils import logging
-from transformers.models.auto import CONFIG_MAPPING
+
+# from transformers.models.auto import CONFIG_MAPPING
 from transformers.models.clip import CLIPVisionConfig
+import sys
+
+# sys.path.append("/mnt/lustre/yhzhang/Otter/")
+from flamingo.falcon.configuration_RW import RWConfig
+
+from flamingo.mpt.configuration_mpt import MPTConfig
+
 
 logger = logging.get_logger(__name__)
 
@@ -49,7 +57,6 @@ class FlamingoConfig(PretrainedConfig):
 
     def __init__(self, vision_config=None, text_config=None, cross_attn_every_n_layers: int = 4, use_media_placement_augmentation: bool = True, **kwargs):
         super().__init__(**kwargs)
-
         if vision_config is None:
             vision_config = {}
             logger.info("vision_config is None. initializing the vision config with default values.")
@@ -59,7 +66,14 @@ class FlamingoConfig(PretrainedConfig):
             logger.info("text_config is None. Initializing the text config with default values.")
 
         self.vision_config = CLIPVisionConfig(**vision_config)
-        self.text_config = CONFIG_MAPPING[text_config.pop("model_type")](**text_config)
+        if text_config["architectures"][0] == "MPTForCausalLM":
+            self.text_config = MPTConfig(**text_config)
+        elif text_config["architectures"][0] == "RWForCausalLM":
+            self.text_config = RWConfig(**text_config)
+        else:
+            import pdb
+
+            pdb.set_trace()
         self.cross_attn_every_n_layers = cross_attn_every_n_layers
         self.use_media_placement_augmentation = use_media_placement_augmentation
 
