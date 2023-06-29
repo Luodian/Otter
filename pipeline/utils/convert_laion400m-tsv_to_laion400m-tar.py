@@ -27,6 +27,31 @@ args = arg_parser.parse_args()
 from tqdm import tqdm
 
 
+def generate_lineidx(filein: str, idxout: str) -> None:
+    idxout_tmp = idxout + ".tmp"
+    with open(filein, "r") as tsvin, open(idxout_tmp, "w") as tsvout:
+        fsize = os.fstat(tsvin.fileno()).st_size
+        fpos = 0
+        while fpos != fsize:
+            tsvout.write(str(fpos) + "\n")
+            tsvin.readline()
+            fpos = tsvin.tell()
+    os.rename(idxout_tmp, idxout)
+
+
+def read_to_character(fp, c):
+    result = []
+    while True:
+        s = fp.read(32)
+        assert s != ""
+        if c in s:
+            result.append(s[: s.index(c)])
+            break
+        else:
+            result.append(s)
+    return "".join(result)
+
+
 class TSVFile(object):
     def __init__(self, tsv_root: str, tsv_file: str, if_generate_lineidx: bool = False, lineidx: str = None, class_selector: List[str] = None):
         self.tsv_file = op.join(tsv_root, tsv_file)

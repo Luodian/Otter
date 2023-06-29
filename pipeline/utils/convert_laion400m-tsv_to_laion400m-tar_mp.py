@@ -17,11 +17,12 @@ import multiprocessing
 from multiprocessing import Pool
 
 arg_parser = argparse.ArgumentParser()
-arg_parser.add_argument("--output_dir", type=str)
-arg_parser.add_argument("--mp_num", type=int)
+arg_parser.add_argument("--output_dir", type=str, required=True)
+arg_parser.add_argument("--mp_num", type=int, default=32)
 arg_parser.add_argument(
     "--tsv_root",
     type=str,
+    required=True,
     help="Pass in a root of tsv",
 )
 args = arg_parser.parse_args()
@@ -29,8 +30,40 @@ args = arg_parser.parse_args()
 from tqdm import tqdm
 
 
+def generate_lineidx(filein: str, idxout: str) -> None:
+    idxout_tmp = idxout + ".tmp"
+    with open(filein, "r") as tsvin, open(idxout_tmp, "w") as tsvout:
+        fsize = os.fstat(tsvin.fileno()).st_size
+        fpos = 0
+        while fpos != fsize:
+            tsvout.write(str(fpos) + "\n")
+            tsvin.readline()
+            fpos = tsvin.tell()
+    os.rename(idxout_tmp, idxout)
+
+
+def read_to_character(fp, c):
+    result = []
+    while True:
+        s = fp.read(32)
+        assert s != ""
+        if c in s:
+            result.append(s[: s.index(c)])
+            break
+        else:
+            result.append(s)
+    return "".join(result)
+
+
 class TSVFile(object):
-    def __init__(self, tsv_root: str, tsv_file: str, if_generate_lineidx: bool = False, lineidx: str = None, class_selector: List[str] = None):
+    def __init__(
+        self,
+        tsv_root: str,
+        tsv_file: str,
+        if_generate_lineidx: bool = False,
+        lineidx: str = None,
+        class_selector: List[str] = None,
+    ):
         self.tsv_file = op.join(tsv_root, tsv_file)
         self.lineidx = op.splitext(tsv_file)[0] + ".lineidx" if not lineidx else lineidx
         self.lineidx = op.join(tsv_root, self.lineidx)
@@ -158,7 +191,7 @@ class TSVFile(object):
 
 def convert_tsv(tsv_id, tsv_root, output_dir):
     try:
-        with wds.ShardWriter(output_dir + f"/{tsv_id.replace('.tsv','.').split('-')[-1]}%09d.tar", maxcount=100, maxsize=1e9) as sink:
+        with wds.ShardWriter(output_dir + f"/{tsv_id.replace('.tsv','.').split('-')[-1]}%09d.tar", maxcount=50000, maxsize=2e10) as sink:
             cur_tsv_image = TSVFile(tsv_root=tsv_root, tsv_file=tsv_id)
             cur_tsv_caption = TSVFile(tsv_root=tsv_root, tsv_file=tsv_id.replace("image", "text"))
             for _ in tqdm(range(cur_tsv_image.__len__()), desc="Converting image"):
@@ -166,7 +199,13 @@ def convert_tsv(tsv_id, tsv_root, output_dir):
                 cur_caption = cur_tsv_caption[_]
                 assert cur_image[0] == cur_caption[0], f"the file name of {cur_image[0]} does not equals to {cur_caption[0]}"
                 key_str = uuid.uuid4().hex
-                sink.write({"__key__": key_str, "png": cur_image[1], "txt": eval(cur_caption[1])["captions"][0].encode("utf-8", "replace").decode()})
+                sink.write(
+                    {
+                        "__key__": key_str,
+                        "png": cur_image[1],
+                        "txt": eval(cur_caption[1])["captions"][0].encode("utf-8", "replace").decode(),
+                    }
+                )
 
     except Exception as e:
         print(e)
@@ -177,10 +216,10 @@ def main(args, start_number=0):
     os.makedirs(args.output_dir, exist_ok=True)
     tsv_root = args.tsv_root
     tsv_id_list = list(set(cur_file for cur_file in os.listdir(tsv_root) if "tsv" in cur_file and "image" in cur_file))
-    tsv_id_list = tsv_id_list + tsv_id_list
+    # tsv_id_list = tsv_id_list + tsv_id_list
     # Set up multiprocessing pool
     pool = Pool(processes=args.mp_num)
-    for idx in tqdm(range(0, len(tsv_id_list)), desc="Converting tsv"):
+    for idx in tqdm(range(0, 2), desc="Converting tsv"):
         tsv_id = tsv_id_list[idx]
         pool.apply_async(convert_tsv, args=(tsv_id, tsv_root, args.output_dir))
     pool.close()
