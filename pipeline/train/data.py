@@ -89,13 +89,11 @@ def count_samples(dataloader):
 
 
 def filter_no_caption_or_no_image(sample):
-    # print (sample)
-    # exit()
+
     return ("txt" in sample) and ("png" in sample or "jpg" in sample or "jpeg" in sample)
 
 
 def decode_base64_image(key,value):
-    print(key)
     if not key.endswith(".png"):
         return None
     rawbytes = base64.b64decode(value)
@@ -153,7 +151,6 @@ def tarfile_to_samples_nothrow(src, handler=log_and_continue):
     streams = url_opener(src, handler=handler)
     files = tar_file_expander(streams, handler=handler)
     samples = group_by_keys_nothrow(files, handler=handler)
-    print(samples)
     return samples
 
 

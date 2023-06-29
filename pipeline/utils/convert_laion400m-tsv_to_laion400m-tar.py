@@ -30,6 +30,32 @@ args = arg_parser.parse_args()
 from tqdm import tqdm
 
 
+def generate_lineidx(filein: str, idxout: str) -> None:
+    idxout_tmp = idxout + '.tmp'
+    with open(filein, 'r') as tsvin, open(idxout_tmp, 'w') as tsvout:
+        fsize = os.fstat(tsvin.fileno()).st_size
+        fpos = 0
+        while fpos != fsize:
+            tsvout.write(str(fpos) + "\n")
+            tsvin.readline()
+            fpos = tsvin.tell()
+    os.rename(idxout_tmp, idxout)
+
+
+def read_to_character(fp, c):
+    result = []
+    while True:
+        s = fp.read(32)
+        assert s != ''
+        if c in s:
+            result.append(s[: s.index(c)])
+            break
+        else:
+            result.append(s)
+    return ''.join(result)
+
+
+
 class TSVFile(object):
     def __init__(self,
                  tsv_root: str,
@@ -172,22 +198,28 @@ def main(args, start_number=0):
     os.makedirs(args.output_dir, exist_ok=True)
     tsv_root = args.tsv_root
     tsv_id_list = list(set(cur_file for cur_file in os.listdir(tsv_root) if "tsv" in cur_file and "image" in cur_file))
-    with wds.ShardWriter(args.output_dir + f"/%09d.tar", maxcount=100, maxsize=1e9) as sink:
-        # for idx in tqdm(range(0, len(tsv_id_list)), desc="Converting tsv"):
-        for idx in tqdm(range(0, 1), desc="Converting tsv"):
+    with wds.ShardWriter(args.output_dir + f"/%09d.tar", maxcount=500000, maxsize=2e10) as sink:
+        for idx in tqdm(range(0, len(tsv_id_list)), desc="Converting tsv"):
             print(tsv_id_list[idx])
             cur_tsv_image = TSVFile(tsv_root=tsv_root, tsv_file=tsv_id_list[idx])
             cur_tsv_caption = TSVFile(tsv_root=tsv_root, tsv_file=tsv_id_list[idx].replace("image","text"))
             # Read the JSONL file
             try:
-                for _ in tqdm(range(cur_tsv_image.__len__()),desc="Converting image"):
+                for _ in tqdm(range(101350,cur_tsv_image.__len__()),desc="Converting image"):
                     cur_image = cur_tsv_image[_]
                     cur_caption = cur_tsv_caption[_]
                     assert cur_image[0] == cur_caption[0], f"the file name of {cur_image[0]} does not equals to {cur_caption[0]}"
                     key_str = uuid.uuid4().hex
-                    # try:
-                        # import pdb;pdb.set_trace()
-                    sink.write({"__key__": key_str, "png": cur_image[1], "txt": eval(cur_caption[1])["captions"][0].encode('utf-8', 'replace').decode()})
+                    try:
+                        caption = json.loads(cur_caption[1])["captions"][0]
+                        if caption == None:
+                            print(f"the caption of line {_} is None")
+                            continue
+                    except Exception as e:
+                        print(e)
+                        print(f"the caption of line {_} have problem")
+                        continue
+                    sink.write({"__key__": key_str, "png": cur_image[1], "txt": caption.encode('utf-8', 'replace').decode()})
                 # except:
                 #     import pdb;pdb.set_trace()
                 #     continue

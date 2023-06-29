@@ -169,16 +169,24 @@ class TSVFile(object):
 
 def convert_tsv(tsv_id, tsv_root, output_dir):
     try:
-        with wds.ShardWriter(output_dir + f"/{tsv_id.replace('.tsv','.').split('-')[-1]}%09d.tar", maxcount=100, maxsize=1e9) as sink:
+        with wds.ShardWriter(output_dir + f"/{tsv_id.replace('.tsv','.').split('-')[-1]}%09d.tar", maxcount=500000, maxsize=2e10) as sink:
             cur_tsv_image = TSVFile(tsv_root=tsv_root, tsv_file=tsv_id)
             cur_tsv_caption = TSVFile(tsv_root=tsv_root, tsv_file=tsv_id.replace("image","text"))
-            for _ in tqdm(range(cur_tsv_image.__len__()),desc="Converting image"):
+            for _ in tqdm(range(101350,cur_tsv_image.__len__()),desc="Converting image"):
                 cur_image = cur_tsv_image[_]
                 cur_caption = cur_tsv_caption[_]
                 assert cur_image[0] == cur_caption[0], f"the file name of {cur_image[0]} does not equals to {cur_caption[0]}"
                 key_str = uuid.uuid4().hex
-                sink.write({"__key__": key_str, "png": cur_image[1], "txt": eval(cur_caption[1])["captions"][0].encode('utf-8', 'replace').decode()})
- 
+                try:
+                    caption = json.loads(cur_caption[1])["captions"][0]
+                    if caption == None:
+                        print(f"the caption of line {_} is None, then we discard this data")
+                        continue
+                except Exception as e:
+                    print(e)
+                    print(f"the caption of line {_} have problem, then we discard this data")
+                    continue
+                sink.write({"__key__": key_str, "png": cur_image[1], "txt": caption.encode('utf-8', 'replace').decode()})
     except Exception as e:
         print(e)
         return
@@ -187,7 +195,6 @@ def main(args, start_number=0):
     os.makedirs(args.output_dir, exist_ok=True)
     tsv_root = args.tsv_root
     tsv_id_list = list(set(cur_file for cur_file in os.listdir(tsv_root) if "tsv" in cur_file and "image" in cur_file))
-    tsv_id_list = tsv_id_list + tsv_id_list
     # Set up multiprocessing pool
     pool = Pool(processes=args.mp_num)
     for idx in tqdm(range(0, len(tsv_id_list)), desc="Converting tsv"):

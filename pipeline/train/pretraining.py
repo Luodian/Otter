@@ -200,7 +200,7 @@ def train_one_epoch(
     end = time.time()
 
     # loop through dataloader
-    for num_steps, (bathc_laion,batch_mmc4) in tqdm(
+    for num_steps, (batch_laion,batch_mmc4) in tqdm(
         enumerate(zip(laion_loader, mmc4_loader)),
         disable=args.rank != 0,
         total=total_training_steps,
@@ -214,14 +214,14 @@ def train_one_epoch(
         #### LAION FORWARD PASS ####
         images = (
             batch_laion[0]
-            .to(device_id, dtype=cast_dtype, non_blocking=True)
+            .to(device_id, non_blocking=True)
             .unsqueeze(1)
             .unsqueeze(1)
         )
 
-        input_ids = batch_laion[1][0].to(device_id, dtype=cast_dtype, non_blocking=True)
+        input_ids = batch_laion[1][0].to(device_id, non_blocking=True)
         attention_mask = batch_laion[1][1].to(
-            device_id, dtype=cast_dtype, non_blocking=True
+            device_id, non_blocking=True
         )
 
         labels = input_ids.clone()
@@ -238,7 +238,7 @@ def train_one_epoch(
                 labels=labels,
             )[0]
         total_losses.append(args.loss_multiplier_laion*loss_laion)
-        import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
 
         #### MMC4 FORWARD PASS ####
         images = batch_mmc4[0].to(device_id, non_blocking=True).unsqueeze(2)
@@ -289,6 +289,7 @@ def train_one_epoch(
                 zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
                 m.weight.grad = m.weight.grad * zero_mask
 
+        import pdb;pdb.set_trace()
         if args.mask_lm_head:
             model.module.lang_encoder.model.embed_tokens.apply(mask_embedding)
             model.module.lang_encoder.lm_head.apply(mask_embedding)
