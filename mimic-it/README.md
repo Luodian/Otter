@@ -44,7 +44,7 @@ You can download the `instructions.json` and `train.json` files, from our provid
 | :--- | :---: | :---: |
 | **LA-In-Context**  | fdc2427451bcfd8a04bab7a1c2305259 | 338 MB |
 | **DC** | 0d373a5f511fd1d9f03ac81bb12e04fe | 171 MB | 
-| **TVC** | 122b5cb0bd51c658625b7ea8c7d8c04c | 230 MB |
+| **TVC** | 19b1f91b4b8ed466f09fcb12395ab8fc | 159M MB |
 | **VST** | 988569e39aaa24da0df547644514b0d4 | 32 MB |
 | **SN** | 1c4751c5b2c0bcaaeb94dbc5fb39e7a6 | 8 MB |
 | **SD (General Diff)** | TBD | 81 MB |
