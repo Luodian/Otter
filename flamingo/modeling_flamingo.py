@@ -571,7 +571,12 @@ class FlamingoModel(FlamingoPreTrainedModel):
                 param.requires_grad = False
         # Unfreeze LM input embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
-        # self.lang_encoder.lm_head.requires_grad_(True)
+        ## MPTForCausalLM is tied word embedding
+        if self.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+            self.lang_encoder.lm_head.requires_grad_(True)
+        # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
+        # print model size in billions of parameters in 2 decimal places
+        print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
 
     def forward(
         self,

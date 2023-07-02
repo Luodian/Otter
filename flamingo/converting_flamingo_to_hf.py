@@ -28,7 +28,6 @@ class FlamingoModel(FlamingoPreTrainedModel):
     def __init__(
         self,
         config: FlamingoConfig,
-        args,
     ):
         super().__init__(config)
         ### TODO: give "LlamaForCausalLM" as the name of text_config.architectures of Llama_based flamingo
@@ -72,6 +71,7 @@ class FlamingoModel(FlamingoPreTrainedModel):
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
             use_media_placement_augmentation=self.use_media_placement_augmentation,
         )
+        self.post_init()
 
     def get_input_embeddings(self) -> nn.Module:
         return self.lang_encoder.get_input_embeddings()
@@ -84,6 +84,27 @@ class FlamingoModel(FlamingoPreTrainedModel):
 
     def set_output_embeddings(self, new_embeddings):
         self.lang_encoder.set_output_embeddings(new_embeddings)
+
+    def get_image_encoder(self) -> nn.Module:
+        return self.vision_encoder
+
+    def get_lang_encoder(self) -> nn.Module:
+        return self.lang_encoder
+
+    def tie_weights(self):
+        return super().tie_weights()
+
+    def init_weights(self):
+        # Freeze all parameters in vision encoder
+        for param in self.vision_encoder.parameters():
+            param.requires_grad = False
+        # Freeze all parameters in lang encoders except gated_cross_attn_layers
+        for name, param in self.lang_encoder.named_parameters():
+            if "gated_cross_attn_layer" not in name:
+                param.requires_grad = False
+        # Unfreeze LM input embeddings
+        self.lang_encoder.get_input_embeddings().requires_grad_(True)
+        # self.lang_encoder.lm_head.requires_grad_(True)
 
 
 def rename_flamingo_checkpoint(old_ckpt: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
@@ -120,7 +141,7 @@ def dump_hf_model(old_ckpt_path: str, new_folder_path: str, args) -> None:
     config_file = args.config_file if args.config_file else os.path.join(old_folder_path, "config.json")
     config = FlamingoConfig.from_json_file(config_file)
     print("Initializing HF model")
-    model = FlamingoModel(config, args)
+    model = FlamingoModel(config)
     new_ckpt = rename_flamingo_checkpoint(old_ckpt)
     model.load_state_dict(new_ckpt, strict=False)
     print(f"Saving HF model to {new_folder_path}")
@@ -148,6 +169,7 @@ if __name__ == "__main__":
         "--config_file",
         type=str,
         help="Path to a HF config file",
+        default=None,
     )
     args = parser.parse_args()
     if not os.path.exists(os.path.dirname(args.new_hf_path)):
