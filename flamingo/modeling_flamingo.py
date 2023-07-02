@@ -520,10 +520,11 @@ class FlamingoModel(FlamingoPreTrainedModel):
         extend_instance(lang_encoder, FlamingoLMMixin)
         decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
         lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        lang_encoder.resize_token_embeddings(len(text_tokenizer))
+        if lang_encoder.__class__.__name__ != "MPTForCausalLM":
+            lang_encoder.resize_token_embeddings(len(text_tokenizer))
         self.lang_encoder = lang_encoder
 
-        self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
+        self.cross_attn_every_n_layers = config.cross_attn_every_n_layers if hasattr(config, "cross_attn_every_n_layers") else 4
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
 
         vision_encoder.output_tokens = True
@@ -557,9 +558,6 @@ class FlamingoModel(FlamingoPreTrainedModel):
 
     def get_lang_encoder(self) -> nn.Module:
         return self.lang_encoder
-
-    def tie_weights(self):
-        return super().tie_weights()
 
     def init_weights(self):
         # Freeze all parameters in vision encoder
