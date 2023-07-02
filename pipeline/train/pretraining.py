@@ -283,7 +283,7 @@ def train_one_epoch(
             unwrapped_model = accelerator.unwrap_model(model)
             if unwrapped_model.lang_encoder.__class__.__name__ == "MPTForCausalLM":
                 unwrapped_model.lang_encoder.transformer.wte.apply(mask_embedding)
-            elif munwrapped_model.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+            elif unwrapped_model.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
                 unwrapped_model.lang_encoder.model.embed_tokens.apply(mask_embedding)
                 unwrapped_model.lang_encoder.lm_head.apply(mask_embedding)
             else:
@@ -307,12 +307,16 @@ def train_one_epoch(
                 # compute within rank 0
                 mmc4_samples_per_second = args.gradient_accumulation_steps * args.batch_size_mmc4 * args.world_size / step_time_m.val
                 mmc4_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_mmc4 / step_time_m.val
+                laion_samples_per_second = args.gradient_accumulation_steps * args.batch_size_laion * args.world_size / step_time_m.val
+                laion_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_laion / step_time_m.val
                 wandb.log(
                     {
                         "data_time": data_time_m.avg,
                         "step_time": step_time_m.avg,
                         "mmc4_samples_per_second": mmc4_samples_per_second,
                         "mmc4_samples_per_second_per_gpu": mmc4_samples_per_second_per_gpu,
+                        "laion_samples_per_second": laion_samples_per_second,
+                        "laion_samples_per_second_per_gpu": laion_samples_per_second_per_gpu,
                         "lr": optimizer.param_groups[0]["lr"],
                     },
                     commit=False,
@@ -322,6 +326,8 @@ def train_one_epoch(
 
                 wandb.log(
                     {
+                        "mmc4_loss": loss_mmc4.item(),
+                        "laion_loss": loss_laion.item(),
                         "mean_loss": mean_loss.item(),
                         "global_step": global_step // args.gradient_accumulation_steps,
                     },
@@ -489,24 +495,24 @@ def main():
             device_id=device_id,
             wandb=wandb,
         )
-        # if args.rank == 0:
-        #     if not os.path.exists(args.external_save_dir):
-        #         os.makedirs(args.external_save_dir)
+        if args.rank == 0:
+            if not os.path.exists(args.external_save_dir):
+                os.makedirs(args.external_save_dir)
 
-        #     unwrapped_model = accelerator.unwrap_model(model)
-        #     checkpoint_dict = {
-        #         "epoch": epoch,
-        #         "model_state_dict": get_checkpoint(unwrapped_model),
-        #         "optimizer_state_dict": optimizer.state_dict(),
-        #         "lr_scheduler_state_dict": lr_scheduler.state_dict(),
-        #     }
-        #     print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
-        #     accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
-        #     # save the config
-        #     unwrapped_model.config.save_pretrained(args.external_save_dir)
-        #     if args.delete_previous_checkpoint:
-        #         if epoch > 0:
-        #             os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
+            unwrapped_model = accelerator.unwrap_model(model)
+            checkpoint_dict = {
+                "epoch": epoch,
+                "model_state_dict": get_checkpoint(unwrapped_model),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+            }
+            print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
+            accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+            # save the config
+            unwrapped_model.config.save_pretrained(args.external_save_dir)
+            if args.delete_previous_checkpoint:
+                if epoch > 0:
+                    os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
 
         accelerator.wait_for_everyone()
 
