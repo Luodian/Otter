@@ -1,21 +1,25 @@
-import re
 import argparse
 import os
+import re
 
 import torch
 import torch.nn as nn
 from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
+from transformers.models.auto import AutoTokenizer
 
-from modeling_flamingo import (
+from flamingo.configuration_flamingo import FlamingoConfig
+from flamingo.falcon.modelling_RW import RWForCausalLM
+from flamingo.modeling_flamingo import (
     FlamingoConfig,
-    FlamingoPreTrainedModel,
     FlamingoLMMixin,
-    extend_instance,
-    _infer_decoder_layers_attr_name,
     FlamingoPerceiverResampler,
+    FlamingoPreTrainedModel,
+    _infer_decoder_layers_attr_name,
+    extend_instance,
 )
+from flamingo.mpt.modeling_mpt import MPTForCausalLM
 
-from configuration_flamingo import FlamingoConfig
+from .configuration_flamingo import FlamingoConfig
 
 
 class FlamingoModel(FlamingoPreTrainedModel):
@@ -27,13 +31,20 @@ class FlamingoModel(FlamingoPreTrainedModel):
         args,
     ):
         super().__init__(config)
-        text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
-        lang_encoder = LlamaForCausalLM.from_pretrained(config.text_config._name_or_path)
-        vision_encoder = CLIPVisionModel.from_pretrained(config.vision_config._name_or_path)
+        ### TODO: give "LlamaForCausalLM" as the name of text_config.architectures of Llama_based flamingo
+        if "llama" not in config.text_config._name_or_path:
+            if config.text_config.architectures[0] == "MPTForCausalLM":
+                text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
+                lang_encoder = MPTForCausalLM(config=config.text_config)
+            elif config.text_config.architectures[0] == "RWForCausalLM":
+                text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
+                lang_encoder = RWForCausalLM(config=config.text_config)
+        else:
+            text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+            lang_encoder = LlamaForCausalLM(config=config.text_config)
 
-        text_tokenizer.add_special_tokens(
-            {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"] if args.add_answer_token else ["<|endofchunk|>", "<image>"]}
-        )
+        vision_encoder = CLIPVisionModel(config=config.vision_config)
+        text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
         if text_tokenizer.pad_token is None:
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
         self.text_tokenizer = text_tokenizer
@@ -104,7 +115,11 @@ def dump_hf_model(old_ckpt_path: str, new_folder_path: str, args) -> None:
     old_ckpt = torch.load(old_ckpt_path, map_location="cpu")
     if old_ckpt.get("model", None) is not None:
         old_ckpt = old_ckpt["model"]
-    config = FlamingoConfig.from_json_file("flamingo_hf/config.json")
+
+    old_folder_path = os.path.dirname(old_ckpt_path)
+    config_file = args.config_file if args.config_file else os.path.join(old_folder_path, "config.json")
+    config = FlamingoConfig.from_json_file(config_file)
+    print("Initializing HF model")
     model = FlamingoModel(config, args)
     new_ckpt = rename_flamingo_checkpoint(old_ckpt)
     model.load_state_dict(new_ckpt, strict=False)
@@ -128,6 +143,11 @@ if __name__ == "__main__":
         type=str,
         required=True,
         help="Path to the HF folder",
+    )
+    parser.add_argument(
+        "--config_file",
+        type=str,
+        help="Path to a HF config file",
     )
     args = parser.parse_args()
     if not os.path.exists(os.path.dirname(args.new_hf_path)):
