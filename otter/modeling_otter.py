@@ -10,6 +10,7 @@ from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 from .configuration_otter import OtterConfig
 
 import sys
+import random
 
 # The package importlib_metadata is in a different place, depending on the python version.
 if sys.version_info < (3, 8):
@@ -25,12 +26,14 @@ import torch.distributed as dist
 XFORMERS_AVAIL = False
 XFORMERS_MSG_PRINTED = False  # Add this global variable
 try:
-    import xformers.ops as xops
-    from xformers_model import CLIPVisionModel, LlamaForCausalLM
-    from transformers import LlamaTokenizer
+    if not XFORMERS_MSG_PRINTED:  # Check if the message has been printed before
+        import xformers.ops as xops
+        from xformers_model import CLIPVisionModel, LlamaForCausalLM
+        from transformers import LlamaTokenizer
 
-    _xformers_version = importlib_metadata.version("xformers")
-    print(f"Successfully imported xformers version {_xformers_version}")
+        _xformers_version = importlib_metadata.version("xformers")
+        if dist.is_initialized() and dist.get_rank() == 0:  # Check if the current process rank is 0
+            print(f"Successfully imported xformers version {_xformers_version}")
 except ImportError as e:
     if not XFORMERS_MSG_PRINTED:  # Check if the message has been printed before
         from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
@@ -216,7 +219,6 @@ class OtterMaskedCrossAttention(nn.Module):
         dim_head: int = 64,
         heads: int = 8,
         only_attend_immediate_media: bool = True,
-        only_attend_previous: bool = True,
     ):
         super().__init__()
         self.scale = dim_head**-0.5
@@ -231,7 +233,6 @@ class OtterMaskedCrossAttention(nn.Module):
 
         # whether for text to only attend to immediate preceding image, or all previous images
         self.only_attend_immediate_media = only_attend_immediate_media
-        self.only_attend_previous = only_attend_previous
 
     def forward(
         self,
@@ -325,7 +326,6 @@ class OtterGatedCrossAttentionBlock(nn.Module):
         heads: int = 8,
         ff_mult: int = 4,
         only_attend_immediate_media: bool = True,
-        only_attend_previous: bool = True,
     ):
         super().__init__()
         self.attn = OtterMaskedCrossAttention(
@@ -334,7 +334,6 @@ class OtterGatedCrossAttentionBlock(nn.Module):
             dim_head=dim_head,
             heads=heads,
             only_attend_immediate_media=only_attend_immediate_media,
-            only_attend_previous=only_attend_previous,
         )
         self.attn_gate = nn.Parameter(torch.tensor([0.0]))
         self.feed_forward = nn.ModuleList(
@@ -439,7 +438,6 @@ class OtterLMMixin(nn.Module):
         vis_hidden_size: int,
         cross_attn_every_n_layers: int,
         use_media_placement_augmentation: bool,
-        only_attend_previous: bool,
     ):
         """
         Initialize Otter by adding a new gated cross attn to the decoder. Store the media token id for computing the media locations.
@@ -450,7 +448,6 @@ class OtterLMMixin(nn.Module):
                 OtterGatedCrossAttentionBlock(
                     dim=self.config.hidden_size,
                     dim_visual=vis_hidden_size,
-                    only_attend_previous=only_attend_previous,
                 )
                 if (layer_idx + 1) % cross_attn_every_n_layers == 0
                 else None
@@ -467,7 +464,6 @@ class OtterLMMixin(nn.Module):
         )
         self.media_token_id = media_token_id
         self.use_media_placement_augmentation = use_media_placement_augmentation
-        self.only_attend_previous = only_attend_previous
         self.initialized_otter = True
 
     def forward(self, *input, **kwargs):
@@ -481,7 +477,8 @@ class OtterLMMixin(nn.Module):
         # attend_previous = (
         #     (random.random() < 0.5) if self.use_media_placement_augmentation else False
         # )
-        attend_previous = self.only_attend_previous
+        attend_previous = (random.random() < 0.5) if self.use_media_placement_augmentation else True
+        # attend_previous = self.only_attend_previous
 
         for layer in self.get_decoder().layers:
             layer.condition_media_locations(media_locations)
@@ -543,7 +540,6 @@ class OtterModel(OtterPreTrainedModel):
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
-        self.only_attend_previous = config.only_attend_previous
         self.max_num_frames = config.max_num_frames if hasattr(config, "max_num_frames") else None
 
         vision_encoder.output_tokens = True
@@ -557,7 +553,6 @@ class OtterModel(OtterPreTrainedModel):
             vis_hidden_size=self.vis_dim,
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
             use_media_placement_augmentation=self.use_media_placement_augmentation,
-            only_attend_previous=self.only_attend_previous,
         )
         self.post_init()
 
@@ -704,7 +699,6 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
-        self.only_attend_previous = config.only_attend_previous
         self.max_num_frames = config.max_num_frames if hasattr(config, "max_num_frames") else None
         print(self.max_num_frames)
 
@@ -719,7 +713,6 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             vis_hidden_size=self.vis_dim,
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
             use_media_placement_augmentation=self.use_media_placement_augmentation,
-            only_attend_previous=self.only_attend_previous,
         )
         self.post_init()
 

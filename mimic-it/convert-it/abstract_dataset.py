@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Tuple
-from PIL import Image
 import importlib
 
 AVAILABLE_DATASETS: List[str] = [
     "change.SpotTheDifference",
+    "change.CocoGeneralDifference",
     "video.DenseCaptions",
     "video.TVCaptions",
     "video.VisualStoryTelling",
@@ -17,7 +17,7 @@ AVAILABLE_DATASETS: List[str] = [
 class AbstractDataset(ABC):
     def __init__(self, name: str, short_name: str, image_path: str, num_threads: int):
         """
-        Constructor.
+        Initialize an AbstractDataset object.
 
         Args:
             name (str): The name of the dataset.
@@ -27,10 +27,10 @@ class AbstractDataset(ABC):
         """
         self.name: str = name
         self.short_name: str = short_name
-        self.images: Dict[str, Image.Image] = self._load_images(image_path, num_threads)
+        self.images: Dict[str, bytes] = self._load_images(image_path, num_threads)
 
     @abstractmethod
-    def _load_images(self, image_path: str, num_thread: int) -> dict[str, Image.Image]:
+    def _load_images(self, image_path: str, num_thread: int) -> dict[str, bytes]:
         """
         Load the images from the videos or albums.
 
@@ -39,13 +39,13 @@ class AbstractDataset(ABC):
             num_thread (int): The number of threads to use for loading the images.
 
         Returns:
-            Dict[str, Image.Image]: A dictionary of images, where the keys are the IDs of the images.
+            Dict[str, bytes]: A dictionary of images, where the keys are the IDs of the images.
         """
         pass
 
     def __getitem__(self, key: str) -> Dict[str, Any]:
         """
-        Return the item at the given index as a dictionary.
+        Get the item at the given key as a dictionary.
 
         Args:
             key (str): The key of the item to retrieve.
@@ -65,12 +65,12 @@ class AbstractDataset(ABC):
         self.keys = iter(self.images.keys())
         return self
 
-    def __next__(self) -> Tuple[str, Image.Image]:
+    def __next__(self) -> Tuple[str, bytes]:
         """
         Return the next item in the iteration.
 
         Returns:
-            Tuple[str, Image.Image]: The next item as a tuple of key and image.
+            Tuple[str, bytes]: The next item as a tuple of key and image.
 
         Raises:
             StopIteration: If there are no more items in the iteration.

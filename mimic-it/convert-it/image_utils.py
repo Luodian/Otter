@@ -1,11 +1,12 @@
 import base64
 import os
-import cv2
-
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
+from typing import Generator, Tuple
+
+import cv2
 from PIL import Image
 from tqdm import tqdm
-from concurrent.futures import ThreadPoolExecutor
 
 
 def get_image_id(image_name: str, dataset_name: str) -> str:
@@ -22,77 +23,90 @@ def get_image_id(image_name: str, dataset_name: str) -> str:
     return f"{dataset_name}_IMG_{get_image_name(image_name)}"
 
 
-def resize_image(image, target_size=(224, 224)):
+def image_to_bytes(image: Image.Image) -> bytes:
+    image_stream = BytesIO()
+    image.save(image_stream, format="PNG")
+    image_bytes = image_stream.getvalue()
+    image_stream.close()
+    return image_bytes
+
+
+def resize_image(img: bytes, target_size: tuple[int, int] = (224, 224)) -> bytes:
+    with Image.open(BytesIO(img)) as image:
+        if image.size != target_size:
+            resized_image = image.resize(target_size, Image.LANCZOS)
+            image.close()
+            image = resized_image
+        resized_image_bytes = image_to_bytes(image)
+    return resized_image_bytes
+
+
+def process_image(image: bytes, target_size=(224, 224)) -> bytes:
     """
-    Resizes the given image to the target size using the Lanczos algorithm.
+    Processes the input image by resizing it, converting it to RGB mode, and save as byte string.
 
     Args:
-        image (PIL.Image.Image): The input image to be resized.
-        target_size (tuple[int, int]): The target size to which the image should be resized.
-            Defaults to (224, 224).
+        image (bytes): The input image to be processed.
 
     Returns:
-        PIL.Image.Image: The resized image.
+        bytes: The processed image as a byte string.
     """
-    if image.size != target_size:
-        return image.resize(target_size, Image.LANCZOS)
-    return image
+    with Image.open(BytesIO(image)) as img:
+        if img.size != target_size:
+            resized_img = img.resize(target_size, Image.LANCZOS)
+            img.close()
+            img = resized_img
+        if img.mode != "RGB":
+            converted_img = img.convert("RGB")
+            img.close()
+            img = converted_img
+        processed_image = image_to_bytes(img)
+    return processed_image
 
 
-def process_image(img: Image.Image):
+def get_b64_data(image: bytes) -> str:
     """
-    Processes the input image by resizing it, converting it to RGB mode, and encoding it as base64.
+    Converts an image to a base64 encoded string.
 
     Args:
-        image (PIL.Image.Image): The input image to be processed.
+        image (bytes): the image to be converted.
 
     Returns:
-        str: The base64 encoded string representation of the processed image.
+        str: the base64 encoded string representation of the image.
     """
-    resized_img = resize_image(img)
-    if resized_img.mode != "RGB":
-        resized_img = resized_img.convert("RGB")
-    buffer = BytesIO()
-    resized_img.save(buffer, format="PNG")
-    img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
-    return img_base64
+    return base64.b64encode(image).decode("utf-8")
 
 
-def get_json_data(images: dict[str, Image.Image], dataset_name: str, num_thread: int) -> dict[str, str]:
+def get_json_data_generator(images: dict[str, bytes], dataset_name: str, num_threads: int) -> Generator[Tuple[str, str], None, None]:
     """
     Converts a dictionary of images to a JSON-compatible dictionary with base64 encoded strings.
-
+    This generator function will yield the processed image data one at a time, allowing you to write the results to a file without needing to store the entire dictionary in memory.
     Args:
-        images (Dict[str, Image.Image]): A dictionary of images, where the keys are image identifiers and the values are PIL.Image.Image objects.
+        images (Dict[str, bytes]): A dictionary of images, where the keys are image identifiers and the values are byte strings.
         dataset_name (str): The name of the dataset.
         num_threads (int): The number of threads to use for processing the images.
 
     Returns:
         Dict[str, str]: A dictionary where the keys are formatted as "{dataset_name}_IMG_{key}" and the values are base64 encoded string representations of the processed images.
     """
-    with ThreadPoolExecutor(max_workers=num_thread) as executor:
+    with ThreadPoolExecutor(max_workers=num_threads) as executor:
         process_bar = tqdm(total=len(images), desc="Processing images", unit="image")
-        results = {}
 
         def process_image_wrapper(args):
             key, img = args
             new_key = get_image_id(key, dataset_name)
-            result = process_image(img)
+            result = get_b64_data(process_image(img))
 
-            process_bar.update(1)
+            process_bar.update()
             return new_key, result
 
-        processed_images = executor.map(process_image_wrapper, images.items())
-
-        for key, result in processed_images:
-            results[key] = result
+        for result in executor.map(process_image_wrapper, images.items()):
+            yield result
 
         process_bar.close()
 
-        return results
 
-
-def frame_video(video_file: str, fps=1):
+def frame_video(video_file: str, fps: int = 1) -> list[bytes]:
     """
     Extracts frames from a video file at a specified frame rate and returns them as base64 encoded strings.
 
@@ -101,7 +115,7 @@ def frame_video(video_file: str, fps=1):
         fps (int): The frame rate at which frames should be extracted. Defaults to 1 frame per second.
 
     Returns:
-        List[Image]: A list of PIL.Image.Image objects representing the extracted frames.
+        List[bytes]: A list of byte strings representing the extracted frames.
     """
     if not os.path.exists(video_file):
         raise FileNotFoundError(f"Video file {video_file} does not exist.")
@@ -120,15 +134,23 @@ def frame_video(video_file: str, fps=1):
             break
 
         if frame_count % (video_fps // fps) == 0:
-            # convert frame to base64
-            _, buffer = cv2.imencode(".jpg", frame)
-            frames.append(resize_image(Image.open(BytesIO(buffer))))
+            # Check if the frame resolution is not 224x224 and resize if necessary
+            if frame.shape[0] != 224 or frame.shape[1] != 224:
+                frame = cv2.resize(frame, (224, 224))
+
+            success, buffer = cv2.imencode(".png", frame)
+            if not success:
+                print(f"Failed to encode frame {frame_count} of video {video_file}.")
+            frames.append(process_image(buffer))
             saved_frame_count += 1
+
+            del buffer
 
         frame_count += 1
 
-    cap.release()
+        del frame
 
+    cap.release()
     return frames
 
 
