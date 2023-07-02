@@ -336,13 +336,13 @@ def main():
     random_seed(args.seed)
 
     if args.pretrained_model_name_or_path is not None:
-        if "otter" in args.pretrained_model_name_or_path:
+        if "otter" in args.pretrained_model_name_or_path.lower():
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
                 device_map="auto",
                 local_files_only=args.offline,
             )
-        elif "flamingo" in args.pretrained_model_name_or_path:
+        elif "flamingo" in args.pretrained_model_name_or_path.lower():
             model = FlamingoForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
                 device_map="auto",
