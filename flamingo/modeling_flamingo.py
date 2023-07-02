@@ -15,7 +15,12 @@ from flamingo.falcon.modelling_RW import RWForCausalLM
 
 from flamingo.mpt.modeling_mpt import MPTForCausalLM
 
-from .configuration_flamingo import FlamingoConfig
+import sys
+
+sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/flamingo")
+from configuration_flamingo import FlamingoConfig
+
+# from .configuration_flamingo import FlamingoConfig
 
 __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
     "opt": "model.decoder.layers",
@@ -674,6 +679,9 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
             elif config.text_config.architectures[0] == "RWForCausalLM":
                 text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
                 lang_encoder = RWForCausalLM(config=config.text_config)
+            elif config.text_config.architectures[0] == "LlamaForCausalLM":
+                text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+                lang_encoder = LlamaForCausalLM(config=config.text_config)
             else:
                 import pdb
 
