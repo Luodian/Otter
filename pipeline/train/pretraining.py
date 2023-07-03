@@ -288,12 +288,7 @@ def train_one_epoch(
             if unwrapped_model.lang_encoder.__class__.__name__ == "MPTForCausalLM":
                 unwrapped_model.lang_encoder.transformer.wte.apply(mask_embedding)
             elif unwrapped_model.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
-                unwrapped_model.lang_encoder.model.embed_tokens.apply(mask_embedding)
                 unwrapped_model.lang_encoder.lm_head.apply(mask_embedding)
-            else:
-                import pdb
-
-                pdb.set_trace()
 
         if accelerator.sync_gradients:
             accelerator.clip_grad_norm_(model.parameters(), 1.0)

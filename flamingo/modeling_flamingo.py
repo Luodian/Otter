@@ -682,6 +682,14 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
             elif config.text_config.architectures[0] == "RWForCausalLM":
                 text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
                 lang_encoder = RWForCausalLM(config=config.text_config)
+            # TODO: what's the logic here?
+            elif config.text_config.architectures[0] == "LlamaForCausalLM":
+                text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+                lang_encoder = LlamaForCausalLM(config=config.text_config)
+            else:
+                import pdb
+
+                pdb.set_trace()
         else:
             text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
             lang_encoder = LlamaForCausalLM(config=config.text_config)

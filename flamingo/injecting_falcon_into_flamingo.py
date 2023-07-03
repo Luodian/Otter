@@ -40,8 +40,10 @@ for key in state_dict:
         target_key = f"transformer.h.{layer_num}.decoder_layer.{'.'.join(remain_names)}"
     else:
         target_key = key
-
     save_state_dict_1[f"{target_key}"] = state_dict[key]
+_ = model.lang_encoder.load_state_dict(
+    save_state_dict_1,
     False,
+)
 print(_[1])
 model.save_pretrained(f"{root_dir}/otter/checkpoints/flamingo-falcon-7b/")
