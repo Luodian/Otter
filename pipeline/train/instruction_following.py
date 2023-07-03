@@ -232,7 +232,7 @@ def main():
     parser.add_argument(
         "--run_name",
         type=str,
-        default="otter_9b",
+        default="otter-9b",
         help="used to name saving directory and wandb run",
     )
     parser.add_argument("--offline", action="store_true")
@@ -336,13 +336,14 @@ def main():
     random_seed(args.seed)
 
     if args.pretrained_model_name_or_path is not None:
-        if "otter" in args.pretrained_model_name_or_path.lower():
+        accelerator.print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
+        if "otter" in args.run_name.lower():
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
                 device_map="auto",
                 local_files_only=args.offline,
             )
-        elif "flamingo" in args.pretrained_model_name_or_path.lower():
+        elif "flamingo" in args.run_name.lower():
             model = FlamingoForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
                 device_map="auto",
