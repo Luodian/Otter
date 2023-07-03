@@ -6,9 +6,9 @@
     "cross_attn_every_n_layers": 4,
     "model_type": "flamingo",
     "text_config": {
-        "_name_or_path": "/home/ubuntu/model_weights/vicuna-33b-gpt4-20230521/",
+        "_name_or_path": "/home/luodian/projects/checkpoints/vicuna-33b-v1.3",
         "architectures": [
-          "LlamaForCausalLM"
+            "LlamaForCausalLM"
         ],
         "bos_token_id": 1,
         "eos_token_id": 2,

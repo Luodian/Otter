@@ -6,9 +6,8 @@ from tqdm import tqdm
 
 import sys
 
-from configuration_flamingo import FlamingoConfig
-from modeling_flamingo import FlamingoForConditionalGeneration
-from converting_flamingo_to_hf import rename_flamingo_checkpoint
+from flamingo.configuration_flamingo import FlamingoConfig
+from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 
 # from .configuration_flamingo import FlamingoConfig
 # from .modeling_flamingo import FlamingoForConditionalGeneration
@@ -27,7 +26,7 @@ model_choice = args.model_choice
 save_root_dir = args.save_root_dir
 
 # prepare vicuna model at first
-# you can visit https://huggingface.co/mosaicml to download 7B and 30B instruct checkpoints.
+# you can visit https://huggingface.co/lmsys/vicuna-33b-v1.3 to download 7B and 30B instruct checkpoints.
 if model_choice == "33B":
     config_file = "./flamingo/flamingo-vicuna-33B-v1.3.json"
     state_dict_files = [
@@ -56,7 +55,8 @@ model = FlamingoForConditionalGeneration(config=config)
 # load flamingo's vision encoder from last checkpoint.
 # you can visit https://huggingface.co/luodian/openflamingo-9b-hf/tree/main to download the checkpoint.
 # AZP = "os.environ["AZP"]"
-state_dict_3 = torch.load(f"/mnt/petrelfs/share_data/basemodel/checkpoints/multimodality/flamingo_9b_hf/pytorch_model-00004-of-00004.bin", map_location="cpu")
+AZP = os.environ["AZP"]
+state_dict_3 = torch.load(f"{AZP}/otter/checkpoints/flamingo_9b_hf/pytorch_model-00004-of-00004.bin", map_location="cpu")
 for cur_key in list(state_dict_3.keys()):
     if "vision_encoder" not in cur_key:
         del state_dict_3[cur_key]

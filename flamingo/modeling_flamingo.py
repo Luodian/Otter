@@ -1,23 +1,19 @@
 import random
 from dataclasses import dataclass
-from typing import Optional, Callable
+from typing import Callable, Optional
 
 import torch
 import torch.nn as nn
-from transformers.modeling_utils import PreTrainedModel
-from transformers.models.auto import AutoModelForCausalLM, AutoTokenizer, AutoModel
-from transformers.modeling_outputs import CausalLMOutputWithPast
-from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
+from accelerate.hooks import AlignDevicesHook, add_hook_to_module
 from einops import rearrange, repeat
-from accelerate.hooks import add_hook_to_module, AlignDevicesHook
+from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
+from transformers.modeling_outputs import CausalLMOutputWithPast
+from transformers.modeling_utils import PreTrainedModel
+from transformers.models.auto import AutoModel, AutoModelForCausalLM, AutoTokenizer
 
+from flamingo.configuration_flamingo import FlamingoConfig
 from flamingo.falcon.modelling_RW import RWForCausalLM
-
 from flamingo.mpt.modeling_mpt import MPTForCausalLM
-
-import sys
-
-from configuration_flamingo import FlamingoConfig
 
 # from .configuration_flamingo import FlamingoConfig
 

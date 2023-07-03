@@ -8,7 +8,7 @@
     "text_config": {
         "_name_or_path": "/mnt/petrelfs/share_data/zhangyuanhan/vicuna-7b-v1.3",
         "architectures": [
-          "LlamaForCausalLM"
+            "LlamaForCausalLM"
         ],
         "bos_token_id": 1,
         "eos_token_id": 2,
