@@ -21,7 +21,7 @@ from otter.modeling_otter import OtterForConditionalGeneration
 from pipeline.mimicit_utils.arguments import add_data_args
 from pipeline.train.data import get_data
 from pipeline.train.distributed import world_info_from_env
-from pipeline.train.train_utils import AverageMeter, get_cast_dtype, get_checkpoint
+from pipeline.train.train_utils import AverageMeter, get_checkpoint
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -499,24 +499,24 @@ def main():
             device_id=device_id,
             wandb=wandb,
         )
-        if args.rank == 0:
-            if not os.path.exists(args.external_save_dir):
-                os.makedirs(args.external_save_dir)
+        # if args.rank == 0:
+        #     if not os.path.exists(args.external_save_dir):
+        #         os.makedirs(args.external_save_dir)
 
-            unwrapped_model = accelerator.unwrap_model(model)
-            checkpoint_dict = {
-                "epoch": epoch,
-                "model_state_dict": get_checkpoint(unwrapped_model),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "lr_scheduler_state_dict": lr_scheduler.state_dict(),
-            }
-            print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
-            accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
-            # save the config
-            unwrapped_model.config.save_pretrained(args.external_save_dir)
-            if args.delete_previous_checkpoint:
-                if epoch > 0:
-                    os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
+        #     unwrapped_model = accelerator.unwrap_model(model)
+        #     checkpoint_dict = {
+        #         "epoch": epoch,
+        #         "model_state_dict": get_checkpoint(unwrapped_model),
+        #         "optimizer_state_dict": optimizer.state_dict(),
+        #         "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+        #     }
+        #     print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
+        #     accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+        #     # save the config
+        #     unwrapped_model.config.save_pretrained(args.external_save_dir)
+        #     if args.delete_previous_checkpoint:
+        #         if epoch > 0:
+        #             os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
 
         accelerator.wait_for_everyone()
 

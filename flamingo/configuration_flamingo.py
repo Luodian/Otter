@@ -5,11 +5,8 @@ from transformers.utils import logging
 
 from transformers.models.auto import CONFIG_MAPPING
 from transformers.models.clip import CLIPVisionConfig
-import sys
 
-# sys.path.append("/mnt/lustre/yhzhang/Otter/")
 from flamingo.falcon.configuration_RW import RWConfig
-
 from flamingo.mpt.configuration_mpt import MPTConfig
 
 
