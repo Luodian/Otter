@@ -43,19 +43,23 @@ if model_choice == "30B":
 elif model_choice == "7B":
     config_file = "./flamingo/flamingo-mpt-7B.json"
     state_dict_files = [
-        f"{root_dir}/mpt-7b/pytorch_model-00001-of-00002.bin",
-        f"{root_dir}/mpt-7b/pytorch_model-00002-of-00002.bin",
+        f"{root_dir}/mpt-7b-instruct/pytorch_model-00001-of-00002.bin",
+        f"{root_dir}/mpt-7b-instruct/pytorch_model-00002-of-00002.bin",
     ]
-    save_path = f"{save_root_dir}/flamingo-mpt-7B"
+    save_path = f"{save_root_dir}/flamingo-mpt-7B-instruct-init"
 else:
     raise ValueError("Invalid model_choice. Choose either '30B' or '7B'.")
 
 config = FlamingoConfig.from_json_file(config_file)
 model = FlamingoForConditionalGeneration(config=config)
 
+state_dict = {}
+for file in tqdm(state_dict_files, desc="Loading state dict"):
+    state_dict_part = torch.load(file, map_location="cpu")
+    state_dict.update(state_dict_part)
+
 # load flamingo's vision encoder from last checkpoint.
 # you can visit https://huggingface.co/luodian/openflamingo-9b-hf/tree/main to download the checkpoint.
-# AZP = "os.environ["AZP"]"
 AZP = os.environ["AZP"]
 state_dict_3 = torch.load(f"{AZP}/otter/checkpoints/flamingo_9b_hf/pytorch_model-00004-of-00004.bin", map_location="cpu")
 for cur_key in list(state_dict_3.keys()):

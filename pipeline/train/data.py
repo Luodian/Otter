@@ -530,7 +530,14 @@ def get_laion_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     return DataInfo(dataloader=dataloader, shared_epoch=shared_epoch)
 
 
-def get_mimicit_dataset(args, tokenizer, epoch=0, floor=False):
+import json
+
+from PIL import Image, ImageFile
+
+from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
+
+
+def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     args.task = "pretrain"
     args.tokenizer = tokenizer
@@ -542,9 +549,7 @@ def get_mimicit_dataset(args, tokenizer, epoch=0, floor=False):
         unified_dataset = MimicitDataset(args, cur_mimicit_path, cur_images_path, cur_train_config_path)
         unified_datasets.append(unified_dataset)
 
-    args.train_num_samples = (
-        sum(len(dataset) for dataset in unified_datasets) / len(unified_datasets) if args.train_num_samples is None else args.train_num_samples
-    )
+    args.train_num_samples = sum(len(dataset) for dataset in unified_datasets) / len(unified_datasets)
     round_fn = math.floor if floor else math.ceil
     global_batch_size = args.batch_size * args.world_size
 

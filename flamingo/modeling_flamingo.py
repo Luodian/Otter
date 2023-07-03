@@ -497,14 +497,19 @@ class FlamingoModel(FlamingoPreTrainedModel):
         config: FlamingoConfig,
     ):
         super().__init__(config)
-        # TODO: hardcode right because autoXXX is too slow
-        # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
-        # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
-        # vision_encoder = AutoModel.from_config(config.vision_config).vision_model
-        text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
-        lang_encoder = LlamaForCausalLM(config=config.text_config)
-        vision_encoder = CLIPVisionModel(config=config.vision_config)
+        ### TODO: give "LlamaForCausalLM" as the name of text_config.architectures of Llama_based flamingo
+        if "llama" not in config.text_config._name_or_path:
+            if config.text_config.architectures[0] == "MPTForCausalLM":
+                text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
+                lang_encoder = MPTForCausalLM(config=config.text_config)
+            elif config.text_config.architectures[0] == "RWForCausalLM":
+                text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
+                lang_encoder = RWForCausalLM(config=config.text_config)
+        else:
+            text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+            lang_encoder = LlamaForCausalLM(config=config.text_config)
 
+        vision_encoder = CLIPVisionModel(config=config.vision_config)
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
         if text_tokenizer.pad_token is None:
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
@@ -515,10 +520,11 @@ class FlamingoModel(FlamingoPreTrainedModel):
         extend_instance(lang_encoder, FlamingoLMMixin)
         decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
         lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        lang_encoder.resize_token_embeddings(len(text_tokenizer))
+        if lang_encoder.__class__.__name__ != "MPTForCausalLM":
+            lang_encoder.resize_token_embeddings(len(text_tokenizer))
         self.lang_encoder = lang_encoder
 
-        self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
+        self.cross_attn_every_n_layers = config.cross_attn_every_n_layers if hasattr(config, "cross_attn_every_n_layers") else 4
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
 
         vision_encoder.output_tokens = True
@@ -553,9 +559,6 @@ class FlamingoModel(FlamingoPreTrainedModel):
     def get_lang_encoder(self) -> nn.Module:
         return self.lang_encoder
 
-    def tie_weights(self):
-        return super().tie_weights()
-
     def init_weights(self):
         # Freeze all parameters in vision encoder
         for param in self.vision_encoder.parameters():
@@ -566,7 +569,12 @@ class FlamingoModel(FlamingoPreTrainedModel):
                 param.requires_grad = False
         # Unfreeze LM input embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
-        # self.lang_encoder.lm_head.requires_grad_(True)
+        ## MPTForCausalLM is tied word embedding
+        if self.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+            self.lang_encoder.lm_head.requires_grad_(True)
+        # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
+        # print model size in billions of parameters in 2 decimal places
+        print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
 
     def forward(
         self,
@@ -674,6 +682,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
             elif config.text_config.architectures[0] == "RWForCausalLM":
                 text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
                 lang_encoder = RWForCausalLM(config=config.text_config)
+            # TODO: what's the logic here?
             elif config.text_config.architectures[0] == "LlamaForCausalLM":
                 text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
                 lang_encoder = LlamaForCausalLM(config=config.text_config)
