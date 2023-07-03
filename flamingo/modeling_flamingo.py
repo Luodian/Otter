@@ -1,21 +1,21 @@
 import random
 from dataclasses import dataclass
-from typing import Optional, Callable
+from typing import Callable, Optional
 
 import torch
 import torch.nn as nn
-from transformers.modeling_utils import PreTrainedModel
-from transformers.models.auto import AutoModelForCausalLM, AutoTokenizer, AutoModel
-from transformers.modeling_outputs import CausalLMOutputWithPast
-from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
+from accelerate.hooks import AlignDevicesHook, add_hook_to_module
 from einops import rearrange, repeat
-from accelerate.hooks import add_hook_to_module, AlignDevicesHook
+from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
+from transformers.modeling_outputs import CausalLMOutputWithPast
+from transformers.modeling_utils import PreTrainedModel
+from transformers.models.auto import AutoModel, AutoModelForCausalLM, AutoTokenizer
 
+from flamingo.configuration_flamingo import FlamingoConfig
 from flamingo.falcon.modelling_RW import RWForCausalLM
-
 from flamingo.mpt.modeling_mpt import MPTForCausalLM
 
-from .configuration_flamingo import FlamingoConfig
+# from .configuration_flamingo import FlamingoConfig
 
 __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
     "opt": "model.decoder.layers",
@@ -666,16 +666,24 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
         # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
 
-        if config.text_config.architectures[0] == "MPTForCausalLM":
-            text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
-            lang_encoder = MPTForCausalLM(config=config.text_config)
-        elif config.text_config.architectures[0] == "RWForCausalLM":
-            text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
-            lang_encoder = RWForCausalLM(config=config.text_config)
-        else:
-            import pdb
+        ### TODO: give "LlamaForCausalLM" as the name of text_config.architectures of Llama_based flamingo
+        if "llama" not in config.text_config._name_or_path:
+            if config.text_config.architectures[0] == "MPTForCausalLM":
+                text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
+                lang_encoder = MPTForCausalLM(config=config.text_config)
+            elif config.text_config.architectures[0] == "RWForCausalLM":
+                text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
+                lang_encoder = RWForCausalLM(config=config.text_config)
+            elif config.text_config.architectures[0] == "LlamaForCausalLM":
+                text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+                lang_encoder = LlamaForCausalLM(config=config.text_config)
+            else:
+                import pdb
 
-            pdb.set_trace()
+                pdb.set_trace()
+        else:
+            text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+            lang_encoder = LlamaForCausalLM(config=config.text_config)
 
         vision_encoder = CLIPVisionModel(config=config.vision_config)
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
@@ -738,7 +746,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         # Unfreeze LM input embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
-        if self.lang_encoder.__class__.__name__ != "MPTForCausalLM":
+        if self.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
             self.lang_encoder.lm_head.requires_grad_(True)
         # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
         # print model size in billions of parameters in 2 decimal places
