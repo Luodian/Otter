@@ -211,14 +211,15 @@ def main(args):
         tasks = []
 
         # Use tqdm to show progress
-        for idx in tqdm((tsv_id_list), desc="Converting TSV"):
+        for idx in tsv_id_list:
+            print(f"Processing {idx}")
             task = executor.submit(convert_tsv, idx, tsv_root, args.output_dir)
             tasks.append(task)
 
 
 arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument("--output_dir", type=str, required=True)
-arg_parser.add_argument("--mp_num", type=int, default=1)
+arg_parser.add_argument("--mp_num", type=int, default=8, help="Number of processes")
 arg_parser.add_argument("--shard", type=int, default=800, help="Shard number")
 arg_parser.add_argument("--interval", type=int, default=20, help="Interval between shards")
 arg_parser.add_argument(
