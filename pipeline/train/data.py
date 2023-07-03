@@ -16,11 +16,12 @@ import torch
 import torch.utils
 import torchvision
 import webdataset as wds
-from PIL import Image, ImageSequence
+from PIL import Image, ImageSequence, ImageFile
 from torch.utils.data import DataLoader, IterableDataset, RandomSampler, get_worker_info
 from torch.utils.data.distributed import DistributedSampler
 from webdataset.filters import _shuffle
 from webdataset.tariterators import base_plus_ext, tar_file_expander, url_opener, valid_sample
+from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
 
 Image.MAX_IMAGE_PIXELS = 1000000000
 MAX_NUM_TOKENS = 256
@@ -88,6 +89,23 @@ def count_samples(dataloader):
 
 def filter_no_caption_or_no_image(sample):
     return ("txt" in sample) and ("png" in sample or "jpg" in sample or "jpeg" in sample)
+
+
+def decode_base64_image(key, value):
+    if not key.endswith(".png"):
+        return None
+    rawbytes = base64.b64decode(value)
+    image = Image.open(io.BytesIO(rawbytes))
+    # Check if the image is in palette mode and has transparency
+    if image.mode == "P":
+        try:
+            alpha = image.getchannel("A")
+            if alpha.mode == "L":
+                image = image.convert("RGBA")
+        except ValueError:
+            pass
+    image = image.convert("RGB")
+    return image
 
 
 def log_and_continue(exn):
@@ -476,7 +494,7 @@ def get_laion_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     pipeline.extend(
         [
             wds.select(filter_no_caption_or_no_image),
-            wds.decode("pilrgb", handler=log_and_continue),
+            wds.decode(decode_base64_image, only="png", handler=log_and_continue),
             wds.to_tuple("jpg;png;jpeg", "txt", handler=log_and_continue),
             wds.batched(args.batch_size_laion, partial=False),
             wds.map_tuple(preprocess_image_fn, preprocess_text_fn, handler=log_and_continue),
@@ -510,104 +528,6 @@ def get_laion_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     dataloader.num_samples = num_samples
 
     return DataInfo(dataloader=dataloader, shared_epoch=shared_epoch)
-
-
-def get_coco_vqa_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
-    input_shards = args.laion_shards
-    assert input_shards is not None
-    resampled = getattr(args, "dataset_resampled", False)
-
-    num_samples, num_shards = get_dataset_size(input_shards)
-    num_samples = None
-    if not num_samples:
-        num_samples = args.train_num_samples_laion
-        if not num_samples:
-            raise RuntimeError(
-                "Currently, number of dataset samples must be specified for training dataset. "
-                "Please specify via `--train-num-samples` if no dataset length info present."
-            )
-
-    # create a shared epoch store to sync epoch to dataloader worker proc
-    shared_epoch = SharedEpoch(epoch=epoch)
-    if resampled:
-        pipeline = [ResampledShards2(input_shards, deterministic=True, epoch=shared_epoch)]
-    else:
-        pipeline = [wds.SimpleShardList(input_shards)]
-
-    # create two preprocess functions that take in the passed in image_processor and tokenizer
-    preprocess_image_fn = functools.partial(preprocess_image, image_processor=image_processor)
-    preprocess_text_fn = functools.partial(preprocess_text, tokenizer=tokenizer)
-
-    # at this point we have an iterator over all the shards
-    if not resampled:
-        pipeline.extend(
-            [
-                detshuffle2(
-                    bufsize=_SHARD_SHUFFLE_SIZE,
-                    initial=_SHARD_SHUFFLE_INITIAL,
-                    seed=args.seed,
-                    epoch=shared_epoch,
-                ),
-                wds.split_by_node,
-                wds.split_by_worker,
-            ]
-        )
-    pipeline.extend(
-        [
-            # at this point, we have an iterator over the shards assigned to each worker at each node
-            # wds.tarfile_to_samples(handler=log_and_continue),
-            tarfile_to_samples_nothrow,
-            wds.shuffle(
-                bufsize=_SAMPLE_SHUFFLE_SIZE,
-                initial=_SAMPLE_SHUFFLE_INITIAL,
-            ),
-        ]
-    )
-
-    pipeline.extend(
-        [
-            wds.select(filter_no_caption_or_no_image),
-            wds.decode("pilrgb", handler=log_and_continue),
-            wds.to_tuple("jpg;png;jpeg", "txt", handler=log_and_continue),
-            wds.batched(args.batch_size_laion, partial=False),
-            wds.map_tuple(preprocess_image_fn, preprocess_text_fn, handler=log_and_continue),
-        ]
-    )
-
-    dataset = wds.DataPipeline(*pipeline)
-    if not resampled:
-        assert num_shards >= args.workers * args.world_size, "number of shards must be >= total workers"
-    # roll over and repeat a few samples to get same number of full batches on each node
-    round_fn = math.floor if floor else math.ceil
-    global_batch_size = args.batch_size_laion * args.world_size
-    num_batches = round_fn(num_samples / global_batch_size)
-    num_workers = max(1, args.workers)
-    num_worker_batches = round_fn(num_batches / num_workers)  # per dataloader worker
-    num_batches = num_worker_batches * num_workers
-    num_samples = num_batches * global_batch_size
-    # each worker is iterating over this
-    dataset = dataset.with_epoch(num_worker_batches)
-
-    dataloader = wds.WebLoader(
-        dataset,
-        batch_size=None,
-        shuffle=False,
-        num_workers=args.workers,
-        persistent_workers=True,
-    )
-
-    # add meta-data to dataloader instance for convenience
-    dataloader.num_batches = num_batches
-    dataloader.num_samples = num_samples
-
-    return DataInfo(dataloader=dataloader, shared_epoch=shared_epoch)
-
-
-import json
-
-from PIL import Image, ImageFile
-
-from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
 
 
 def get_mimicit_dataset(args, tokenizer, epoch=0, floor=False):
@@ -658,12 +578,10 @@ def get_mimicit_dataset(args, tokenizer, epoch=0, floor=False):
 
 
 def get_dataset_fn(dataset_type):
-    if dataset_type == "image_text":
+    if dataset_type == "laion":
         return get_laion_dataset
     elif dataset_type == "mmc4":
         return get_mmc4_dataset
-    elif dataset_type == "coco_vqa":
-        return get_coco_vqa_dataset
     elif dataset_type == "mimicit":
         return get_mimicit_dataset
     else:
@@ -672,3 +590,80 @@ def get_dataset_fn(dataset_type):
 
 def get_data(args, image_processor, tokenizer, dataset_type, epoch=0):
     return get_dataset_fn(dataset_type)(args, image_processor=image_processor, epoch=epoch, tokenizer=tokenizer)
+
+
+if __name__ == "__main__":
+    from PIL import Image, ImageFile
+    from io import BytesIO
+    import base64
+    from tqdm import tqdm
+    import json
+    import argparse
+    import sys
+    from transformers import CLIPImageProcessor
+
+    sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/")
+    from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
+    from pipeline.train.distributed import world_info_from_env
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--multi_instruct_path",
+        type=str,
+        help="path to multi_instruct dataset, this should be a glob pattern such as vision_language_examples.tsv",
+    )
+    parser.add_argument("--offline", action="store_true")
+
+    args = parser.parse_args()
+
+    from transformers import LlamaTokenizer
+
+    args.local_rank, args.rank, args.world_size = world_info_from_env()
+
+    with open("/mnt/petrelfs/zhangyuanhan/weights/flamingo_9b_hf/config.json") as f:
+        config = json.load(f)
+
+    tokenizer = LlamaTokenizer.from_pretrained("luodian/llama-7b-hf")
+
+    # add <answer> token to tokenizer
+    tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+
+    tokenizer.add_special_tokens({"pad_token": "<PAD>"})
+
+    args.tokenizer = tokenizer
+
+    args.laion_shards = "/mnt/petrelfs/zhangyuanhan/data/laion-400m//000000000.tar"
+
+    args.train_num_samples_laion = 10
+
+    args.seed = 10
+
+    args.workers = 1
+
+    args.batch_size_laion = 1
+
+    a = Image.open("/mnt/petrelfs/zhangyuanhan/FzPvFWxaUAEnMbk.jpeg")
+
+    image_processor = CLIPImageProcessor(do_normalize=False)
+
+    laion = get_laion_dataset(args, image_processor, tokenizer).dataloader
+
+    for _ in laion:
+        print(_)
+        import torchvision.transforms as T
+
+        transform = T.ToPILImage()
+        img = transform(_[0].squeeze())
+        img.save("text.png")
+        print(tokenizer.batch_decode(_[1][0]))
+        import pdb
+
+        pdb.set_trace()
+        # uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
+        # # index = random.choice(positive_caption_dict[uniq_id])
+        # # prompt_uniq_id, prompt_image, prompt_caption, prompt_question, prompt_refs, prompt_gt_objects, prompt_dataset_name, prompt_type = test_dataset.get_prompt_item(int(index))
+        # uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
+        # if uniq_id not in uniq_id_dict:
+        #     uniq_id_dict[uniq_id] = 0
+
+        # print(uniq_id, image, caption, question, refs, gt_objects, dataset_name, type)
