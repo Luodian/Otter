@@ -39,9 +39,7 @@
 **Video Demo:** [Otter's Conceptual Demo Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili 哔哩哔哩](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)
 
 **Interactive Demo:** 
-
-- [Otter Demo (image version)](https://otter.cliangyu.com/)
-- [Otter Demo (video version)](https://ottervideo.cliangyu.com/)
+Our model is temporarily offline due to GPU bandwidth. Please refer to 🏎️ [Run Otter Locally](./pipeline/demo) if you want to try Otter-Image and Otter-Video.
 
 **Checkpoints:** 
 - [Checkpoints v0.1 (image version)](https://huggingface.co/luodian/otter-9b-hf)
