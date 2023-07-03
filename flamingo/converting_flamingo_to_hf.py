@@ -18,7 +18,6 @@ from flamingo.modeling_flamingo import (
     extend_instance,
 )
 from flamingo.mpt.modeling_mpt import MPTForCausalLM
-
 from .configuration_flamingo import FlamingoConfig
 
 
