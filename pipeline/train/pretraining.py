@@ -8,21 +8,23 @@ import time
 
 import numpy as np
 import torch
-import torch.distributed as dist
 import torch.nn
-from accelerate import Accelerator, DistributedType
+from accelerate import Accelerator
 from tqdm import tqdm
-from transformers import CLIPImageProcessor, get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup, get_linear_schedule_with_warmup
+from transformers import (
+    CLIPImageProcessor,
+    get_constant_schedule_with_warmup,
+    get_cosine_schedule_with_warmup,
+    get_linear_schedule_with_warmup,
+)
 
 import wandb
-from flamingo.configuration_flamingo import FlamingoConfig
 from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from otter.modeling_otter import OtterForConditionalGeneration
 from pipeline.mimicit_utils.arguments import add_data_args
 from pipeline.train.data import get_data
 from pipeline.train.distributed import world_info_from_env
 from pipeline.train.train_utils import AverageMeter, get_checkpoint
-from flamingo.converting_flamingo_to_bf16 import checkpoint_path
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -180,7 +182,9 @@ def train_one_epoch(
     num_batches_per_epoch_laion = laion_loader.num_batches
     num_batches_per_epoch_mmc4 = mmc4_loader.num_batches
 
-    assert num_batches_per_epoch_laion == num_batches_per_epoch_mmc4, "Number of batches in laion and mmc4 datasets must be the same"
+    assert (
+        num_batches_per_epoch_laion == num_batches_per_epoch_mmc4
+    ), "Number of batches in laion and mmc4 datasets must be the same"
 
     num_batches_per_epoch = num_batches_per_epoch_mmc4
     total_training_steps = num_batches_per_epoch * args.num_epochs
@@ -193,7 +197,9 @@ def train_one_epoch(
 
     # setup logging
     step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
-    data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
+    data_time_m = (
+        AverageMeter()
+    )  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
 
     # loop through dataloader
@@ -306,10 +312,18 @@ def train_one_epoch(
         if accelerator.sync_gradients:
             if args.rank == 0 and args.report_to_wandb:
                 # compute within rank 0
-                mmc4_samples_per_second = args.gradient_accumulation_steps * args.batch_size_mmc4 * args.world_size / step_time_m.val
-                mmc4_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_mmc4 / step_time_m.val
-                laion_samples_per_second = args.gradient_accumulation_steps * args.batch_size_laion * args.world_size / step_time_m.val
-                laion_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_laion / step_time_m.val
+                mmc4_samples_per_second = (
+                    args.gradient_accumulation_steps * args.batch_size_mmc4 * args.world_size / step_time_m.val
+                )
+                mmc4_samples_per_second_per_gpu = (
+                    args.gradient_accumulation_steps * args.batch_size_mmc4 / step_time_m.val
+                )
+                laion_samples_per_second = (
+                    args.gradient_accumulation_steps * args.batch_size_laion * args.world_size / step_time_m.val
+                )
+                laion_samples_per_second_per_gpu = (
+                    args.gradient_accumulation_steps * args.batch_size_laion / step_time_m.val
+                )
                 wandb.log(
                     {
                         "data_time": data_time_m.avg,
@@ -337,7 +351,9 @@ def train_one_epoch(
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
-            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Mean Loss: {mean_loss.item():.3f}")
+            print(
+                f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Mean Loss: {mean_loss.item():.3f}"
+            )
         # Add a process on saving checkpoints during pretraining
         if ((num_steps + 1) % args.checkpointing_steps == 0) and args.rank == 0:
             if not os.path.exists(args.external_save_dir):
@@ -357,7 +373,9 @@ def train_one_epoch(
             unwrapped_model.config.save_pretrained(args.external_save_dir)
             if args.delete_previous_checkpoint:
                 if (num_steps + 1) // args.checkpointing_steps >= 2:
-                    previous_checkpoint_path = f"{args.external_save_dir}/checkpoint_steps{num_steps + 1 - args.checkpointing_steps}.pt"
+                    previous_checkpoint_path = (
+                        f"{args.external_save_dir}/checkpoint_steps{num_steps + 1 - args.checkpointing_steps}.pt"
+                    )
                     if os.path.exists(previous_checkpoint_path):
                         os.remove(previous_checkpoint_path)
 
@@ -401,7 +419,9 @@ def main():
                     device_map="auto",
                     local_files_only=args.offline,
                 )
-            model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+            model.text_tokenizer.add_special_tokens(
+                {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
+            )
     else:
         model = None
 
@@ -423,7 +443,13 @@ def main():
         params_with_wd, params_without_wd = [], []
 
         def apply_decay(x):
-            return "gated_cross_attn_layer" in x and "ff_gate" not in x and "attn_gate" not in x and "norm" not in x and "bias" not in x
+            return (
+                "gated_cross_attn_layer" in x
+                and "ff_gate" not in x
+                and "attn_gate" not in x
+                and "norm" not in x
+                and "bias" not in x
+            )
 
         for n, p in model.named_parameters():
             # if p.requires_grad:
@@ -442,7 +468,9 @@ def main():
 
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
-    args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
+    args.external_save_dir = (
+        os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
+    )
     if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is True:
         checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
         if len(checkpoint_list) == 0:
@@ -464,7 +492,9 @@ def main():
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
 
-    args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
+    args.warmup_steps = (
+        total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
+    )
 
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
