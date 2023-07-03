@@ -6,7 +6,6 @@ from tqdm import tqdm
 
 import sys
 
-sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/flamingo")
 from configuration_flamingo import FlamingoConfig
 from modeling_flamingo import FlamingoForConditionalGeneration
 from converting_flamingo_to_hf import rename_flamingo_checkpoint

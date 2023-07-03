@@ -17,7 +17,6 @@ from flamingo.mpt.modeling_mpt import MPTForCausalLM
 
 import sys
 
-sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/flamingo")
 from configuration_flamingo import FlamingoConfig
 
 # from .configuration_flamingo import FlamingoConfig

@@ -680,7 +680,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         config: OtterConfig,
     ):
         super().__init__(config)
-        text_tokenizer = LlamaTokenizer.from_pretrained("/mnt/petrelfs/zhangyuanhan/weights/llama-7b-hf")
+        text_tokenizer = LlamaTokenizer.from_pretrained("luodian/llama-7b-hf")
         lang_encoder = LlamaForCausalLM(config=config.text_config)
         vision_encoder = CLIPVisionModel(config=config.vision_config)
 
