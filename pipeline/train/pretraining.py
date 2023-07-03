@@ -22,6 +22,7 @@ from pipeline.mimicit_utils.arguments import add_data_args
 from pipeline.train.data import get_data
 from pipeline.train.distributed import world_info_from_env
 from pipeline.train.train_utils import AverageMeter, get_checkpoint
+from flamingo.converting_flamingo_to_bf16 import checkpoint_path
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -85,6 +86,7 @@ def parse_args():
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--num_epochs", type=int, default=1)
     parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
+    parser.add_argument("--checkpointing_steps", type=int, default=10000, help="checkpointing every n steps")
     # Sum of gradient optimization batch size
 
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
@@ -336,6 +338,28 @@ def train_one_epoch(
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
             print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Mean Loss: {mean_loss.item():.3f}")
+        # Add a process on saving checkpoints during pretraining
+        if ((num_steps + 1) % args.checkpointing_steps == 0) and args.rank == 0:
+            if not os.path.exists(args.external_save_dir):
+                os.makedirs(args.external_save_dir)
+
+            unwrapped_model = accelerator.unwrap_model(model)
+            checkpoint_dict = {
+                "epoch": epoch,
+                "model_state_dict": get_checkpoint(unwrapped_model),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+            }
+            print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_steps{num_steps + 1}.pt")
+            accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_steps{num_steps + 1}.pt")
+            # save the config
+            print(f"Saving config to {args.external_save_dir}/config.json")
+            unwrapped_model.config.save_pretrained(args.external_save_dir)
+            if args.delete_previous_checkpoint:
+                if (num_steps + 1) // args.checkpointing_steps >= 2:
+                    previous_checkpoint_path = f"{args.external_save_dir}/checkpoint_steps{num_steps + 1 - args.checkpointing_steps}.pt"
+                    if os.path.exists(previous_checkpoint_path):
+                        os.remove(previous_checkpoint_path)
 
 
 def main():
@@ -380,7 +404,6 @@ def main():
             model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
     else:
         model = None
-        config = None
 
     accelerator.wait_for_everyone()
 
@@ -494,24 +517,24 @@ def main():
             device_id=device_id,
             wandb=wandb,
         )
-        # if args.rank == 0:
-        #     if not os.path.exists(args.external_save_dir):
-        #         os.makedirs(args.external_save_dir)
+        if args.rank == 0:
+            if not os.path.exists(args.external_save_dir):
+                os.makedirs(args.external_save_dir)
 
-        #     unwrapped_model = accelerator.unwrap_model(model)
-        #     checkpoint_dict = {
-        #         "epoch": epoch,
-        #         "model_state_dict": get_checkpoint(unwrapped_model),
-        #         "optimizer_state_dict": optimizer.state_dict(),
-        #         "lr_scheduler_state_dict": lr_scheduler.state_dict(),
-        #     }
-        #     print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
-        #     accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
-        #     # save the config
-        #     unwrapped_model.config.save_pretrained(args.external_save_dir)
-        #     if args.delete_previous_checkpoint:
-        #         if epoch > 0:
-        #             os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
+            unwrapped_model = accelerator.unwrap_model(model)
+            checkpoint_dict = {
+                "epoch": epoch,
+                "model_state_dict": get_checkpoint(unwrapped_model),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+            }
+            print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
+            accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+            # save the config
+            unwrapped_model.config.save_pretrained(args.external_save_dir)
+            if args.delete_previous_checkpoint:
+                if epoch > 0:
+                    os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
 
         accelerator.wait_for_everyone()
 
