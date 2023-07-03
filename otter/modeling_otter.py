@@ -495,7 +495,6 @@ class OtterLMMixin(nn.Module):
             for layer in self.get_decoder().blocks:
                 layer.condition_media_locations(media_locations)
                 layer.condition_attend_previous(attend_previous)
-
         return super().forward(*input, **kwargs)  # Call the other parent's forward method
 
     def is_conditioned(self) -> bool:
