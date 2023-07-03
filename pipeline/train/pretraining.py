@@ -225,8 +225,8 @@ def train_one_epoch(
                 attention_mask=attention_mask,
                 labels=labels,
             )[0]
+        accelerator.backward(args.loss_multiplier_laion * loss_laion)
         total_losses.append(args.loss_multiplier_laion * loss_laion)
-        # import pdb;pdb.set_trace()
 
         #### MMC4 FORWARD PASS ####
         images = batch_mmc4[0].to(device_id, non_blocking=True).unsqueeze(2)
@@ -265,11 +265,12 @@ def train_one_epoch(
                 labels=labels,
             )[0]
 
+        accelerator.backward(args.loss_multiplier_mmc4 * loss_mmc4)
         total_losses.append(args.loss_multiplier_mmc4 * loss_mmc4)
         #### BACKWARD PASS ####
         total_loss_sum = sum(total_losses)
         mean_loss = total_loss_sum / len(total_losses)
-        accelerator.backward(total_loss_sum.to(device_id))
+        # accelerator.backward(total_loss_sum.to(device_id))
 
         def mask_embedding(m):
             if m.weight.requires_grad:
