@@ -34,13 +34,13 @@ _ = model.load_state_dict(
 print(_[1])
 
 save_state_dict_1 = {}
-for key in state_dict_1:
+for key in state_dict:
     if ".h." in key:
         _, _, layer_num, *remain_names = key.split(".")
         target_key = f"transformer.h.{layer_num}.decoder_layer.{'.'.join(remain_names)}"
     else:
         target_key = key
-    save_state_dict_1[f"{target_key}"] = state_dict_1[key]
+    save_state_dict_1[f"{target_key}"] = state_dict[key]
 _ = model.lang_encoder.load_state_dict(
     save_state_dict_1,
     False,

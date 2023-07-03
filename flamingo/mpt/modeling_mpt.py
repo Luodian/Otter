@@ -365,10 +365,10 @@ class MPTForCausalLM(MPTPreTrainedModel):
     def activation_checkpointing_fn(self, module):
         return isinstance(module, MPTBlock)
 
-    def prepare_inputs_for_generation(self, input_ids, past_key_values=None, inputs_embeds=None, **kwargs):
+    def prepare_inputs_for_generation(self, input_ids, past_key_values=None, inputs_embeds=None, attention_mask=None, **kwargs):
         if inputs_embeds is not None:
             raise NotImplementedError("inputs_embeds is not implemented for MPT yet")
-        attention_mask = kwargs["attention_mask"].bool()
+        attention_mask = attention_mask.bool()
         if attention_mask[:, -1].sum() != attention_mask.shape[0]:
             raise NotImplementedError("MPT does not support generation with right padding.")
         if self.transformer.attn_uses_sequence_id and self.training:

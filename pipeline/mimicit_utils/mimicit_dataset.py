@@ -18,7 +18,6 @@ import sys
 
 from .transforms import *
 
-# sys.path.append("/mnt/lustre/yhzhang/Otter/pipeline/multi_instruct_data_utils")
 # from transforms import *
 
 

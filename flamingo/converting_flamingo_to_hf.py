@@ -15,7 +15,7 @@ from modeling_flamingo import (
     FlamingoPerceiverResampler,
 )
 
-from configuration_flamingo import FlamingoConfig
+from flamingo.configuration_flamingo import FlamingoConfig
 
 
 class FlamingoModel(FlamingoPreTrainedModel):
