@@ -225,6 +225,8 @@ def train_one_epoch(
                 attention_mask=attention_mask,
                 labels=labels,
             )[0]
+
+        #### LAION BACKWARD ####
         accelerator.backward(args.loss_multiplier_laion * loss_laion)
         total_losses.append(args.loss_multiplier_laion * loss_laion)
 
@@ -265,9 +267,10 @@ def train_one_epoch(
                 labels=labels,
             )[0]
 
+        #### MMC4 BACKWARD ####
         accelerator.backward(args.loss_multiplier_mmc4 * loss_mmc4)
         total_losses.append(args.loss_multiplier_mmc4 * loss_mmc4)
-        #### BACKWARD PASS ####
+        #### Collect MMC4/LAION Loss Info ####
         total_loss_sum = sum(total_losses)
         mean_loss = total_loss_sum / len(total_losses)
         # accelerator.backward(total_loss_sum.to(device_id))
