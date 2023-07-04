@@ -209,7 +209,6 @@ class MimicitDataset(Dataset):
         assert len(image_ids) == resample_frames
         return image_ids
 
-
     def process_llavar(self, instruction_id, instruction, answer, image_ids, in_context_example_ids):
         patch_images = torch.tensor([])
         all_texts = ""
@@ -443,9 +442,13 @@ class MimicitDataset(Dataset):
     def process_vqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids):
         patch_images = torch.tensor([])
         all_texts = ""
-        all_instruction_ids = in_context_example_ids + [instruction_id] 
+        all_instruction_ids = in_context_example_ids + [instruction_id]
         for cur_instruction_id in all_instruction_ids[:]:
-            cur_instruction_image_id = self.dataset[cur_instruction_id]["image_ids"][0] if isinstance(self.dataset[cur_instruction_id]["image_ids"],list) else self.dataset[cur_instruction_id]["image_ids"]
+            cur_instruction_image_id = (
+                self.dataset[cur_instruction_id]["image_ids"][0]
+                if isinstance(self.dataset[cur_instruction_id]["image_ids"], list)
+                else self.dataset[cur_instruction_id]["image_ids"]
+            )
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_image = self.images[cur_instruction_image_id]
@@ -464,7 +467,7 @@ class MimicitDataset(Dataset):
             cur_text = f"<image>User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
             all_texts += cur_text
             # import pdb;pdb.set_trace()
-        return patch_images, all_texts  
+        return patch_images, all_texts
 
     def process_image_text_pair(self, index):
         cur_train_id = self.train_data_list[index]
@@ -498,7 +501,16 @@ class MimicitDataset(Dataset):
             patch_images, all_texts = self.process_scene_navigation(instruction_id, instruction, answer, image_ids, in_context_example_ids)
         elif cur_train_id.startswith("FunQA"):
             patch_images, all_texts = self.process_funqa(instruction_id, instruction, answer, image_ids, in_context_example_ids)
-        elif cur_train_id.startswith("LRV") or cur_train_id.startswith("okvqa") or cur_train_id.startswith("a-okvqa") or cur_train_id.startswith("st-vqa") or cur_train_id.startswith("vqav2") or cur_train_id.startswith("scienceqa") or cur_train_id.startswith("gqa") or cur_train_id.startswith("text-vqa"):
+        elif (
+            cur_train_id.startswith("LRV")
+            or cur_train_id.startswith("okvqa")
+            or cur_train_id.startswith("a-okvqa")
+            or cur_train_id.startswith("st-vqa")
+            or cur_train_id.startswith("vqav2")
+            or cur_train_id.startswith("scienceqa")
+            or cur_train_id.startswith("gqa")
+            or cur_train_id.startswith("text-vqa")
+        ):
             patch_images, all_texts = self.process_vqa(instruction_id, instruction, answer, image_ids, in_context_example_ids)
         elif cur_train_id.startswith("LLAVAR"):
             patch_images, all_texts = self.process_llavar(instruction_id, instruction, answer, image_ids, in_context_example_ids)
@@ -661,9 +673,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-# --multi_instruct_path="/mnt/petrelfs/zhangyuanhan/data/m3it/reasoning/science_qa/scienceqa_instructions.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/gqa/gqa_instructions.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/text-vqa/text-vqa_instructions.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/vqav2/vqav2_instructions.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/a-okvqa/aokvqa_v1p0_instructions.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACONV_instructions.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LADD_instructions.json" \
-# --images_path="/mnt/petrelfs/zhangyuanhan/data/m3it/reasoning/science_qa/scienceqa_00.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/gqa/gqa_00.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/text-vqa/text-vqa_00.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/vqav2/vqav2_00.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/a-okvqa/aokvqa_v1p0_00.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LA_00.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LA_00.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LA_00.json" \
-# --train_config_path="/mnt/petrelfs/zhangyuanhan/data/m3it/reasoning/science_qa/scienceqa_train.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/gqa/gqa_train.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/text-vqa/text-vqa_train.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/vqav2/vqav2_train.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/a-okvqa/aokvqa_v1p0_train.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACONV_train.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LADD_train.json" \
+    # --multi_instruct_path="/mnt/petrelfs/zhangyuanhan/data/m3it/reasoning/science_qa/scienceqa_instructions.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/gqa/gqa_instructions.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/text-vqa/text-vqa_instructions.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/vqav2/vqav2_instructions.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/a-okvqa/aokvqa_v1p0_instructions.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACONV_instructions.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LADD_instructions.json" \
+    # --images_path="/mnt/petrelfs/zhangyuanhan/data/m3it/reasoning/science_qa/scienceqa_00.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/gqa/gqa_00.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/text-vqa/text-vqa_00.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/vqav2/vqav2_00.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/a-okvqa/aokvqa_v1p0_00.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LA_00.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LA_00.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LA_00.json" \
+    # --train_config_path="/mnt/petrelfs/zhangyuanhan/data/m3it/reasoning/science_qa/scienceqa_train.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/gqa/gqa_train.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/text-vqa/text-vqa_train.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/vqav2/vqav2_train.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/a-okvqa/aokvqa_v1p0_train.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACONV_train.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LADD_train.json" \
 
     args.multi_instruct_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/LLAVAR/LLAVAR_instructions.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
     args.images_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/LLAVAR/LLAVAR.json"

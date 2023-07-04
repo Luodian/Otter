@@ -349,7 +349,7 @@ def main():
         if "otter" in args.run_name.lower():
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
-                device_map="auto",#{"": device_id},
+                device_map="auto",  # {"": device_id},
                 local_files_only=args.offline,
             )
         elif "flamingo" in args.run_name.lower():
@@ -376,7 +376,7 @@ def main():
             )
 
     accelerator.wait_for_everyone()
-    
+
     if model.lang_encoder.__class__.__name__ != "MPTForCausalLM":
         model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
 
