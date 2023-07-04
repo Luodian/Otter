@@ -42,3 +42,8 @@ python -m pipeline.serve.gradio_web_server_video --controller http://localhost:1
 ```
 
 Now, you can open your browser and chat with the model!
+
+### Examples
+If you encounter error stating `FileNotFoundError: [Errno 2] No such file or directory: '/home/luodian/projects/Otter/pipeline/serve/examples/Apple Vision Pro - Reveal Trailer.mp4'`
+
+That's because we didnt upload the video examples on Github. You could visit the following [folder](https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/EjjDhJm4G35EgVHo0Pxi7dEBM7rqdN3e0ZcBCskWuIubUQ?e=C58jI3) to download our used examples and put them to the right place.
