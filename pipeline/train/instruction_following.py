@@ -389,7 +389,7 @@ def main():
             )
 
     accelerator.wait_for_everyone()
-    
+
     if model.lang_encoder.__class__.__name__ != "MPTForCausalLM":
         model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
 
