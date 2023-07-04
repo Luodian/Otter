@@ -495,7 +495,7 @@ class OtterLMMixin(nn.Module):
             for layer in self.get_decoder().blocks:
                 layer.condition_media_locations(media_locations)
                 layer.condition_attend_previous(attend_previous)
-        
+
         return super().forward(*input, **kwargs)  # Call the other parent's forward method
 
     def is_conditioned(self) -> bool:
@@ -534,7 +534,6 @@ class OtterModel(OtterPreTrainedModel):
     ):
         super().__init__(config)
 
-
         ### TODO: give "LlamaForCausalLM" as the name of text_config.architectures of Llama_based flamingo
         if "llama" not in config.text_config._name_or_path:
             if config.text_config.architectures[0] == "MPTForCausalLM":
@@ -563,7 +562,7 @@ class OtterModel(OtterPreTrainedModel):
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         # use_media_placement_augmentation is strictly false for Otter model
-        self.use_media_placement_augmentation = False #config.use_media_placement_augmentation
+        self.use_media_placement_augmentation = False  # config.use_media_placement_augmentation
         self.max_num_frames = config.max_num_frames if hasattr(config, "max_num_frames") else None
 
         vision_encoder.output_tokens = True
@@ -747,7 +746,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         # use_media_placement_augmentation is strictly false for Otter model
-        self.use_media_placement_augmentation = False #config.use_media_placement_augmentation
+        self.use_media_placement_augmentation = False  # config.use_media_placement_augmentation
         self.max_num_frames = config.max_num_frames if hasattr(config, "max_num_frames") else None
 
         # Informative print statement
@@ -770,7 +769,6 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         )
         self.post_init()
 
-        
     def get_input_embeddings(self) -> nn.Module:
         return self.lang_encoder.get_input_embeddings()
 
