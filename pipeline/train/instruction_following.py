@@ -37,6 +37,8 @@ from accelerate import Accelerator, load_checkpoint_and_dispatch, init_empty_wei
 
 import sys
 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 # The flag below controls whether to allow TF32 on matmul. This flag defaults to False
 # in PyTorch 1.12 and later.
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -156,12 +158,13 @@ def train_one_epoch(
                 #     attention_mask=attention_mask.to(device_id),
                 #     max_length=256,
                 # )
+            accelerator.backward(loss_mimicit)
             total_losses.append(loss_mimicit)
         # import pdb;pdb.set_trace()
         #### BACKWARD PASS ####
         total_loss_sum = sum(total_losses)
         mean_loss = total_loss_sum / len(total_losses)
-        accelerator.backward(total_loss_sum.to(device_id))
+        # accelerator.backward(total_loss_sum.to(device_id))
 
         def mask_embedding(m):
             if m.weight.requires_grad:
@@ -366,7 +369,11 @@ def main():
                 False,
             )
 
-    model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
+    accelerator.wait_for_everyone()
+
+    if model.lang_encoder.__class__.__name__ != "MPTForCausalLM":
+        model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
+
     args.tokenizer = model.text_tokenizer
     tokenizer = model.text_tokenizer
     random_seed(args.seed, args.rank)
@@ -482,15 +489,15 @@ def main():
             get_checkpoint(model=unwrapped_model),
             f"{args.external_save_dir}/final_weights.pt",
         )
-        # save the config
-        unwrapped_model.config.save_pretrained(args.external_save_dir)
-        # if model.can_generate():
-        #     model_to_save.generation_config.save_pretrained(args.external_save_dir)
+        # # save the config
+        # unwrapped_model.config.save_pretrained(args.external_save_dir)
+        # # if model.can_generate():
+        # #     model_to_save.generation_config.save_pretrained(args.external_save_dir)
 
-        if args.report_to_wandb and args.save_checkpoints_to_wandb:
-            wandb.save(f"{args.external_save_dir}/final_weights.pt")
-        if args.save_hf_model:
-            model.save_pretrained(f"{args.external_save_dir}")
+        # if args.report_to_wandb and args.save_checkpoints_to_wandb:
+        #     wandb.save(f"{args.external_save_dir}/final_weights.pt")
+        # if args.save_hf_model:
+        #     model.save_pretrained(f"{args.external_save_dir}")
 
 
 if __name__ == "__main__":
