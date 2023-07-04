@@ -170,11 +170,16 @@ def train_one_epoch(
             if m.weight.requires_grad:
                 zero_mask = torch.zeros_like(m.weight.grad)
                 zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
+                # zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
+                # zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
                 m.weight.grad = m.weight.grad * zero_mask
 
         if args.mask_lm_head:
-            model.module.lang_encoder.model.embed_tokens.apply(mask_embedding)
-            model.module.lang_encoder.lm_head.apply(mask_embedding)
+            unwrapped_model = accelerator.unwrap_model(model)
+            if unwrapped_model.lang_encoder.__class__.__name__ == "MPTForCausalLM":
+                unwrapped_model.lang_encoder.transformer.wte.apply(mask_embedding)
+            elif unwrapped_model.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+                unwrapped_model.lang_encoder.lm_head.apply(mask_embedding)
 
         if accelerator.sync_gradients:
             accelerator.clip_grad_norm_(model.parameters(), 1.0)
@@ -343,7 +348,7 @@ def main():
         if "otter" in args.run_name.lower():
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
-                device_map="auto",
+                device_map="auto",#{"": device_id},
                 local_files_only=args.offline,
             )
         elif "flamingo" in args.run_name.lower():
@@ -370,7 +375,7 @@ def main():
             )
 
     accelerator.wait_for_everyone()
-
+    
     if model.lang_encoder.__class__.__name__ != "MPTForCausalLM":
         model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
 
