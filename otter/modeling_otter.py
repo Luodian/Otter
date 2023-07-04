@@ -276,7 +276,6 @@ class OtterMaskedCrossAttention(nn.Module):
             q = q * self.scale
 
             sim = torch.einsum("... i d, ... j d -> ... i j", q, k)
-            import pdb;pdb.set_trace()
             if exists(media_locations):
                 # at each boolean of True, increment the time counter (relative to media time)
                 text_time = media_locations.cumsum(dim=-1)
@@ -771,6 +770,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         )
         self.post_init()
 
+        
     def get_input_embeddings(self) -> nn.Module:
         return self.lang_encoder.get_input_embeddings()
 
