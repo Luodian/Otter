@@ -28,11 +28,6 @@ from pipeline.train.train_utils import AverageMeter, get_checkpoint
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-<<<<<<< HEAD
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
-=======
->>>>>>> update
 # The flag below controls whether to allow TF32 on matmul. This flag defaults to False
 # in PyTorch 1.12 and later.
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -392,7 +387,7 @@ def main():
             )
 
     accelerator.wait_for_everyone()
-
+    
     if model.lang_encoder.__class__.__name__ != "MPTForCausalLM":
         model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
 
