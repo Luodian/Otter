@@ -14,6 +14,7 @@ parser.add_argument(
     help="Precision of the loaded model. Either 'fp16' or 'bf16'. Default is 'fp16'.",
 )
 parser.add_argument("--checkpoint_path", type=str, required=True, help="Path to the pre-trained model checkpoint.")
+parser.add_argument("--save_path", type=str, default=None, help="Path to the converted model checkpoint.")
 
 # Parse the input arguments
 args = parser.parse_args()
@@ -28,5 +29,8 @@ elif args.load_bit == "bf16":
 model = OtterForConditionalGeneration.from_pretrained(args.checkpoint_path, device_map="auto", **precision)
 
 # Save the model
-checkpoint_path = args.checkpoint_path + f"-{args.load_bit}"
+if args.save_path is None:
+    checkpoint_path = args.checkpoint_path + f"-{args.load_bit}"
+else:
+    checkpoint_path = args.save_path
 OtterForConditionalGeneration.save_pretrained(model, checkpoint_path)
