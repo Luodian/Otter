@@ -147,15 +147,7 @@ After configuring environment, you can use the 🦩 Flamingo model / 🦦 Otter 
 
 ## ☄️ Training
 
-Train on `MIMIC-IT` datasets, using the following commands:
-
-First, run, and answer the questions asked. This will generate a config file and save it to the cache folder. The config will be used automatically to properly set the default options when doing `accelerate launch`.
-
-```bash
-accelerate config
-```
-
-Then run the training script. You may need to use a specialized converted weights at [luodian/OTTER-9B-INIT](https://huggingface.co/luodian/OTTER-9B-INIT). This is for initilizing training for Otter. It's directly converted from Openflamingo, and we added tokens for downstream instruction tuning. And you may use any trained weights to start with your training on top of ours, see weights at [Otter Weights](https://huggingface.co/luodian), and [MIMIC-IT](https://github.com/Luodian/Otter/tree/main/mimic-it) for preparing json files.
+You may need to use a specialized converted weights at [luodian/OTTER-9B-INIT](https://huggingface.co/luodian/OTTER-9B-INIT). It's directly converted from Openflamingo, and we added tokens for downstream instruction tuning. And you may use any trained weights to start with your training on top of ours, see weights at [Otter Weights](https://huggingface.co/luodian), and [MIMIC-IT](https://github.com/Luodian/Otter/tree/main/mimic-it) for preparing json files.
 
 ```bash
 accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_fsdp.yaml \
