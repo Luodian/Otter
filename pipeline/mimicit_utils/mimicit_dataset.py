@@ -437,7 +437,7 @@ class MimicitDataset(Dataset):
             self.train_config[cur_train_id],
         )
 
-        self.max_src_length = self.max_tgt_length = 256
+        # self.max_src_length = self.max_tgt_length = 256
 
         if cur_train_id.startswith("LA"):
             patch_images, all_texts = self.process_llava(instruction_id, instruction, answer, image_ids, in_context_example_ids)
