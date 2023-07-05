@@ -92,11 +92,19 @@ def get_response(input_data, prompt: str, model=None, image_processor=None, tens
         return_tensors="pt",
     )
 
+    # Get the data type from model's parameters
+    model_dtype = next(model.parameters()).dtype
+
+    # Convert tensors to the model's data type
+    vision_x = vision_x.to(dtype=model_dtype)
+    lang_x_input_ids = lang_x["input_ids"]
+    lang_x_attention_mask = lang_x["attention_mask"]
+
     bad_words_id = model.text_tokenizer(["User:", "GPT1:", "GFT:", "GPT:"], add_special_tokens=False).input_ids
     generated_text = model.generate(
-        vision_x=vision_x.to(model.device, dtype=tensor_dtype),
-        lang_x=lang_x["input_ids"].to(model.device),
-        attention_mask=lang_x["attention_mask"].to(model.device),
+        vision_x=vision_x.to(model.device),
+        lang_x=lang_x_input_ids.to(model.device),
+        attention_mask=lang_x_attention_mask.to(model.device),
         max_new_tokens=512,
         num_beams=3,
         no_repeat_ngram_size=3,

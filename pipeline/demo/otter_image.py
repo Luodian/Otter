@@ -71,11 +71,19 @@ def get_response(image_list, prompt: str, model=None, image_processor=None, in_c
         ],
         return_tensors="pt",
     )
-    bad_words_id = tokenizer(["User:", "GPT1:", "GFT:", "GPT:"], add_special_tokens=False).input_ids
+    # Get the data type from model's parameters
+    model_dtype = next(model.parameters()).dtype
+
+    # Convert tensors to the model's data type
+    vision_x = vision_x.to(dtype=model_dtype)
+    lang_x_input_ids = lang_x["input_ids"]
+    lang_x_attention_mask = lang_x["attention_mask"]
+
+    bad_words_id = model.text_tokenizer(["User:", "GPT1:", "GFT:", "GPT:"], add_special_tokens=False).input_ids
     generated_text = model.generate(
         vision_x=vision_x.to(model.device),
-        lang_x=lang_x["input_ids"].to(model.device),
-        attention_mask=lang_x["attention_mask"].to(model.device),
+        lang_x=lang_x_input_ids.to(model.device),
+        attention_mask=lang_x_attention_mask.to(model.device),
         max_new_tokens=512,
         num_beams=3,
         no_repeat_ngram_size=3,
@@ -98,7 +106,10 @@ def get_response(image_list, prompt: str, model=None, image_processor=None, in_c
 # ------------------- Main Function -------------------
 
 if __name__ == "__main__":
-    model = OtterForConditionalGeneration.from_pretrained("luodian/OTTER-9B-LA-InContext", device_map="auto")
+    load_bit = "bf16"
+    # dtype = torch.bfloat16 if load_bit == "bf16" else torch.float32
+    precision = {"torch_dtype": torch.bfloat16} if load_bit == "bf16" else {"torch_dtype": torch.float32}
+    model = OtterForConditionalGeneration.from_pretrained("/data/bli/checkpoints/OTTER-9B-LA-InContext-bf16", device_map="sequential", **precision)
     model.text_tokenizer.padding_side = "left"
     tokenizer = model.text_tokenizer
     image_processor = transformers.CLIPImageProcessor()
@@ -123,15 +134,14 @@ if __name__ == "__main__":
             in_context_prompt, in_context_answer = in_context_input.split("::")
             in_context_prompts.append((in_context_prompt.strip(), in_context_answer.strip()))
 
-        # prompts_input = input("Enter the prompts separated by commas (or type 'quit' to exit): ")
-        prompts_input = "What does the image describe?"
+        prompts_input = input("Enter the prompts (or type 'quit' to exit): ")
+        # prompts_input = "What does the image describe?"
 
-        prompts = [prompt.strip() for prompt in prompts_input.split(",")]
+        # prompts = [prompt.strip() for prompt in prompts_input.split(",")]
 
-        for prompt in prompts:
-            print(f"\nPrompt: {prompt}")
-            response = get_response(encoded_frames_list, prompt, model, image_processor, in_context_prompts)
-            print(f"Response: {response}")
+        print(f"\nPrompt: {prompts_input}")
+        response = get_response(encoded_frames_list, prompts_input, model, image_processor, in_context_prompts)
+        print(f"Response: {response}")
 
         if prompts_input.lower() == "quit":
             break
