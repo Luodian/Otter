@@ -154,9 +154,7 @@ def add_data_args(parser=None):
     group.add_argument(
         "--use-npy-data-loader",
         action="store_true",
-        help="Use the numpy data loader. If set, then"
-        "train-data-path, val-data-path, and test-data-path"
-        "should also be provided.",
+        help="Use the numpy data loader. If set, then" "train-data-path, val-data-path, and test-data-path" "should also be provided.",
     )
     group.add_argument("--train-data-path", type=str, default="", help="path to the training data")
     group.add_argument("--val-data-path", type=str, default="", help="path to the validation data")
@@ -212,9 +210,7 @@ def add_data_args(parser=None):
     group.add_argument(
         "--use-tfrecords",
         action="store_true",
-        help="load `--train-data`, `--valid-data`, "
-        "`--test-data` from BERT tf records instead of "
-        "normal data pipeline",
+        help="load `--train-data`, `--valid-data`, " "`--test-data` from BERT tf records instead of " "normal data pipeline",
     )
     group.add_argument("--seq-length", type=int, default=512, help="Maximum sequence length to process")
     group.add_argument(

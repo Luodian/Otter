@@ -424,9 +424,13 @@ class MimicitDataset(Dataset):
     def process_general_vqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids):
         patch_images = torch.tensor([])
         all_texts = ""
-        all_instruction_ids = in_context_example_ids + [instruction_id] 
+        all_instruction_ids = in_context_example_ids + [instruction_id]
         for cur_instruction_id in all_instruction_ids[:]:
-            cur_instruction_image_id = self.dataset[cur_instruction_id]["image_ids"][0] if isinstance(self.dataset[cur_instruction_id]["image_ids"],list) else self.dataset[cur_instruction_id]["image_ids"]
+            cur_instruction_image_id = (
+                self.dataset[cur_instruction_id]["image_ids"][0]
+                if isinstance(self.dataset[cur_instruction_id]["image_ids"], list)
+                else self.dataset[cur_instruction_id]["image_ids"]
+            )
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_image = self.images[cur_instruction_image_id]

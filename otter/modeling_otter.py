@@ -707,7 +707,6 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         else:
             print(f"The current model version is configured for Otter-Video with a maximum of {self.max_num_frames} frames.")
 
-
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder
 
