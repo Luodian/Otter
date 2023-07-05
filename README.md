@@ -150,6 +150,8 @@ After configuring environment, you can use the 🦩 Flamingo model / 🦦 Otter 
 You may need to use a specialized converted weights at [luodian/OTTER-9B-INIT](https://huggingface.co/luodian/OTTER-9B-INIT). It's directly converted from Openflamingo, and we add special tokens for downstream instruction tuning. You may also use any trained Otter weights to start with your training on top of ours, see them at [Otter Weights](https://huggingface.co/luodian). You can refer to [MIMIC-IT](https://github.com/Luodian/Otter/tree/main/mimic-it) for preparing json files.
 
 ```bash
+export PYTHONPATH=.
+
 accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_fsdp.yaml \
 pipeline/train/instruction_following.py \
 --pretrained_model_name_or_path=luodian/OTTER-9B-INIT  \
