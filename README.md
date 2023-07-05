@@ -155,7 +155,6 @@ export PYTHONPATH=.
 accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_fsdp.yaml \
 pipeline/train/instruction_following.py \
 --pretrained_model_name_or_path=luodian/OTTER-9B-INIT  \
---dataset_resampled \
 --mimicit_path="path/to/DC_instruction.json" \
 --images_path="path/to/DC.json" \
 --train_config_path="path/to/DC_train.json" \
@@ -166,9 +165,7 @@ pipeline/train/instruction_following.py \
 --run_name=otter9B_dense_caption \
 --wandb_project=otter9B \
 --workers=1 \
---cross_attn_every_n_layers=4 \
 --lr_scheduler=cosine \
---delete_previous_checkpoint \
 --learning_rate=1e-5 \
 --warmup_steps_ratio=0.01 \
 ```
