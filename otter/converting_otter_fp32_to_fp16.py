@@ -1,17 +1,32 @@
-from otter.modeling_otter import OtterForConditionalGeneration
+import argparse
 import torch
+from otter.modeling_otter import OtterForConditionalGeneration
 
-load_bit = "fp16"
+# Define argument parser
+parser = argparse.ArgumentParser(description="Load a model with specified precision and save it to a specified path.")
 
-if load_bit == "fp16":
+# Add arguments
+parser.add_argument(
+    "--load_bit",
+    type=str,
+    choices=["fp16", "bf16"],
+    default="fp16",
+    help="Precision of the loaded model. Either 'fp16' or 'bf16'. Default is 'fp16'.",
+)
+parser.add_argument("--checkpoint_path", type=str, required=True, help="Path to the pre-trained model checkpoint.")
+
+# Parse the input arguments
+args = parser.parse_args()
+
+# Set precision based on load_bit argument
+if args.load_bit == "fp16":
     precision = {"torch_dtype": torch.float16}
-elif load_bit == "bf16":
+elif args.load_bit == "bf16":
     precision = {"torch_dtype": torch.bfloat16}
 
-# checkpoint_path = "checkpoint/otter9B_LA_incontext2"
-checkpoint_path = "luodian/otter-9b-hf"
-model = OtterForConditionalGeneration.from_pretrained(checkpoint_path, device_map="auto", **precision)
+# Load the model
+model = OtterForConditionalGeneration.from_pretrained(args.checkpoint_path, device_map="auto", **precision)
 
-# save model
-checkpoint_path = checkpoint_path + f"_{load_bit}"
+# Save the model
+checkpoint_path = args.checkpoint_path + f"-{args.load_bit}"
 OtterForConditionalGeneration.save_pretrained(model, checkpoint_path)
