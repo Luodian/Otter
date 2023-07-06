@@ -506,7 +506,6 @@ class MimicitDataset(Dataset):
         else:
             patch_images, all_texts = self.process_general_vqa(instruction_id, instruction, answer, image_ids, in_context_example_ids)
 
-
         src_text = self.tokenizer(
             f"{all_texts}",
             return_tensors="pt",

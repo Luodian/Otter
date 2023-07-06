@@ -319,7 +319,6 @@ def parse_args():
         action="store_true",
         help="delete previous checkpoint when saving new checkpoint",
     )
-    
 
     parser = add_data_args(parser)
     args = parser.parse_args()
