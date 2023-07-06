@@ -139,6 +139,18 @@ def parse_args():
     )
     # YH: Training detail
     parser.add_argument("--mask_lm_head", action="store_true")
+    parser.add_argument(
+        "--max-src-length",
+        type=int,
+        default=1024,
+        help="the maximum src sequence length",
+    )
+    parser.add_argument(
+        "--max-tgt-length",
+        type=int,
+        default=1024,
+        help="the maximum target sequence length",
+    )
     # this could potentially save 33GB of all model parameters for otter-9b, including the language and vision model.
     parser.add_argument("--save_hf_model", default=False, action="store_true")
     # wandb args
@@ -354,7 +366,8 @@ def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, op
 
 def main():
     parser = parse_args()
-    parser = add_data_args(parser)
+    # TODO: remove additional data args, all args would be processed in above parser
+    # parser = add_data_args(parser)
     args = parser.parse_args()
 
     if args.save_checkpoints_to_wandb and not args.report_to_wandb:

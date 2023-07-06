@@ -4,38 +4,27 @@ import argparse
 import glob
 import os
 import random
+import time
 
 import numpy as np
 import torch
 import torch.nn
-import wandb
-from pipeline.train.data import get_data
-from pipeline.train.distributed import init_distributed_device, world_info_from_env
+from accelerate import Accelerator
+from tqdm import tqdm
 from transformers import (
+    CLIPImageProcessor,
     get_constant_schedule_with_warmup,
     get_cosine_schedule_with_warmup,
     get_linear_schedule_with_warmup,
-    CLIPImageProcessor,
 )
 
-from pipeline.train.train_utils import (
-    AverageMeter,
-    get_autocast,
-    get_cast_dtype,
-    get_checkpoint,
-)
-
-from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
+import wandb
 from flamingo.configuration_flamingo import FlamingoConfig
+from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from otter.modeling_otter import OtterForConditionalGeneration
-from otter.configuration_otter import OtterConfig
-from tqdm import tqdm
-import time
-
-from pipeline.mimicit_utils.arguments import add_data_args
-from accelerate import Accelerator, load_checkpoint_and_dispatch, init_empty_weights
-
-import sys
+from pipeline.train.data import get_data
+from pipeline.train.distributed import world_info_from_env
+from pipeline.train.train_utils import AverageMeter, get_checkpoint
 
 # The flag below controls whether to allow TF32 on matmul. This flag defaults to False
 # in PyTorch 1.12 and later.
@@ -272,6 +261,18 @@ def parse_args():
     )
     # YH: Training detail
     parser.add_argument("--mask_lm_head", action="store_true")
+    parser.add_argument(
+        "--max-src-length",
+        type=int,
+        default=1024,
+        help="the maximum src sequence length",
+    )
+    parser.add_argument(
+        "--max-tgt-length",
+        type=int,
+        default=1024,
+        help="the maximum target sequence length",
+    )
     # this could potentially save 33GB of all model parameters for otter-9b, including the language and vision model.
     parser.add_argument("--save_hf_model", default=False, action="store_true")
     # wandb args
@@ -291,10 +292,13 @@ def parse_args():
         help="save checkpoints to wandb",
     )
     parser.add_argument(
-        "--resume_from_checkpoint", default=False, action="store_true", help="resume from checkpoint (original openflamingo pt format, not hf format)"
+        "--resume_from_checkpoint",
+        default=False,
+        action="store_true",
+        help="resume from checkpoint (original openflamingo pt format, not hf format)",
     )
-
-    parser = add_data_args(parser)
+    # TODO: remove additional data args, all args would be processed in above parser
+    # parser = add_data_args(parser)
     args = parser.parse_args()
 
     if args.save_checkpoints_to_wandb and not args.report_to_wandb:
@@ -305,10 +309,6 @@ def parse_args():
         os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
     args.local_rank, args.rank, args.world_size = world_info_from_env()
-    parser = add_data_args(parser)
-    # Parse the command line arguments
-    args = parser.parse_args()
-
     # Check for argument consistency and set environment variables if needed
     if args.save_checkpoints_to_wandb and not args.report_to_wandb:
         raise ValueError("save_checkpoints_to_wandb requires report_to_wandb")
@@ -482,8 +482,6 @@ def main():
         )
         # save the config
         unwrapped_model.config.save_pretrained(args.external_save_dir)
-        # if model.can_generate():
-        #     model_to_save.generation_config.save_pretrained(args.external_save_dir)
 
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
