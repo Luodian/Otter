@@ -11,9 +11,6 @@ from flamingo.falcon.configuration_RW import RWConfig
 from flamingo.mpt.configuration_mpt import MPTConfig
 
 
-from flamingo.falcon.configuration_RW import RWConfig
-from flamingo.mpt.configuration_mpt import MPTConfig
-
 
 logger = logging.get_logger(__name__)
 
