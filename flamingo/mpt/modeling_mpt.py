@@ -341,7 +341,7 @@ class MPTForCausalLM(MPTPreTrainedModel):
             output_hidden_states=output_hidden_states,
             use_cache=use_cache,
         )
-        logits = self.transformer.wte(outputs.last_hidden_state.to(self.transformer.wte.weight.device), True)
+        logits = self.transformer.wte(outputs.last_hidden_state.to(self.transformer.wte.weight.device),True)
         if self.logit_scale is not None:
             if self.logit_scale == 0:
                 warnings.warn(f"Multiplying logits by self.logit_scale={self.logit_scale!r}. This will produce uniform (uninformative) outputs.")

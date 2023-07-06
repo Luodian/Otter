@@ -276,7 +276,7 @@ class OtterMaskedCrossAttention(nn.Module):
             q = q * self.scale
 
             sim = torch.einsum("... i d, ... j d -> ... i j", q, k)
-
+            import pdb;pdb.set_trace()
             if exists(media_locations):
                 # at each boolean of True, increment the time counter (relative to media time)
                 text_time = media_locations.cumsum(dim=-1)
@@ -563,7 +563,8 @@ class OtterModel(OtterPreTrainedModel):
         self.lang_encoder = lang_encoder
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
-        self.use_media_placement_augmentation = config.use_media_placement_augmentation
+        # use_media_placement_augmentation is strictly false for Otter model
+        self.use_media_placement_augmentation = False #config.use_media_placement_augmentation
         self.max_num_frames = config.max_num_frames if hasattr(config, "max_num_frames") else None
 
         vision_encoder.output_tokens = True
@@ -746,7 +747,8 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         self.lang_encoder = lang_encoder
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
-        self.use_media_placement_augmentation = config.use_media_placement_augmentation
+        # use_media_placement_augmentation is strictly false for Otter model
+        self.use_media_placement_augmentation = False #config.use_media_placement_augmentation
         self.max_num_frames = config.max_num_frames if hasattr(config, "max_num_frames") else None
 
         # Informative print statement
