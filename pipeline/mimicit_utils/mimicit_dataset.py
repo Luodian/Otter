@@ -650,7 +650,9 @@ if __name__ == "__main__":
     import sys
 
     sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/")
+    sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/pipeline/mimicit_utils")
     from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
+    from transforms import *
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -665,45 +667,44 @@ if __name__ == "__main__":
     # --multi_instruct_path="/mnt/petrelfs/zhangyuanhan/data/m3it/reasoning/science_qa/scienceqa_instructions.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/gqa/gqa_instructions.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/text-vqa/text-vqa_instructions.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/vqav2/vqav2_instructions.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/a-okvqa/aokvqa_v1p0_instructions.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACONV_instructions.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LADD_instructions.json" \
     # --images_path="/mnt/petrelfs/zhangyuanhan/data/m3it/reasoning/science_qa/scienceqa_00.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/gqa/gqa_00.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/text-vqa/text-vqa_00.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/vqav2/vqav2_00.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/a-okvqa/aokvqa_v1p0_00.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LA_00.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LA_00.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LA_00.json" \
     # --train_config_path="/mnt/petrelfs/zhangyuanhan/data/m3it/reasoning/science_qa/scienceqa_train.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/gqa/gqa_train.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/text-vqa/text-vqa_train.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/vqav2/vqav2_train.json,/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/a-okvqa/aokvqa_v1p0_train.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACONV_train.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/LADD_train.json" \
+    for cur_dataset in ["text-vqa"]:
+        args.multi_instruct_path = f"/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/{cur_dataset}/{cur_dataset}_instructions.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
+        args.images_path = f"/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/{cur_dataset}/{cur_dataset}.json"
+        args.train_config_path = f"/mnt/petrelfs/zhangyuanhan/data/m3it/vqa/{cur_dataset}/{cur_dataset}_train.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
+        args.max_src_length = 256
+        args.max_tgt_length = 256
+        args.task = "pretrain"
+        args.pretrain_seed = 0
+        args.patch_image_size = 224
 
-    args.multi_instruct_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/LLAVAR/LLAVAR_instructions.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
-    args.images_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/LLAVAR/LLAVAR.json"
-    args.train_config_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/LLAVAR/LLAVAR_train.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
-    args.max_src_length = 256
-    args.max_tgt_length = 256
-    args.task = "pretrain"
-    args.pretrain_seed = 0
-    args.patch_image_size = 224
+        from transformers import LlamaTokenizer
 
-    from transformers import LlamaTokenizer
+        with open("/mnt/petrelfs/zhangyuanhan/weights/flamingo_9b_hf/config.json") as f:
+            config = json.load(f)
 
-    with open("/mnt/petrelfs/zhangyuanhan/weights/flamingo_9b_hf/config.json") as f:
-        config = json.load(f)
+        tokenizer = LlamaTokenizer.from_pretrained("/mnt/petrelfs/zhangyuanhan/weights/llama-7b-hf")
+        # add <answer> token to tokenizer
+        tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
 
-    tokenizer = LlamaTokenizer.from_pretrained("/mnt/petrelfs/zhangyuanhan/weights/llama-7b-hf")
-    # add <answer> token to tokenizer
-    tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+        tokenizer.add_special_tokens({"pad_token": "<PAD>"})
 
-    tokenizer.add_special_tokens({"pad_token": "<PAD>"})
+        args.tokenizer = tokenizer
 
-    args.tokenizer = tokenizer
+        cur_multi_instruct_path, cur_images_path, cur_train_config_path = args.multi_instruct_path, args.images_path, args.train_config_path
 
-    cur_multi_instruct_path, cur_images_path, cur_train_config_path = args.multi_instruct_path, args.images_path, args.train_config_path
+        test_dataset = MimicitDataset(args, cur_multi_instruct_path, cur_images_path, cur_train_config_path)
 
-    test_dataset = MimicitDataset(args, cur_multi_instruct_path, cur_images_path, cur_train_config_path)
-
-    uniq_id_dict = {}
-    samples = []
-    counter = 0
-    for _ in tqdm(test_dataset):
-        if counter > 0:
-            break
-        counter += 1
-        samples.append(_)
-    cur_data = test_dataset.collate(samples)
-    import pdb
-
-    pdb.set_trace()
+        uniq_id_dict = {}
+        samples = []
+        # import pdb;pdb.set_trace()
+        counter = 0
+        for _ in tqdm(test_dataset):
+            if counter == 0:
+                break
+            counter += 1
+            samples.append(_)
+        cur_data = test_dataset.collate(samples)
+        # import pdb;pdb.set_trace()
     # import pdb;pdb.set_trace()
     # uniq_id, image, caption, question, refs, gt_objects, dataset_name, type = _
     # # index = random.choice(positive_caption_dict[uniq_id])
