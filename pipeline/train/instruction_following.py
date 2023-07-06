@@ -523,15 +523,13 @@ def main():
             get_checkpoint(model=unwrapped_model),
             f"{args.external_save_dir}/final_weights.pt",
         )
-        # # save the config
-        # unwrapped_model.config.save_pretrained(args.external_save_dir)
-        # # if model.can_generate():
-        # #     model_to_save.generation_config.save_pretrained(args.external_save_dir)
+        # save the config
+        unwrapped_model.config.save_pretrained(args.external_save_dir)
 
-        # if args.report_to_wandb and args.save_checkpoints_to_wandb:
-        #     wandb.save(f"{args.external_save_dir}/final_weights.pt")
-        # if args.save_hf_model:
-        #     model.save_pretrained(f"{args.external_save_dir}")
+        if args.report_to_wandb and args.save_checkpoints_to_wandb:
+            wandb.save(f"{args.external_save_dir}/final_weights.pt")
+        if args.save_hf_model:
+            model.save_pretrained(f"{args.external_save_dir}")
 
 
 if __name__ == "__main__":
