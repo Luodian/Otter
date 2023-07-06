@@ -63,7 +63,7 @@ class MimicitDataset(Dataset):
         cur_images_path,
         cur_train_config_path,
         is_test=False,
-        supported_data_types=["caption", "qa"],
+        # supported_data_types=["caption", "qa"],
     ):
         # super().__init__(args, is_test)
 
@@ -75,9 +75,9 @@ class MimicitDataset(Dataset):
         self.max_src_length = args.max_src_length
         self.max_tgt_length = args.max_tgt_length
 
-        self.seed = args.pretrain_seed
+        self.seed = args.seed
         self.patch_image_size = args.patch_image_size
-        self.supported_data_types = supported_data_types
+        # self.supported_data_types = supported_data_types
 
         self.epoch = 0
 
