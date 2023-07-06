@@ -555,9 +555,9 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
 
     num_samples = args.train_num_samples  # 8
     num_batches = round_fn(num_samples / global_batch_size)  # 2
-    args.workers = max(1, args.workers)  # 1
-    num_worker_batches = round_fn(num_batches / args.workers)  # per dataloader worker #2
-    num_batches = num_worker_batches * args.workers  # 2
+    # args.workers = max(1, args.workers)  # 1
+    # num_worker_batches = round_fn(num_batches / args.workers)  # per dataloader worker #2
+    # num_batches = num_worker_batches * args.workers  # 2
     num_samples = num_batches * global_batch_size  # 8
 
     dataloaders = []

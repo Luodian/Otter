@@ -26,6 +26,7 @@ def get_autocast(precision):
         return suppress
 
 
+# DEPRECATED - use train_one_epoch in instruction_following.py and pretraining.py instead
 def train_one_epoch(
     args,
     model,

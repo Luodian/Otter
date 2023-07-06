@@ -21,7 +21,6 @@ from transformers import (
 import wandb
 from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from otter.modeling_otter import OtterForConditionalGeneration
-from pipeline.mimicit_utils.arguments import add_data_args
 from pipeline.train.data import get_data
 from pipeline.train.distributed import world_info_from_env
 from pipeline.train.train_utils import AverageMeter, get_checkpoint
@@ -139,6 +138,19 @@ def parse_args():
     )
     # YH: Training detail
     parser.add_argument("--mask_lm_head", action="store_true")
+    parser.add_argument(
+        "--max-src-length",
+        type=int,
+        default=1024,
+        help="the maximum src sequence length",
+    )
+    parser.add_argument(
+        "--max-tgt-length",
+        type=int,
+        default=1024,
+        help="the maximum target sequence length",
+    )
+    parser.add_argument("--patch-image-size", type=int, default=224)
     # this could potentially save 33GB of all model parameters for otter-9b, including the language and vision model.
     parser.add_argument("--save_hf_model", default=False, action="store_true")
     # wandb args
@@ -166,19 +178,7 @@ def random_seed(seed=42, rank=0):
     random.seed(seed + rank)
 
 
-def train_one_epoch(
-    args,
-    model,
-    epoch,
-    mmc4_loader,
-    laion_loader,
-    tokenizer,
-    optimizer,
-    lr_scheduler,
-    device_id,
-    accelerator,
-    wandb,
-):
+def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
     num_batches_per_epoch_laion = laion_loader.num_batches
     num_batches_per_epoch_mmc4 = mmc4_loader.num_batches
 
@@ -366,7 +366,8 @@ def train_one_epoch(
 
 def main():
     parser = parse_args()
-    parser = add_data_args(parser)
+    # TODO: remove additional data args, all args would be processed in above parser
+    # parser = add_data_args(parser)
     args = parser.parse_args()
 
     if args.save_checkpoints_to_wandb and not args.report_to_wandb:
