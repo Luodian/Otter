@@ -166,19 +166,7 @@ def random_seed(seed=42, rank=0):
     random.seed(seed + rank)
 
 
-def train_one_epoch(
-    args,
-    model,
-    epoch,
-    mmc4_loader,
-    laion_loader,
-    tokenizer,
-    optimizer,
-    lr_scheduler,
-    device_id,
-    accelerator,
-    wandb,
-):
+def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
     num_batches_per_epoch_laion = laion_loader.num_batches
     num_batches_per_epoch_mmc4 = mmc4_loader.num_batches
 
