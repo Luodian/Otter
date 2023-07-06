@@ -195,3 +195,4 @@ checkpoints
 pipeline/serve/examples/*.png
 
 tools
+otter9B-mpt7b-0705/config.json

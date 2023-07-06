@@ -186,7 +186,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
-            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {mean_loss.item():.3f}")
+            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss mimicit: {mean_loss.item():.3f}")
 
 
 def parse_args():
@@ -314,7 +314,14 @@ def parse_args():
         help="resume from checkpoint (original openflamingo pt format, not hf format)",
     )
     # TODO: remove additional data args, all args would be processed in above parser
-    # parser = add_data_args(parser)
+    parser.add_argument(
+        "--delete_previous_checkpoint",
+        action="store_true",
+        help="delete previous checkpoint when saving new checkpoint",
+    )
+    
+
+    parser = add_data_args(parser)
     args = parser.parse_args()
 
     if args.save_checkpoints_to_wandb and not args.report_to_wandb:
@@ -484,9 +491,26 @@ def main():
             device_id=device_id,
             wandb=wandb,
         )
+        accelerator.wait_for_everyone()
+
         if args.rank == 0:
             if not os.path.exists(args.external_save_dir):
                 os.makedirs(args.external_save_dir)
+
+            unwrapped_model = accelerator.unwrap_model(model)
+            checkpoint_dict = {
+                "epoch": epoch,
+                "model_state_dict": get_checkpoint(unwrapped_model),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+            }
+            print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
+            accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+            # save the config
+            unwrapped_model.config.save_pretrained(args.external_save_dir)
+            if args.delete_previous_checkpoint:
+                if epoch > 0:
+                    os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
 
         accelerator.wait_for_everyone()
 
