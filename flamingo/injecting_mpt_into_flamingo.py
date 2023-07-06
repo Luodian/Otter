@@ -43,14 +43,15 @@ if model_choice == "30B":
 elif model_choice == "7B":
     config_file = "./flamingo/flamingo-mpt-7B.json"
     state_dict_files = [
-        f"{root_dir}/mpt-7b-instruct/pytorch_model-00001-of-00002.bin",
-        f"{root_dir}/mpt-7b-instruct/pytorch_model-00002-of-00002.bin",
+        f"{root_dir}/mpt-7b/pytorch_model-00001-of-00002.bin",
+        f"{root_dir}/mpt-7b/pytorch_model-00002-of-00002.bin",
     ]
-    save_path = f"{save_root_dir}/flamingo-mpt-7B-instruct-init"
+    save_path = f"{save_root_dir}/flamingo-mpt-7B"
 else:
     raise ValueError("Invalid model_choice. Choose either '30B' or '7B'.")
 
 config = FlamingoConfig.from_json_file(config_file)
+
 model = FlamingoForConditionalGeneration(config=config)
 
 state_dict = {}
@@ -94,10 +95,11 @@ load_msg = model.lang_encoder.load_state_dict(
 )
 # print incompatible keys
 print(load_msg[1])
-
 if args.flamingo_dir is not None:
     state_dict_2 = torch.load(f"{args.flamingo_dir}/checkpoint.pt", map_location="cpu")
     save_state_dict_2 = rename_flamingo_checkpoint(state_dict_2)
+
+    real_vocab_size = config.text_config.vocab_size
     # Reshape the token embedding to 50280 for compatible
     model.lang_encoder.resize_token_embeddings(save_state_dict_2["lang_encoder.transformer.wte.weight"].shape[0])
 
@@ -108,7 +110,7 @@ if args.flamingo_dir is not None:
     # print incompatible keys
     print(load_msg[1])
     # Reshape the token embedding to 50432
-    model.lang_encoder.resize_token_embeddings(config.text_config.vocab_size)
+    model.lang_encoder.resize_token_embeddings(real_vocab_size)
 
 print(f"Saving model to {save_path}...")
 model.save_pretrained(save_path, max_shard_size="10GB")

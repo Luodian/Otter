@@ -26,6 +26,8 @@ from pipeline.train.data import get_data
 from pipeline.train.distributed import world_info_from_env
 from pipeline.train.train_utils import AverageMeter, get_checkpoint
 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 # The flag below controls whether to allow TF32 on matmul. This flag defaults to False
 # in PyTorch 1.12 and later.
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -115,21 +117,34 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     attention_mask=attention_mask,
                     labels=labels,
                 )[0]
+                # loss_mimicit = model.generate(
+                #     vision_x=images.to(device_id),
+                #     lang_x=input_ids.to(device_id),
+                #     attention_mask=attention_mask.to(device_id),
+                #     max_length=256,
+                # )
+            accelerator.backward(loss_mimicit)
             total_losses.append(loss_mimicit)
         #### BACKWARD PASS ####
         total_loss_sum = sum(total_losses)
         mean_loss = total_loss_sum / len(total_losses)
-        accelerator.backward(total_loss_sum.to(device_id))
+        # accelerator.backward(total_loss_sum.to(device_id))
 
         def mask_embedding(m):
             if m.weight.requires_grad:
                 zero_mask = torch.zeros_like(m.weight.grad)
                 zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
+                # zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
+                # zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
                 m.weight.grad = m.weight.grad * zero_mask
 
         if args.mask_lm_head:
-            model.module.lang_encoder.model.embed_tokens.apply(mask_embedding)
-            model.module.lang_encoder.lm_head.apply(mask_embedding)
+            unwrapped_model = accelerator.unwrap_model(model)
+            if unwrapped_model.lang_encoder.__class__.__name__ == "MPTForCausalLM":
+                unwrapped_model.lang_encoder.transformer.wte.apply(mask_embedding)
+            elif unwrapped_model.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+                unwrapped_model.lang_encoder.model.embed_tokens.apply(mask_embedding)
+                unwrapped_model.lang_encoder.lm_head.apply(mask_embedding)
 
         if accelerator.sync_gradients:
             accelerator.clip_grad_norm_(model.parameters(), 1.0)
@@ -171,7 +186,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
-            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {mean_loss.item():.3f}")
+            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss MIMIC-IT: {mean_loss.item():.3f}")
 
 
 def parse_args():
@@ -299,6 +314,12 @@ def parse_args():
         help="resume from checkpoint (original openflamingo pt format, not hf format)",
     )
     # TODO: remove additional data args, all args would be processed in above parser
+    parser.add_argument(
+        "--delete_previous_checkpoint",
+        action="store_true",
+        help="delete previous checkpoint when saving new checkpoint",
+    )
+
     # parser = add_data_args(parser)
     args = parser.parse_args()
 
@@ -339,7 +360,7 @@ def main():
         if "otter" in args.run_name.lower():
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
-                device_map="auto",
+                device_map="auto",  # {"": device_id},
                 local_files_only=args.offline,
             )
         elif "flamingo" in args.run_name.lower():
@@ -365,7 +386,11 @@ def main():
                 False,
             )
 
-    model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
+    accelerator.wait_for_everyone()
+
+    if model.lang_encoder.__class__.__name__ != "MPTForCausalLM":
+        model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
+
     args.tokenizer = model.text_tokenizer
     tokenizer = model.text_tokenizer
     random_seed(args.seed, args.rank)
@@ -465,9 +490,26 @@ def main():
             device_id=device_id,
             wandb=wandb,
         )
+        accelerator.wait_for_everyone()
+
         if args.rank == 0:
             if not os.path.exists(args.external_save_dir):
                 os.makedirs(args.external_save_dir)
+
+            unwrapped_model = accelerator.unwrap_model(model)
+            checkpoint_dict = {
+                "epoch": epoch,
+                "model_state_dict": get_checkpoint(unwrapped_model),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+            }
+            print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
+            accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+            # save the config
+            unwrapped_model.config.save_pretrained(args.external_save_dir)
+            if args.delete_previous_checkpoint:
+                if epoch > 0:
+                    os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
 
         accelerator.wait_for_everyone()
 
