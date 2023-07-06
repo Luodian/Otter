@@ -13,6 +13,8 @@
 # limitations under the License.
 """argparser configuration"""
 
+# WARNING: This file is potentially deprecated since Otter-Image/Video release, and should be removed in the future.
+
 import argparse
 import os
 
