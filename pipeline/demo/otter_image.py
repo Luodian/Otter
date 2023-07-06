@@ -59,7 +59,9 @@ def get_response(image_list, prompt: str, model=None, image_processor=None, in_c
     input_data = image_list
 
     if isinstance(input_data, Image.Image):
-        vision_x = image_processor.preprocess([input_data], return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)
+        vision_x = (
+            image_processor.preprocess([input_data], return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)
+        )
     elif isinstance(input_data, list):  # list of video frames
         vision_x = image_processor.preprocess(input_data, return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)
     else:
@@ -108,8 +110,16 @@ def get_response(image_list, prompt: str, model=None, image_processor=None, in_c
 if __name__ == "__main__":
     load_bit = "bf16"
     # dtype = torch.bfloat16 if load_bit == "bf16" else torch.float32
-    precision = {"torch_dtype": torch.bfloat16} if load_bit == "bf16" else {"torch_dtype": torch.float32}
-    model = OtterForConditionalGeneration.from_pretrained("/data/bli/checkpoints/OTTER-9B-LA-InContext-bf16", device_map="sequential", **precision)
+    precision = {}
+    if load_bit == "bf16":
+        precision["torch_dtype"] = torch.bfloat16
+    elif load_bit == "fp16":
+        precision["torch_dtype"] = torch.float16
+    elif load_bit == "fp32":
+        precision["torch_dtype"] = torch.float32
+    model = OtterForConditionalGeneration.from_pretrained(
+        "luodian/OTTER-9B-LA-InContext", device_map="sequential", **precision
+    )
     model.text_tokenizer.padding_side = "left"
     tokenizer = model.text_tokenizer
     image_processor = transformers.CLIPImageProcessor()
@@ -135,9 +145,7 @@ if __name__ == "__main__":
             in_context_prompts.append((in_context_prompt.strip(), in_context_answer.strip()))
 
         prompts_input = input("Enter the prompts (or type 'quit' to exit): ")
-        # prompts_input = "What does the image describe?"
 
-        # prompts = [prompt.strip() for prompt in prompts_input.split(",")]
 
         print(f"\nPrompt: {prompts_input}")
         response = get_response(encoded_frames_list, prompts_input, model, image_processor, in_context_prompts)
