@@ -126,7 +126,7 @@ def resize(image, target, size, max_size=None):
             return get_size_with_aspect_ratio(image_size, size, max_size)
 
     size = get_size(image.size, size, max_size)
-    rescaled_image = F.resize(image, size, interpolation=Image.BICUBIC)
+    rescaled_image = F.resize(image, size, interpolation=T.InterpolationMode.BICUBIC)
 
     if target is None:
         return rescaled_image
@@ -369,7 +369,7 @@ class LargeScaleJitter(object):
         scale = torch.maximum(scaled_size / image_size[0], scaled_size / image_size[1])
         scaled_size = (image_size * scale).round().int()
 
-        scaled_image = F.resize(image, scaled_size.tolist(), interpolation=Image.BICUBIC)
+        scaled_image = F.resize(image, scaled_size.tolist(), interpolation=T.InterpolationMode.BICUBIC)
 
         if target is not None:
             target = self.rescale_target(scaled_size, image_size, target)

@@ -4,38 +4,29 @@ import argparse
 import glob
 import os
 import random
+import time
 
 import numpy as np
 import torch
 import torch.nn
-import wandb
-from pipeline.train.data import get_data
-from pipeline.train.distributed import init_distributed_device, world_info_from_env
+from accelerate import Accelerator
+from tqdm import tqdm
 from transformers import (
+    CLIPImageProcessor,
     get_constant_schedule_with_warmup,
     get_cosine_schedule_with_warmup,
     get_linear_schedule_with_warmup,
-    CLIPImageProcessor,
 )
 
-from pipeline.train.train_utils import (
-    AverageMeter,
-    get_autocast,
-    get_cast_dtype,
-    get_checkpoint,
-)
-
-from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
+import wandb
 from flamingo.configuration_flamingo import FlamingoConfig
+from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from otter.modeling_otter import OtterForConditionalGeneration
-from otter.configuration_otter import OtterConfig
-from tqdm import tqdm
-import time
+from pipeline.train.data import get_data
+from pipeline.train.distributed import world_info_from_env
+from pipeline.train.train_utils import AverageMeter, get_checkpoint
 
-from pipeline.mimicit_utils.arguments import add_data_args
-from accelerate import Accelerator, load_checkpoint_and_dispatch, init_empty_weights
-
-import sys
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # The flag below controls whether to allow TF32 on matmul. This flag defaults to False
 # in PyTorch 1.12 and later.
@@ -51,18 +42,7 @@ def random_seed(seed=42, rank=0):
     random.seed(seed + rank)
 
 
-def train_one_epoch(
-    args,
-    model,
-    epoch,
-    mimicit_loaders,
-    tokenizer,
-    optimizer,
-    lr_scheduler,
-    device_id,
-    accelerator,
-    wandb,
-):
+def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
     num_batches_per_epoch = len(mimicit_loaders[0])
     total_training_steps = num_batches_per_epoch * args.num_epochs
 
@@ -105,17 +85,6 @@ def train_one_epoch(
                     labels[i][label_idx] = -100
                     label_idx += 1
 
-            # # remove loss for any token between <|endofchunk|> and <image>
-            # endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
-            # for endofchunk_idx in endofchunk_idxs:
-            #     token_idx = endofchunk_idx + 1
-            #     while (
-            #         token_idx < labels.shape[1]
-            #         and labels[i][token_idx] != media_token_id
-            #     ):
-            #         labels[i][token_idx] = -100
-            #         token_idx += 1
-
             # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
             # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
 
@@ -141,8 +110,6 @@ def train_one_epoch(
             labels[labels == answer_token_id] = -100
             labels[labels == media_token_id] = -100
 
-            # with accelerator.accumulate(model):
-            # with autocast():
             with accelerator.autocast():
                 loss_mimicit = model(
                     vision_x=images,
@@ -156,22 +123,28 @@ def train_one_epoch(
                 #     attention_mask=attention_mask.to(device_id),
                 #     max_length=256,
                 # )
+            accelerator.backward(loss_mimicit)
             total_losses.append(loss_mimicit)
-        # import pdb;pdb.set_trace()
         #### BACKWARD PASS ####
         total_loss_sum = sum(total_losses)
         mean_loss = total_loss_sum / len(total_losses)
-        accelerator.backward(total_loss_sum.to(device_id))
+        # accelerator.backward(total_loss_sum.to(device_id))
 
         def mask_embedding(m):
             if m.weight.requires_grad:
                 zero_mask = torch.zeros_like(m.weight.grad)
                 zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
+                # zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
+                # zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
                 m.weight.grad = m.weight.grad * zero_mask
 
         if args.mask_lm_head:
-            model.module.lang_encoder.model.embed_tokens.apply(mask_embedding)
-            model.module.lang_encoder.lm_head.apply(mask_embedding)
+            unwrapped_model = accelerator.unwrap_model(model)
+            if unwrapped_model.lang_encoder.__class__.__name__ == "MPTForCausalLM":
+                unwrapped_model.lang_encoder.transformer.wte.apply(mask_embedding)
+            elif unwrapped_model.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+                unwrapped_model.lang_encoder.model.embed_tokens.apply(mask_embedding)
+                unwrapped_model.lang_encoder.lm_head.apply(mask_embedding)
 
         if accelerator.sync_gradients:
             accelerator.clip_grad_norm_(model.parameters(), 1.0)
@@ -213,16 +186,20 @@ def train_one_epoch(
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
-            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {mean_loss.item():.3f}")
+            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss MIMIC-IT: {mean_loss.item():.3f}")
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--cross_attn_every_n_layers",
-        type=int,
-        default=1,
-    )
+def parse_args():
+    """
+    Parse the command line arguments and perform the initial setup.
+    :return: Parsed arguments
+    """
+    parser = argparse.ArgumentParser(description="Main training script for the model")
+
+    # Add arguments to the parser
+    # TODO: Add help messages to clarify the purpose of each argument
+
+    # Model configuration arguments
     parser.add_argument(
         "--external_save_dir",
         type=str,
@@ -235,19 +212,7 @@ def main():
         default="otter-9b",
         help="used to name saving directory and wandb run",
     )
-    parser.add_argument("--offline", action="store_true")
-    parser.add_argument("--num_epochs", type=int, default=1)
-    parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
-    # Sum of gradient optimization batch size
-    parser.add_argument("--batch_size", type=int, default=128)
-
-    parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
-    parser.add_argument(
-        "--pretrained_model_name_or_path",
-        type=str,
-        help="path to huggingface model or model identifier from local path or huggingface.co",
-        default=None,
-    )
+    # training file args
     parser.add_argument(
         "--mimicit_path",
         type=str,
@@ -263,6 +228,20 @@ def main():
         type=str,
         help="path to train_config_path dataset, this should be /path/to/DC/DC_train.json",
     )
+    # optimizer args
+    parser.add_argument("--offline", action="store_true")
+    parser.add_argument("--num_epochs", type=int, default=1)
+    parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
+    # Sum of gradient optimization batch size
+    parser.add_argument("--batch_size", type=int, default=128)
+
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
+    parser.add_argument(
+        "--pretrained_model_name_or_path",
+        type=str,
+        help="path to huggingface model or model identifier from local path or huggingface.co",
+        default=None,
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--learning_rate", default=1e-4, type=float)
     parser.add_argument(
@@ -274,7 +253,6 @@ def main():
     parser.add_argument("--warmup_steps", default=1000, type=int)
     parser.add_argument("--warmup_steps_ratio", default=None, type=float)
     parser.add_argument("--weight_decay", default=0.1, type=float)
-    # data args
     parser.add_argument("--workers", type=int, default=4)
     # distributed training args
     parser.add_argument(
@@ -298,6 +276,19 @@ def main():
     )
     # YH: Training detail
     parser.add_argument("--mask_lm_head", action="store_true")
+    parser.add_argument(
+        "--max-src-length",
+        type=int,
+        default=1024,
+        help="the maximum src sequence length",
+    )
+    parser.add_argument(
+        "--max-tgt-length",
+        type=int,
+        default=1024,
+        help="the maximum target sequence length",
+    )
+    parser.add_argument("--patch-image-size", type=int, default=224)
     # this could potentially save 33GB of all model parameters for otter-9b, including the language and vision model.
     parser.add_argument("--save_hf_model", default=False, action="store_true")
     # wandb args
@@ -316,8 +307,20 @@ def main():
         action="store_true",
         help="save checkpoints to wandb",
     )
+    parser.add_argument(
+        "--resume_from_checkpoint",
+        default=False,
+        action="store_true",
+        help="resume from checkpoint (original openflamingo pt format, not hf format)",
+    )
+    # TODO: remove additional data args, all args would be processed in above parser
+    parser.add_argument(
+        "--delete_previous_checkpoint",
+        action="store_true",
+        help="delete previous checkpoint when saving new checkpoint",
+    )
 
-    parser = add_data_args(parser)
+    # parser = add_data_args(parser)
     args = parser.parse_args()
 
     if args.save_checkpoints_to_wandb and not args.report_to_wandb:
@@ -328,19 +331,36 @@ def main():
         os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
     args.local_rank, args.rank, args.world_size = world_info_from_env()
+    # Check for argument consistency and set environment variables if needed
+    if args.save_checkpoints_to_wandb and not args.report_to_wandb:
+        raise ValueError("save_checkpoints_to_wandb requires report_to_wandb")
 
+    if args.offline:
+        os.environ["WANDB_MODE"] = "offline"
+        os.environ["TRANSFORMERS_OFFLINE"] = "1"
+
+    args.local_rank, args.rank, args.world_size = world_info_from_env()
+
+    # Seed for reproducibility
+    random_seed(args.seed)
+
+    return args
+
+
+def main():
+    args = parse_args()
     accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps)
 
     device_id = accelerator.device
 
-    random_seed(args.seed)
+    # random_seed(args.seed)
 
     if args.pretrained_model_name_or_path is not None:
         accelerator.print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
         if "otter" in args.run_name.lower():
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
-                device_map="auto",
+                device_map="auto",  # {"": device_id},
                 local_files_only=args.offline,
             )
         elif "flamingo" in args.run_name.lower():
@@ -366,7 +386,11 @@ def main():
                 False,
             )
 
-    model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
+    accelerator.wait_for_everyone()
+
+    if model.lang_encoder.__class__.__name__ != "MPTForCausalLM":
+        model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
+
     args.tokenizer = model.text_tokenizer
     tokenizer = model.text_tokenizer
     random_seed(args.seed, args.rank)
@@ -466,9 +490,26 @@ def main():
             device_id=device_id,
             wandb=wandb,
         )
+        accelerator.wait_for_everyone()
+
         if args.rank == 0:
             if not os.path.exists(args.external_save_dir):
                 os.makedirs(args.external_save_dir)
+
+            unwrapped_model = accelerator.unwrap_model(model)
+            checkpoint_dict = {
+                "epoch": epoch,
+                "model_state_dict": get_checkpoint(unwrapped_model),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+            }
+            print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
+            accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+            # save the config
+            unwrapped_model.config.save_pretrained(args.external_save_dir)
+            if args.delete_previous_checkpoint:
+                if epoch > 0:
+                    os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
 
         accelerator.wait_for_everyone()
 
@@ -484,8 +525,6 @@ def main():
         )
         # save the config
         unwrapped_model.config.save_pretrained(args.external_save_dir)
-        # if model.can_generate():
-        #     model_to_save.generation_config.save_pretrained(args.external_save_dir)
 
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
