@@ -51,18 +51,7 @@ def random_seed(seed=42, rank=0):
     random.seed(seed + rank)
 
 
-def train_one_epoch(
-    args,
-    model,
-    epoch,
-    mimicit_loaders,
-    tokenizer,
-    optimizer,
-    lr_scheduler,
-    device_id,
-    accelerator,
-    wandb,
-):
+def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
     num_batches_per_epoch = len(mimicit_loaders[0])
     total_training_steps = num_batches_per_epoch * args.num_epochs
 
@@ -105,17 +94,6 @@ def train_one_epoch(
                     labels[i][label_idx] = -100
                     label_idx += 1
 
-            # # remove loss for any token between <|endofchunk|> and <image>
-            # endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
-            # for endofchunk_idx in endofchunk_idxs:
-            #     token_idx = endofchunk_idx + 1
-            #     while (
-            #         token_idx < labels.shape[1]
-            #         and labels[i][token_idx] != media_token_id
-            #     ):
-            #         labels[i][token_idx] = -100
-            #         token_idx += 1
-
             # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
             # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
 
@@ -141,8 +119,6 @@ def train_one_epoch(
             labels[labels == answer_token_id] = -100
             labels[labels == media_token_id] = -100
 
-            # with accelerator.accumulate(model):
-            # with autocast():
             with accelerator.autocast():
                 loss_mimicit = model(
                     vision_x=images,
@@ -150,14 +126,7 @@ def train_one_epoch(
                     attention_mask=attention_mask,
                     labels=labels,
                 )[0]
-                # loss_mimicit = model.generate(
-                #     vision_x=images.to(device_id),
-                #     lang_x=input_ids.to(device_id),
-                #     attention_mask=attention_mask.to(device_id),
-                #     max_length=256,
-                # )
             total_losses.append(loss_mimicit)
-        # import pdb;pdb.set_trace()
         #### BACKWARD PASS ####
         total_loss_sum = sum(total_losses)
         mean_loss = total_loss_sum / len(total_losses)
@@ -216,13 +185,17 @@ def train_one_epoch(
             print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss Multi-Instruct: {mean_loss.item():.3f}")
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--cross_attn_every_n_layers",
-        type=int,
-        default=1,
-    )
+def parse_args():
+    """
+    Parse the command line arguments and perform the initial setup.
+    :return: Parsed arguments
+    """
+    parser = argparse.ArgumentParser(description="Main training script for the model")
+
+    # Add arguments to the parser
+    # TODO: Add help messages to clarify the purpose of each argument
+
+    # Model configuration arguments
     parser.add_argument(
         "--external_save_dir",
         type=str,
@@ -235,19 +208,7 @@ def main():
         default="otter-9b",
         help="used to name saving directory and wandb run",
     )
-    parser.add_argument("--offline", action="store_true")
-    parser.add_argument("--num_epochs", type=int, default=1)
-    parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
-    # Sum of gradient optimization batch size
-    parser.add_argument("--batch_size", type=int, default=128)
-
-    parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
-    parser.add_argument(
-        "--pretrained_model_name_or_path",
-        type=str,
-        help="path to huggingface model or model identifier from local path or huggingface.co",
-        default=None,
-    )
+    # training file args
     parser.add_argument(
         "--mimicit_path",
         type=str,
@@ -263,6 +224,20 @@ def main():
         type=str,
         help="path to train_config_path dataset, this should be /path/to/DC/DC_train.json",
     )
+    # optimizer args
+    parser.add_argument("--offline", action="store_true")
+    parser.add_argument("--num_epochs", type=int, default=1)
+    parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
+    # Sum of gradient optimization batch size
+    parser.add_argument("--batch_size", type=int, default=128)
+
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
+    parser.add_argument(
+        "--pretrained_model_name_or_path",
+        type=str,
+        help="path to huggingface model or model identifier from local path or huggingface.co",
+        default=None,
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--learning_rate", default=1e-4, type=float)
     parser.add_argument(
@@ -274,7 +249,6 @@ def main():
     parser.add_argument("--warmup_steps", default=1000, type=int)
     parser.add_argument("--warmup_steps_ratio", default=None, type=float)
     parser.add_argument("--weight_decay", default=0.1, type=float)
-    # data args
     parser.add_argument("--workers", type=int, default=4)
     # distributed training args
     parser.add_argument(
@@ -334,12 +308,33 @@ def main():
         os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
     args.local_rank, args.rank, args.world_size = world_info_from_env()
+    parser = add_data_args(parser)
+    # Parse the command line arguments
+    args = parser.parse_args()
 
+    # Check for argument consistency and set environment variables if needed
+    if args.save_checkpoints_to_wandb and not args.report_to_wandb:
+        raise ValueError("save_checkpoints_to_wandb requires report_to_wandb")
+
+    if args.offline:
+        os.environ["WANDB_MODE"] = "offline"
+        os.environ["TRANSFORMERS_OFFLINE"] = "1"
+
+    args.local_rank, args.rank, args.world_size = world_info_from_env()
+
+    # Seed for reproducibility
+    random_seed(args.seed)
+
+    return args
+
+
+def main():
+    args = parse_args()
     accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps)
 
     device_id = accelerator.device
 
-    random_seed(args.seed)
+    # random_seed(args.seed)
 
     if args.pretrained_model_name_or_path is not None:
         accelerator.print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
