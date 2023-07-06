@@ -700,7 +700,12 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
         self.max_num_frames = config.max_num_frames if hasattr(config, "max_num_frames") else None
-        print(self.max_num_frames)
+
+        # Informative print statement
+        if self.max_num_frames is None or self.max_num_frames == 1:
+            print(f"The current model version is configured for Otter-Image with max_num_frames set to {self.max_num_frames}.")
+        else:
+            print(f"The current model version is configured for Otter-Video with a maximum of {self.max_num_frames} frames.")
 
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder

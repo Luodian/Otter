@@ -98,7 +98,7 @@ class ModelWorker:
             precision = {"torch_dtype": torch.bfloat16}
         else:
             precision = {}
-        if "otter" in checkpoint_path:
+        if "otter" in checkpoint_path.lower():
             model = OtterForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, **precision)
         else:
             model = FlamingoForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, **precision)

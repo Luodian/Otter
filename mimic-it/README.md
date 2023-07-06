@@ -6,7 +6,7 @@
 - [Using MIMIC-IT Dataset](#using-mimic-it-dataset)
   - [Convert It](#convert-it)
   - [Download It](#download-it)
-  - [Eggs (Coming Soon)](#eggs-coming-soon)
+  - [Eggs](#eggs)
 - [Syphus: the hero behind MIMIC-IT](#syphus-the-hero-behind-mimic-it)
   - [Syphus on your own dataset](#syphus-on-your-own-dataset)
 - [Multilingual Instruction-Response Pairs](#multilingual-instruction-response-pairs)
@@ -82,12 +82,16 @@ The `DC_train.json` contains instructions IDs and their associated related instr
 }
 ```
 
-### Eggs (Coming Soon)
+### Eggs
 
-Things could be tricky since some image/video sources are not easy to get the access to download them. We also provide the converted `xx.json` files for you to download directly. You need to agree the same terms and conditions as the original dataset, as well as recognize and appreciate the contributions made by these data sources. Please refer to [Google form]() to apply for the access to download the converted `xx.json` files.
+Things could be tricky since some image/video sources are not easy to get the access to download them. We also provide the converted `xx.json` files for you to download directly. You need to agree the same terms and conditions as the original dataset, as well as recognize and appreciate the contributions made by these data sources. Please refer to [Google form](https://forms.gle/kYXPVDiscNvKhv6b6) to apply for the access to download the converted `xx.json` files.
+
+Access to the images provided is exclusively for contributing positively to the academic research community. Usage of these images is required to align with all pertinent licenses governing their distribution. By engaging with this content, you are making a commitment to utilize the images solely for the stated non-commercial purposes and to comply with the stipulations of the original licenses. 
+
+Moreover, filling in and submitting the form with your verifiable name, institutional affiliation, and signature serves as your binding acknowledgment and affirmation to uphold these terms and conditions with integrity.
 
 <!-- ### Dataset Statistics
-
+[Title](https://forms.gle/kYXPVDiscNvKhv6b6)
 | **Visual Sources (Scenes)** | **In-context** | **#Clips/Images** | **#Uni. Inst.** | **#Instances** |  
 |---------------------------|----------------|------------------|-----------------|----------------|  
 | COCO (General) | lang./vis. | - / 81K | 261K | 345K |  

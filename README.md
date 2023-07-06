@@ -40,8 +40,8 @@
 
 **Interactive Demo:** 
 
-- [Otter Demo (image version)](https://otter.cliangyu.com/)
-- [Otter Demo (video version)](https://ottervideo.cliangyu.com/)
+[Otter Demo (video version)](https://ottervideo.cliangyu.com/)
+> Our models would be temporarily offline due to GPU limitation (if we need to train new models lol). You can refer to 🏎️ [Run Otter Locally](./pipeline/demo) to try Otter-Image and Otter-Video more smoothly on your local machine, with at least 16G GPU mem (BF16/FP16 Mode) to help your tasks like image/video tagging, captioning or identifying harmful content.
 
 **Checkpoints:** 
 - [Checkpoints v0.1 (image version)](https://huggingface.co/luodian/otter-9b-hf)
@@ -56,6 +56,9 @@ Otter v0.2 supports videos inputs (frames are arranged as original Flamingo's im
 **Eval Results:** [Multi-Modal Arena](http://vlarena.opengvlab.com/) | Multi-Modal AGI Benchmark (upcoming)
 
 ## 🦾 Update
+
+**[2023-07-04]**
+1. 🥚 Update [Eggs](./mimic-it/README.md/#eggs) section for downloading MIMIC-IT dataset.
 
 **[2023-06-23]**
 1. 🧨 [Download MIMIC-IT Dataset](https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/Eo9bgNV5cjtEswfA-HfjNNABiKsjDzSWAl5QYAlRZPiuZA?e=M9isDT). For more details on navigating the dataset, please refer to [MIMIC-IT Dataset README](mimic-it/README.md).
@@ -144,21 +147,14 @@ After configuring environment, you can use the 🦩 Flamingo model / 🦦 Otter 
 
 ## ☄️ Training
 
-Train on `MIMIC-IT` datasets, using the following commands:
-
-First, run, and answer the questions asked. This will generate a config file and save it to the cache folder. The config will be used automatically to properly set the default options when doing `accelerate launch`.
+You may need to use a specialized converted weights at [luodian/OTTER-9B-INIT](https://huggingface.co/luodian/OTTER-9B-INIT). It's directly converted from Openflamingo, and we add special tokens for downstream instruction tuning. You may also use any trained Otter weights to start with your training on top of ours, see them at [Otter Weights](https://huggingface.co/luodian). You can refer to [MIMIC-IT](https://github.com/Luodian/Otter/tree/main/mimic-it) for preparing json files.
 
 ```bash
-accelerate config
-```
+export PYTHONPATH=.
 
-Then run the training script. You may need to use a specialized converted weights at [luodian/OTTER-9B-INIT](https://huggingface.co/luodian/OTTER-9B-INIT). This is for initilizing training for Otter. It's directly converted from Openflamingo, and we added tokens for downstream instruction tuning. And you may use any trained weights to start with your training on top of ours, see weights at [Otter Weights](https://huggingface.co/luodian), and [MIMIC-IT](https://github.com/Luodian/Otter/tree/main/mimic-it) for preparing json files.
-
-```bash
 accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_fsdp.yaml \
 pipeline/train/instruction_following.py \
 --pretrained_model_name_or_path=luodian/OTTER-9B-INIT  \
---dataset_resampled \
 --mimicit_path="path/to/DC_instruction.json" \
 --images_path="path/to/DC.json" \
 --train_config_path="path/to/DC_train.json" \
@@ -169,9 +165,7 @@ pipeline/train/instruction_following.py \
 --run_name=otter9B_dense_caption \
 --wandb_project=otter9B \
 --workers=1 \
---cross_attn_every_n_layers=4 \
 --lr_scheduler=cosine \
---delete_previous_checkpoint \
 --learning_rate=1e-5 \
 --warmup_steps_ratio=0.01 \
 ```

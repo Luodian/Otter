@@ -13,6 +13,8 @@
 # limitations under the License.
 """argparser configuration"""
 
+# WARNING: This file is potentially deprecated since Otter-Image/Video release, and should be removed in the future.
+
 import argparse
 import os
 
@@ -310,13 +312,13 @@ def add_data_args(parser=None):
     group.add_argument(
         "--max-src-length",
         type=int,
-        default=128,
+        default=1024,
         help="the maximum src sequence length",
     )
     group.add_argument(
         "--max-tgt-length",
         type=int,
-        default=30,
+        default=1024,
         help="the maximum target sequence length",
     )
     group.add_argument("--prompt-type", type=str, default=None, help="prompt_type")
