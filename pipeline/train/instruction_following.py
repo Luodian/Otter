@@ -291,10 +291,7 @@ def parse_args():
         help="save checkpoints to wandb",
     )
     parser.add_argument(
-        "--resume_from_checkpoint",
-        default=False,
-        action="store_true",
-        help="resume from checkpoint (original openflamingo pt format, not hf format)"
+        "--resume_from_checkpoint", default=False, action="store_true", help="resume from checkpoint (original openflamingo pt format, not hf format)"
     )
 
     parser = add_data_args(parser)
