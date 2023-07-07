@@ -186,7 +186,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
-            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss mimicit: {mean_loss.item():.3f}")
+            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss MIMIC-IT: {mean_loss.item():.3f}")
 
 
 def parse_args():
@@ -523,15 +523,13 @@ def main():
             get_checkpoint(model=unwrapped_model),
             f"{args.external_save_dir}/final_weights.pt",
         )
-        # # save the config
-        # unwrapped_model.config.save_pretrained(args.external_save_dir)
-        # # if model.can_generate():
-        # #     model_to_save.generation_config.save_pretrained(args.external_save_dir)
+        # save the config
+        unwrapped_model.config.save_pretrained(args.external_save_dir)
 
-        # if args.report_to_wandb and args.save_checkpoints_to_wandb:
-        #     wandb.save(f"{args.external_save_dir}/final_weights.pt")
-        # if args.save_hf_model:
-        #     model.save_pretrained(f"{args.external_save_dir}")
+        if args.report_to_wandb and args.save_checkpoints_to_wandb:
+            wandb.save(f"{args.external_save_dir}/final_weights.pt")
+        if args.save_hf_model:
+            model.save_pretrained(f"{args.external_save_dir}")
 
 
 if __name__ == "__main__":
