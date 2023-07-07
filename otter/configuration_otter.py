@@ -50,14 +50,7 @@ class OtterConfig(PretrainedConfig):
     model_type = "otter"
     is_composition = True
 
-    def __init__(
-        self,
-        vision_config=None,
-        text_config=None,
-        cross_attn_every_n_layers: int = 4,
-        use_media_placement_augmentation: bool = True,
-        **kwargs
-    ):
+    def __init__(self, vision_config=None, text_config=None, cross_attn_every_n_layers: int = 4, use_media_placement_augmentation: bool = True, **kwargs):
         super().__init__(**kwargs)
 
         if vision_config is None:
