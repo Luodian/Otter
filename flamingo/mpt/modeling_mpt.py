@@ -302,7 +302,7 @@ class MPTForCausalLM(MPTPreTrainedModel):
 
     def set_input_embeddings(self, value):
         # self.transformer.wte = value
-        peudo_wte = SharedEmbedding(value.weight.shape[0],value.weight.shape[1],device = self.transformer.wte.weight.device)
+        peudo_wte = SharedEmbedding(value.weight.shape[0], value.weight.shape[1], device=self.transformer.wte.weight.device)
         peudo_wte.weight = value.weight
         self.transformer.wte = peudo_wte
 
@@ -311,7 +311,7 @@ class MPTForCausalLM(MPTPreTrainedModel):
 
     def set_output_embeddings(self, new_embeddings):
         # self.transformer.wte = new_embeddings
-        peudo_wte = SharedEmbedding(new_embeddings.weight.shape[0],new_embeddings.weight.shape[1],device = self.transformer.wte.weight.device)
+        peudo_wte = SharedEmbedding(new_embeddings.weight.shape[0], new_embeddings.weight.shape[1], device=self.transformer.wte.weight.device)
         peudo_wte.weight = new_embeddings.weight
         self.transformer.wte = peudo_wte
 
