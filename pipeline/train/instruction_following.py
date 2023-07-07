@@ -320,7 +320,7 @@ def parse_args():
         help="delete previous checkpoint when saving new checkpoint",
     )
 
-    parser = add_data_args(parser)
+    # parser = add_data_args(parser)
     args = parser.parse_args()
 
     if args.save_checkpoints_to_wandb and not args.report_to_wandb:

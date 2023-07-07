@@ -56,7 +56,6 @@ class OtterConfig(PretrainedConfig):
         text_config=None,
         cross_attn_every_n_layers: int = 4,
         use_media_placement_augmentation: bool = True,
-        only_attend_previous: bool = True,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -86,7 +85,6 @@ class OtterConfig(PretrainedConfig):
 
         self.cross_attn_every_n_layers = cross_attn_every_n_layers
         self.use_media_placement_augmentation = use_media_placement_augmentation
-        self.only_attend_previous = only_attend_previous
 
     def to_dict(self):
         """
