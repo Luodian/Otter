@@ -67,6 +67,7 @@ Otter v0.2 supports videos inputs (frames are arranged as original Flamingo's im
 1. 🧨 [Download MIMIC-IT Dataset](https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/Eo9bgNV5cjtEswfA-HfjNNABiKsjDzSWAl5QYAlRZPiuZA?e=M9isDT). For more details on navigating the dataset, please refer to [MIMIC-IT Dataset README](mimic-it/README.md).
 2. 🏎️ [Run Otter Locally](./pipeline/demo). You can run our model locally with at least 16G GPU mem for tasks like image/video tagging and captioning and identifying harmful content. We fix a bug related to video inference where `frame tensors` were mistakenly unsqueezed to a wrong `vision_x`. You can now try running it again with the updated version. 
     > Make sure to adjust the `sys.path.append("../..")` correctly to access `otter.modeling_otter` in order to launch the model.
+3. 🏇 We welcome third-party evaluation on Otter and we are willing to see different VLMs chasing with each other on different arenas and benchmarks. But make sure contact us to confirm the model version and prompt strategy before publishing results. You can contact `drluodian@gmail.com` or `YUANHAN002@e.ntu.edu.sg`.
 
 **[2023-06-08]**
 1. Introducing Project Otter's brand new homepage: https://otter-ntu.github.io/. Check it out now!
