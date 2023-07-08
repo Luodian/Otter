@@ -619,7 +619,7 @@ def build_demo(embed_mode):
             examples=[
                 [
                     f"{cur_dir}/examples/baseball.jpg",
-                    "Please describe this image in short two words.",
+                    "Please describe this image in short words.",
                 ],
                 [
                     f"{cur_dir}/examples/waterview.jpg",

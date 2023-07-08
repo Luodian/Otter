@@ -57,6 +57,9 @@ Otter v0.2 supports videos inputs (frames are arranged as original Flamingo's im
 
 ## 🦾 Update
 
+**[2023-07-08]**
+1. 🦦 Checkout our [Otter-MPT7B Image Demo](https://otter.cliangyu.com/). We update the model by incoporating OpenFlamingv2 and specifically tune it to enable generation abilities for both long and short answers.
+
 **[2023-07-04]**
 1. 🥚 Update [Eggs](./mimic-it/README.md/#eggs) section for downloading MIMIC-IT dataset.
 
