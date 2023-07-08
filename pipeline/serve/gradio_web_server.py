@@ -587,7 +587,7 @@ def build_demo(embed_mode):
                     early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
 
             with gr.Column(scale=6):
-                chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=960)
+                chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=720)
                 with gr.Row():
                     with gr.Column(scale=8):
                         textbox_3 = gr.Textbox(
@@ -610,12 +610,28 @@ def build_demo(embed_mode):
             label="Examples (0-shot)",
             examples=[
                 [
+                    f"{cur_dir}/examples/ms_st.jpg",
+                    "Does the image feature a globally recognized technology company? Please answer with yes or no."
+                ],
+                [
+                    f"{cur_dir}/examples/zelda_princess.jpg",
+                    "Can you identify the character?"
+                ],
+                [
+                    f"{cur_dir}/examples/gtav.jpg",
+                    "Can you identify what the image is about?"
+                ],
+                [
+                    f"{cur_dir}/examples/xray.jpg",
+                    "Please write a diagnostic radiology report for the patient based on their chest radiographs."
+                ],
+                [
                     f"{cur_dir}/examples/baseball.jpg",
                     "Please describe this image in short words.",
                 ],
                 [
                     f"{cur_dir}/examples/waterview.jpg",
-                    "Please describe this image in detail and provide your feeling on this image.",
+                    "Please provide a detailed description of the image and share your personal impressions of the scene.",
                 ],
             ],
             inputs=[

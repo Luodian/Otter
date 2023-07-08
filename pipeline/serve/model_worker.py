@@ -214,13 +214,13 @@ class ModelWorker:
         # generation_kwargs["num_beams"] = generation_kwargs.get("num_beams", 3)
         logger.info(f"generation_kwargs: {generation_kwargs}")
 
-        bad_words_id = tokenizer(["User:", "GPT1:", "GFT:", "GPT:"], add_special_tokens=False).input_ids
+        # bad_words_id = tokenizer(["User:", "GPT1:", "GFT:", "GPT:"], add_special_tokens=False).input_ids
         generation_input = dict(
             vision_x=vision_x,
             lang_x=inputs["input_ids"],
             attention_mask=inputs["attention_mask"],
             streamer=streamer,
-            bad_words_ids=bad_words_id,
+            # bad_words_ids=bad_words_id,
             **generation_kwargs,
         )
         # # Call the generate function and store the output in a variable
