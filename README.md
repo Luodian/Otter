@@ -40,7 +40,7 @@
 
 **Interactive Demo:** 
 
-[Otter Demo (video version)](https://ottervideo.cliangyu.com/)
+[Otter Demo (video version)](https://ottervideo.cliangyu.com/) | [Otter Demo (image version)](https://otter.cliangyu.com/)
 > Our models would be temporarily offline due to GPU limitation (if we need to train new models lol). You can refer to 🏎️ [Run Otter Locally](./pipeline/demo) to try Otter-Image and Otter-Video more smoothly on your local machine, with at least 16G GPU mem (BF16/FP16 Mode) to help your tasks like image/video tagging, captioning or identifying harmful content.
 
 **Checkpoints:** 
