@@ -8,6 +8,7 @@ import torch
 
 from modeling_otter import OtterForConditionalGeneration
 
+
 # The function is to inject newly trained otter perceiver parameters into the pretrained otter init model.
 @torch.no_grad()
 def dump_hf_model(pretrained_model_path: str, old_ckpt_path: str, new_folder_path: str) -> None:
