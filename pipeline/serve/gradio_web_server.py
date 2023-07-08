@@ -489,12 +489,12 @@ a:link {
 <span style="font-size:larger;">
 
 ### Note:
-Current Otter Image is **Otter-v0.1-LA-In-Context (0619)**, means it's trianed on [MIMIC-IT-LA-In-Context](https://github.com/Luodian/Otter/tree/main/mimic-it) at June 19th.
+Current Otter Image is version **Otter-MPT7B (0705)**. We update the model by incoporating OpenFlamingv2 and specifically tune it to enable generation abilities for both long and short answers.
 
 This version Otter Image demonstrates in-context learning ability to demonstrate more reasonable and coherent answer following given example instruction/response pairs. 
 </span>
 
-We currently **dont support language-only chat** (the model could but our code doesnt allow it for now). Since we aim to demonstrate the ability of chatting on videos, you may need to upload your video first and then ask it questions.
+We currently **dont support language-only chat** (the model could but our code doesnt allow it for now). Since we aim to demonstrate the ability of chatting on images, you may need to upload your images first and then ask it questions.
 
 Otter can read multiple images and answer multiple questions towards the same image (visually the image will appear in chatbox again due to our implementation).
 
@@ -607,48 +607,55 @@ def build_demo(embed_mode):
 
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         gr.Examples(
+            label="Examples (0-shot)",
             examples=[
                 [
-                    f"{cur_dir}/examples/pepsi.png",
-                    "What's written on this image?",
-                    "pepsi, is pepsi ok?",
-                    f"{cur_dir}/examples/subway.png",
-                    "What's written on this image?",
-                    "SUBWAY, eat fresh",
-                    f"{cur_dir}/examples/think_different.png",
-                    "What's written on this image?",
-                    "Think Different",
+                    f"{cur_dir}/examples/baseball.jpg",
+                    "Please describe this image in short words.",
                 ],
                 [
+                    f"{cur_dir}/examples/waterview.jpg",
+                    "Please describe this image in detail and provide your feeling on this image.",
+                ],
+            ],
+            inputs=[
+                imagebox_3,
+                textbox_3,
+            ],
+        )
+        gr.Examples(
+            label="In-Context Examples (1-shot)",
+            examples=[
+                [
+                    f"{cur_dir}/examples/think_different.png",
+                    "What's written on this image? Please answer in short.",
+                    f"{cur_dir}/examples/pepsi.png",
+                    "What's written on this image? Please answer in short.",
+                    "pepsi, is pepsi ok?",
+                    # f"{cur_dir}/examples/subway.png",
+                    # "What's written on this image? Please answer in short.",
+                    # "SUBWAY, eat fresh",
+                ],
+                [
+                    f"{cur_dir}/examples/dinner.jpg",
+                    "An image of",
                     f"{cur_dir}/examples/cat.jpg",
                     "An image of",
                     "two cats.",
-                    f"{cur_dir}/examples/bathroom.jpg",
-                    "An image of",
-                    "a bathroom sink.",
-                    f"{cur_dir}/examples/dinner.jpg",
-                    "An image of",
-                ]
-                # [
-                #     f"{cur_dir}/examples/tennis.jpg",
-                #     "What's the danger of the sport in this image?",
-                #     "The player may get hitted by the tennis ball.",
-                #     f"{cur_dir}/examples/baseball.jpg",
-                #     "What's the danger of the sport in this image?",
-                #     "While chasing the baseball, the player may inadvertently collide with other players.",
-                #     f"{cur_dir}/examples/soccer.png",
-                #     "What's the potential danger of playing this sport in the dark? ",
-                # ],
+                    # f"{cur_dir}/examples/bathroom.jpg",
+                    # "An image of",
+                    # "a bathroom sink.",
+                ],
             ],
             inputs=[
+                imagebox_3,
+                textbox_3,
                 imagebox_demo_1,
                 textbox_demo_question_1,
                 textbox_demo_answer_1,
                 imagebox_demo_2,
-                textbox_demo_question_2,
-                textbox_demo_answer_2,
-                imagebox_3,
-                textbox_3,
+                # textbox_demo_question_2,
+                # textbox_demo_answer_2,
             ],
         )
 
@@ -832,7 +839,7 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default="7861")
     parser.add_argument("--controller_url", type=str, default="http://localhost:21001")
     parser.add_argument("--concurrency_count", type=int, default=16)
-    parser.add_argument("--model_list_mode", type=str, default="once", choices=["once", "reload"])
+    parser.add_argument("--model_list_mode", type=str, default="reload", choices=["once", "reload"])
     parser.add_argument("--share", action="store_true")
     parser.add_argument("--moderate", action="store_true")
     parser.add_argument("--embed", action="store_true")

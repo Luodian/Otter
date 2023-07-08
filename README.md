@@ -40,7 +40,7 @@
 
 **Interactive Demo:** 
 
-[Otter Demo (video version)](https://ottervideo.cliangyu.com/)
+[Otter Demo (video version)](https://ottervideo.cliangyu.com/) | [Otter Demo (image version)](https://otter.cliangyu.com/)
 > Our models would be temporarily offline due to GPU limitation (if we need to train new models lol). You can refer to 🏎️ [Run Otter Locally](./pipeline/demo) to try Otter-Image and Otter-Video more smoothly on your local machine, with at least 16G GPU mem (BF16/FP16 Mode) to help your tasks like image/video tagging, captioning or identifying harmful content.
 
 **Checkpoints:** 
@@ -57,6 +57,9 @@ Otter v0.2 supports videos inputs (frames are arranged as original Flamingo's im
 
 ## 🦾 Update
 
+**[2023-07-08]**
+1. 🦦 Checkout our [Otter-MPT7B Image Demo](https://otter.cliangyu.com/). We update the model by incoporating OpenFlamingv2 and specifically tune it to enable generation abilities for both long and short answers.
+
 **[2023-07-04]**
 1. 🥚 Update [Eggs](./mimic-it/README.md/#eggs) section for downloading MIMIC-IT dataset.
 
@@ -64,6 +67,7 @@ Otter v0.2 supports videos inputs (frames are arranged as original Flamingo's im
 1. 🧨 [Download MIMIC-IT Dataset](https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/Eo9bgNV5cjtEswfA-HfjNNABiKsjDzSWAl5QYAlRZPiuZA?e=M9isDT). For more details on navigating the dataset, please refer to [MIMIC-IT Dataset README](mimic-it/README.md).
 2. 🏎️ [Run Otter Locally](./pipeline/demo). You can run our model locally with at least 16G GPU mem for tasks like image/video tagging and captioning and identifying harmful content. We fix a bug related to video inference where `frame tensors` were mistakenly unsqueezed to a wrong `vision_x`. You can now try running it again with the updated version. 
     > Make sure to adjust the `sys.path.append("../..")` correctly to access `otter.modeling_otter` in order to launch the model.
+3. 🏇 We welcome third-party evaluation on Otter and we are willing to see different VLMs chasing with each other on different arenas and benchmarks. But make sure contact us to confirm the model version and prompt strategy before publishing results. You can contact `drluodian@gmail.com` or `YUANHAN002@e.ntu.edu.sg`.
 
 **[2023-06-08]**
 1. Introducing Project Otter's brand new homepage: https://otter-ntu.github.io/. Check it out now!
