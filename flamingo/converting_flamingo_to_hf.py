@@ -15,9 +15,8 @@ from modeling_flamingo import FlamingoForConditionalGeneration
 from configuration_flamingo import FlamingoConfig
 
 
-
 @torch.no_grad()
-def dump_hf_model(pretrained_model_path:str, old_ckpt_path: str, new_folder_path: str) -> None:
+def dump_hf_model(pretrained_model_path: str, old_ckpt_path: str, new_folder_path: str) -> None:
     old_ckpt = torch.load(old_ckpt_path, map_location="cpu")
     if old_ckpt.get("model_state_dict", None) is not None:
         old_ckpt = old_ckpt["model_state_dict"]
@@ -31,6 +30,7 @@ def dump_hf_model(pretrained_model_path:str, old_ckpt_path: str, new_folder_path
     _ = model.load_state_dict(new_ckpt, strict=False)
     print(f"Saving HF model to {new_folder_path}")
     model.save_pretrained(new_folder_path)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -58,4 +58,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if not os.path.exists(os.path.dirname(args.new_hf_path)):
         os.makedirs(os.path.dirname(args.new_hf_path))
-    dump_hf_model(args.pretrained_model_path,args.old_ckpt_path, args.new_hf_path)
+    dump_hf_model(args.pretrained_model_path, args.old_ckpt_path, args.new_hf_path)

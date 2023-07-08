@@ -8,6 +8,7 @@ from einops import rearrange, repeat
 from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
 from .configuration_otter import OtterConfig
+
 # import sys
 # from configuration_otter import OtterConfig
 
