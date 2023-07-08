@@ -87,7 +87,7 @@ Otter v0.2 supports videos inputs (frames are arranged as original Flamingo's im
 
 ## 🦦 Why In-Context Instruction Tuning?
 
-Large Language Models (LLMs) have demonstrated exceptional universal aptitude as few/zero-shot learners for numerous tasks, owing to their pre-training on extensive text data. Among these LLMs, GPT-3 stands out as a prominent model with significant capabilities. Additionally, variants of GPT-3, namely InstrctGPT and ChatGPT, have proven effective in interpreting natural language instructions to perform complex real-world tasks, thanks to instruction tuning. 
+Large Language Models (LLMs) have demonstrated exceptional universal aptitude as few/zero-shot learners for numerous tasks, owing to their pre-training on extensive text data. Among these LLMs, GPT-3 stands out as a prominent model with significant capabilities. Additionally, variants of GPT-3, namely InstructGPT and ChatGPT, have proven effective in interpreting natural language instructions to perform complex real-world tasks, thanks to instruction tuning. 
 
 Motivated by the upstream interleaved format pretraining of the Flamingo model, we present 🦦 Otter, a multi-modal model based on OpenFlamingo (the open-sourced version of DeepMind's Flamingo). We train our Otter in an in-context instruction tuning way on our proposed **MI**-**M**odal **I**n-**C**ontext **I**nstruction **T**uning (**MIMIC-IT**) dataset. Otter showcases improved instruction-following and in-context learning ability in both images and videos.
 
