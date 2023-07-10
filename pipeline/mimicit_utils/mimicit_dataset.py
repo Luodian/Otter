@@ -675,43 +675,44 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    train_dataset = "scienceqa"
-    args.multi_instruct_path = f"/mnt/petrelfs/zhangyuanhan/data/m3it/reasoning/{train_dataset}/{train_dataset}_instructions.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
-    args.images_path = f"/mnt/petrelfs/zhangyuanhan/data/m3it/reasoning/{train_dataset}/{train_dataset}.json"
-    args.train_config_path = f"/mnt/petrelfs/zhangyuanhan/data/m3it/reasoning/{train_dataset}/{train_dataset}_train.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
-    args.max_src_length = 256
-    args.max_tgt_length = 256
-    args.task = "pretrain"
-    args.pretrain_seed = 0
-    args.patch_image_size = 224
-    args.seed = 0
+    for train_dataset in ["LRV"]:
+        args.multi_instruct_path = f"/mnt/petrelfs/zhangyuanhan/data/mimicit/{train_dataset}/{train_dataset}_instructions.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
+        args.images_path = f"/mnt/petrelfs/zhangyuanhan/data/mimicit/{train_dataset}/{train_dataset}.json"
+        args.train_config_path = f"/mnt/petrelfs/zhangyuanhan/data/mimicit/{train_dataset}/{train_dataset}_train.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
+        args.max_src_length = 256
+        args.max_tgt_length = 256
+        args.task = "pretrain"
+        args.pretrain_seed = 0
+        args.patch_image_size = 224
+        args.seed = 0
 
-    from transformers import LlamaTokenizer
+        from transformers import LlamaTokenizer
 
-    with open("/mnt/petrelfs/zhangyuanhan/weights/flamingo_9b_hf/config.json") as f:
-        config = json.load(f)
+        with open("/mnt/petrelfs/zhangyuanhan/weights/flamingo_9b_hf/config.json") as f:
+            config = json.load(f)
 
-    tokenizer = LlamaTokenizer.from_pretrained("/mnt/petrelfs/zhangyuanhan/weights/llama-7b-hf")
-    # add <answer> token to tokenizer
-    tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+        tokenizer = LlamaTokenizer.from_pretrained("/mnt/petrelfs/zhangyuanhan/weights/llama-7b-hf")
+        # add <answer> token to tokenizer
+        tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
 
-    tokenizer.add_special_tokens({"pad_token": "<PAD>"})
+        tokenizer.add_special_tokens({"pad_token": "<PAD>"})
 
-    args.tokenizer = tokenizer
+        args.tokenizer = tokenizer
 
-    cur_multi_instruct_path, cur_images_path, cur_train_config_path = args.multi_instruct_path, args.images_path, args.train_config_path
+        cur_multi_instruct_path, cur_images_path, cur_train_config_path = args.multi_instruct_path, args.images_path, args.train_config_path
 
-    test_dataset = MimicitDataset(args, cur_multi_instruct_path, cur_images_path, cur_train_config_path,status='new')
+        test_dataset = MimicitDataset(args, cur_multi_instruct_path, cur_images_path, cur_train_config_path,status='new')
 
-    uniq_id_dict = {}
-    samples = []
-    counter = 0
-    for _ in tqdm(test_dataset):
-        if counter > 0:
-            break
-        counter += 1
-        samples.append(_)
-    cur_data = test_dataset.collate(samples)
-    # import pdb
+        uniq_id_dict = {}
+        samples = []
+        counter = 0
+        for _ in tqdm(test_dataset):
+            pass
+            # if counter > 0:
+            #     break
+            # counter += 1
+            # samples.append(_)
+        # cur_data = test_dataset.collate(samples)
+        # import pdb
 
-    # pdb.set_trace()
+        # pdb.set_trace()

@@ -85,36 +85,29 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     labels[i][label_idx] = -100
                     label_idx += 1
 
-                # # remove loss for any token between <|endofchunk|> and <image>
-                # endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
-                # for endofchunk_idx in endofchunk_idxs:
-                #     token_idx = endofchunk_idx + 1
-                #     while token_idx < labels.shape[1] and labels[i][token_idx] != media_token_id:
-                #         labels[i][token_idx] = -100
-                #         token_idx += 1
-
                 # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
                 # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
 
-            # get index of all endofchunk tokens in the sequence
-            for i in range(labels.shape[0]):
+                #get index of all endofchunk/media tokens in the sequence
                 endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
                 media_idxs = torch.where(labels[i] == media_token_id)[0]
+
+                # remove loss for any token between first <image> and first <answer>
                 for media_idx in media_idxs[:1]:
                     token_idx = media_idx + 1
                     while token_idx < labels.shape[1] and labels[i][token_idx] != answer_token_id:
                         labels[i][token_idx] = -100
                         token_idx += 1
 
-            # remove loss for any token between <|endofchunk|> and <answer>, except <image>
-            for endofchunk_idx in endofchunk_idxs:
-                token_idx = endofchunk_idx + 1
-                while token_idx < labels.shape[1] and labels[i][token_idx] != answer_token_id:
-                    if labels[i][token_idx] == media_token_id:
-                        pass
-                    else:
-                        labels[i][token_idx] = -100
-                    token_idx += 1
+                # remove loss for any token between <|endofchunk|> and <answer>, except <image>
+                for endofchunk_idx in endofchunk_idxs:
+                    token_idx = endofchunk_idx + 1
+                    while token_idx < labels.shape[1] and labels[i][token_idx] != answer_token_id:
+                        if labels[i][token_idx] == media_token_id:
+                            pass
+                        else:
+                            labels[i][token_idx] = -100
+                        token_idx += 1
 
             labels[labels == answer_token_id] = -100
             labels[labels == media_token_id] = -100
