@@ -23,6 +23,8 @@ from webdataset.filters import _shuffle
 from webdataset.tariterators import base_plus_ext, tar_file_expander, url_opener, valid_sample
 from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
 
+import statistics
+
 Image.MAX_IMAGE_PIXELS = 1000000000
 MAX_NUM_TOKENS = 256
 MAX_NUM_IMAGES = 5
@@ -541,15 +543,27 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     args.task = "pretrain"
     args.tokenizer = tokenizer
-    mimicit_paths = args.mimicit_path.split(",")
-    images_paths = args.images_path.split(",")
-    train_config_paths = args.train_config_path.split(",")
-    unified_datasets = []
-    for cur_mimicit_path, cur_images_path, cur_train_config_path in zip(mimicit_paths, images_paths, train_config_paths):
-        unified_dataset = MimicitDataset(args, cur_mimicit_path, cur_images_path, cur_train_config_path)
-        unified_datasets.append(unified_dataset)
+    new_mimicit_paths = args.new_mimicit_path.split(",")
+    new_images_paths = args.new_images_path.split(",")
+    new_train_config_paths = args.new_train_config_path.split(",")
+    unified_new_datasets = []
+    for cur_mimicit_path, cur_images_path, cur_train_config_path in zip(new_mimicit_paths, new_images_paths, new_train_config_paths):
+        unified_new_dataset = MimicitDataset(args, cur_mimicit_path, cur_images_path, cur_train_config_path,status='new')
+        unified_new_datasets.append(unified_new_dataset)
+    
+    unified_old_datasets = []
+    if args.past_mimicit_path != None:
+        past_mimicit_paths = args.past_mimicit_path.split(",")
+        past_images_paths = args.past_images_path.split(",")
+        past_train_config_paths = args.past_train_config_path.split(",")
 
-    args.train_num_samples = sum(len(dataset) for dataset in unified_datasets) / len(unified_datasets)
+        for cur_mimicit_path, cur_images_path, cur_train_config_path in zip(past_mimicit_paths, past_images_paths, past_train_config_paths):
+            unified_old_dataset = MimicitDataset(args, cur_mimicit_path, cur_images_path, cur_train_config_path,status='old',subset_ration=args.past_subset_ration)
+            unified_old_datasets.append(unified_old_dataset)
+
+    # args.train_num_samples = sum(len(dataset) for dataset in unified_new_datasets) / len(unified_new_datasets)
+    args.train_num_samples = statistics.median((len(dataset) for dataset in unified_new_datasets))
+
     round_fn = math.floor if floor else math.ceil
     global_batch_size = args.batch_size * args.world_size
 
@@ -561,6 +575,8 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     num_samples = num_batches * global_batch_size  # 8
 
     dataloaders = []
+
+    unified_datasets = unified_old_datasets + unified_new_datasets
 
     for unified_dataset in unified_datasets:
         sampler = RandomSampler(unified_dataset, replacement=True, num_samples=num_samples)
@@ -574,9 +590,6 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
             collate_fn=unified_dataset.collate,
         )
 
-        # add meta-data to dataloader instance for convenience
-        # dataloader.num_batches = num_batches
-        # dataloader.num_samples = num_samples
 
         dataloaders.append(dataloader)
     return dataloaders

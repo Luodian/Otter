@@ -10,6 +10,9 @@ import torch.nn as nn
 from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 
 import sys
+
+sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/otter")
+sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter")
 from modeling_otter import OtterForConditionalGeneration
 from configuration_otter import OtterConfig
 
@@ -25,7 +28,6 @@ def dump_hf_model(pretrained_model_path: str, old_ckpt_path: str, new_folder_pat
         old_ckpt = old_ckpt["model_state_dict"]
     new_ckpt = old_ckpt
     folder_path = os.path.dirname(old_ckpt_path)
-    config_path = os.path.join(folder_path, "config.json") if os.path.exists(os.path.join(folder_path, "config.json")) else "otter/config.json"
     model = OtterForConditionalGeneration.from_pretrained(
         args.pretrained_model_path,
         device_map="auto",

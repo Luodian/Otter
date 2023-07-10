@@ -196,3 +196,5 @@ pipeline/serve/examples/*.png
 
 tools
 otter9B-mpt7b-0705/config.json
+
+OTTER-MPT7B-Instruct0705v4
