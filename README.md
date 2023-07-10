@@ -46,7 +46,7 @@
 
 > **Otter-Video** supports videos inputs (frames are arranged as original Flamingo's implementation) and multiple images inputs (they serve as in-context examples for each other).
 
-**Eval Results:** [Multi-Modal Arena](http://vlarena.opengvlab.com/) | [Awesome Multimodal Models Evaluation](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation) | Multi-Modal AGI Benchmark (upcoming)
+**Eval Results:** [Multi-Modal Arena](http://vlarena.opengvlab.com/) | [MLLM Evaluation (MME) Benchmark](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation) | Multi-Modal AGI Benchmark (upcoming)
 
 ## 🦾 Update
 
@@ -64,7 +64,7 @@
 3. 🏇 We welcome third-party evaluation on Otter and we are willing to see different VLMs chasing with each other on different arenas and benchmarks. But make sure contact us to confirm the model version and prompt strategy before publishing results. We are on call to respond.
 4. 🤗 Introducing Project Otter's brand new homepage: https://otter-ntu.github.io/. Check it out now!
 5. 🤗 Check our [paper](https://arxiv.org/abs/2306.05425) introducing MIMIC-IT in details. Meet MIMIC-IT, the first multimodal in-context instruction tuning dataset with 2.8M instructions! From general scene understanding to spotting subtle differences and enhancing egocentric view comprehension for AR headsets, our MIMIC-IT dataset has it all.
-6. 🤗 Stay tuned for our upcoming Otter Model v0.2, trained on the MIMIC-IT dataset! With the ability to understand daily scenes, reason in context, spot differences in observations, and act as an egocentric assistant. Checkout conceptual demo video at [Youtube](https://www.youtube.com/watch?v=K8o_LKGQJhs) or [Bilibili](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)!
+<!-- 6. 🤗 Stay tuned for our upcoming Otter Model v0.2, trained on the MIMIC-IT dataset! With the ability to understand daily scenes, reason in context, spot differences in observations, and act as an egocentric assistant. Checkout conceptual demo video at [Youtube](https://www.youtube.com/watch?v=K8o_LKGQJhs) or [Bilibili](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)! -->
 
 <!-- **[2023-05-14]**
 1. Otter battles with Owl? the Pokémon Arena is here! Our model is selected into [Multi-Modal Arena](http://vlarena.opengvlab.com/). This is an interesting Multi-Modal Foundation Models competition arena that let you see different models reaction to the same question.
