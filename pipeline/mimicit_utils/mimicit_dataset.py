@@ -18,6 +18,7 @@ import sys
 from PIL import Image, ImageFile
 
 from .transforms import *
+
 # from transforms import *
 
 from torch.utils.data import Dataset
@@ -62,7 +63,7 @@ class MimicitDataset(Dataset):
         cur_images_path,
         cur_train_config_path,
         is_test=False,
-        status='new',
+        status="new",
         subset_ration=None,
         # supported_data_types=["caption", "qa"],
     ):
@@ -98,7 +99,9 @@ class MimicitDataset(Dataset):
         self.images_path = cur_images_path
         self.train_config_path = cur_train_config_path
 
-        assert (status=="new" and subset_ration == None) or (status=="old" and subset_ration != None), f"subset_ration can only for past dataset or subset_ration should be specified for old dataset"
+        assert (status == "new" and subset_ration == None) or (
+            status == "old" and subset_ration != None
+        ), f"subset_ration can only for past dataset or subset_ration should be specified for old dataset"
 
         assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!"
 
@@ -118,13 +121,13 @@ class MimicitDataset(Dataset):
         with open(self.train_config_path, "rb") as f:
             self.train_config = orjson.loads(f.read())
 
-        if status == 'new':
+        if status == "new":
             self.train_data_list = list(self.train_config.keys())
         else:
             random.seed(0)
             self.train_data_list = list(self.train_config.keys())
             random.shuffle(self.train_data_list)
-            self.train_data_list = self.train_data_list[:int(len(self.train_data_list)*subset_ration)]
+            self.train_data_list = self.train_data_list[: int(len(self.train_data_list) * subset_ration)]
 
         self.bos_item = torch.LongTensor([args.tokenizer.bos_token_id])
         self.eos_item = torch.LongTensor([args.tokenizer.eos_token_id])
@@ -701,7 +704,7 @@ if __name__ == "__main__":
 
         cur_multi_instruct_path, cur_images_path, cur_train_config_path = args.multi_instruct_path, args.images_path, args.train_config_path
 
-        test_dataset = MimicitDataset(args, cur_multi_instruct_path, cur_images_path, cur_train_config_path,status='new')
+        test_dataset = MimicitDataset(args, cur_multi_instruct_path, cur_images_path, cur_train_config_path, status="new")
 
         uniq_id_dict = {}
         samples = []

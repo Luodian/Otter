@@ -548,9 +548,9 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     new_train_config_paths = args.new_train_config_path.split(",")
     unified_new_datasets = []
     for cur_mimicit_path, cur_images_path, cur_train_config_path in zip(new_mimicit_paths, new_images_paths, new_train_config_paths):
-        unified_new_dataset = MimicitDataset(args, cur_mimicit_path, cur_images_path, cur_train_config_path,status='new')
+        unified_new_dataset = MimicitDataset(args, cur_mimicit_path, cur_images_path, cur_train_config_path, status="new")
         unified_new_datasets.append(unified_new_dataset)
-    
+
     unified_old_datasets = []
     if args.past_mimicit_path != None:
         past_mimicit_paths = args.past_mimicit_path.split(",")
@@ -558,7 +558,9 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
         past_train_config_paths = args.past_train_config_path.split(",")
 
         for cur_mimicit_path, cur_images_path, cur_train_config_path in zip(past_mimicit_paths, past_images_paths, past_train_config_paths):
-            unified_old_dataset = MimicitDataset(args, cur_mimicit_path, cur_images_path, cur_train_config_path,status='old',subset_ration=args.past_subset_ration)
+            unified_old_dataset = MimicitDataset(
+                args, cur_mimicit_path, cur_images_path, cur_train_config_path, status="old", subset_ration=args.past_subset_ration
+            )
             unified_old_datasets.append(unified_old_dataset)
 
     # args.train_num_samples = sum(len(dataset) for dataset in unified_new_datasets) / len(unified_new_datasets)
@@ -589,7 +591,6 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
             drop_last=True,
             collate_fn=unified_dataset.collate,
         )
-
 
         dataloaders.append(dataloader)
     return dataloaders
