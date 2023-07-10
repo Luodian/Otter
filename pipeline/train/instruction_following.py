@@ -88,7 +88,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
                 # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
 
-                #get index of all endofchunk/media tokens in the sequence
+                # get index of all endofchunk/media tokens in the sequence
                 endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
                 media_idxs = torch.where(labels[i] == media_token_id)[0]
 
@@ -239,7 +239,6 @@ def parse_args():
         default=None,
         help="the ration of resampling past dataset",
     )
-    
 
     parser.add_argument(
         "--new_mimicit_path",
