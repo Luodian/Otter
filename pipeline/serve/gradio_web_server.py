@@ -584,7 +584,7 @@ def build_demo(embed_mode):
                     no_repeat_ngram_size = gr.Slider(minimum=1, maximum=10, value=3, step=1, interactive=True, label="no_repeat_ngram_size")
                     length_penalty = gr.Slider(minimum=1, maximum=5, value=1, step=0.1, interactive=True, label="length_penalty")
                     do_sample = gr.Checkbox(interactive=True, label="do_sample")
-                    early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
+                    early_stopping = gr.Checkbox(interactive=True, label="early_stopping", value=True)
 
             with gr.Column(scale=6):
                 chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=720)

@@ -221,6 +221,7 @@ class ModelWorker:
             attention_mask=inputs["attention_mask"],
             streamer=streamer,
             # bad_words_ids=bad_words_id,
+            # pad_token_id=tokenizer.eos_token_id,
             **generation_kwargs,
         )
         # # Call the generate function and store the output in a variable
@@ -249,6 +250,8 @@ class ModelWorker:
         generated_text = ""
         for i, output in enumerate(streamer):
             generated_text += output
+            if "IMPRESSION" in generated_text:
+                generated_text = generated_text.replace("IMPRESSION", "\nIMPRESSION")
             if i % 10 == 0:
                 logger.info(f"Generated text: {generated_text}")
             ret = {
