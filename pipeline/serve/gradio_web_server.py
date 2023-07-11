@@ -611,6 +611,10 @@ def build_demo(embed_mode):
             examples=[
                 [
                     f"{cur_dir}/examples/ms_st.jpg",
+                    "Does the image feature a globally recognized technology company?"
+                ],
+                [
+                    f"{cur_dir}/examples/ms_st.jpg",
                     "Does the image feature a globally recognized technology company? Please answer with yes or no."
                 ],
                 [
@@ -623,7 +627,7 @@ def build_demo(embed_mode):
                 ],
                 [
                     f"{cur_dir}/examples/xray.jpg",
-                    "Please write a diagnostic radiology report for the patient based on their chest radiographs."
+                    "Act as a radiologist and write a diagnostic radiology report for the patient based on their chest radiographs:"
                 ],
                 [
                     f"{cur_dir}/examples/baseball.jpg",
