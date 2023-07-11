@@ -125,7 +125,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 #     attention_mask=attention_mask.to(device_id),
                 #     max_length=256,
                 # )
-            if accelerator.mixed_precision != "bf16":
+            if accelerator.mixed_precision == "fp16":
                 accelerator.backward(loss_mimicit.to(device_id))
             else:
                 accelerator.backward(loss_mimicit)
