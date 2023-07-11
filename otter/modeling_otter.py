@@ -9,6 +9,12 @@ from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
 from .configuration_otter import OtterConfig
 
+from flamingo.falcon.modelling_RW import RWForCausalLM
+from flamingo.mpt.modeling_mpt import MPTForCausalLM
+
+from transformers.models.auto import AutoModel, AutoModelForCausalLM, AutoTokenizer
+
+
 import sys
 import random
 
@@ -53,6 +59,8 @@ __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
     "gpt-j": "transformer.h",
     "pythia": "gpt_neox.layers",
     "llama": "model.layers",
+    "RWForCausalLM": "transformer.h",
+    "MPTForCausalLM": "transformer.blocks",
 }
 
 
@@ -268,7 +276,6 @@ class OtterMaskedCrossAttention(nn.Module):
             q = q * self.scale
 
             sim = torch.einsum("... i d, ... j d -> ... i j", q, k)
-
             if exists(media_locations):
                 # at each boolean of True, increment the time counter (relative to media time)
                 text_time = media_locations.cumsum(dim=-1)
@@ -480,9 +487,14 @@ class OtterLMMixin(nn.Module):
         attend_previous = (random.random() < 0.5) if self.use_media_placement_augmentation else True
         # attend_previous = self.only_attend_previous
 
-        for layer in self.get_decoder().layers:
-            layer.condition_media_locations(media_locations)
-            layer.condition_attend_previous(attend_previous)
+        if self.__class__.__name__ != "MPTForCausalLM":
+            for layer in self.get_decoder().layers:
+                layer.condition_media_locations(media_locations)
+                layer.condition_attend_previous(attend_previous)
+        else:
+            for layer in self.get_decoder().blocks:
+                layer.condition_media_locations(media_locations)
+                layer.condition_attend_previous(attend_previous)
 
         return super().forward(*input, **kwargs)  # Call the other parent's forward method
 
@@ -521,10 +533,19 @@ class OtterModel(OtterPreTrainedModel):
         config: OtterConfig,
     ):
         super().__init__(config)
-        text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
-        lang_encoder = LlamaForCausalLM(config=config.text_config)
-        vision_encoder = CLIPVisionModel(config=config.vision_config)
 
+        ### TODO: give "LlamaForCausalLM" as the name of text_config.architectures of Llama_based flamingo
+        if "llama" not in config.text_config._name_or_path:
+            if config.text_config.architectures[0] == "MPTForCausalLM":
+                text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
+                lang_encoder = MPTForCausalLM(config=config.text_config)
+            elif config.text_config.architectures[0] == "RWForCausalLM":
+                text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
+                lang_encoder = RWForCausalLM(config=config.text_config)
+        else:
+            text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+            lang_encoder = LlamaForCausalLM(config=config.text_config)
+        vision_encoder = CLIPVisionModel(config=config.vision_config)
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
         if text_tokenizer.pad_token is None:
             text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
@@ -535,11 +556,13 @@ class OtterModel(OtterPreTrainedModel):
         extend_instance(lang_encoder, OtterLMMixin)
         decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
         lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        lang_encoder.resize_token_embeddings(len(text_tokenizer))
+        if lang_encoder.__class__.__name__ != "MPTForCausalLM":
+            lang_encoder.resize_token_embeddings(len(text_tokenizer))
         self.lang_encoder = lang_encoder
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
-        self.use_media_placement_augmentation = config.use_media_placement_augmentation
+        # use_media_placement_augmentation is strictly false for Otter model
+        self.use_media_placement_augmentation = False  # config.use_media_placement_augmentation
         self.max_num_frames = config.max_num_frames if hasattr(config, "max_num_frames") else None
 
         vision_encoder.output_tokens = True
@@ -587,6 +610,12 @@ class OtterModel(OtterPreTrainedModel):
                 param.requires_grad = False
         # Unfreeze LM input embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
+        ## MPTForCausalLM is tied word embedding
+        if self.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+            self.lang_encoder.lm_head.requires_grad_(True)
+        # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
+        # print model size in billions of parameters in 2 decimal places
+        print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
 
     def forward(
         self,
@@ -680,8 +709,25 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         config: OtterConfig,
     ):
         super().__init__(config)
-        text_tokenizer = LlamaTokenizer.from_pretrained("luodian/llama-7b-hf")
-        lang_encoder = LlamaForCausalLM(config=config.text_config)
+        ### TODO: give "LlamaForCausalLM" as the name of text_config.architectures of Llama_based flamingo
+        if "llama" not in config.text_config._name_or_path:
+            if config.text_config.architectures[0] == "MPTForCausalLM":
+                text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
+                lang_encoder = MPTForCausalLM(config=config.text_config)
+            elif config.text_config.architectures[0] == "RWForCausalLM":
+                text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
+                lang_encoder = RWForCausalLM(config=config.text_config)
+            # TODO: what's the logic here?
+            elif config.text_config.architectures[0] == "LlamaForCausalLM":
+                text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+                lang_encoder = LlamaForCausalLM(config=config.text_config)
+            else:
+                import pdb
+
+                pdb.set_trace()
+        else:
+            text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+            lang_encoder = LlamaForCausalLM(config=config.text_config)
         vision_encoder = CLIPVisionModel(config=config.vision_config)
 
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
@@ -694,11 +740,13 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         extend_instance(lang_encoder, OtterLMMixin)
         decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
         lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        lang_encoder.resize_token_embeddings(len(text_tokenizer))
+        if lang_encoder.__class__.__name__ != "MPTForCausalLM":
+            lang_encoder.resize_token_embeddings(len(text_tokenizer))
         self.lang_encoder = lang_encoder
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
-        self.use_media_placement_augmentation = config.use_media_placement_augmentation
+        # use_media_placement_augmentation is strictly false for Otter model
+        self.use_media_placement_augmentation = False  # config.use_media_placement_augmentation
         self.max_num_frames = config.max_num_frames if hasattr(config, "max_num_frames") else None
 
         # Informative print statement
@@ -749,7 +797,12 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
                 param.requires_grad = False
         # Unfreeze LM input and output embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
-        self.lang_encoder.get_output_embeddings().requires_grad_(True)
+        ## MPTForCausalLM is tied word embedding
+        if self.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+            self.lang_encoder.lm_head.requires_grad_(True)
+        # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
+        # print model size in billions of parameters in 2 decimal places
+        print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
 
     def forward(
         self,
