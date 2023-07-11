@@ -125,7 +125,11 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 #     attention_mask=attention_mask.to(device_id),
                 #     max_length=256,
                 # )
-            accelerator.backward(loss_mimicit)
+            if accelerator.mixed_precision != "bf16":
+                accelerator.backward(loss_mimicit.to(device_id))
+            else:
+                accelerator.backward(loss_mimicit)
+
             total_losses.append(loss_mimicit)
         #### BACKWARD PASS ####
         total_loss_sum = sum(total_losses)
