@@ -510,6 +510,7 @@ class OtterLMMixin(nn.Module):
             layer.condition_media_locations(None)
             layer.condition_attend_previous(None)
 
+
 class OtterPreTrainedModel(PreTrainedModel):
     """
     An abstract class to handle weights initialization and a simple interface for downloading and loading pretrained
