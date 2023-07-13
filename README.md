@@ -46,7 +46,7 @@
 
 > **Otter-Video** supports videos inputs (frames are arranged as original Flamingo's implementation) and multiple images inputs (they serve as in-context examples for each other).
 
-**Eval Results:** [Multi-Modal Arena](http://vlarena.opengvlab.com/) | [MLLM Evaluation (MME) Benchmark](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation) | [OpenCompass-MMBench](https://opencompass.org.cn/MMBench)
+**Eval Results:** [Multi-Modal Arena](http://vlarena.opengvlab.com/) | [MLLM Evaluation (MME) Benchmark](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation) | [OpenCompass-MMBench]([https://opencompass.org.cn/MMBench](https://opencompass.org.cn/leaderboard-multimodal))
 
 ## 🦾 Update
 
