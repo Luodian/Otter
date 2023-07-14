@@ -581,9 +581,9 @@ class OtterModel(OtterPreTrainedModel):
         )
 
         # config.update({"lora_config": {"r": 16, "lora_alpha": 16, "task_type": "CAUSAL_LM"}})
-        lora_config = LoraConfig(r=16, lora_alpha=16, task_type=TaskType.CAUSAL_LM)
-        self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
-        self.lang_encoder.print_trainable_parameters()
+        # lora_config = LoraConfig(r=16, lora_alpha=16, task_type=TaskType.CAUSAL_LM)
+        # self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
+        # self.lang_encoder.print_trainable_parameters()
         self.post_init()
 
     def get_input_embeddings(self) -> nn.Module:
@@ -774,14 +774,16 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             use_media_placement_augmentation=self.use_media_placement_augmentation,
         )
 
-        # adding lora
-        standard_modules = ["q_proj", "v_proj"]
-        lang_encoder_short_name = MODEL_CLASSES[config.text_config.architectures[0]]
-        model_to_lora_modules = {"llama": standard_modules, "opt": standard_modules, "gptj": standard_modules, "gpt_neox": ["query_key_value"], "mpt": ["Wqkv"]}
-        lora_config = LoraConfig(
-            r=16, lora_alpha=32, lora_dropout=0.05, task_type=TaskType.CAUSAL_LM, target_modules=model_to_lora_modules[lang_encoder_short_name]
-        )
-        self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
+        if "lora_config" in config.__dict__:
+            print(f"Using LoRA with config:{config.lora_config}")
+            standard_modules = ["q_proj", "v_proj"]
+            lang_encoder_short_name = MODEL_CLASSES[config.text_config.architectures[0]]
+            model_to_lora_modules = {"llama": standard_modules, "opt": standard_modules, "gptj": standard_modules, "gpt_neox": ["query_key_value"], "mpt": ["Wqkv"]}
+            lora_config = LoraConfig(
+                r=16, lora_alpha=32, lora_dropout=0.05, task_type=TaskType.CAUSAL_LM, target_modules=model_to_lora_modules[lang_encoder_short_name]
+            )
+            self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
+            self.lang_encoder.print_trainable_parameters()
 
         self.post_init()
 
@@ -807,15 +809,19 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         # Freeze all parameters in vision encoder
         for param in self.vision_encoder.parameters():
             param.requires_grad = False
-        # Freeze all parameters in lang encoders except gated_cross_attn_layers
-        # for name, param in self.lang_encoder.named_parameters():
-        #     if "gated_cross_attn_layer" not in name:
-        #         param.requires_grad = False
-        # Unfreeze gated_cross_attn_layers
-        for layer in self.lang_encoder._get_decoder_layers():
-            if layer.gated_cross_attn_layer is not None:
-                for param in layer.gated_cross_attn_layer.parameters():
-                    param.requires_grad = True
+
+        if "lora_config" in self.config.__dict__:
+            print(f"LoRA trainable param: {(sum(p.numel() for p in self.lang_encoder.parameters() if p.requires_grad)) / 1e9:.3f} B")
+            # Unfreeze gated_cross_attn_layers
+            for layer in self.lang_encoder._get_decoder_layers():
+                if layer.gated_cross_attn_layer is not None:
+                    for param in layer.gated_cross_attn_layer.parameters():
+                        param.requires_grad = True
+        else:
+            # Freeze all parameters in lang encoders except gated_cross_attn_layers
+            for name, param in self.lang_encoder.named_parameters():
+                if "gated_cross_attn_layer" not in name:
+                    param.requires_grad = False
         # Unfreeze LM input and output embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
@@ -823,7 +829,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             self.lang_encoder.lm_head.requires_grad_(True)
         # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
         # print model size in billions of parameters in 2 decimal places
-        print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
+        print(f"Total Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
     def forward(
         self,
