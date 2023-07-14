@@ -609,25 +609,13 @@ def build_demo(embed_mode):
         gr.Examples(
             label="Examples (0-shot)",
             examples=[
-                [
-                    f"{cur_dir}/examples/ms_st.jpg",
-                    "Does the image feature a globally recognized technology company?"
-                ],
-                [
-                    f"{cur_dir}/examples/ms_st.jpg",
-                    "Does the image feature a globally recognized technology company? Please answer with yes or no."
-                ],
-                [
-                    f"{cur_dir}/examples/zelda_princess.jpg",
-                    "Can you identify the character?"
-                ],
-                [
-                    f"{cur_dir}/examples/gtav.jpg",
-                    "Can you identify what the image is about?"
-                ],
+                [f"{cur_dir}/examples/ms_st.jpg", "Does the image feature a globally recognized technology company?"],
+                [f"{cur_dir}/examples/ms_st.jpg", "Does the image feature a globally recognized technology company? Please answer with yes or no."],
+                [f"{cur_dir}/examples/zelda_princess.jpg", "Can you identify the character?"],
+                [f"{cur_dir}/examples/gtav.jpg", "Can you identify what the image is about?"],
                 [
                     f"{cur_dir}/examples/xray.jpg",
-                    "Act as a radiologist and write a diagnostic radiology report for the patient based on their chest radiographs:"
+                    "Act as a radiologist and write a diagnostic radiology report for the patient based on their chest radiographs:",
                 ],
                 [
                     f"{cur_dir}/examples/baseball.jpg",
