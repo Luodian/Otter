@@ -413,8 +413,8 @@ class MPTForCausalLM(MPTPreTrainedModel):
         # move outputs to same device as weights for token embedding
         # needed to support HF `device_map`
         logits = self.transformer.wte(
-            outputs.last_hidden_state.to(self.transformer.wte.weight.device),
-            True,
+            input=outputs.last_hidden_state.to(self.transformer.wte.weight.device),
+            unembed=True,
         )
 
         if self.logit_scale is not None:
