@@ -47,9 +47,7 @@ except ImportError as e:
         if dist.is_initialized() and dist.get_rank() == 0:  # Check if the current process rank is 0
             print(f"Failed to import xformers: {e}")
             XFORMERS_AVAIL = False
-            print(
-                "No xformers found. You are recommended to install xformers via `pip install xformers` or `conda install -c xformers xformers`"
-            )
+            print("No xformers found. You are recommended to install xformers via `pip install xformers` or `conda install -c xformers xformers`")
             XFORMERS_MSG_PRINTED = True  # Set the variable to True after printing the message
 
 # from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
@@ -65,13 +63,7 @@ __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
     "MPTForCausalLM": "transformer.blocks",
 }
 
-MODEL_CLASSES = {
-    "LlamaForCausalLM": "llama",
-    "OPTForCausalLM": "opt",
-    "GPTJForCausalLM": "gptj",
-    "GPTNeoXForCausalLM": "gpt_neox",
-    "MPTForCausalLM": "mpt"
-}
+MODEL_CLASSES = {"LlamaForCausalLM": "llama", "OPTForCausalLM": "opt", "GPTJForCausalLM": "gptj", "GPTNeoXForCausalLM": "gpt_neox", "MPTForCausalLM": "mpt"}
 
 
 def _infer_decoder_layers_attr_name(model: nn.Module):
@@ -88,9 +80,7 @@ def extend_instance(obj, mixin):
     """Apply mixins to a class instance after creation"""
     base_cls = obj.__class__
     base_cls_name = obj.__class__.__name__
-    obj.__class__ = type(
-        base_cls_name, (mixin, base_cls), {}
-    )  # mixin needs to go first for our forward() logic to work
+    obj.__class__ = type(base_cls_name, (mixin, base_cls), {})  # mixin needs to go first for our forward() logic to work
 
 
 def getattr_recursive(obj, att):
@@ -477,9 +467,7 @@ class OtterLMMixin(nn.Module):
             nn.ModuleList(
                 [
                     OtterLayer(gated_cross_attn_layer, decoder_layer)
-                    for gated_cross_attn_layer, decoder_layer in zip(
-                        gated_cross_attn_layers, self._get_decoder_layers()
-                    )
+                    for gated_cross_attn_layer, decoder_layer in zip(gated_cross_attn_layers, self._get_decoder_layers())
                 ]
             )
         )
@@ -668,9 +656,7 @@ class OtterModel(OtterPreTrainedModel):
             use_cache: whether to use cached key values. See use_cache
                 documentation in Hugging Face CausalLM models.
         """
-        assert (
-            vision_x is not None
-        ) or use_cached_vision_x, "Must provide either vision_x or use_cached_vision_x to True."
+        assert (vision_x is not None) or use_cached_vision_x, "Must provide either vision_x or use_cached_vision_x to True."
 
         if use_cached_vision_x:
             # Case: use cached; vision_x should be cached and other
@@ -771,13 +757,9 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
         # Informative print statement
         if self.max_num_frames is None or self.max_num_frames == 1:
-            print(
-                f"The current model version is configured for Otter-Image with max_num_frames set to {self.max_num_frames}."
-            )
+            print(f"The current model version is configured for Otter-Image with max_num_frames set to {self.max_num_frames}.")
         else:
-            print(
-                f"The current model version is configured for Otter-Video with a maximum of {self.max_num_frames} frames."
-            )
+            print(f"The current model version is configured for Otter-Video with a maximum of {self.max_num_frames} frames.")
 
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder
@@ -796,8 +778,14 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         standard_modules = ["q_proj", "v_proj"]
         lang_encoder_short_name = MODEL_CLASSES[config.text_config.architectures[0]]
         model_to_lora_modules = {"llama": standard_modules, "opt": standard_modules, "gptj": standard_modules, "gpt_neox": ["query_key_value"], "mpt": ["Wqkv"]}
-        lora_config = LoraConfig(r=16, lora_alpha=32, lora_dropout=0.05, task_type=TaskType.CAUSAL_LM, target_modules=model_to_lora_modules[lang_encoder_short_name])
+        lora_config = LoraConfig(
+            r=16, lora_alpha=32, lora_dropout=0.05, task_type=TaskType.CAUSAL_LM, target_modules=model_to_lora_modules[lang_encoder_short_name]
+        )
         self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
+
+        # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
+        # print model size in billions of parameters in 2 decimal places
+        print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
 
     def get_input_embeddings(self) -> nn.Module:
         return self.lang_encoder.get_input_embeddings()
@@ -832,7 +820,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             self.lang_encoder.lm_head.requires_grad_(True)
         # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
         # print model size in billions of parameters in 2 decimal places
-        print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
+        # print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
 
     def forward(
         self,
@@ -866,9 +854,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             use_cache: whether to use cached key values. See use_cache
                 documentation in Hugging Face CausalLM models.
         """
-        assert (
-            vision_x is not None
-        ) or use_cached_vision_x, "Must provide either vision_x or use_cached_vision_x to True."
+        assert (vision_x is not None) or use_cached_vision_x, "Must provide either vision_x or use_cached_vision_x to True."
 
         if use_cached_vision_x:
             # Case: use cached; vision_x should be cached and other
