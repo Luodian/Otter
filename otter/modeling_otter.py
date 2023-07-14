@@ -782,7 +782,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             r=16, lora_alpha=32, lora_dropout=0.05, task_type=TaskType.CAUSAL_LM, target_modules=model_to_lora_modules[lang_encoder_short_name]
         )
         self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
-        
+
         self.post_init()
 
     def get_input_embeddings(self) -> nn.Module:
