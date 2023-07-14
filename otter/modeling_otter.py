@@ -778,7 +778,13 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             print(f"Using LoRA with config:{config.lora_config}")
             standard_modules = ["q_proj", "v_proj"]
             lang_encoder_short_name = MODEL_CLASSES[config.text_config.architectures[0]]
-            model_to_lora_modules = {"llama": standard_modules, "opt": standard_modules, "gptj": standard_modules, "gpt_neox": ["query_key_value"], "mpt": ["Wqkv"]}
+            model_to_lora_modules = {
+                "llama": standard_modules,
+                "opt": standard_modules,
+                "gptj": standard_modules,
+                "gpt_neox": ["query_key_value"],
+                "mpt": ["Wqkv"],
+            }
             lora_config = LoraConfig(
                 r=16, lora_alpha=32, lora_dropout=0.05, task_type=TaskType.CAUSAL_LM, target_modules=model_to_lora_modules[lang_encoder_short_name]
             )
