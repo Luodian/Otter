@@ -678,7 +678,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    for train_dataset in ["LRV"]:
+    for train_dataset in ["ART"]:
         args.multi_instruct_path = f"/mnt/petrelfs/zhangyuanhan/data/mimicit/{train_dataset}/{train_dataset}_instructions.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
         args.images_path = f"/mnt/petrelfs/zhangyuanhan/data/mimicit/{train_dataset}/{train_dataset}.json"
         args.train_config_path = f"/mnt/petrelfs/zhangyuanhan/data/mimicit/{train_dataset}/{train_dataset}_train.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
