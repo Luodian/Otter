@@ -611,7 +611,8 @@ def build_demo(embed_mode):
             examples=[
                 [f"{cur_dir}/examples/ms_st.jpg", "Does the image feature a globally recognized technology company?"],
                 [f"{cur_dir}/examples/ms_st.jpg", "Does the image feature a globally recognized technology company? Please answer with yes or no."],
-                [f"{cur_dir}/examples/zelda_princess.jpg", "Can you identify the character?"],
+                [f"{cur_dir}/examples/zelda_princess.jpg", "Can you identify the game character?"],
+                [f"{cur_dir}/examples/martin.jpeg", "Can you identify the historical figure?"],
                 [f"{cur_dir}/examples/gtav.jpg", "Can you identify what the image is about?"],
                 [
                     f"{cur_dir}/examples/xray.jpg",
