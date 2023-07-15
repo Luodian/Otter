@@ -50,15 +50,7 @@ class OtterConfig(PretrainedConfig):
     model_type = "otter"
     is_composition = True
 
-    def __init__(
-        self,
-        vision_config=None,
-        text_config=None,
-        cross_attn_every_n_layers: int = 4,
-        use_media_placement_augmentation: bool = True,
-        only_attend_previous: bool = True,
-        **kwargs
-    ):
+    def __init__(self, vision_config=None, text_config=None, cross_attn_every_n_layers: int = 4, use_media_placement_augmentation: bool = True, **kwargs):
         super().__init__(**kwargs)
 
         if vision_config is None:
@@ -83,10 +75,8 @@ class OtterConfig(PretrainedConfig):
                 pdb.set_trace()
         else:
             self.text_config = CONFIG_MAPPING[text_config.pop("model_type")](**text_config)
-
         self.cross_attn_every_n_layers = cross_attn_every_n_layers
         self.use_media_placement_augmentation = use_media_placement_augmentation
-        self.only_attend_previous = only_attend_previous
 
     def to_dict(self):
         """

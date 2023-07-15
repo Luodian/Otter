@@ -19,6 +19,8 @@ from PIL import Image, ImageFile
 
 from .transforms import *
 
+# from transforms import *
+
 from torch.utils.data import Dataset
 
 
@@ -61,6 +63,8 @@ class MimicitDataset(Dataset):
         cur_images_path,
         cur_train_config_path,
         is_test=False,
+        status="new",
+        subset_ration=None,
         # supported_data_types=["caption", "qa"],
     ):
         # super().__init__(args, is_test)
@@ -95,6 +99,10 @@ class MimicitDataset(Dataset):
         self.images_path = cur_images_path
         self.train_config_path = cur_train_config_path
 
+        assert (status == "new" and subset_ration == None) or (
+            status == "old" and subset_ration != None
+        ), f"subset_ration can only for past dataset or subset_ration should be specified for old dataset"
+
         assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!"
 
         assert os.path.exists(cur_images_path), f"Error: The local images_path {cur_images_path} not exists!"
@@ -113,7 +121,13 @@ class MimicitDataset(Dataset):
         with open(self.train_config_path, "rb") as f:
             self.train_config = orjson.loads(f.read())
 
-        self.train_data_list = list(self.train_config.keys())
+        if status == "new":
+            self.train_data_list = list(self.train_config.keys())
+        else:
+            random.seed(0)
+            self.train_data_list = list(self.train_config.keys())
+            random.shuffle(self.train_data_list)
+            self.train_data_list = self.train_data_list[: int(len(self.train_data_list) * subset_ration)]
 
         self.bos_item = torch.LongTensor([args.tokenizer.bos_token_id])
         self.eos_item = torch.LongTensor([args.tokenizer.eos_token_id])
@@ -638,3 +652,70 @@ def collate_tokens(
     for i, v in enumerate(values):
         copy_tensor(v, res[i][size - len(v) :] if left_pad else res[i][: len(v)])
     return res
+
+
+if __name__ == "__main__":
+    from PIL import Image, ImageFile
+    from io import BytesIO
+    import base64
+    from tqdm import tqdm
+    import json
+    import argparse
+    import sys
+
+    sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/")
+    sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/otter")
+    sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/pipeline/mimicit_utils")
+    from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--multi_instruct_path",
+        type=str,
+        help="path to multi_instruct dataset, this should be a glob pattern such as vision_language_examples.tsv",
+    )
+    parser.add_argument("--offline", action="store_true")
+
+    args = parser.parse_args()
+
+    for train_dataset in ["ART"]:
+        args.multi_instruct_path = f"/mnt/petrelfs/zhangyuanhan/data/mimicit/{train_dataset}/{train_dataset}_instructions.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
+        args.images_path = f"/mnt/petrelfs/zhangyuanhan/data/mimicit/{train_dataset}/{train_dataset}.json"
+        args.train_config_path = f"/mnt/petrelfs/zhangyuanhan/data/mimicit/{train_dataset}/{train_dataset}_train.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
+        args.max_src_length = 256
+        args.max_tgt_length = 256
+        args.task = "pretrain"
+        args.pretrain_seed = 0
+        args.patch_image_size = 224
+        args.seed = 0
+
+        from transformers import LlamaTokenizer
+
+        with open("/mnt/petrelfs/zhangyuanhan/weights/flamingo_9b_hf/config.json") as f:
+            config = json.load(f)
+
+        tokenizer = LlamaTokenizer.from_pretrained("/mnt/petrelfs/zhangyuanhan/weights/llama-7b-hf")
+        # add <answer> token to tokenizer
+        tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+
+        tokenizer.add_special_tokens({"pad_token": "<PAD>"})
+
+        args.tokenizer = tokenizer
+
+        cur_multi_instruct_path, cur_images_path, cur_train_config_path = args.multi_instruct_path, args.images_path, args.train_config_path
+
+        test_dataset = MimicitDataset(args, cur_multi_instruct_path, cur_images_path, cur_train_config_path, status="new")
+
+        uniq_id_dict = {}
+        samples = []
+        counter = 0
+        for _ in tqdm(test_dataset):
+            pass
+            # if counter > 0:
+            #     break
+            # counter += 1
+            # samples.append(_)
+        # cur_data = test_dataset.collate(samples)
+        # import pdb
+
+        # pdb.set_trace()
