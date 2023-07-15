@@ -38,41 +38,33 @@
 
 **Video Demo:** [Otter's Conceptual Demo Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili 哔哩哔哩](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)
 
-**Interactive Demo:** 
+**Interactive Demo:**  [Otter-Image](https://otter.cliangyu.com/) | [Otter-Video](https://ottervideo.cliangyu.com/)
+> Our models would be sometimes offline due to GPU limitation (if we need to train new models lol). You can refer to 🏎️ [Run Otter Locally](./pipeline/demo) to try Otter-Image and Otter-Video more smoothly on your local machine, with at least 16G GPU mem (BF16/FP16 Mode) to help your tasks like image/video tagging, captioning or identifying harmful content.
 
-[Otter Demo (video version)](https://ottervideo.cliangyu.com/) | [Otter Demo (image version)](https://otter.cliangyu.com/)
-> Our models would be temporarily offline due to GPU limitation (if we need to train new models lol). You can refer to 🏎️ [Run Otter Locally](./pipeline/demo) to try Otter-Image and Otter-Video more smoothly on your local machine, with at least 16G GPU mem (BF16/FP16 Mode) to help your tasks like image/video tagging, captioning or identifying harmful content.
+**Corresponding Checkpoints:**  [luodian/OTTER-Image-MPT7B](https://huggingface.co/luodian/OTTER-Image-MPT7B) | [luodian/OTTER-Video-LLaMA7B-DenseCaption](https://huggingface.co/luodian/OTTER-Video-LLaMA7B-DenseCaption)
+> **Otter-Image** supports multiple images input as in-context examples, which is **the first multi-modal instruction tuned model** that supports to organize inputs this way.
 
-**Checkpoints:** 
-- [Checkpoints v0.1 (image version)](https://huggingface.co/luodian/otter-9b-hf)
-- [Checkpoints v0.2 (video version, trained on MIMIC-IT-DC)](https://huggingface.co/luodian/otter-9b-dc-hf)
-- [Checkpoints v0.2 (video version, trained on MIMIC-IT all videos, upcoming)]()
-- [Checkpoints v0.3 (Otter-E, visual assistant version, upcoming)]()
+> **Otter-Video** supports videos inputs (frames are arranged as original Flamingo's implementation) and multiple images inputs (they serve as in-context examples for each other).
 
-Otter v0.1 supports multiple images inputs as in-context examples, which is **the first multi-modal instruction tuned model** that supports to organize inputs this way.
-
-Otter v0.2 supports videos inputs (frames are arranged as original Flamingo's implementation) and multiple images inputs (they serve as in-context examples for each other).
-
-**Eval Results:** [Multi-Modal Arena](http://vlarena.opengvlab.com/) | Multi-Modal AGI Benchmark (upcoming)
+**Eval Results:** [Multi-Modal Arena](http://vlarena.opengvlab.com/) | [MLLM Evaluation Benchmark](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation) | [OpenCompass-MMBench](https://opencompass.org.cn/leaderboard-multimodal)
 
 ## 🦾 Update
 
-**[2023-07-08]**
+**Contact: Leave issue or `drluodian@gmail.com/YUANHAN002@e.ntu.edu.sg`. We are on call to respond.**
+
+**[2023-07]**
 1. 🦦 Checkout our [Otter-MPT7B Image Demo](https://otter.cliangyu.com/). We update the model by incoporating OpenFlamingv2 and specifically tune it to enable generation abilities for both long and short answers.
+2. 🥚 Update [Eggs](./mimic-it/README.md/#eggs) section for downloading MIMIC-IT dataset.
+3. 🥃 Contact us **if you wish to develop Otter for your scenarios** (for satellite images or funny videos?). We aim to support and assist with Otter's diverse use cases. OpenFlamingo and Otter are strong models with the [Flamingo](https://www.deepmind.com/blog/tackling-multiple-tasks-with-a-single-visual-language-model)'s excellently designed architecture that accepts multiple images/videos or other modality inputs. Let's build more interesting models together. 
 
-**[2023-07-04]**
-1. 🥚 Update [Eggs](./mimic-it/README.md/#eggs) section for downloading MIMIC-IT dataset.
-
-**[2023-06-23]**
+**[2023-06]**
 1. 🧨 [Download MIMIC-IT Dataset](https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/Eo9bgNV5cjtEswfA-HfjNNABiKsjDzSWAl5QYAlRZPiuZA?e=M9isDT). For more details on navigating the dataset, please refer to [MIMIC-IT Dataset README](mimic-it/README.md).
-2. 🏎️ [Run Otter Locally](./pipeline/demo). You can run our model locally with at least 16G GPU mem for tasks like image/video tagging and captioning and identifying harmful content. We fix a bug related to video inference where `frame tensors` were mistakenly unsqueezed to a wrong `vision_x`. You can now try running it again with the updated version. 
+2. 🏎️ [Run Otter Locally](./pipeline/demo). You can run our model locally with at least 16G GPU mem for tasks like image/video tagging and captioning and identifying harmful content. We fix a bug related to video inference where `frame tensors` were mistakenly unsqueezed to a wrong `vision_x`.
     > Make sure to adjust the `sys.path.append("../..")` correctly to access `otter.modeling_otter` in order to launch the model.
-3. 🏇 We welcome third-party evaluation on Otter and we are willing to see different VLMs chasing with each other on different arenas and benchmarks. But make sure contact us to confirm the model version and prompt strategy before publishing results. You can contact `drluodian@gmail.com` or `YUANHAN002@e.ntu.edu.sg`.
-
-**[2023-06-08]**
-1. Introducing Project Otter's brand new homepage: https://otter-ntu.github.io/. Check it out now!
-2. Check our [paper](https://arxiv.org/abs/2306.05425) introducing MIMIC-IT in details. Meet MIMIC-IT, the first multimodal in-context instruction tuning dataset with 2.8M instructions! From general scene understanding to spotting subtle differences and enhancing egocentric view comprehension for AR headsets, our MIMIC-IT dataset has it all.
-3. Stay tuned for our upcoming Otter Model v0.2, trained on the MIMIC-IT dataset! With the ability to understand daily scenes, reason in context, spot differences in observations, and act as an egocentric assistant. Checkout conceptual demo video at [Youtube](https://www.youtube.com/watch?v=K8o_LKGQJhs) or [Bilibili](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)!
+3. 🏇 We welcome third-party evaluation on Otter and we are willing to see different VLMs chasing with each other on different arenas and benchmarks. But make sure contact us to confirm the model version and prompt strategy before publishing results. We are on call to respond.
+4. 🤗 Introducing Project Otter's brand new homepage: https://otter-ntu.github.io/. Check it out now!
+5. 🤗 Check our [paper](https://arxiv.org/abs/2306.05425) introducing MIMIC-IT in details. Meet MIMIC-IT, the first multimodal in-context instruction tuning dataset with 2.8M instructions! From general scene understanding to spotting subtle differences and enhancing egocentric view comprehension for AR headsets, our MIMIC-IT dataset has it all.
+<!-- 6. 🤗 Stay tuned for our upcoming Otter Model v0.2, trained on the MIMIC-IT dataset! With the ability to understand daily scenes, reason in context, spot differences in observations, and act as an egocentric assistant. Checkout conceptual demo video at [Youtube](https://www.youtube.com/watch?v=K8o_LKGQJhs) or [Bilibili](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)! -->
 
 <!-- **[2023-05-14]**
 1. Otter battles with Owl? the Pokémon Arena is here! Our model is selected into [Multi-Modal Arena](http://vlarena.opengvlab.com/). This is an interesting Multi-Modal Foundation Models competition arena that let you see different models reaction to the same question.
@@ -145,20 +137,20 @@ For more details, please refer to our [paper](https://arxiv.org/abs/2306.05425)'
 2. Install the pytorch that matches your cuda version. (e.g. cuda 11.7 torch 2.0.0). We have successfully run this code on cuda 11.1 torch 1.10.1 and cuda 11.7 torch 2.0.0. You can refer to PyTorch's documentation, [Latest](https://pytorch.org/) or [Previous](https://pytorch.org/get-started/previous-versions/).
 3. You may install via `conda env create -f environment.yml`. Especially to make sure the `transformers>=4.28.0`, `accelerate>=0.18.0`.
 
-## 🤗 Hugging Face Model
-
 After configuring environment, you can use the 🦩 Flamingo model / 🦦 Otter model as a 🤗 Hugging Face model with only a few lines! One-click and then model configs/weights are downloaded automatically. Please refer to [Huggingface Otter/Flamingo](./docs/huggingface_compatible.md) for details.
 
 ## ☄️ Training
 
-You may need to use a specialized converted weights at [luodian/OTTER-9B-INIT](https://huggingface.co/luodian/OTTER-9B-INIT). It's directly converted from Openflamingo, and we add special tokens for downstream instruction tuning. You may also use any trained Otter weights to start with your training on top of ours, see them at [Otter Weights](https://huggingface.co/luodian). You can refer to [MIMIC-IT](https://github.com/Luodian/Otter/tree/main/mimic-it) for preparing json files.
+Otter is trained based on OpenFlamingo. You may need to use converted weights at [luodian/OTTER-9B-INIT](https://huggingface.co/luodian/OTTER-9B-INIT) or [luodian/OTTER-MPT7B-Init](https://huggingface.co/luodian/OTTER-MPT7B-Init). They are respectively converted from [OpenFlamingo-LLaMA7B-v1](https://huggingface.co/openflamingo/OpenFlamingo-9B) and [OpenFlamingo-MPT7B-v2](https://huggingface.co/openflamingo/OpenFlamingo-9B-vitl-mpt7b), we added a `<answer>` token for Otter's downstream instruction tuning. 
+
+You may also use any trained Otter weights to start with your training on top of ours, see them at [Otter Weights](https://huggingface.co/luodian). You can refer to [MIMIC-IT](https://github.com/Luodian/Otter/tree/main/mimic-it) for preparing image/instruction/train json files.
 
 ```bash
 export PYTHONPATH=.
 
 accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_fsdp.yaml \
 pipeline/train/instruction_following.py \
---pretrained_model_name_or_path=luodian/OTTER-9B-INIT  \
+--pretrained_model_name_or_path=luodian/OTTER-LLaMA7B-INIT  \ # or --pretrained_model_name_or_path=luodian/OTTER-MPT7B-Init
 --mimicit_path="path/to/DC_instruction.json" \
 --images_path="path/to/DC.json" \
 --train_config_path="path/to/DC_train.json" \
@@ -166,8 +158,8 @@ pipeline/train/instruction_following.py \
 --num_epochs=9 \
 --report_to_wandb \
 --wandb_entity=ntu-slab \
---run_name=otter9B_dense_caption \
---wandb_project=otter9B \
+--run_name=OTTER-LLaMA7B-densecaption \
+--wandb_project=OTTER-LLaMA7B \
 --workers=1 \
 --lr_scheduler=cosine \
 --learning_rate=1e-5 \
