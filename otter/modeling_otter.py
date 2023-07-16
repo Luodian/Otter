@@ -788,7 +788,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
                 "mpt": ["Wqkv"],
             }
             lora_config = LoraConfig(
-                r=16, lora_alpha=32, lora_dropout=0.05, task_type=TaskType.CAUSAL_LM, target_modules=model_to_lora_modules[lang_encoder_short_name]
+                r=config.lora_config['r'], lora_alpha=config.lora_config['lora_alpha'], lora_dropout=config.lora_config['lora_dropout'], task_type=TaskType.CAUSAL_LM, target_modules=model_to_lora_modules[lang_encoder_short_name]
             )
             self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
             self.lang_encoder.print_trainable_parameters()
@@ -958,7 +958,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             vision_x = vision_x.repeat_interleave(num_beams, dim=0)
         self._encode_vision_x(vision_x=vision_x)
         output = self.lang_encoder.generate(
-            lang_x,
+            input_ids=lang_x,
             attention_mask=attention_mask,
             eos_token_id=self.eoc_token_id,
             **generate_kwargs,
