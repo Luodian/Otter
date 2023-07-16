@@ -483,6 +483,27 @@ class MimicitDataset(Dataset):
             all_texts += cur_text
         return patch_images, all_texts
 
+    def process_text_instruction(self, instruction_id, instruction, answer, image_ids, in_context_example_ids):
+        patch_images = torch.tensor([])
+        all_texts = ""
+        all_instruction_ids = in_context_example_ids + [instruction_id]
+        for cur_instruction_id in all_instruction_ids[:]:
+            cur_instruction = self.dataset[cur_instruction_id]["instruction"]
+            cur_answer = self.dataset[cur_instruction_id]["answer"]
+            cur_patch_image = torch.zeros(3,224,224).unsqueeze(0).unsqueeze(0)
+            if len(patch_images) == 0:
+                patch_images = cur_patch_image
+            else:
+                patch_images = torch.cat((patch_images, cur_patch_image))
+            cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
+            cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+            if "baize" in instruction_id:
+                cur_text = f"{cur_answer}"
+            else:
+                cur_text = f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+            all_texts += cur_text
+        return patch_images, all_texts
+
     def process_image_text_pair(self, index):
         cur_train_id = self.train_data_list[index]
         (
@@ -517,6 +538,8 @@ class MimicitDataset(Dataset):
             patch_images, all_texts = self.process_funqa(instruction_id, instruction, answer, image_ids, in_context_example_ids)
         elif cur_train_id.startswith("LLAVAR"):
             patch_images, all_texts = self.process_llavar(instruction_id, instruction, answer, image_ids, in_context_example_ids)
+        elif cur_train_id.startswith("TXT"):
+            patch_images, all_texts = self.process_text_instruction(instruction_id, instruction, answer, image_ids, in_context_example_ids)
         else:
             patch_images, all_texts = self.process_general_vqa(instruction_id, instruction, answer, image_ids, in_context_example_ids)
 
@@ -678,10 +701,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    for train_dataset in ["ART"]:
-        args.multi_instruct_path = f"/mnt/petrelfs/zhangyuanhan/data/mimicit/{train_dataset}/{train_dataset}_instructions.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
-        args.images_path = f"/mnt/petrelfs/zhangyuanhan/data/mimicit/{train_dataset}/{train_dataset}.json"
-        args.train_config_path = f"/mnt/petrelfs/zhangyuanhan/data/mimicit/{train_dataset}/{train_dataset}_train.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
+    for train_dataset in ["medical"]:
+        args.multi_instruct_path = f"/mnt/petrelfs/zhangyuanhan/data/baize/{train_dataset}_instructions.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
+        args.images_path = f"/mnt/petrelfs/zhangyuanhan/data/baize/{train_dataset}.json"
+        args.train_config_path = f"/mnt/petrelfs/zhangyuanhan/data/baize/{train_dataset}_train.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
         args.max_src_length = 256
         args.max_tgt_length = 256
         args.task = "pretrain"

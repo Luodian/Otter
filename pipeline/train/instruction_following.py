@@ -78,12 +78,13 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             labels[labels == tokenizer.pad_token_id] = -100
             labels[:, 0] = -100
 
-            # remove loss for any token before the first <image> token
+            
             for i in range(labels.shape[0]):
-                label_idx = 0
-                while label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id:
-                    labels[i][label_idx] = -100
-                    label_idx += 1
+                # remove loss for any token before the first <image> token
+                # label_idx = 0
+                # while label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id:
+                #     labels[i][label_idx] = -100
+                #     label_idx += 1
 
                 # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
                 # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
@@ -92,12 +93,11 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
                 media_idxs = torch.where(labels[i] == media_token_id)[0]
 
-                # remove loss for any token between first <image> and first <answer>
-                for media_idx in media_idxs[:1]:
-                    token_idx = media_idx + 1
-                    while token_idx < labels.shape[1] and labels[i][token_idx] != answer_token_id:
-                        labels[i][token_idx] = -100
-                        token_idx += 1
+                # remove loss for any token the before the first <answer>
+                token_idx = 0
+                while token_idx < labels.shape[1] and labels[i][token_idx] != answer_token_id:
+                    labels[i][token_idx] = -100
+                    token_idx += 1
 
                 # remove loss for any token between <|endofchunk|> and <answer>, except <image>
                 for endofchunk_idx in endofchunk_idxs:
@@ -125,7 +125,6 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             #         attention_mask=attention_mask.to(device_id),
             #         max_length=256,
             #     )
-            # import pdb;pdb.set_trace()
             if accelerator.mixed_precision == "fp16":
                 accelerator.backward(loss_mimicit.to(device_id))
             else:

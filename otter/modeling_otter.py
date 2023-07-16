@@ -7,10 +7,10 @@ from transformers.modeling_outputs import CausalLMOutputWithPast
 from einops import rearrange, repeat
 from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
-# from .configuration_otter import OtterConfig
+from .configuration_otter import OtterConfig
 
 # import sys
-from configuration_otter import OtterConfig
+# from configuration_otter import OtterConfig
 
 from flamingo.falcon.modelling_RW import RWForCausalLM
 from flamingo.mpt.modeling_mpt import MPTForCausalLM
