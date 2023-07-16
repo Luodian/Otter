@@ -245,17 +245,17 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--new_mimicit_path",
+        "--mimicit_path",
         type=str,
         help="path to new multi_instruct dataset, this should be /path/to/DC_instruction.json",
     )
     parser.add_argument(
-        "--new_images_path",
+        "--images_path",
         type=str,
         help="path to new images_path dataset, this should be /path/to/DC.json",
     )
     parser.add_argument(
-        "--new_train_config_path",
+        "--train_config_path",
         type=str,
         help="path to new train_config_path dataset, this should be /path/to/DC/DC_train.json",
     )
