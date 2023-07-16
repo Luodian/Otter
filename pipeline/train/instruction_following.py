@@ -234,6 +234,31 @@ def parse_args():
         type=str,
         help="path to train_config_path dataset, this should be /path/to/DC/DC_train.json",
     )
+    # simple data resampler strategy: add some datasets into past dataloader in avoid of catestrophic forgetting
+    parser.add_argument(
+        "--past_mimicit_path",
+        type=str,
+        default=None,
+        help="path to past multi_instruct dataset, this should be /path/to/DC_instruction.json",
+    )
+    parser.add_argument(
+        "--past_images_path",
+        type=str,
+        default=None,
+        help="path to past images_path dataset, this should be /path/to/DC.json",
+    )
+    parser.add_argument(
+        "--past_train_config_path",
+        type=str,
+        default=None,
+        help="path to past train_config_path dataset, this should be /path/to/DC/DC_train.json",
+    )
+    parser.add_argument(
+        "--past_subset_ration",
+        type=float,
+        default=None,
+        help="the ration of resampling past dataset",
+    )
     # optimizer args
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--num_epochs", type=int, default=1)
