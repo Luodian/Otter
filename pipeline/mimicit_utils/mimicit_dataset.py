@@ -66,7 +66,7 @@ class MimicitDataset(Dataset):
         images_paths="",
         train_config_paths="",
         is_test=False,
-        status_list=["past","new"],
+        status_list=["past", "new"],
         # supported_data_types=["caption", "qa"],
     ):
         # super().__init__(args, is_test)
@@ -88,30 +88,30 @@ class MimicitDataset(Dataset):
 
         self.patch_resize_transform = transforms.Compose(
             [
-                transforms.Resize((args.patch_image_size, args.patch_image_size),interpolation=transforms.InterpolationMode.BICUBIC),
+                transforms.Resize((args.patch_image_size, args.patch_image_size), interpolation=transforms.InterpolationMode.BICUBIC),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=FLAMINGO_MEAN, std=FLAMINGO_STD),
             ]
         )
-        assert mimicit_paths != "",  f"Error: The mimicit_paths do not get!"
+        assert mimicit_paths != "", f"Error: The mimicit_paths do not get!"
 
         self.mimicit_paths = mimicit_paths
-        self.images_paths = images_paths if images_paths != "" else [""]*len(mimicit_paths)
-        self.train_config_paths = train_config_paths if train_config_paths != "" else [""]*len(mimicit_paths)
+        self.images_paths = images_paths if images_paths != "" else [""] * len(mimicit_paths)
+        self.train_config_paths = train_config_paths if train_config_paths != "" else [""] * len(mimicit_paths)
         self.status_list = status_list
 
         assert len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths) == len(self.status_list), f"metas do not have same number"
-
 
         self.dataset = {}
         self.images = {}
         self.train_data_list = []
         self.train_config = []
 
-
-        for cur_mimicit_path,cur_images_path,cur_train_config_path,cur_status in zip(self.mimicit_paths,self.images_paths,self.train_config_paths,self.status_list):
+        for cur_mimicit_path, cur_images_path, cur_train_config_path, cur_status in zip(
+            self.mimicit_paths, self.images_paths, self.train_config_paths, self.status_list
+        ):
             # Load the dataset
-            assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!" 
+            assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!"
             with open(cur_mimicit_path, "rb") as f:
                 if self.dataset == {}:
                     self.dataset = orjson.loads(f.read())["data"]
@@ -120,21 +120,21 @@ class MimicitDataset(Dataset):
 
             # Load the images
             if cur_images_path != "":
-                assert os.path.exists(cur_images_path), f"Error: The local images_path {cur_images_path} not exists!" 
+                assert os.path.exists(cur_images_path), f"Error: The local images_path {cur_images_path} not exists!"
                 with open(cur_images_path, "rb") as f:
                     if self.images == {}:
                         self.images = orjson.loads(f.read())
                     else:
                         self.images.update(orjson.loads(f.read()))
 
-             # Load the train_config
+            # Load the train_config
             if cur_train_config_path != "":
-                assert os.path.exists(cur_train_config_path), f"Error: The local train_config_path {cur_train_config_path} not exists!" 
+                assert os.path.exists(cur_train_config_path), f"Error: The local train_config_path {cur_train_config_path} not exists!"
                 with open(cur_train_config_path, "rb") as f:
                     cache_train_config = orjson.loads(f.read())
             else:
                 with open(cur_mimicit_path, "rb") as f:
-                    cache_train_config =  orjson.loads(f.read())["data"]
+                    cache_train_config = orjson.loads(f.read())["data"]
                     cache_train_config = {key: [] for key in cache_train_config.keys()}
 
             if cur_status == "new":
@@ -152,7 +152,7 @@ class MimicitDataset(Dataset):
                 self.train_config.update(cache_train_config)
             del cache_train_config
             del cache_train_list
-        
+
         self.bos_item = torch.LongTensor([args.tokenizer.bos_token_id])
         self.eos_item = torch.LongTensor([args.tokenizer.eos_token_id])
         self.bos_mask = torch.LongTensor([1])
@@ -516,7 +516,7 @@ class MimicitDataset(Dataset):
         for cur_instruction_id in all_instruction_ids[:]:
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
-            cur_patch_image = torch.zeros(3,224,224).unsqueeze(0).unsqueeze(0)
+            cur_patch_image = torch.zeros(3, 224, 224).unsqueeze(0).unsqueeze(0)
             if len(patch_images) == 0:
                 patch_images = cur_patch_image
             else:
@@ -734,36 +734,41 @@ if __name__ == "__main__":
         # args.multi_instruct_path = f"/mnt/petrelfs/zhangyuanhan/data/baize/{train_dataset}_instructions.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
         # args.images_path = f"/mnt/petrelfs/zhangyuanhan/data/baize/{train_dataset}.json"
         # args.train_config_path = f"/mnt/petrelfs/zhangyuanhan/data/baize/{train_dataset}_train.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
-        # args.past_mimicit_text_path="/mnt/petrelfs/zhangyuanhan/data/alpaca/alpaca_instructions.json,/mnt/petrelfs/zhangyuanhan/data/baize/medical_instructions.json,/mnt/petrelfs/zhangyuanhan/data/baize/quora_instructions.json,/mnt/petrelfs/zhangyuanhan/data/baize/stackoverflow_instructions.json" 
-        # args.past_images_text_path="/mnt/petrelfs/zhangyuanhan/data/alpaca/alpaca.json,/mnt/petrelfs/zhangyuanhan/data/baize/medical.json,/mnt/petrelfs/zhangyuanhan/data/baize/quora.json,/mnt/petrelfs/zhangyuanhan/data/baize/stackoverflow.json" 
-        # args.past_train_config_text_path="/mnt/petrelfs/zhangyuanhan/data/alpaca/alpaca_train.json,/mnt/petrelfs/zhangyuanhan/data/baize/medical_train.json,/mnt/petrelfs/zhangyuanhan/data/baize/quora_train.json,/mnt/petrelfs/zhangyuanhan/data/baize/stackoverflow_train.json" 
+        # args.past_mimicit_text_path="/mnt/petrelfs/zhangyuanhan/data/alpaca/alpaca_instructions.json,/mnt/petrelfs/zhangyuanhan/data/baize/medical_instructions.json,/mnt/petrelfs/zhangyuanhan/data/baize/quora_instructions.json,/mnt/petrelfs/zhangyuanhan/data/baize/stackoverflow_instructions.json"
+        # args.past_images_text_path="/mnt/petrelfs/zhangyuanhan/data/alpaca/alpaca.json,/mnt/petrelfs/zhangyuanhan/data/baize/medical.json,/mnt/petrelfs/zhangyuanhan/data/baize/quora.json,/mnt/petrelfs/zhangyuanhan/data/baize/stackoverflow.json"
+        # args.past_train_config_text_path="/mnt/petrelfs/zhangyuanhan/data/alpaca/alpaca_train.json,/mnt/petrelfs/zhangyuanhan/data/baize/medical_train.json,/mnt/petrelfs/zhangyuanhan/data/baize/quora_train.json,/mnt/petrelfs/zhangyuanhan/data/baize/stackoverflow_train.json"
 
-        # args.mimicit_text_path="/mnt/petrelfs/zhangyuanhan/data/Alpaca-CoT/auto-cot/auto-cot_instructions.json" 
-        # args.images_text_path="/mnt/petrelfs/zhangyuanhan/data/Alpaca-CoT/auto-cot/auto-cot.json" 
-        # args.train_config_text_path="/mnt/petrelfs/zhangyuanhan/data/Alpaca-CoT/auto-cot/auto-cot_train.json" 
+        # args.mimicit_text_path="/mnt/petrelfs/zhangyuanhan/data/Alpaca-CoT/auto-cot/auto-cot_instructions.json"
+        # args.images_text_path="/mnt/petrelfs/zhangyuanhan/data/Alpaca-CoT/auto-cot/auto-cot.json"
+        # args.train_config_text_path="/mnt/petrelfs/zhangyuanhan/data/Alpaca-CoT/auto-cot/auto-cot_train.json"
 
-        # args.past_mimicit_text_path="" 
-        # args.past_images_text_path=""  
+        # args.past_mimicit_text_path=""
+        # args.past_images_text_path=""
         # args.past_train_config_text_path=""
 
-        # args.mimicit_text_path="/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACR_T2T_instructions.json" 
-        # args.images_text_path="/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json" 
-        # args.train_config_text_path="/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACR_T2T_train.json" 
+        # args.mimicit_text_path="/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACR_T2T_instructions.json"
+        # args.images_text_path="/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json"
+        # args.train_config_text_path="/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACR_T2T_train.json"
 
+        args.past_mimicit_text_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/PL/PL_instructions.json"
+        args.past_images_text_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/PL/PL.json"
 
-        args.past_mimicit_text_path="/mnt/petrelfs/zhangyuanhan/data/mimicit/PL/PL_instructions.json" 
-        args.past_images_text_path="/mnt/petrelfs/zhangyuanhan/data/mimicit/PL/PL.json"  
+        args.mimicit_text_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/MEDRPT/MEDRPT_instructions.json"
+        args.images_text_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/MEDRPT/MEDRPT.json"
 
-        args.mimicit_text_path="/mnt/petrelfs/zhangyuanhan/data/mimicit/MEDRPT/MEDRPT_instructions.json" 
-        args.images_text_path="/mnt/petrelfs/zhangyuanhan/data/mimicit/MEDRPT/MEDRPT.json" 
-
-        all_mimicit_text_path = args.mimicit_text_path.split(",") + args.past_mimicit_text_path.split(",") if args.past_mimicit_text_path != "" else args.mimicit_text_path.split(",")
-        all_images_text_path = args.images_text_path.split(",") + args.past_images_text_path.split(",") if args.past_images_text_path != "" else args.images_text_path.split(",")
+        all_mimicit_text_path = (
+            args.mimicit_text_path.split(",") + args.past_mimicit_text_path.split(",")
+            if args.past_mimicit_text_path != ""
+            else args.mimicit_text_path.split(",")
+        )
+        all_images_text_path = (
+            args.images_text_path.split(",") + args.past_images_text_path.split(",") if args.past_images_text_path != "" else args.images_text_path.split(",")
+        )
         # all_train_text_config_path = args.train_config_text_path.split(",") + args.past_train_config_text_path.split(",") if args.past_train_config_text_path != "" else args.train_config_text_path.split(",")
         if args.past_mimicit_text_path != "":
-            it_status = ["new"]*len(args.mimicit_text_path.split(",")) + ["past"]*len(args.past_mimicit_text_path.split(","))
+            it_status = ["new"] * len(args.mimicit_text_path.split(",")) + ["past"] * len(args.past_mimicit_text_path.split(","))
         else:
-            it_status = ["new"]*len(args.mimicit_text_path.split(","))
+            it_status = ["new"] * len(args.mimicit_text_path.split(","))
 
         args.max_src_length = 256
         args.max_tgt_length = 256

@@ -78,7 +78,6 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             labels[labels == tokenizer.pad_token_id] = -100
             labels[:, 0] = -100
 
-            
             for i in range(labels.shape[0]):
                 # remove loss for any token before the first <image> token
                 # label_idx = 0
