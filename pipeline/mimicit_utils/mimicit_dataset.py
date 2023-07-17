@@ -138,7 +138,7 @@ class MimicitDataset(Dataset):
                 with open(cur_mimicit_path, "rb") as f:
                     cache_train_config = orjson.loads(f.read())["data"]
                     cache_train_config = {key: [] for key in cache_train_config.keys()}
-                    
+
             if cur_status == "new":
                 cache_train_list = list(cache_train_config.keys())
             else:
