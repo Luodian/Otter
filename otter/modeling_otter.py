@@ -9,11 +9,14 @@ from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
 from .configuration_otter import OtterConfig
 
+# import sys
+# from configuration_otter import OtterConfig
+
 from flamingo.falcon.modelling_RW import RWForCausalLM
 from flamingo.mpt.modeling_mpt import MPTForCausalLM
 
 from transformers.models.auto import AutoModel, AutoModelForCausalLM, AutoTokenizer
-
+from peft import get_peft_model, LoraConfig, TaskType
 
 import sys
 import random
@@ -62,6 +65,8 @@ __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
     "RWForCausalLM": "transformer.h",
     "MPTForCausalLM": "transformer.blocks",
 }
+
+MODEL_CLASSES = {"LlamaForCausalLM": "llama", "OPTForCausalLM": "opt", "GPTJForCausalLM": "gptj", "GPTNeoXForCausalLM": "gpt_neox", "MPTForCausalLM": "mpt"}
 
 
 def _infer_decoder_layers_attr_name(model: nn.Module):
@@ -495,7 +500,6 @@ class OtterLMMixin(nn.Module):
             for layer in self.get_decoder().blocks:
                 layer.condition_media_locations(media_locations)
                 layer.condition_attend_previous(attend_previous)
-
         return super().forward(*input, **kwargs)  # Call the other parent's forward method
 
     def is_conditioned(self) -> bool:
@@ -577,6 +581,11 @@ class OtterModel(OtterPreTrainedModel):
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
             use_media_placement_augmentation=self.use_media_placement_augmentation,
         )
+
+        # config.update({"lora_config": {"r": 16, "lora_alpha": 16, "task_type": "CAUSAL_LM"}})
+        # lora_config = LoraConfig(r=16, lora_alpha=16, task_type=TaskType.CAUSAL_LM)
+        # self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
+        # self.lang_encoder.print_trainable_parameters()
         self.post_init()
 
     def get_input_embeddings(self) -> nn.Module:
@@ -717,7 +726,6 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             elif config.text_config.architectures[0] == "RWForCausalLM":
                 text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
                 lang_encoder = RWForCausalLM(config=config.text_config)
-            # TODO: what's the logic here?
             elif config.text_config.architectures[0] == "LlamaForCausalLM":
                 text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
                 lang_encoder = LlamaForCausalLM(config=config.text_config)
@@ -767,6 +775,28 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
             use_media_placement_augmentation=self.use_media_placement_augmentation,
         )
+
+        if "lora_config" in config.__dict__:
+            print(f"Using LoRA with config:{config.lora_config}")
+            standard_modules = ["q_proj", "v_proj"]
+            lang_encoder_short_name = MODEL_CLASSES[config.text_config.architectures[0]]
+            model_to_lora_modules = {
+                "llama": standard_modules,
+                "opt": standard_modules,
+                "gptj": standard_modules,
+                "gpt_neox": ["query_key_value"],
+                "mpt": ["Wqkv"],
+            }
+            lora_config = LoraConfig(
+                r=config.lora_config["r"],
+                lora_alpha=config.lora_config["lora_alpha"],
+                lora_dropout=config.lora_config["lora_dropout"],
+                task_type=TaskType.CAUSAL_LM,
+                target_modules=model_to_lora_modules[lang_encoder_short_name],
+            )
+            self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
+            self.lang_encoder.print_trainable_parameters()
+
         self.post_init()
 
     def get_input_embeddings(self) -> nn.Module:
@@ -791,10 +821,19 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         # Freeze all parameters in vision encoder
         for param in self.vision_encoder.parameters():
             param.requires_grad = False
-        # Freeze all parameters in lang encoders except gated_cross_attn_layers
-        for name, param in self.lang_encoder.named_parameters():
-            if "gated_cross_attn_layer" not in name:
-                param.requires_grad = False
+
+        if "lora_config" in self.config.__dict__:
+            print(f"LoRA trainable param: {(sum(p.numel() for p in self.lang_encoder.parameters() if p.requires_grad)) / 1e9:.3f} B")
+            # Unfreeze gated_cross_attn_layers
+            for layer in self.lang_encoder._get_decoder_layers():
+                if layer.gated_cross_attn_layer is not None:
+                    for param in layer.gated_cross_attn_layer.parameters():
+                        param.requires_grad = True
+        else:
+            # Freeze all parameters in lang encoders except gated_cross_attn_layers
+            for name, param in self.lang_encoder.named_parameters():
+                if "gated_cross_attn_layer" not in name:
+                    param.requires_grad = False
         # Unfreeze LM input and output embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
@@ -802,7 +841,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             self.lang_encoder.lm_head.requires_grad_(True)
         # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
         # print model size in billions of parameters in 2 decimal places
-        print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
+        print(f"Total Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
     def forward(
         self,
@@ -923,7 +962,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             vision_x = vision_x.repeat_interleave(num_beams, dim=0)
         self._encode_vision_x(vision_x=vision_x)
         output = self.lang_encoder.generate(
-            lang_x,
+            input_ids=lang_x,
             attention_mask=attention_mask,
             eos_token_id=self.eoc_token_id,
             **generate_kwargs,
