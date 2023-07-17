@@ -78,12 +78,12 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             labels[labels == tokenizer.pad_token_id] = -100
             labels[:, 0] = -100
 
-            # remove loss for any token before the first <image> token
             for i in range(labels.shape[0]):
-                label_idx = 0
-                while label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id:
-                    labels[i][label_idx] = -100
-                    label_idx += 1
+                # remove loss for any token before the first <image> token
+                # label_idx = 0
+                # while label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id:
+                #     labels[i][label_idx] = -100
+                #     label_idx += 1
 
                 # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
                 # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
@@ -92,12 +92,11 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
                 media_idxs = torch.where(labels[i] == media_token_id)[0]
 
-                # remove loss for any token between first <image> and first <answer>
-                for media_idx in media_idxs[:1]:
-                    token_idx = media_idx + 1
-                    while token_idx < labels.shape[1] and labels[i][token_idx] != answer_token_id:
-                        labels[i][token_idx] = -100
-                        token_idx += 1
+                # remove loss for any token the before the first <answer>
+                token_idx = 0
+                while token_idx < labels.shape[1] and labels[i][token_idx] != answer_token_id:
+                    labels[i][token_idx] = -100
+                    token_idx += 1
 
                 # remove loss for any token between <|endofchunk|> and <answer>, except <image>
                 for endofchunk_idx in endofchunk_idxs:
@@ -119,12 +118,6 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     attention_mask=attention_mask,
                     labels=labels,
                 )[0]
-                # loss_mimicit = model.generate(
-                #     vision_x=images.to(device_id),
-                #     lang_x=input_ids.to(device_id),
-                #     attention_mask=attention_mask.to(device_id),
-                #     max_length=256,
-                # )
             if accelerator.mixed_precision == "fp16":
                 accelerator.backward(loss_mimicit.to(device_id))
             else:
@@ -219,46 +212,118 @@ def parse_args():
         help="used to name saving directory and wandb run",
     )
     # training file args
+    ##image-text in-context instructions
     parser.add_argument(
-        "--mimicit_path",
+        "--past_mimicit_ic_path",
         type=str,
-        help="path to multi_instruct dataset, this should be /path/to/DC_instruction.json",
+        default="",
+        help="path to past mimicit dataset, the data is in image-text in-context format, this should be /path/to/xx_instruction.json",
     )
     parser.add_argument(
-        "--images_path",
+        "--past_images_ic_path",
         type=str,
-        help="path to images_path dataset, this should be /path/to/DC.json",
+        default="",
+        help="path to past images_path dataset, this should be /path/to/xx.json",
     )
     parser.add_argument(
-        "--train_config_path",
+        "--past_train_config_ic_path",
         type=str,
-        help="path to train_config_path dataset, this should be /path/to/DC/DC_train.json",
+        default="",
+        help="path to past train_config_path dataset, this should be /path/to/xx_train.json",
     )
-    # simple data resampler strategy: add some datasets into past dataloader in avoid of catestrophic forgetting
+    parser.add_argument(
+        "--mimicit_ic_path",
+        type=str,
+        default="",
+        help="path to new mimicit dataset, the data is in image-text in-context format, this should be /path/to/xx_instruction.json",
+    )
+    parser.add_argument(
+        "--images_ic_path",
+        type=str,
+        default="",
+        help="path to new images_path dataset, this should be /path/to/xx.json",
+    )
+    parser.add_argument(
+        "--train_config_ic_path",
+        type=str,
+        default="",
+        help="path to new train_config_path dataset, this should be /path/to/xx_train.json",
+    )
+
+    ##image-text(include multi-run conversation) instructions
     parser.add_argument(
         "--past_mimicit_path",
         type=str,
-        default=None,
-        help="path to past multi_instruct dataset, this should be /path/to/DC_instruction.json",
+        default="",
+        help="path to past mimicit dataset, the data is in image-text format, this should be /path/to/xx_instruction.json",
     )
     parser.add_argument(
         "--past_images_path",
         type=str,
-        default=None,
-        help="path to past images_path dataset, this should be /path/to/DC.json",
+        default="",
+        help="path to past images_path dataset, this should be /path/to/xx.json",
     )
     parser.add_argument(
-        "--past_train_config_path",
+        "--mimicit_path",
         type=str,
-        default=None,
-        help="path to past train_config_path dataset, this should be /path/to/DC/DC_train.json",
+        default="",
+        help="path to new mimicit dataset, the data is in image-text format, this should be /path/to/xx_instruction.json",
     )
+    parser.add_argument(
+        "--images_path",
+        type=str,
+        default="",
+        help="path to new images_path dataset, this should be /path/to/xx.json",
+    )
+
+    ##text(include multi-run conversation) instructions
+    parser.add_argument(
+        "--past_mimicit_text_path",
+        type=str,
+        default="",
+        help="path to past mimicit dataset, the data is in text format, this should be /path/to/xx_instruction.json",
+    )
+    parser.add_argument(
+        "--mimicit_text_path",
+        type=str,
+        default="",
+        help="path to new mimicit dataset, the data is in text format, this should be /path/to/xx_instruction.json",
+    )
+
+    ##video-text instruction
+    parser.add_argument(
+        "--past_mimicit_vt_path",
+        type=str,
+        default="",
+        help="path to past mimicit dataset, the data is in video-text format, this should be /path/to/xx_instruction.json",
+    )
+    parser.add_argument(
+        "--past_images_vt_path",
+        type=str,
+        default="",
+        help="path to past images_path dataset, this should be /path/to/xx.json",
+    )
+
+    parser.add_argument(
+        "--mimicit_vt_path",
+        type=str,
+        default="",
+        help="path to new mimicit dataset, the data is in video-text format, this should be /path/to/xx_instruction.json",
+    )
+    parser.add_argument(
+        "--images_vt_path",
+        type=str,
+        default="",
+        help="path to new images_path dataset, this should be /path/to/xx.json",
+    )
+
     parser.add_argument(
         "--past_subset_ration",
         type=float,
-        default=None,
+        default=1.0,
         help="the ration of resampling past dataset",
     )
+
     # optimizer args
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--num_epochs", type=int, default=1)
