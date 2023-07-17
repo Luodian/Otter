@@ -146,7 +146,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
         if args.mask_lm_head:
             unwrapped_model = accelerator.unwrap_model(model)
-            if unwrapped_model.lang_encoder.__class__.__name__ == "MPTForCausalLM":
+            if unwrapped_model.lang_encoder.__class__.__name__ in ["MPTForCausalLM", "MosaicGPT"]:
                 unwrapped_model.lang_encoder.transformer.wte.apply(mask_embedding)
             elif unwrapped_model.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
                 unwrapped_model.lang_encoder.model.embed_tokens.apply(mask_embedding)
@@ -419,7 +419,7 @@ def main():
 
     accelerator.wait_for_everyone()
 
-    if model.lang_encoder.__class__.__name__ != "MPTForCausalLM":
+    if model.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
         model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
 
     args.tokenizer = model.text_tokenizer
