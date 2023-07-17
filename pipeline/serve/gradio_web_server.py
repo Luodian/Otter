@@ -489,7 +489,7 @@ a:link {
 <span style="font-size:larger;">
 
 ### Note:
-Current Otter Image is version **Otter-MPT7B (0705)**. We update the model by incoporating OpenFlamingv2 and specifically tune it to enable generation abilities for both long and short answers.
+Current Otter Image is version **Otter-MPT7B (0710/0713)**. We update our models by incoporating OpenFlamingv2 and specifically tune it to enable generation abilities for both long and short answers.
 
 This version Otter Image demonstrates in-context learning ability to demonstrate more reasonable and coherent answer following given example instruction/response pairs. 
 </span>
@@ -584,10 +584,10 @@ def build_demo(embed_mode):
                     no_repeat_ngram_size = gr.Slider(minimum=1, maximum=10, value=3, step=1, interactive=True, label="no_repeat_ngram_size")
                     length_penalty = gr.Slider(minimum=1, maximum=5, value=1, step=0.1, interactive=True, label="length_penalty")
                     do_sample = gr.Checkbox(interactive=True, label="do_sample")
-                    early_stopping = gr.Checkbox(interactive=True, label="early_stopping")
+                    early_stopping = gr.Checkbox(interactive=True, label="early_stopping", value=True)
 
             with gr.Column(scale=6):
-                chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=960)
+                chatbot = grChatbot(elem_id="chatbot", visible=False).style(height=720)
                 with gr.Row():
                     with gr.Column(scale=8):
                         textbox_3 = gr.Textbox(
@@ -609,13 +609,22 @@ def build_demo(embed_mode):
         gr.Examples(
             label="Examples (0-shot)",
             examples=[
+                [f"{cur_dir}/examples/ms_st.jpg", "Does the image feature a globally recognized technology company?"],
+                [f"{cur_dir}/examples/ms_st.jpg", "Does the image feature a globally recognized technology company? Please answer with yes or no."],
+                [f"{cur_dir}/examples/zelda_princess.jpg", "Can you identify the game character?"],
+                [f"{cur_dir}/examples/martin.jpeg", "Can you identify the historic figure?"],
+                [f"{cur_dir}/examples/gtav.jpg", "Can you identify what the image is about?"],
+                [
+                    f"{cur_dir}/examples/xray.jpg",
+                    "Act as a radiologist and write a diagnostic radiology report for the patient based on their chest radiographs:",
+                ],
                 [
                     f"{cur_dir}/examples/baseball.jpg",
                     "Please describe this image in short words.",
                 ],
                 [
                     f"{cur_dir}/examples/waterview.jpg",
-                    "Please describe this image in detail and provide your feeling on this image.",
+                    "Please provide a detailed description of the image and share your personal impressions of the scene.",
                 ],
             ],
             inputs=[

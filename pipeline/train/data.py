@@ -606,7 +606,6 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
 
     # args.train_num_samples = sum(len(dataset) for dataset in unified_datasets) / len(unified_datasets)
     args.train_num_samples = statistics.median((len(dataset) for dataset in unified_datasets))
-
     round_fn = math.floor if floor else math.ceil
     global_batch_size = args.batch_size * args.world_size
 

@@ -118,12 +118,6 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     attention_mask=attention_mask,
                     labels=labels,
                 )[0]
-            #     loss_mimicit = model.generate(
-            #         vision_x=images.to(device_id),
-            #         lang_x=input_ids.to(device_id),
-            #         attention_mask=attention_mask.to(device_id),
-            #         max_length=256,
-            #     )
             if accelerator.mixed_precision == "fp16":
                 accelerator.backward(loss_mimicit.to(device_id))
             else:
@@ -329,6 +323,7 @@ def parse_args():
         default=1.0,
         help="the ration of resampling past dataset",
     )
+
 
     # optimizer args
     parser.add_argument("--offline", action="store_true")
