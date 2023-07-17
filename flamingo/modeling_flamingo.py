@@ -14,6 +14,7 @@ from transformers.models.auto import AutoModel, AutoModelForCausalLM, AutoTokeni
 from flamingo.configuration_flamingo import FlamingoConfig
 from flamingo.falcon.modelling_RW import RWForCausalLM
 from flamingo.mpt.modeling_mpt import MPTForCausalLM
+from flamingo.mpt_redpajama.mosaic_gpt import MosaicGPT
 
 # from .configuration_flamingo import FlamingoConfig
 
@@ -26,6 +27,7 @@ __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
     "llama": "model.layers",
     "RWForCausalLM": "transformer.h",
     "MPTForCausalLM": "transformer.blocks",
+    "MosaicGPT": "transformer.blocks",
 }
 
 
@@ -448,14 +450,16 @@ class FlamingoLMMixin(nn.Module):
         attend_previous = (random.random() < 0.5) if self.use_media_placement_augmentation else True
         # attend_previous = self.only_attend_previous
 
-        if self.__class__.__name__ != "MPTForCausalLM":
+        if self.__class__.__name__ == "LlamaForCausalLM":
             for layer in self.get_decoder().layers:
                 layer.condition_media_locations(media_locations)
                 layer.condition_attend_previous(attend_previous)
-        else:
+        elif self.__class__.__name__ in ["MPTForCausalLM", "MosaicGPT"]:
             for layer in self.get_decoder().blocks:
                 layer.condition_media_locations(media_locations)
                 layer.condition_attend_previous(attend_previous)
+        else:
+            print("inavaliable text encoder")
         return super().forward(*input, **kwargs)  # Call the other parent's forward method
 
     def is_conditioned(self) -> bool:
@@ -502,6 +506,9 @@ class FlamingoModel(FlamingoPreTrainedModel):
             if config.text_config.architectures[0] == "MPTForCausalLM":
                 text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
                 lang_encoder = MPTForCausalLM(config=config.text_config)
+            elif config.text_config.text_config.architectures[0] == "MosaicGPT":
+                text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mosaic-llama-redpajama-final-candidate")
+                lang_encoder = MosaicGPT(config=config.text_config)
             elif config.text_config.architectures[0] == "RWForCausalLM":
                 text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
                 lang_encoder = RWForCausalLM(config=config.text_config)
@@ -520,7 +527,7 @@ class FlamingoModel(FlamingoPreTrainedModel):
         extend_instance(lang_encoder, FlamingoLMMixin)
         decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
         lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        if lang_encoder.__class__.__name__ != "MPTForCausalLM":
+        if lang_encoder.__class__.__name__ == "LlamaForCausalLM":
             lang_encoder.resize_token_embeddings(len(text_tokenizer))
         self.lang_encoder = lang_encoder
 
@@ -679,6 +686,9 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
             if config.text_config.architectures[0] == "MPTForCausalLM":
                 text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
                 lang_encoder = MPTForCausalLM(config=config.text_config)
+            elif config.text_config.architectures[0] == "MosaicGPT":
+                text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mosaic-llama-redpajama-final-candidate")
+                lang_encoder = MosaicGPT(config=config.text_config)
             elif config.text_config.architectures[0] == "RWForCausalLM":
                 text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
                 lang_encoder = RWForCausalLM(config=config.text_config)
@@ -705,7 +715,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         extend_instance(lang_encoder, FlamingoLMMixin)
         decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
         lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        if lang_encoder.__class__.__name__ != "MPTForCausalLM":
+        if lang_encoder.__class__.__name__ == "LlamaForCausalLM":
             lang_encoder.resize_token_embeddings(len(text_tokenizer))
         self.lang_encoder = lang_encoder
 
