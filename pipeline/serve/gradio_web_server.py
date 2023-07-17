@@ -489,7 +489,7 @@ a:link {
 <span style="font-size:larger;">
 
 ### Note:
-Current Otter Image is version **Otter-MPT7B (0705)**. We update the model by incoporating OpenFlamingv2 and specifically tune it to enable generation abilities for both long and short answers.
+Current Otter Image is version **Otter-MPT7B (0710/0713)**. We update our models by incoporating OpenFlamingv2 and specifically tune it to enable generation abilities for both long and short answers.
 
 This version Otter Image demonstrates in-context learning ability to demonstrate more reasonable and coherent answer following given example instruction/response pairs. 
 </span>
@@ -611,7 +611,8 @@ def build_demo(embed_mode):
             examples=[
                 [f"{cur_dir}/examples/ms_st.jpg", "Does the image feature a globally recognized technology company?"],
                 [f"{cur_dir}/examples/ms_st.jpg", "Does the image feature a globally recognized technology company? Please answer with yes or no."],
-                [f"{cur_dir}/examples/zelda_princess.jpg", "Can you identify the character?"],
+                [f"{cur_dir}/examples/zelda_princess.jpg", "Can you identify the game character?"],
+                [f"{cur_dir}/examples/martin.jpeg", "Can you identify the historic figure?"],
                 [f"{cur_dir}/examples/gtav.jpg", "Can you identify what the image is about?"],
                 [
                     f"{cur_dir}/examples/xray.jpg",

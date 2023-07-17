@@ -543,11 +543,11 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     args.task = "pretrain"
     args.tokenizer = tokenizer
-    new_mimicit_paths = args.new_mimicit_path.split(",")
-    new_images_paths = args.new_images_path.split(",")
-    new_train_config_paths = args.new_train_config_path.split(",")
+    mimicit_paths = args.mimicit_path.split(",")
+    images_paths = args.images_path.split(",")
+    train_config_paths = args.train_config_path.split(",")
     unified_new_datasets = []
-    for cur_mimicit_path, cur_images_path, cur_train_config_path in zip(new_mimicit_paths, new_images_paths, new_train_config_paths):
+    for cur_mimicit_path, cur_images_path, cur_train_config_path in zip(mimicit_paths, images_paths, train_config_paths):
         unified_new_dataset = MimicitDataset(args, cur_mimicit_path, cur_images_path, cur_train_config_path, status="new")
         unified_new_datasets.append(unified_new_dataset)
 

@@ -220,6 +220,22 @@ def parse_args():
     )
     # training file args
     parser.add_argument(
+        "--mimicit_path",
+        type=str,
+        help="path to multi_instruct dataset, this should be /path/to/DC_instruction.json",
+    )
+    parser.add_argument(
+        "--images_path",
+        type=str,
+        help="path to images_path dataset, this should be /path/to/DC.json",
+    )
+    parser.add_argument(
+        "--train_config_path",
+        type=str,
+        help="path to train_config_path dataset, this should be /path/to/DC/DC_train.json",
+    )
+    # simple data resampler strategy: add some datasets into past dataloader in avoid of catestrophic forgetting
+    parser.add_argument(
         "--past_mimicit_path",
         type=str,
         default=None,
@@ -242,22 +258,6 @@ def parse_args():
         type=float,
         default=None,
         help="the ration of resampling past dataset",
-    )
-
-    parser.add_argument(
-        "--new_mimicit_path",
-        type=str,
-        help="path to new multi_instruct dataset, this should be /path/to/DC_instruction.json",
-    )
-    parser.add_argument(
-        "--new_images_path",
-        type=str,
-        help="path to new images_path dataset, this should be /path/to/DC.json",
-    )
-    parser.add_argument(
-        "--new_train_config_path",
-        type=str,
-        help="path to new train_config_path dataset, this should be /path/to/DC/DC_train.json",
     )
     # optimizer args
     parser.add_argument("--offline", action="store_true")
