@@ -52,6 +52,12 @@ class MosaicGPT(PreTrainedModel):
         self.transformer.update({"blocks": nn.ModuleList([GPTBlock(device=config.init_device, **config.to_dict()) for _ in range(config.n_layers)])})
         self.transformer.update({"ln_f": layernorm_class(config.d_model, device=config.init_device)})
 
+        for child in self.transformer.children():
+            if isinstance(child, torch.nn.ModuleList):
+                continue
+            if isinstance(child, torch.nn.Module):
+                child._fsdp_wrap = True
+
         # enables scaling output logits; similar to a softmax "temperature"
         # PaLM paper uses scale 1/sqrt(config.d_model)
         self.logit_scale = None
@@ -199,10 +205,12 @@ class MosaicGPT(PreTrainedModel):
         attention_mask: Optional[torch.ByteTensor] = None,
         prefix_mask: Optional[torch.ByteTensor] = None,
         sequence_id: Optional[torch.LongTensor] = None,
+        labels: Optional[torch.LongTensor] = None,
         return_dict: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         use_cache: Optional[bool] = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
     ):
         return_dict = return_dict if return_dict is not None else self.config.return_dict
         use_cache = use_cache if use_cache is not None else self.config.use_cache
@@ -214,6 +222,12 @@ class MosaicGPT(PreTrainedModel):
             raise NotImplementedError("return_dict False is not implemented yet for MosaicGPT")
         if output_attentions:
             raise NotImplementedError("output_attentions is not implemented yet for MosaicGPT")
+
+        if attention_mask is not None:
+            attention_mask = attention_mask.bool()
+
+        if prefix_mask is not None:
+            prefix_mask = prefix_mask.bool()
 
         if attention_mask is not None and attention_mask[:, 0].sum() != attention_mask.shape[0] and self.training:
             raise NotImplementedError("MosaicGPT does not support training with left padding.")
@@ -293,16 +307,27 @@ class MosaicGPT(PreTrainedModel):
         x = self.transformer.ln_f(x)  # type: ignore
 
         # output embedding weight tied to input embedding
+        # move outputs to same device as weights for token embedding
+        # needed to support HF `device_map`
         assert isinstance(self.transformer.wte, nn.Module)  # pyright
         assert isinstance(self.transformer.wte.weight, torch.Tensor)  # pyright
-        logits = F.linear(x, self.transformer.wte.weight, None)
+        logits = F.linear(x.to(self.transformer.wte.weight.device), self.transformer.wte.weight, None)
 
         if self.logit_scale is not None:
             if self.logit_scale == 0:
                 warnings.warn(f"Multiplying logits by {self.logit_scale=}. This will produce uniform (uninformative) outputs.")
             logits *= self.logit_scale
 
-        return CausalLMOutputWithPast(logits=logits, past_key_values=past_key_values, hidden_states=all_hidden_states)
+        loss = None
+        if labels is not None:
+            _labels = torch.roll(labels, shifts=-1)
+            _labels[:, -1] = -100
+            loss = F.cross_entropy(
+                logits.view(-1, logits.size(-1)),
+                _labels.to(logits.device).view(-1),
+            )
+
+        return CausalLMOutputWithPast(loss=loss, logits=logits, past_key_values=past_key_values, hidden_states=all_hidden_states)
 
     # Param Initialization, needed for device='meta' fast initialization
     def param_init_fn(self, module):
@@ -369,4 +394,7 @@ class MosaicGPT(PreTrainedModel):
         return self.transformer.wte
 
     def set_input_embeddings(self, new_embeddings):
-        self.transformer.wte = new_embeddings
+        self.transformer.wte = new_embeddings.device(self.transformer.wte.weight.device)
+
+    def get_decoder(self):
+        return self.transformer
