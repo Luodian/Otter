@@ -19,6 +19,8 @@ from .custom_embedding import SharedEmbedding
 from .norm import NORM_CLASS_REGISTRY
 from .param_init_fns import MODEL_INIT_REGISTRY, generic_param_init_fn_
 
+import torch.distributed as dist
+
 try:
     from .flash_attn_triton import flash_attn_func
 except:
