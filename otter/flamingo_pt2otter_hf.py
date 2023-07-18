@@ -1,4 +1,5 @@
 """ convert from open flamingo pt to otter hf, as the starting point for ICI training
+    Deprecated and should change for MPT version OtterModel
 """
 
 import re

@@ -65,7 +65,14 @@ __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
     "MosaicGPT": "transformer.blocks",
 }
 
-MODEL_CLASSES = {"LlamaForCausalLM": "llama", "OPTForCausalLM": "opt", "GPTJForCausalLM": "gptj", "GPTNeoXForCausalLM": "gpt_neox", "MPTForCausalLM": "mpt"}
+MODEL_CLASSES = {
+    "LlamaForCausalLM": "llama",
+    "OPTForCausalLM": "opt",
+    "GPTJForCausalLM": "gptj",
+    "GPTNeoXForCausalLM": "gpt_neox",
+    "MPTForCausalLM": "mpt",
+    "MosaicGPT": "mpt",
+}
 
 
 def _infer_decoder_layers_attr_name(model: nn.Module):
@@ -586,10 +593,27 @@ class OtterModel(OtterPreTrainedModel):
             use_media_placement_augmentation=self.use_media_placement_augmentation,
         )
 
-        # config.update({"lora_config": {"r": 16, "lora_alpha": 16, "task_type": "CAUSAL_LM"}})
-        # lora_config = LoraConfig(r=16, lora_alpha=16, task_type=TaskType.CAUSAL_LM)
-        # self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
-        # self.lang_encoder.print_trainable_parameters()
+        if "lora_config" in config.__dict__:
+            print(f"Using LoRA with config:{config.lora_config}")
+            standard_modules = ["q_proj", "v_proj"]
+            lang_encoder_short_name = MODEL_CLASSES[config.text_config.architectures[0]]
+            model_to_lora_modules = {
+                "llama": standard_modules,
+                "opt": standard_modules,
+                "gptj": standard_modules,
+                "gpt_neox": ["query_key_value"],
+                "mpt": ["Wqkv"],
+            }
+            lora_config = LoraConfig(
+                r=config.lora_config["r"],
+                lora_alpha=config.lora_config["lora_alpha"],
+                lora_dropout=config.lora_config["lora_dropout"],
+                task_type=TaskType.CAUSAL_LM,
+                target_modules=model_to_lora_modules[lang_encoder_short_name],
+            )
+            self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
+            self.lang_encoder.print_trainable_parameters()
+
         self.post_init()
 
     def get_input_embeddings(self) -> nn.Module:
