@@ -199,10 +199,12 @@ class MosaicGPT(PreTrainedModel):
         attention_mask: Optional[torch.ByteTensor] = None,
         prefix_mask: Optional[torch.ByteTensor] = None,
         sequence_id: Optional[torch.LongTensor] = None,
+        labels: Optional[torch.LongTensor] = None,
         return_dict: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         use_cache: Optional[bool] = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
     ):
         return_dict = return_dict if return_dict is not None else self.config.return_dict
         use_cache = use_cache if use_cache is not None else self.config.use_cache
@@ -302,7 +304,16 @@ class MosaicGPT(PreTrainedModel):
                 warnings.warn(f"Multiplying logits by {self.logit_scale=}. This will produce uniform (uninformative) outputs.")
             logits *= self.logit_scale
 
-        return CausalLMOutputWithPast(logits=logits, past_key_values=past_key_values, hidden_states=all_hidden_states)
+        loss = None
+        if labels is not None:
+            _labels = torch.roll(labels, shifts=-1)
+            _labels[:, -1] = -100
+            loss = F.cross_entropy(
+                logits.view(-1, logits.size(-1)),
+                _labels.to(logits.device).view(-1),
+            )
+
+        return CausalLMOutputWithPast(loss=loss, logits=logits, past_key_values=past_key_values, hidden_states=all_hidden_states)
 
     # Param Initialization, needed for device='meta' fast initialization
     def param_init_fn(self, module):
@@ -370,3 +381,6 @@ class MosaicGPT(PreTrainedModel):
 
     def set_input_embeddings(self, new_embeddings):
         self.transformer.wte = new_embeddings
+
+    def get_decoder(self):
+        return self.transformer
