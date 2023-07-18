@@ -533,13 +533,13 @@ def main():
                 "optimizer_state_dict": optimizer.state_dict(),
                 "lr_scheduler_state_dict": lr_scheduler.state_dict(),
             }
-            print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
-            accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+            print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_epoch{epoch}.pt")
+            accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_epoch{epoch}.pt")
             # save the config
             unwrapped_model.config.save_pretrained(args.external_save_dir)
             if args.delete_previous_checkpoint:
                 if epoch > 0:
-                    os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
+                    os.remove(f"{args.external_save_dir}/checkpoint_epoch{epoch-1}.pt")
 
         accelerator.wait_for_everyone()
 
