@@ -217,6 +217,12 @@ class MosaicGPT(PreTrainedModel):
         if output_attentions:
             raise NotImplementedError("output_attentions is not implemented yet for MosaicGPT")
 
+        if attention_mask is not None:
+            attention_mask = attention_mask.bool()
+
+        if prefix_mask is not None:
+            prefix_mask = prefix_mask.bool()
+
         if attention_mask is not None and attention_mask[:, 0].sum() != attention_mask.shape[0] and self.training:
             raise NotImplementedError("MosaicGPT does not support training with left padding.")
 
