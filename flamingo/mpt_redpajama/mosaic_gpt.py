@@ -55,6 +55,12 @@ class MosaicGPT(PreTrainedModel):
         self.transformer.update({"blocks": nn.ModuleList([GPTBlock(device=config.init_device, **config.to_dict()) for _ in range(config.n_layers)])})
         self.transformer.update({"ln_f": layernorm_class(config.d_model, device=config.init_device)})
 
+        for child in self.transformer.children():
+            if isinstance(child, torch.nn.ModuleList):
+                continue
+            if isinstance(child, torch.nn.Module):
+                child._fsdp_wrap = True
+
         # enables scaling output logits; similar to a softmax "temperature"
         # PaLM paper uses scale 1/sqrt(config.d_model)
         self.logit_scale = None
@@ -304,15 +310,11 @@ class MosaicGPT(PreTrainedModel):
         x = self.transformer.ln_f(x)  # type: ignore
 
         # output embedding weight tied to input embedding
+        # move outputs to same device as weights for token embedding
+        # needed to support HF `device_map`
         assert isinstance(self.transformer.wte, nn.Module)  # pyright
         assert isinstance(self.transformer.wte.weight, torch.Tensor)  # pyright
         logits = F.linear(x.to(self.transformer.wte.weight.device), self.transformer.wte.weight, None)
-        # move outputs to same device as weights for token embedding
-        # needed to support HF `device_map`
-        # logits = self.transformer.wte(
-        #     input=x.to(self.transformer.wte.weight.device),
-        #     # unembed=True,
-        # )
 
         if self.logit_scale is not None:
             if self.logit_scale == 0:
@@ -395,7 +397,7 @@ class MosaicGPT(PreTrainedModel):
         return self.transformer.wte
 
     def set_input_embeddings(self, new_embeddings):
-        self.transformer.wte = new_embeddings
+        self.transformer.wte = new_embeddings.device(self.transformer.wte.weight.device)
 
     def get_decoder(self):
         return self.transformer
