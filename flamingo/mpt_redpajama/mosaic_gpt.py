@@ -13,14 +13,17 @@ from typing import List, Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from transformers import AutoTokenizer, PreTrainedModel
+from transformers import PreTrainedModel
 from transformers.modeling_outputs import CausalLMOutputWithPast
 
-from .attention import attn_bias as module_attn_bias, attn_bias_shape as module_attn_bias_shape
-from .gpt_blocks import GPTBlock
+from flamingo.mpt.custom_embedding import SharedEmbedding
+
+from .attention import attn_bias as module_attn_bias
+from .attention import attn_bias_shape as module_attn_bias_shape
 from .configuration_mosaic_gpt import MosaicGPTConfig
-from .param_init_fns import MODEL_INIT_REGISTRY
+from .gpt_blocks import GPTBlock
 from .low_precision_layernorm import LPLayerNorm
+from .param_init_fns import MODEL_INIT_REGISTRY
 
 
 class MosaicGPT(PreTrainedModel):
@@ -303,7 +306,13 @@ class MosaicGPT(PreTrainedModel):
         # output embedding weight tied to input embedding
         assert isinstance(self.transformer.wte, nn.Module)  # pyright
         assert isinstance(self.transformer.wte.weight, torch.Tensor)  # pyright
-        logits = F.linear(x, self.transformer.wte.weight, None)
+        logits = F.linear(x.to(self.transformer.wte.weight.device), self.transformer.wte.weight, None)
+        # move outputs to same device as weights for token embedding
+        # needed to support HF `device_map`
+        # logits = self.transformer.wte(
+        #     input=x.to(self.transformer.wte.weight.device),
+        #     # unembed=True,
+        # )
 
         if self.logit_scale is not None:
             if self.logit_scale == 0:
