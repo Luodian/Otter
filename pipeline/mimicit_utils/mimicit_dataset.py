@@ -17,7 +17,12 @@ import random
 import sys
 from PIL import Image, ImageFile
 
-from .transforms import *
+import torch
+import numpy as np
+
+# from .transforms import *
+
+# from transforms import *
 
 # from transforms import *
 
@@ -59,12 +64,11 @@ class MimicitDataset(Dataset):
     def __init__(
         self,
         args,
-        cur_mimicit_path,
-        cur_images_path,
-        cur_train_config_path,
+        mimicit_paths="",
+        images_paths="",
+        train_config_paths="",
         is_test=False,
-        status="new",
-        subset_ration=None,
+        status_list=["past", "new"],
         # supported_data_types=["caption", "qa"],
     ):
         # super().__init__(args, is_test)
@@ -79,7 +83,6 @@ class MimicitDataset(Dataset):
 
         self.seed = args.seed
         self.patch_image_size = args.patch_image_size
-        # self.supported_data_types = supported_data_types
 
         self.epoch = 0
 
@@ -87,47 +90,70 @@ class MimicitDataset(Dataset):
 
         self.patch_resize_transform = transforms.Compose(
             [
-                RandomResize(scales),
-                transforms.CenterCrop(args.patch_image_size),
-                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.Resize((args.patch_image_size, args.patch_image_size), interpolation=transforms.InterpolationMode.BICUBIC),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=FLAMINGO_MEAN, std=FLAMINGO_STD),
             ]
         )
+        assert mimicit_paths != "", f"Error: The mimicit_paths do not get!"
 
-        self.mimicit_path = cur_mimicit_path
-        self.images_path = cur_images_path
-        self.train_config_path = cur_train_config_path
+        self.mimicit_paths = mimicit_paths
+        self.images_paths = images_paths if images_paths != "" else [""] * len(mimicit_paths)
+        self.train_config_paths = train_config_paths if train_config_paths != "" else [""] * len(mimicit_paths)
+        self.status_list = status_list
 
-        assert (status == "new" and subset_ration == None) or (
-            status == "old" and subset_ration != None
-        ), f"subset_ration can only for past dataset or subset_ration should be specified for old dataset"
+        assert len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths) == len(self.status_list), f"metas do not have same number"
 
-        assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!"
+        self.dataset = {}
+        self.images = {}
+        self.train_data_list = []
+        self.train_config = []
 
-        assert os.path.exists(cur_images_path), f"Error: The local images_path {cur_images_path} not exists!"
+        for cur_mimicit_path, cur_images_path, cur_train_config_path, cur_status in zip(
+            self.mimicit_paths, self.images_paths, self.train_config_paths, self.status_list
+        ):
+            # Load the dataset
+            assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!"
+            with open(cur_mimicit_path, "rb") as f:
+                if self.dataset == {}:
+                    self.dataset = orjson.loads(f.read())["data"]
+                else:
+                    self.dataset.update(orjson.loads(f.read())["data"])
 
-        assert os.path.exists(cur_train_config_path), f"Error: The local train_config_path {cur_train_config_path} not exists!"
+            # Load the images
+            if cur_images_path != "":
+                assert os.path.exists(cur_images_path), f"Error: The local images_path {cur_images_path} not exists!"
+                with open(cur_images_path, "rb") as f:
+                    if self.images == {}:
+                        self.images = orjson.loads(f.read())
+                    else:
+                        self.images.update(orjson.loads(f.read()))
 
-        # Load the dataset
-        with open(self.mimicit_path, "rb") as f:
-            self.dataset = orjson.loads(f.read())["data"]
+            # Load the train_config
+            if cur_train_config_path != "":
+                assert os.path.exists(cur_train_config_path), f"Error: The local train_config_path {cur_train_config_path} not exists!"
+                with open(cur_train_config_path, "rb") as f:
+                    cache_train_config = orjson.loads(f.read())
+            else:
+                with open(cur_mimicit_path, "rb") as f:
+                    cache_train_config = orjson.loads(f.read())["data"]
+                    cache_train_config = {key: [] for key in cache_train_config.keys()}
 
-        # Load the images
-        with open(self.images_path, "rb") as f:
-            self.images = orjson.loads(f.read())
-
-        # Load the train_config
-        with open(self.train_config_path, "rb") as f:
-            self.train_config = orjson.loads(f.read())
-
-        if status == "new":
-            self.train_data_list = list(self.train_config.keys())
-        else:
-            random.seed(0)
-            self.train_data_list = list(self.train_config.keys())
-            random.shuffle(self.train_data_list)
-            self.train_data_list = self.train_data_list[: int(len(self.train_data_list) * subset_ration)]
+            if cur_status == "new":
+                cache_train_list = list(cache_train_config.keys())
+            else:
+                random.seed(0)
+                cache_train_list = list(cache_train_config.keys())
+                random.shuffle(cache_train_list)
+                cache_train_list = cache_train_list[: int(len(cache_train_list) * args.past_subset_ration)]
+            if self.train_data_list == []:
+                self.train_data_list = cache_train_list
+                self.train_config = cache_train_config
+            else:
+                self.train_data_list += cache_train_list
+                self.train_config.update(cache_train_config)
+            del cache_train_config
+            del cache_train_list
 
         self.bos_item = torch.LongTensor([args.tokenizer.bos_token_id])
         self.eos_item = torch.LongTensor([args.tokenizer.eos_token_id])
@@ -155,6 +181,7 @@ class MimicitDataset(Dataset):
             " ",
             question,
         )
+        question = question.lstrip("\n")
         question = question.rstrip("\n")
         question = question.strip(" ")
 
@@ -482,9 +509,32 @@ class MimicitDataset(Dataset):
             cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
             cur_text = f"<image>User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
             all_texts += cur_text
+        # import pdb;pdb.set_trace()
+        return patch_images, all_texts
+
+    def process_text_instruction(self, instruction_id, instruction, answer, image_ids, in_context_example_ids):
+        patch_images = torch.tensor([])
+        all_texts = ""
+        all_instruction_ids = in_context_example_ids + [instruction_id]
+        for cur_instruction_id in all_instruction_ids[:]:
+            cur_instruction = self.dataset[cur_instruction_id]["instruction"]
+            cur_answer = self.dataset[cur_instruction_id]["answer"]
+            cur_patch_image = torch.zeros(3, 224, 224).unsqueeze(0).unsqueeze(0)
+            if len(patch_images) == 0:
+                patch_images = cur_patch_image
+            else:
+                patch_images = torch.cat((patch_images, cur_patch_image))
+            cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
+            cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+            if "baize" in instruction_id:
+                cur_text = f"{cur_answer}"
+            else:
+                cur_text = f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+            all_texts += cur_text
         return patch_images, all_texts
 
     def process_image_text_pair(self, index):
+        # try:
         cur_train_id = self.train_data_list[index]
         (
             instruction_id,
@@ -499,6 +549,8 @@ class MimicitDataset(Dataset):
             self.dataset[cur_train_id]["image_ids"],
             self.train_config[cur_train_id],
         )
+        # except:
+        #     import pdb;pdb.set_trace()
 
         # self.max_src_length = self.max_tgt_length = 256
 
@@ -518,6 +570,8 @@ class MimicitDataset(Dataset):
             patch_images, all_texts = self.process_funqa(instruction_id, instruction, answer, image_ids, in_context_example_ids)
         elif cur_train_id.startswith("LLAVAR"):
             patch_images, all_texts = self.process_llavar(instruction_id, instruction, answer, image_ids, in_context_example_ids)
+        elif cur_train_id.startswith("TXT"):
+            patch_images, all_texts = self.process_text_instruction(instruction_id, instruction, answer, image_ids, in_context_example_ids)
         else:
             patch_images, all_texts = self.process_general_vqa(instruction_id, instruction, answer, image_ids, in_context_example_ids)
 
@@ -679,16 +733,53 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    for train_dataset in ["LRV"]:
-        args.multi_instruct_path = f"/mnt/petrelfs/zhangyuanhan/data/mimicit/{train_dataset}/{train_dataset}_instructions.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
-        args.images_path = f"/mnt/petrelfs/zhangyuanhan/data/mimicit/{train_dataset}/{train_dataset}.json"
-        args.train_config_path = f"/mnt/petrelfs/zhangyuanhan/data/mimicit/{train_dataset}/{train_dataset}_train.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
+    for train_dataset in ["medical"]:
+        # args.multi_instruct_path = f"/mnt/petrelfs/zhangyuanhan/data/baize/{train_dataset}_instructions.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
+        # args.images_path = f"/mnt/petrelfs/zhangyuanhan/data/baize/{train_dataset}.json"
+        # args.train_config_path = f"/mnt/petrelfs/zhangyuanhan/data/baize/{train_dataset}_train.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
+        # args.past_mimicit_text_path="/mnt/petrelfs/zhangyuanhan/data/alpaca/alpaca_instructions.json,/mnt/petrelfs/zhangyuanhan/data/baize/medical_instructions.json,/mnt/petrelfs/zhangyuanhan/data/baize/quora_instructions.json,/mnt/petrelfs/zhangyuanhan/data/baize/stackoverflow_instructions.json"
+        # args.past_images_text_path="/mnt/petrelfs/zhangyuanhan/data/alpaca/alpaca.json,/mnt/petrelfs/zhangyuanhan/data/baize/medical.json,/mnt/petrelfs/zhangyuanhan/data/baize/quora.json,/mnt/petrelfs/zhangyuanhan/data/baize/stackoverflow.json"
+        # args.past_train_config_text_path="/mnt/petrelfs/zhangyuanhan/data/alpaca/alpaca_train.json,/mnt/petrelfs/zhangyuanhan/data/baize/medical_train.json,/mnt/petrelfs/zhangyuanhan/data/baize/quora_train.json,/mnt/petrelfs/zhangyuanhan/data/baize/stackoverflow_train.json"
+
+        # args.mimicit_text_path="/mnt/petrelfs/zhangyuanhan/data/Alpaca-CoT/auto-cot/auto-cot_instructions.json"
+        # args.images_text_path="/mnt/petrelfs/zhangyuanhan/data/Alpaca-CoT/auto-cot/auto-cot.json"
+        # args.train_config_text_path="/mnt/petrelfs/zhangyuanhan/data/Alpaca-CoT/auto-cot/auto-cot_train.json"
+
+        # args.past_mimicit_text_path=""
+        # args.past_images_text_path=""
+        # args.past_train_config_text_path=""
+
+        # args.mimicit_text_path="/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACR_T2T_instructions.json"
+        # args.images_text_path="/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json"
+        # args.train_config_text_path="/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACR_T2T_train.json"
+
+        args.past_mimicit_text_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/PL/PL_instructions.json"
+        args.past_images_text_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/PL/PL.json"
+
+        args.mimicit_text_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/MEDRPT/MEDRPT_instructions.json"
+        args.images_text_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/MEDRPT/MEDRPT.json"
+
+        all_mimicit_text_path = (
+            args.mimicit_text_path.split(",") + args.past_mimicit_text_path.split(",")
+            if args.past_mimicit_text_path != ""
+            else args.mimicit_text_path.split(",")
+        )
+        all_images_text_path = (
+            args.images_text_path.split(",") + args.past_images_text_path.split(",") if args.past_images_text_path != "" else args.images_text_path.split(",")
+        )
+        # all_train_text_config_path = args.train_config_text_path.split(",") + args.past_train_config_text_path.split(",") if args.past_train_config_text_path != "" else args.train_config_text_path.split(",")
+        if args.past_mimicit_text_path != "":
+            it_status = ["new"] * len(args.mimicit_text_path.split(",")) + ["past"] * len(args.past_mimicit_text_path.split(","))
+        else:
+            it_status = ["new"] * len(args.mimicit_text_path.split(","))
+
         args.max_src_length = 256
         args.max_tgt_length = 256
         args.task = "pretrain"
         args.pretrain_seed = 0
         args.patch_image_size = 224
         args.seed = 0
+        args.past_subset_ration = 1
 
         from transformers import LlamaTokenizer
 
@@ -703,9 +794,11 @@ if __name__ == "__main__":
 
         args.tokenizer = tokenizer
 
-        cur_multi_instruct_path, cur_images_path, cur_train_config_path = args.multi_instruct_path, args.images_path, args.train_config_path
+        # test_dataset = MimicitDataset(args, mimicit_text_path, status_list=it_status)
 
-        test_dataset = MimicitDataset(args, cur_multi_instruct_path, cur_images_path, cur_train_config_path, status="new")
+        # test_dataset = MimicitDataset(args, all_mimicit_text_path, all_images_text_path, all_train_text_config_path, status_list=it_status)
+
+        test_dataset = MimicitDataset(args, all_mimicit_text_path, all_images_text_path, status_list=it_status)
 
         uniq_id_dict = {}
         samples = []
