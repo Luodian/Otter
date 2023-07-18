@@ -454,16 +454,17 @@ def main():
 
     if args.pretrained_model_name_or_path is not None:
         accelerator.print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
+        device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" else "auto"
         if "otter" in args.run_name.lower():
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
-                device_map="auto",  # {"": device_id},
+                device_map=device_map,
                 local_files_only=args.offline,
             )
         elif "flamingo" in args.run_name.lower():
             model = FlamingoForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
-                device_map="auto",
+                device_map=device_map,
                 local_files_only=args.offline,
             )
             model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
