@@ -93,16 +93,8 @@ class VQA:
                 )
             else:
                 anns = self.dataset["annotations"]
-            anns = (
-                anns
-                if len(quesTypes) == 0
-                else [ann for ann in anns if ann["question_type"] in quesTypes]
-            )
-            anns = (
-                anns
-                if len(ansTypes) == 0
-                else [ann for ann in anns if ann["answer_type"] in ansTypes]
-            )
+            anns = anns if len(quesTypes) == 0 else [ann for ann in anns if ann["question_type"] in quesTypes]
+            anns = anns if len(ansTypes) == 0 else [ann for ann in anns if ann["answer_type"] in ansTypes]
         ids = [ann["question_id"] for ann in anns]
         return ids
 
@@ -122,21 +114,11 @@ class VQA:
             anns = self.dataset["annotations"]
         else:
             if not len(quesIds) == 0:
-                anns = sum(
-                    [self.qa[quesId] for quesId in quesIds if quesId in self.qa], []
-                )
+                anns = sum([self.qa[quesId] for quesId in quesIds if quesId in self.qa], [])
             else:
                 anns = self.dataset["annotations"]
-            anns = (
-                anns
-                if len(quesTypes) == 0
-                else [ann for ann in anns if ann["question_type"] in quesTypes]
-            )
-            anns = (
-                anns
-                if len(ansTypes) == 0
-                else [ann for ann in anns if ann["answer_type"] in ansTypes]
-            )
+            anns = anns if len(quesTypes) == 0 else [ann for ann in anns if ann["question_type"] in quesTypes]
+            anns = anns if len(ansTypes) == 0 else [ann for ann in anns if ann["answer_type"] in ansTypes]
         ids = [ann["image_id"] for ann in anns]
         return ids
 
@@ -191,17 +173,13 @@ class VQA:
         for ann in anns:
             quesId = ann["question_id"]
             if res.dataset["task_type"] == "Multiple Choice":
-                assert (
-                    ann["answer"] in self.qqa[quesId]["multiple_choices"]
-                ), "predicted answer is not one of the multiple choices"
+                assert ann["answer"] in self.qqa[quesId]["multiple_choices"], "predicted answer is not one of the multiple choices"
             qaAnn = self.qa[quesId]
             ann["image_id"] = qaAnn["image_id"]
             ann["question_type"] = qaAnn["question_type"]
             if "answer_type" in ann:
                 ann["answer_type"] = qaAnn["answer_type"]
-        print(
-            "DONE (t=%0.2fs)" % ((datetime.datetime.utcnow() - time_t).total_seconds())
-        )
+        print("DONE (t=%0.2fs)" % ((datetime.datetime.utcnow() - time_t).total_seconds()))
 
         res.dataset["annotations"] = anns
         res.createIndex()
@@ -418,16 +396,12 @@ class VQAEval:
                 ansDic["answer"] = self.processDigitArticle(ansDic["answer"])
 
             for gtAnsDatum in gts[quesId]["answers"]:
-                otherGTAns = [
-                    item for item in gts[quesId]["answers"] if item != gtAnsDatum
-                ]
+                otherGTAns = [item for item in gts[quesId]["answers"] if item != gtAnsDatum]
                 matchingAns = [item for item in otherGTAns if item["answer"] == resAns]
                 acc = min(1, float(len(matchingAns)) / 3)
                 gtAcc.append(acc)
             quesType = gts[quesId]["question_type"]
-            ansType = (
-                gts[quesId]["answer_type"] if "answer_type" in gts[quesId] else "other"
-            )
+            ansType = gts[quesId]["answer_type"] if "answer_type" in gts[quesId] else "other"
             avgGTAcc = float(sum(gtAcc)) / len(gtAcc)
             accQA.append(avgGTAcc)
             if quesType not in accQuesType:
@@ -449,9 +423,7 @@ class VQAEval:
     def processPunctuation(self, inText):
         outText = inText
         for p in self.punct:
-            if (p + " " in inText or " " + p in inText) or (
-                re.search(self.commaStrip, inText) != None
-            ):
+            if (p + " " in inText or " " + p in inText) or (re.search(self.commaStrip, inText) != None):
                 outText = outText.replace(p, "")
             else:
                 outText = outText.replace(p, " ")
@@ -482,12 +454,7 @@ class VQAEval:
             )
             for quesType in accQuesType
         }
-        self.accuracy["perAnswerType"] = {
-            ansType: round(
-                100 * float(sum(accAnsType[ansType])) / len(accAnsType[ansType]), self.n
-            )
-            for ansType in accAnsType
-        }
+        self.accuracy["perAnswerType"] = {ansType: round(100 * float(sum(accAnsType[ansType])) / len(accAnsType[ansType]), self.n) for ansType in accAnsType}
 
     def setEvalQA(self, quesId, acc):
         self.evalQA[quesId] = round(100 * acc, self.n)
@@ -517,9 +484,7 @@ class VQAEval:
             progress = 1
             status = "Done...\r\n"
         block = int(round(barLength * progress))
-        text = "\rFinshed Percent: [{0}] {1}% {2}".format(
-            "#" * block + "-" * (barLength - block), int(progress * 100), status
-        )
+        text = "\rFinshed Percent: [{0}] {1}% {2}".format("#" * block + "-" * (barLength - block), int(progress * 100), status)
         sys.stdout.write(text)
         sys.stdout.flush()
 

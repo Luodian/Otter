@@ -34,9 +34,7 @@ class EvalModel(BaseEvalModel):
             precision = {"torch_dtype": torch.float16}
         elif model_args["precision"] == "bf16":
             precision = {"torch_dtype": torch.bfloat16}
-        self.model = FlamingoForConditionalGeneration.from_pretrained(
-            model_args["pretrained_model_name_or_path"], device_map="auto"
-        )
+        self.model = FlamingoForConditionalGeneration.from_pretrained(model_args["pretrained_model_name_or_path"], device_map="auto")
         # (
         #     self.model,
         #     self.image_processor,
@@ -151,6 +149,4 @@ class EvalModel(BaseEvalModel):
         return f"<image>Question:{question} Short answer:{answer if answer is not None else ''}{'<|endofchunk|>' if answer is not None else ''}"
 
     def get_caption_prompt(self, caption=None) -> str:
-        return (
-            f"<image>Output:{caption if caption is not None else ''}{'<|endofchunk|>' if caption is not None else ''}"
-        )
+        return f"<image>Output:{caption if caption is not None else ''}{'<|endofchunk|>' if caption is not None else ''}"

@@ -52,9 +52,7 @@ parser.add_argument(
     help="Huggingface format Otter or OpenFlamingo model.",
     default="/home/luodian/projects/checkpoints/flamingo-mpt-30B-pretrain-mix-bf16",
 )
-parser.add_argument(
-    "--results_file", type=str, default=None, help="JSON file to save results"
-)
+parser.add_argument("--results_file", type=str, default=None, help="JSON file to save results")
 
 # Trial arguments
 parser.add_argument("--shots", nargs="+", default=[0, 4, 8, 16, 32], type=int)
@@ -77,9 +75,7 @@ parser.add_argument(
     default=-1,
     help="Number of samples to evaluate on. -1 for all samples.",
 )
-parser.add_argument(
-    "--query_set_size", type=int, default=2048, help="Size of demonstration query set"
-)
+parser.add_argument("--query_set_size", type=int, default=2048, help="Size of demonstration query set")
 
 parser.add_argument("--batch_size", type=int, default=8)
 
@@ -348,9 +344,7 @@ parser.add_argument(
     type=str,
     help="url used to set up distributed training",
 )
-parser.add_argument(
-    "--dist-backend", default="nccl", type=str, help="distributed backend"
-)
+parser.add_argument("--dist-backend", default="nccl", type=str, help="distributed backend")
 parser.add_argument(
     "--horovod",
     default=False,
@@ -369,9 +363,7 @@ def main():
     args, leftovers = parser.parse_known_args()
     module = importlib.import_module(f"open_flamingo.eval.models.{args.model}")
 
-    model_args = {
-        leftovers[i].lstrip("-"): leftovers[i + 1] for i in range(0, len(leftovers), 2)
-    }
+    model_args = {leftovers[i].lstrip("-"): leftovers[i + 1] for i in range(0, len(leftovers), 2)}
     eval_model = module.EvalModel(model_args)
 
     # set up distributed evaluation
@@ -409,9 +401,7 @@ def main():
 
             if args.rank == 0:
                 print(f"Shots {shot} Mean CIDEr score: {np.nanmean(scores)}")
-                results["flickr30"].append(
-                    {"shots": shot, "trials": scores, "mean": np.nanmean(scores)}
-                )
+                results["flickr30"].append({"shots": shot, "trials": scores, "mean": np.nanmean(scores)})
 
     if args.eval_coco:
         print("Evaluating on COCO...")
@@ -431,9 +421,7 @@ def main():
 
             if args.rank == 0:
                 print(f"Shots {shot} Mean CIDEr score: {np.nanmean(scores)}")
-                results["coco"].append(
-                    {"shots": shot, "trials": scores, "mean": np.nanmean(scores)}
-                )
+                results["coco"].append({"shots": shot, "trials": scores, "mean": np.nanmean(scores)})
 
     if args.eval_ok_vqa:
         print("Evaluating on OK-VQA...")
@@ -453,9 +441,7 @@ def main():
 
             if args.rank == 0:
                 print(f"Shots {shot} Mean OK-VQA score: {np.nanmean(scores)}")
-                results["ok_vqa"].append(
-                    {"shots": shot, "trials": scores, "mean": np.nanmean(scores)}
-                )
+                results["ok_vqa"].append({"shots": shot, "trials": scores, "mean": np.nanmean(scores)})
 
     if args.eval_vqav2:
         print("Evaluating on VQAv2...")
@@ -475,9 +461,7 @@ def main():
 
             if args.rank == 0:
                 print(f"Shots {shot} Mean VQA score: {np.nanmean(scores)}")
-                results["vqav2"].append(
-                    {"shots": shot, "trials": scores, "mean": np.nanmean(scores)}
-                )
+                results["vqav2"].append({"shots": shot, "trials": scores, "mean": np.nanmean(scores)})
 
     if args.eval_vizwiz:
         print("Evaluating on VizWiz...")
@@ -497,9 +481,7 @@ def main():
 
             if args.rank == 0:
                 print(f"Shots {shot} Mean VizWiz score: {np.nanmean(scores)}")
-                results["vizwiz"].append(
-                    {"shots": shot, "trials": scores, "mean": np.nanmean(scores)}
-                )
+                results["vizwiz"].append({"shots": shot, "trials": scores, "mean": np.nanmean(scores)})
 
     if args.eval_textvqa:
         print("Evaluating on TextVQA...")
@@ -520,9 +502,7 @@ def main():
 
             if args.rank == 0:
                 print(f"Shots {shot} Mean TextVQA score: {np.nanmean(scores)}")
-                results["textvqa"].append(
-                    {"shots": shot, "trials": scores, "mean": np.nanmean(scores)}
-                )
+                results["textvqa"].append({"shots": shot, "trials": scores, "mean": np.nanmean(scores)})
 
     if args.eval_imagenet:
         print("Evaluating on ImageNet...")
@@ -538,17 +518,12 @@ def main():
                     dataset_name="imagenet",
                 )
                 if args.rank == 0:
-                    print(
-                        f"Shots {shot} Trial {trial} "
-                        f"ImageNet score: {imagenet_score}"
-                    )
+                    print(f"Shots {shot} Trial {trial} " f"ImageNet score: {imagenet_score}")
                     scores.append(imagenet_score)
 
             if args.rank == 0:
                 print(f"Shots {shot} Mean ImageNet score: {np.nanmean(scores)}")
-                results["imagenet"].append(
-                    {"shots": shot, "trials": scores, "mean": np.nanmean(scores)}
-                )
+                results["imagenet"].append({"shots": shot, "trials": scores, "mean": np.nanmean(scores)})
 
     if args.eval_hateful_memes:
         print("Evaluating on Hateful Memes...")
@@ -564,17 +539,12 @@ def main():
                     dataset_name="hateful_memes",
                 )
                 if args.rank == 0:
-                    print(
-                        f"Shots {shot} Trial {trial} "
-                        f"Hateful Memes score: {hateful_memes_score}"
-                    )
+                    print(f"Shots {shot} Trial {trial} " f"Hateful Memes score: {hateful_memes_score}")
                     scores.append(hateful_memes_score)
 
             if args.rank == 0:
                 print(f"Shots {shot} Mean Hateful Memes score: {np.nanmean(scores)}")
-                results["hateful_memes"].append(
-                    {"shots": shot, "trials": scores, "mean": np.nanmean(scores)}
-                )
+                results["hateful_memes"].append({"shots": shot, "trials": scores, "mean": np.nanmean(scores)})
 
     if args.rank == 0 and args.results_file is not None:
         with open(args.results_file, "w") as f:
@@ -583,15 +553,11 @@ def main():
 
 def get_random_indices(num_samples, query_set_size, full_dataset, seed):
     if num_samples + query_set_size > len(full_dataset):
-        raise ValueError(
-            f"num_samples + query_set_size must be less than {len(full_dataset)}"
-        )
+        raise ValueError(f"num_samples + query_set_size must be less than {len(full_dataset)}")
 
     # get a random subset of the dataset
     np.random.seed(seed)
-    random_indices = np.random.choice(
-        len(full_dataset), num_samples + query_set_size, replace=False
-    )
+    random_indices = np.random.choice(len(full_dataset), num_samples + query_set_size, replace=False)
     return random_indices
 
 
@@ -664,9 +630,7 @@ def evaluate_captioning(
         image_val_dir_path = args.coco_val_image_dir_path
         annotations_path = args.coco_karpathy_json_path
     elif dataset_name == "flickr":
-        image_train_dir_path = (
-            args.flickr_image_dir_path
-        )  # Note: calling this "train" for consistency with COCO but Flickr only has one split for images
+        image_train_dir_path = args.flickr_image_dir_path  # Note: calling this "train" for consistency with COCO but Flickr only has one split for images
         image_val_dir_path = None
         annotations_path = args.flickr_karpathy_json_path
     else:
@@ -701,17 +665,13 @@ def evaluate_captioning(
 
     predictions = defaultdict()
 
-    np.random.seed(
-        seed + args.rank
-    )  # make sure each worker has a different seed for the random context samples
+    np.random.seed(seed + args.rank)  # make sure each worker has a different seed for the random context samples
     for batch in tqdm(
         test_dataloader,
         desc=f"Running inference {dataset_name.upper()}",
         disable=args.rank != 0,
     ):
-        batch_demo_samples = sample_batch_demos_from_query_set(
-            in_context_samples, effective_num_shots, len(batch["image"])
-        )
+        batch_demo_samples = sample_batch_demos_from_query_set(in_context_samples, effective_num_shots, len(batch["image"]))
 
         batch_images = []
         batch_text = []
@@ -722,12 +682,7 @@ def evaluate_captioning(
                 context_images = []
             batch_images.append(context_images + [batch["image"][i]])
 
-            context_text = "".join(
-                [
-                    eval_model.get_caption_prompt(caption=x["caption"].strip())
-                    for x in batch_demo_samples[i]
-                ]
-            )
+            context_text = "".join([eval_model.get_caption_prompt(caption=x["caption"].strip()) for x in batch_demo_samples[i]])
 
             # Keep the text but remove the image tags for the zero-shot case
             if num_shots == 0:
@@ -744,9 +699,7 @@ def evaluate_captioning(
             length_penalty=length_penalty,
         )
 
-        new_predictions = [
-            postprocess_captioning_generation(out).replace('"', "") for out in outputs
-        ]
+        new_predictions = [postprocess_captioning_generation(out).replace('"', "") for out in outputs]
 
         for i, sample_id in enumerate(batch["image_id"]):
             predictions[sample_id] = {
@@ -760,9 +713,7 @@ def evaluate_captioning(
     if args.rank != 0:
         return
 
-    all_predictions = {
-        k: v for d in all_predictions for k, v in d.items()
-    }  # merge dicts
+    all_predictions = {k: v for d in all_predictions for k, v in d.items()}  # merge dicts
 
     # save the predictions to a temporary file
     results_path = f"{dataset_name}results_{uuid.uuid4()}.json"
@@ -770,19 +721,14 @@ def evaluate_captioning(
     with open(results_path, "w") as f:
         f.write(
             json.dumps(
-                [
-                    {"image_id": k, "caption": all_predictions[k]["caption"]}
-                    for k in all_predictions
-                ],
+                [{"image_id": k, "caption": all_predictions[k]["caption"]} for k in all_predictions],
                 indent=4,
             )
         )
 
     metrics = compute_cider(
         result_path=results_path,
-        annotations_path=args.coco_annotations_json_path
-        if dataset_name == "coco"
-        else args.flickr_annotations_json_path,
+        annotations_path=args.coco_annotations_json_path if dataset_name == "coco" else args.flickr_annotations_json_path,
     )
 
     # delete the temporary file
@@ -877,17 +823,13 @@ def evaluate_vqa(
     in_context_samples = get_query_set(train_dataset, args.query_set_size, seed)
     predictions = []
 
-    np.random.seed(
-        seed + args.rank
-    )  # make sure each worker has a different seed for the random context samples
+    np.random.seed(seed + args.rank)  # make sure each worker has a different seed for the random context samples
     for batch in tqdm(
         test_dataloader,
         desc=f"Running inference {dataset_name}",
         disable=args.rank != 0,
     ):
-        batch_demo_samples = sample_batch_demos_from_query_set(
-            in_context_samples, effective_num_shots, len(batch["image"])
-        )
+        batch_demo_samples = sample_batch_demos_from_query_set(in_context_samples, effective_num_shots, len(batch["image"]))
 
         batch_images = []
         batch_text = []
@@ -898,22 +840,13 @@ def evaluate_vqa(
                 context_images = []
             batch_images.append(context_images + [batch["image"][i]])
 
-            context_text = "".join(
-                [
-                    eval_model.get_vqa_prompt(
-                        question=x["question"], answer=x["answers"][0]
-                    )
-                    for x in batch_demo_samples[i]
-                ]
-            )
+            context_text = "".join([eval_model.get_vqa_prompt(question=x["question"], answer=x["answers"][0]) for x in batch_demo_samples[i]])
 
             # Keep the text but remove the image tags for the zero-shot case
             if num_shots == 0:
                 context_text = context_text.replace("<image>", "")
 
-            batch_text.append(
-                context_text + eval_model.get_vqa_prompt(question=batch["question"][i])
-            )
+            batch_text.append(context_text + eval_model.get_vqa_prompt(question=batch["question"][i]))
 
         outputs = eval_model.get_outputs(
             batch_images=batch_images,
@@ -924,11 +857,7 @@ def evaluate_vqa(
             length_penalty=length_penalty,
         )
 
-        process_function = (
-            postprocess_ok_vqa_generation
-            if dataset_name == "ok_vqa"
-            else postprocess_vqa_generation
-        )
+        process_function = postprocess_ok_vqa_generation if dataset_name == "ok_vqa" else postprocess_vqa_generation
 
         new_predictions = map(process_function, outputs)
 
@@ -941,9 +870,7 @@ def evaluate_vqa(
     if args.rank != 0:
         return
 
-    all_predictions = [
-        item for sublist in all_predictions for item in sublist
-    ]  # flatten
+    all_predictions = [item for sublist in all_predictions for item in sublist]  # flatten
 
     # save the predictions to a temporary file
     random_uuid = str(uuid.uuid4())
@@ -989,10 +916,7 @@ def evaluate_classification(
         float: accuracy score
     """
     if args.model != "open_flamingo":
-        raise NotImplementedError(
-            "evaluate_classification is currently only supported for OpenFlamingo "
-            "models"
-        )
+        raise NotImplementedError("evaluate_classification is currently only supported for OpenFlamingo " "models")
     batch_size = args.batch_size
     num_samples = args.num_samples
     model, tokenizer = eval_model.model, eval_model.tokenizer
@@ -1031,9 +955,7 @@ def evaluate_classification(
 
     predictions = []
 
-    np.random.seed(
-        seed + args.rank
-    )  # make sure each worker has a different seed for the random context samples
+    np.random.seed(seed + args.rank)  # make sure each worker has a different seed for the random context samples
     for batch_idx, batch in tqdm(
         enumerate(test_dataloader),
         desc=f"Running inference {dataset_name}",
@@ -1045,23 +967,16 @@ def evaluate_classification(
         for idx in range(len(batch["image"])):
             # Choose a different set of random context samples for each sample
             # from the training set
-            context_indices = np.random.choice(
-                len(train_dataset), effective_num_shots, replace=False
-            )
+            context_indices = np.random.choice(len(train_dataset), effective_num_shots, replace=False)
 
             in_context_samples = [train_dataset[i] for i in context_indices]
 
             if num_shots > 0:
-                vision_x = [
-                    eval_model.image_processor(data["image"]).unsqueeze(0)
-                    for data in in_context_samples
-                ]
+                vision_x = [eval_model.image_processor(data["image"]).unsqueeze(0) for data in in_context_samples]
             else:
                 vision_x = []
 
-            vision_x = vision_x + [
-                eval_model.image_processor(batch["image"][idx]).unsqueeze(0)
-            ]
+            vision_x = vision_x + [eval_model.image_processor(batch["image"][idx]).unsqueeze(0)]
             batch_images.append(torch.cat(vision_x, dim=0))
 
             def sample_to_prompt(sample):
@@ -1071,8 +986,7 @@ def evaluate_classification(
                     return prompt_text
 
             context_text = "".join(
-                f"{sample_to_prompt(in_context_samples[i])}{in_context_samples[i]['class_name']}<|endofchunk|>"
-                for i in range(effective_num_shots)
+                f"{sample_to_prompt(in_context_samples[i])}{in_context_samples[i]['class_name']}<|endofchunk|>" for i in range(effective_num_shots)
             )
 
             # Keep the text but remove the image tags for the zero-shot case
@@ -1088,10 +1002,7 @@ def evaluate_classification(
 
         # Cache the context text: tokenize context and prompt,
         # e.g. '<context> a picture of a '
-        text_x = [
-            context_text + sample_to_prompt({k: batch[k][idx] for k in batch.keys()})
-            for idx, context_text in enumerate(batch_text)
-        ]
+        text_x = [context_text + sample_to_prompt({k: batch[k][idx] for k in batch.keys()}) for idx, context_text in enumerate(batch_text)]
 
         ctx_and_prompt_tokenized = tokenizer(
             text_x,
@@ -1100,12 +1011,8 @@ def evaluate_classification(
             max_length=2000,
         )
 
-        ctx_and_prompt_input_ids = ctx_and_prompt_tokenized["input_ids"].to(
-            eval_model.device
-        )
-        ctx_and_prompt_attention_mask = (
-            ctx_and_prompt_tokenized["attention_mask"].to(eval_model.device).bool()
-        )
+        ctx_and_prompt_input_ids = ctx_and_prompt_tokenized["input_ids"].to(eval_model.device)
+        ctx_and_prompt_attention_mask = ctx_and_prompt_tokenized["attention_mask"].to(eval_model.device).bool()
 
         def _detach_pkvs(pkvs):
             """Detach a set of past key values."""
@@ -1147,16 +1054,12 @@ def evaluate_classification(
             past_key_values = None
             # Tokenize only the class name and iteratively decode the model's
             # predictions for this class.
-            classname_tokens = tokenizer(
-                class_name, add_special_tokens=False, return_tensors="pt"
-            )["input_ids"].to(eval_model.device)
+            classname_tokens = tokenizer(class_name, add_special_tokens=False, return_tensors="pt")["input_ids"].to(eval_model.device)
 
             if classname_tokens.ndim == 1:  # Case: classname is only 1 token
                 classname_tokens = torch.unsqueeze(classname_tokens, 1)
 
-            classname_tokens = repeat(
-                classname_tokens, "b s -> (repeat b) s", repeat=len(batch_text)
-            )
+            classname_tokens = repeat(classname_tokens, "b s -> (repeat b) s", repeat=len(batch_text))
 
             if not no_kv_caching:
                 # Compute the outputs one token at a time, using cached
@@ -1173,9 +1076,7 @@ def evaluate_classification(
                     _lang_x = classname_tokens[:, token_idx].reshape((-1, 1))
                     outputs = eval_model.get_logits(
                         lang_x=_lang_x,
-                        past_key_values=(
-                            past_key_values if token_idx > 0 else precomputed_pkvs
-                        ),
+                        past_key_values=(past_key_values if token_idx > 0 else precomputed_pkvs),
                         clear_conditioned_layers=False,
                     )
                     past_key_values = _detach_pkvs(outputs.past_key_values)
@@ -1189,11 +1090,7 @@ def evaluate_classification(
                 # at index 0 corresponds to the token at index 1.
                 probs = probs[:, :-1, :]  # shape [B, classname_tokens, vocab_size]
 
-                gen_probs = (
-                    torch.gather(probs, 2, classname_tokens[:, :, None])
-                    .squeeze(-1)
-                    .cpu()
-                )
+                gen_probs = torch.gather(probs, 2, classname_tokens[:, :, None]).squeeze(-1).cpu()
 
                 class_prob = torch.prod(gen_probs, 1).numpy()
             else:
@@ -1222,14 +1119,8 @@ def evaluate_classification(
                 probs = torch.softmax(logits, dim=-1)
 
                 # get probability of the generated class name tokens
-                gen_probs = probs[
-                    :, ctx_and_prompt_input_ids.shape[1] - 1 : _lang_x.shape[1], :
-                ]
-                gen_probs = (
-                    torch.gather(gen_probs, 2, classname_tokens[:, :, None])
-                    .squeeze(-1)
-                    .cpu()
-                )
+                gen_probs = probs[:, ctx_and_prompt_input_ids.shape[1] - 1 : _lang_x.shape[1], :]
+                gen_probs = torch.gather(gen_probs, 2, classname_tokens[:, :, None]).squeeze(-1).cpu()
                 class_prob = torch.prod(gen_probs, 1).numpy()
 
             overall_probs.append(class_prob)
@@ -1256,9 +1147,7 @@ def evaluate_classification(
                     "id": batch["id"][i],
                     "gt_label": y_i,
                     "pred_label": top5[0],
-                    "pred_score": overall_probs[i][highest_prob_idxs[0]]
-                    if dataset_name == "hateful_memes"
-                    else None,  # only for hateful memes
+                    "pred_score": overall_probs[i][highest_prob_idxs[0]] if dataset_name == "hateful_memes" else None,  # only for hateful memes
                 }
             )
 
@@ -1268,9 +1157,7 @@ def evaluate_classification(
     if args.rank != 0:
         return
 
-    all_predictions = [
-        item for sublist in all_predictions for item in sublist
-    ]  # flatten
+    all_predictions = [item for sublist in all_predictions for item in sublist]  # flatten
 
     # Hack to remove samples with duplicate ids (only necessary for multi-GPU evaluation)
     all_predictions = {pred["id"]: pred for pred in all_predictions}.values()
@@ -1284,9 +1171,7 @@ def evaluate_classification(
         return roc_auc_score(gts, pred_scores)
     else:
         # return top-1 accuracy
-        acc1 = sum(
-            int(pred["gt_label"] == pred["pred_label"]) for pred in all_predictions
-        )
+        acc1 = sum(int(pred["gt_label"] == pred["pred_label"]) for pred in all_predictions)
         return float(acc1) / len(all_predictions)
 
 

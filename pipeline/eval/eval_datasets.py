@@ -39,35 +39,23 @@ class CaptionDataset(Dataset):
     def __getitem__(self, idx):
         if self.dataset_name == "coco":
             image = Image.open(
-                os.path.join(
-                    self.image_train_dir_path, self.annotations[idx]["filename"]
-                )
+                os.path.join(self.image_train_dir_path, self.annotations[idx]["filename"])
                 if self.annotations[idx]["filepath"] == "train2014"
-                else os.path.join(
-                    self.image_val_dir_path, self.annotations[idx]["filename"]
-                )
+                else os.path.join(self.image_val_dir_path, self.annotations[idx]["filename"])
             )
         elif self.dataset_name == "flickr":
-            image = Image.open(
-                os.path.join(
-                    self.image_train_dir_path, self.annotations[idx]["filename"]
-                )
-            )
+            image = Image.open(os.path.join(self.image_train_dir_path, self.annotations[idx]["filename"]))
         image.load()
         caption = self.annotations[idx]["sentences"][0]["raw"]
         return {
             "image": image,
             "caption": caption,
-            "image_id": self.annotations[idx]["cocoid"]
-            if self.dataset_name == "coco"
-            else self.annotations[idx]["filename"].split(".")[0],
+            "image_id": self.annotations[idx]["cocoid"] if self.dataset_name == "coco" else self.annotations[idx]["filename"].split(".")[0],
         }
 
 
 class VQADataset(Dataset):
-    def __init__(
-        self, image_dir_path, question_path, annotations_path, is_train, dataset_name
-    ):
+    def __init__(self, image_dir_path, question_path, annotations_path, is_train, dataset_name):
         self.questions = json.load(open(question_path, "r"))["questions"]
         if annotations_path is not None:
             self.answers = json.load(open(annotations_path, "r"))["annotations"]
