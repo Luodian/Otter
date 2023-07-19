@@ -252,10 +252,10 @@ class ResampledShards2(IterableDataset):
             yield dict(url=self.rng.choice(self.urls))
 
 
-import uuid
+# import uuid
 def preprocess_image(sample, image_processor):
-    uuid_str = str(uuid.uuid4())
-    sample[0].save(f'{uuid_str}.png')
+    # uuid_str = str(uuid.uuid4())
+    # sample[0].save(f'{uuid_str}.png')
     image = [image_processor.preprocess(s, return_tensors="pt")["pixel_values"] for s in sample]
     image = torch.cat(image, dim=0)
     # apply random horizontal flip wo/w color jitter
