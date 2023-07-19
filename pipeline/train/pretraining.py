@@ -491,7 +491,6 @@ def main():
             entity=args.wandb_entity,
             name=args.run_name,
             config=vars(args),
-            setting=wandb.Settings(code_dir="."),
         )
 
     model, optimizer, lr_scheduler = accelerator.prepare(model, optimizer, lr_scheduler)
