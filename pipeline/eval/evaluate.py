@@ -44,7 +44,13 @@ parser.add_argument(
     "--model",
     type=str,
     help="Model name. Currently only `OpenFlamingo` is supported.",
-    default="open_flamingo",
+    default="otter",
+)
+parser.add_argument(
+    "--pretrained_model_name_or_path",
+    type=str,
+    help="Huggingface format Otter or OpenFlamingo model.",
+    default="/home/luodian/projects/checkpoints/flamingo-mpt-30B-pretrain-mix-bf16",
 )
 parser.add_argument(
     "--results_file", type=str, default=None, help="JSON file to save results"
@@ -374,7 +380,7 @@ def main():
     eval_model.set_device(device_id)
     eval_model.init_distributed()
 
-    if args.model != "open_flamingo" and args.shots != [0]:
+    if (args.model != "open_flamingo" or args.model != "otter") and args.shots != [0]:
         raise ValueError("Only 0 shot eval is supported for non-open_flamingo models")
 
     if len(args.trial_seeds) != args.num_trials:

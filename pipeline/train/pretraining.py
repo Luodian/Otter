@@ -178,11 +178,15 @@ def random_seed(seed=42, rank=0):
     random.seed(seed + rank)
 
 
-def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
+def train_one_epoch(
+    args, model, epoch, mmc4_loader, laion_loader, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb
+):
     num_batches_per_epoch_laion = laion_loader.num_batches
     num_batches_per_epoch_mmc4 = mmc4_loader.num_batches
 
-    assert num_batches_per_epoch_laion == num_batches_per_epoch_mmc4, "Number of batches in laion and mmc4 datasets must be the same"
+    assert (
+        num_batches_per_epoch_laion == num_batches_per_epoch_mmc4
+    ), "Number of batches in laion and mmc4 datasets must be the same"
 
     num_batches_per_epoch = num_batches_per_epoch_mmc4
     total_training_steps = num_batches_per_epoch * args.num_epochs
@@ -195,7 +199,9 @@ def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, op
 
     # setup logging
     step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
-    data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
+    data_time_m = (
+        AverageMeter()
+    )  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
 
     # loop through dataloader
@@ -229,6 +235,25 @@ def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, op
                 attention_mask=attention_mask,
                 labels=labels,
             )[0]
+
+        # model.eval()
+        # model.text_tokenizer.padding_side = "left"
+        # text_prompt_lang_x = model.text_tokenizer(
+        #     [
+        #         "<image>",
+        #     ],
+        #     return_tensors="pt",
+        # )['input_ids']
+        # outputs_debug = model.generate(
+        #     vision_x=images.to(device_id),
+        #     lang_x=text_prompt_lang_x.to(device_id),
+        #     attention_mask=attention_mask.to(device_id),
+        #     max_length=256,
+        # )
+
+        # print(model.text_tokenizer.batch_decode(outputs_debug))
+        # print(model.text_tokenizer.batch_decode(input_ids))
+        # model.train()
 
         #### LAION BACKWARD ####
         accelerator.backward(args.loss_multiplier_laion * loss_laion)
@@ -271,6 +296,17 @@ def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, op
                 labels=labels,
             )[0]
 
+        # model.text_tokenizer.padding_side = "left"
+        # outputs_debug = model.generate(
+        #     vision_x=images.to(device_id),
+        #     lang_x=input_ids.to(device_id),
+        #     attention_mask=attention_mask.to(device_id),
+        #     max_length=256,
+        # )
+
+        # print(model.text_tokenizer.batch_decode(outputs_debug))
+        # print(model.text_tokenizer.batch_decode(input_ids))
+
         #### MMC4 BACKWARD ####
         accelerator.backward(args.loss_multiplier_mmc4 * loss_mmc4)
         total_losses.append(args.loss_multiplier_mmc4 * loss_mmc4)
@@ -309,10 +345,18 @@ def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, op
         if accelerator.sync_gradients:
             if args.rank == 0 and args.report_to_wandb:
                 # compute within rank 0
-                mmc4_samples_per_second = args.gradient_accumulation_steps * args.batch_size_mmc4 * args.world_size / step_time_m.val
-                mmc4_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_mmc4 / step_time_m.val
-                laion_samples_per_second = args.gradient_accumulation_steps * args.batch_size_laion * args.world_size / step_time_m.val
-                laion_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_laion / step_time_m.val
+                mmc4_samples_per_second = (
+                    args.gradient_accumulation_steps * args.batch_size_mmc4 * args.world_size / step_time_m.val
+                )
+                mmc4_samples_per_second_per_gpu = (
+                    args.gradient_accumulation_steps * args.batch_size_mmc4 / step_time_m.val
+                )
+                laion_samples_per_second = (
+                    args.gradient_accumulation_steps * args.batch_size_laion * args.world_size / step_time_m.val
+                )
+                laion_samples_per_second_per_gpu = (
+                    args.gradient_accumulation_steps * args.batch_size_laion / step_time_m.val
+                )
                 wandb.log(
                     {
                         "data_time": data_time_m.avg,
@@ -340,7 +384,9 @@ def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, op
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
-            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Mean Loss: {mean_loss.item():.3f}")
+            print(
+                f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Mean Loss: {mean_loss.item():.3f}"
+            )
         # Add a process on saving checkpoints during pretraining
         if ((num_steps + 1) % args.checkpointing_steps == 0) and args.rank == 0:
             if not os.path.exists(args.external_save_dir):
@@ -360,7 +406,9 @@ def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, op
             unwrapped_model.config.save_pretrained(args.external_save_dir)
             if args.delete_previous_checkpoint:
                 if (num_steps + 1) // args.checkpointing_steps >= 2:
-                    previous_checkpoint_path = f"{args.external_save_dir}/checkpoint_steps{num_steps + 1 - args.checkpointing_steps}.pt"
+                    previous_checkpoint_path = (
+                        f"{args.external_save_dir}/checkpoint_steps{num_steps + 1 - args.checkpointing_steps}.pt"
+                    )
                     if os.path.exists(previous_checkpoint_path):
                         os.remove(previous_checkpoint_path)
 
@@ -405,7 +453,9 @@ def main():
                     device_map="auto",
                     local_files_only=args.offline,
                 )
-            model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+            model.text_tokenizer.add_special_tokens(
+                {"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]}
+            )
     else:
         model = None
 
@@ -427,7 +477,13 @@ def main():
         params_with_wd, params_without_wd = [], []
 
         def apply_decay(x):
-            return "gated_cross_attn_layer" in x and "ff_gate" not in x and "attn_gate" not in x and "norm" not in x and "bias" not in x
+            return (
+                "gated_cross_attn_layer" in x
+                and "ff_gate" not in x
+                and "attn_gate" not in x
+                and "norm" not in x
+                and "bias" not in x
+            )
 
         for n, p in model.named_parameters():
             # if p.requires_grad:
@@ -446,7 +502,9 @@ def main():
 
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
-    args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
+    args.external_save_dir = (
+        os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
+    )
     if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is True:
         checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
         if len(checkpoint_list) == 0:
@@ -468,7 +526,9 @@ def main():
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
 
-    args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
+    args.warmup_steps = (
+        total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
+    )
 
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
@@ -491,7 +551,7 @@ def main():
             entity=args.wandb_entity,
             name=args.run_name,
             config=vars(args),
-            setting=wandb.Settings(code_dir="."),
+            # setting=wandb.Settings(code_dir="."),
         )
 
     model, optimizer, lr_scheduler = accelerator.prepare(model, optimizer, lr_scheduler)
