@@ -682,27 +682,28 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
 
         ### TODO: give "LlamaForCausalLM" as the name of text_config.architectures of Llama_based flamingo
-        if "llama" not in config.text_config._name_or_path:
-            if config.text_config.architectures[0] == "MPTForCausalLM":
-                text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
-                lang_encoder = MPTForCausalLM(config=config.text_config)
-            elif config.text_config.architectures[0] == "MosaicGPT":
-                text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mosaic-llama-redpajama-final-candidate")
-                lang_encoder = MosaicGPT(config=config.text_config)
-            elif config.text_config.architectures[0] == "RWForCausalLM":
-                text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
-                lang_encoder = RWForCausalLM(config=config.text_config)
-            # TODO: what's the logic here?
-            elif config.text_config.architectures[0] == "LlamaForCausalLM":
-                text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
-                lang_encoder = LlamaForCausalLM(config=config.text_config)
-            else:
-                import pdb
-
-                pdb.set_trace()
-        else:
+        # assert hasattr(config.text_config, "_name_or_path")
+        # if "llama" not in config.text_config._name_or_path.lower():
+        if config.text_config.architectures[0] == "MPTForCausalLM":
+            text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
+            lang_encoder = MPTForCausalLM(config=config.text_config)
+        elif config.text_config.architectures[0] == "MosaicGPT":
+            text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mosaic-llama-redpajama-final-candidate")
+            lang_encoder = MosaicGPT(config=config.text_config)
+        elif config.text_config.architectures[0] == "RWForCausalLM":
+            text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
+            lang_encoder = RWForCausalLM(config=config.text_config)
+        # TODO: what's the logic here?
+        elif config.text_config.architectures[0] == "LlamaForCausalLM":
             text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
             lang_encoder = LlamaForCausalLM(config=config.text_config)
+        else:
+            import pdb
+
+            pdb.set_trace()
+        # else:
+        #     text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+        #     lang_encoder = LlamaForCausalLM(config=config.text_config)
 
         vision_encoder = CLIPVisionModel(config=config.vision_config)
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
