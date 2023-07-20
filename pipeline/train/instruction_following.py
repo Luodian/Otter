@@ -224,7 +224,7 @@ def parse_args():
         "--past_images_path",
         type=str,
         default="",
-        help="Path to the past images dataset (including multi-run conversations). Should be in format /path/to/xx.json",
+        help="Path to the past images dataset (including base64 format images). Should be in format /path/to/xx.json",
     )
     parser.add_argument(
         "--mimicit_path",
@@ -236,7 +236,13 @@ def parse_args():
         "--images_path",
         type=str,
         default="",
-        help="Path to the new images dataset (including multi-run conversations). Should be in format /path/to/xx.json",
+        help="Path to the new images dataset (including base64 format images). Should be in format /path/to/xx.json",
+    )
+    parser.add_argument(
+        "--train_config_path",
+        type=str,
+        default="",
+        help="Path to the new images dataset (including current ids and related in-context ids). Should be in format /path/to/xx_train.json",
     )
 
     # Arguments for image-text in-context data.
