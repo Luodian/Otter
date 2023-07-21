@@ -230,6 +230,25 @@ def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, op
                 labels=labels,
             )[0]
 
+        # model.eval()
+        # model.text_tokenizer.padding_side = "left"
+        # text_prompt_lang_x = model.text_tokenizer(
+        #     [
+        #         "<image>",
+        #     ],
+        #     return_tensors="pt",
+        # )['input_ids']
+        # outputs_debug = model.generate(
+        #     vision_x=images.to(device_id),
+        #     lang_x=text_prompt_lang_x.to(device_id),
+        #     attention_mask=attention_mask.to(device_id),
+        #     max_length=256,
+        # )
+
+        # print(model.text_tokenizer.batch_decode(outputs_debug))
+        # print(model.text_tokenizer.batch_decode(input_ids))
+        # model.train()
+
         #### LAION BACKWARD ####
         accelerator.backward(args.loss_multiplier_laion * loss_laion)
         total_losses.append(args.loss_multiplier_laion * loss_laion)
@@ -270,6 +289,17 @@ def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, op
                 attention_mask=attention_mask,
                 labels=labels,
             )[0]
+
+        # model.text_tokenizer.padding_side = "left"
+        # outputs_debug = model.generate(
+        #     vision_x=images.to(device_id),
+        #     lang_x=input_ids.to(device_id),
+        #     attention_mask=attention_mask.to(device_id),
+        #     max_length=256,
+        # )
+
+        # print(model.text_tokenizer.batch_decode(outputs_debug))
+        # print(model.text_tokenizer.batch_decode(input_ids))
 
         #### MMC4 BACKWARD ####
         accelerator.backward(args.loss_multiplier_mmc4 * loss_mmc4)
