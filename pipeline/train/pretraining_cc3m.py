@@ -171,7 +171,7 @@ def train_one_epoch(args, model, epoch, cc3m_loader, tokenizer, optimizer, lr_sc
 
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
     endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)["input_ids"][-1]
-    answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
+    # answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
 
     model.train()
 
@@ -341,7 +341,7 @@ def main():
                     device_map="auto",
                     local_files_only=args.offline,
                 )
-            model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+            # model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
     else:
         model = None
 
@@ -382,11 +382,12 @@ def main():
     # check if a checkpoint exists for this run
     args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
     if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is True:
-        checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
+        checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_steps*.pt") # or you chould change to 'epoch*.pt'
         if len(checkpoint_list) == 0:
             print(f"Found no checkpoints for run {args.external_save_dir}.")
         else:
-            resume_from_checkpoint_path = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
+            resume_from_checkpoint_path = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split("steps")[1].split(".")[0]))[-1]
+            # resume_from_checkpoint_path = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
             print(f"Found checkpoint {resume_from_checkpoint_path} for run {args.external_save_dir}.")
 
         if args.rank == 0:
@@ -488,7 +489,7 @@ def main():
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
         if args.save_hf_model:
-            model.save_pretrained(f"{args.external_save_dir}")
+            unwrapped_model.save_pretrained(f"{args.external_save_dir}")
 
 
 if __name__ == "__main__":
