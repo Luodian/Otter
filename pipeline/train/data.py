@@ -10,6 +10,7 @@ import sys
 import tarfile
 from dataclasses import dataclass
 from multiprocessing import Value
+import numpy as np
 
 import braceexpand
 import torch
@@ -107,6 +108,7 @@ def decode_base64_image(key, value):
         except ValueError:
             pass
     image = image.convert("RGB")
+    print(image)
     return image
 
 
@@ -532,6 +534,97 @@ def get_laion_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     return DataInfo(dataloader=dataloader, shared_epoch=shared_epoch)
 
 
+def get_cc3m_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
+    input_shards = args.laion_shards
+    assert input_shards is not None
+    resampled = getattr(args, "dataset_resampled", False)
+
+    num_samples, num_shards = get_dataset_size(input_shards)
+    num_samples = None
+    if not num_samples:
+        num_samples = args.train_num_samples_laion
+        if not num_samples:
+            raise RuntimeError(
+                "Currently, number of dataset samples must be specified for training dataset. "
+                "Please specify via `--train-num-samples` if no dataset length info present."
+            )
+
+    # create a shared epoch store to sync epoch to dataloader worker proc
+    shared_epoch = SharedEpoch(epoch=epoch)
+    if resampled:
+        pipeline = [ResampledShards2(input_shards, deterministic=True, epoch=shared_epoch)]
+    else:
+        pipeline = [wds.SimpleShardList(input_shards)]
+
+    # create two preprocess functions that take in the passed in image_processor and tokenizer
+    preprocess_image_fn = functools.partial(preprocess_image, image_processor=image_processor)
+    preprocess_text_fn = functools.partial(preprocess_text, tokenizer=tokenizer)
+
+    # at this point we have an iterator over all the shards
+    if not resampled:
+        pipeline.extend(
+            [
+                detshuffle2(
+                    bufsize=_SHARD_SHUFFLE_SIZE,
+                    initial=_SHARD_SHUFFLE_INITIAL,
+                    seed=args.seed,
+                    epoch=shared_epoch,
+                ),
+                wds.split_by_node,
+                wds.split_by_worker,
+            ]
+        )
+    pipeline.extend(
+        [
+            # at this point, we have an iterator over the shards assigned to each worker at each node
+            # wds.tarfile_to_samples(handler=log_and_continue),
+            tarfile_to_samples_nothrow,
+            wds.shuffle(
+                bufsize=_SAMPLE_SHUFFLE_SIZE,
+                initial=_SAMPLE_SHUFFLE_INITIAL,
+            ),
+        ]
+    )
+
+    pipeline.extend(
+        [
+            wds.select(filter_no_caption_or_no_image),
+            wds.decode("pil", handler=log_and_continue),
+            wds.to_tuple("jpg;png;jpeg", "txt", handler=log_and_continue),
+            wds.batched(args.batch_size_laion, partial=False),
+            wds.map_tuple(preprocess_image_fn, preprocess_text_fn, handler=log_and_continue),
+        ]
+    )
+
+    dataset = wds.DataPipeline(*pipeline)
+    if not resampled:
+        assert num_shards >= args.workers * args.world_size, "number of shards must be >= total workers"
+    # roll over and repeat a few samples to get same number of full batches on each node
+    round_fn = math.floor if floor else math.ceil
+    global_batch_size = args.batch_size_laion * args.world_size
+    num_batches = round_fn(num_samples / global_batch_size)
+    num_workers = max(1, args.workers)
+    num_worker_batches = round_fn(num_batches / num_workers)  # per dataloader worker
+    num_batches = num_worker_batches * num_workers
+    num_samples = num_batches * global_batch_size
+    # each worker is iterating over this
+    dataset = dataset.with_epoch(num_worker_batches)
+
+    dataloader = wds.WebLoader(
+        dataset,
+        batch_size=None,
+        shuffle=False,
+        num_workers=args.workers,
+        persistent_workers=True,
+    )
+
+    # add meta-data to dataloader instance for convenience
+    dataloader.num_batches = num_batches
+    dataloader.num_samples = num_samples
+
+    return DataInfo(dataloader=dataloader, shared_epoch=shared_epoch)
+
+
 import json
 
 from PIL import Image, ImageFile
@@ -649,3 +742,22 @@ def get_dataset_fn(dataset_type):
 
 def get_data(args, image_processor, tokenizer, dataset_type, epoch=0):
     return get_dataset_fn(dataset_type)(args, image_processor=image_processor, epoch=epoch, tokenizer=tokenizer)
+
+
+if __name__ == "__main__":
+    from itertools import islice
+
+    dataset = (
+        wds.WebDataset("/mnt/petrelfs/zhangyuanhan/data/00000.tar")
+        .select(filter_no_caption_or_no_image)
+        .decode("pil", handler=log_and_continue)
+        .to_tuple("jpg;png;jpeg", "txt", handler=log_and_continue)
+    )
+    # dataset = wds.WebDataset("/mnt/petrelfs/zhangyuanhan/data/00000.tar")
+    # dataset = wds.Decoder(wds.handle_extension(".jpg", decode_base64_image))(dataset)
+
+    # import pdb;pdb.set_trace()
+    for image, data in islice(dataset, 0, 1):
+        print(data)
+        # import pdb;pdb.set_trace()
+        image.save("text.png")
