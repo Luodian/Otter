@@ -419,6 +419,7 @@ def parse_args():
         help="delete previous checkpoint when saving new checkpoint",
     )
 
+    parser.add_argument("--train_num_samples", type=int, default=None)
     # parser = add_data_args(parser)
     args = parser.parse_args()
 

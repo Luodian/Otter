@@ -707,7 +707,11 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
         unified_datasets.append(unified_dataset)
 
     # args.train_num_samples = sum(len(dataset) for dataset in unified_datasets) / len(unified_datasets)
-    args.train_num_samples = statistics.median((len(dataset) for dataset in unified_datasets))
+    if args.train_num_samples == None
+        args.train_num_samples = statistics.median((len(dataset) for dataset in unified_datasets)) 
+    
+    assert args.train_num_samples <= max([len(dataset) for dataset in unified_datasets]), your train_num_samples is larger than dataset
+
     round_fn = math.floor if floor else math.ceil
     global_batch_size = args.batch_size * args.world_size
 
