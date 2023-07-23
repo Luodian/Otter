@@ -213,6 +213,13 @@ def parse_args():
         default="otter-9b",
         help="used to name saving directory and wandb run",
     )
+    parser.add_argument(
+        "--model_name",
+        type=str,
+        default="otter",
+        choices=["otter", "flamingo"],
+        help="otters or flamingo",
+    )
     # Prepare the arguments for different types of data sources.
     # Arguments are grouped by data types and whether the data is from past or new sources.
     # Arguments for image-text data, including multi-run conversations.
@@ -378,13 +385,13 @@ def parse_args():
     parser.add_argument(
         "--max-src-length",
         type=int,
-        default=1024,
+        default=256,
         help="the maximum src sequence length",
     )
     parser.add_argument(
         "--max-tgt-length",
         type=int,
-        default=1024,
+        default=256,
         help="the maximum target sequence length",
     )
     parser.add_argument("--patch-image-size", type=int, default=224)
@@ -458,18 +465,20 @@ def main():
     if args.pretrained_model_name_or_path is not None:
         accelerator.print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
         device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED" else "auto"
-        if "otter" in args.run_name.lower():
+        if "otter" in args.model_name.lower():
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
                 device_map=device_map,
                 local_files_only=args.offline,
             )
-        elif "flamingo" in args.run_name.lower():
+        elif "flamingo" in args.model_name.lower():
             model = FlamingoForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
                 device_map=device_map,
                 local_files_only=args.offline,
             )
+            # add special tokens for instruction tuning
+            model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"]})
     else:
         config = FlamingoConfig.from_json_file("./flamingo/config.json")
         model = FlamingoForConditionalGeneration(config=config)
@@ -629,7 +638,7 @@ def main():
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
         if args.save_hf_model:
-            model.save_pretrained(f"{args.external_save_dir}")
+            unwrapped_model.save_pretrained(f"{args.external_save_dir}")
 
 
 if __name__ == "__main__":
