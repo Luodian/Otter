@@ -13,10 +13,9 @@ from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 # from .modeling_flamingo import FlamingoForConditionalGeneration
 
 parser = argparse.ArgumentParser(description="Convert Vicuna model")
-parser.add_argument("--model_choice", type=str, choices=["7B", "33B"], required=True, help="Choose either '7B' or '33B'")
+parser.add_argument("--model_choice", type=str, default="13B", help="Choose either '7B' or '13B'")
 parser.add_argument("--llama2_root_dir", type=str, default="/home/luodian/projects/checkpoints")
 parser.add_argument("--save_root_dir", type=str, default="/home/luodian/projects/checkpoints")
-parser.add_argument("--flamingo_dir", type=str, default=None, help="If the pretrained flamingo weights also need to be injected")
 args = parser.parse_args()
 
 # os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -26,7 +25,7 @@ model_choice = args.model_choice
 save_root_dir = args.save_root_dir
 
 # prepare vicuna model at first
-# you can visit https://huggingface.co/lmsys/vicuna-33b-v1.3 to download 7B and 30B instruct checkpoints.
+# you can visit https://huggingface.co/lmsys/Llama-2-33b-chat-hf to download 7B and 30B instruct checkpoints.
 if model_choice == "7B":
     config_file = "./flamingo/flamingo-llama2-chat-7B.json"
     state_dict_files = [
@@ -34,8 +33,16 @@ if model_choice == "7B":
         f"{root_dir}/Llama-2-7b-chat-hf/pytorch_model-00002-of-00002.bin",
     ]
     save_path = f"{save_root_dir}/flamingo-llama2-chat-7B-init"
+elif model_choice == "13B":
+    config_file = "./flamingo/flamingo-llama2-chat-13B.json"
+    state_dict_files = [
+        f"{root_dir}/Llama-2-13b-chat-hf/pytorch_model-00001-of-00003.bin",
+        f"{root_dir}/Llama-2-13b-chat-hf/pytorch_model-00002-of-00003.bin",
+        f"{root_dir}/Llama-2-13b-chat-hf/pytorch_model-00003-of-00003.bin",
+    ]
+    save_path = f"{save_root_dir}/flamingo-llama2-chat-13B-init"
 else:
-    raise ValueError("Invalid model_choice. Choose either '33B' or '7B'.")
+    raise ValueError("Invalid model_choice. Choose either '13B' or '7B'.")
 
 config = FlamingoConfig.from_json_file(config_file)
 model = FlamingoForConditionalGeneration(config=config)

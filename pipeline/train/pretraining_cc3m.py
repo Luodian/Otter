@@ -10,6 +10,7 @@ import numpy as np
 import torch
 import torch.nn
 from accelerate import Accelerator
+from accelerate import load_checkpoint_and_dispatch
 from tqdm import tqdm
 from transformers import (
     CLIPImageProcessor,
@@ -17,7 +18,6 @@ from transformers import (
     get_cosine_schedule_with_warmup,
     get_linear_schedule_with_warmup,
 )
-
 import wandb
 from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from otter.modeling_otter import OtterForConditionalGeneration
@@ -95,12 +95,6 @@ def parse_args():
     parser.add_argument("--warmup_steps", default=1000, type=int)
     parser.add_argument("--warmup_steps_ratio", default=None, type=float)
     parser.add_argument("--weight_decay", default=0.1, type=float)
-    parser.add_argument(
-        "--precision",
-        choices=["amp_bf16", "amp_bfloat16", "bf16", "amp", "fp16", "fp32"],
-        default="amp",
-        help="Floating point precision.",
-    )
     # distributed training args
     parser.add_argument(
         "--dist-url",
@@ -179,6 +173,8 @@ def train_one_epoch(args, model, epoch, cc3m_loader, tokenizer, optimizer, lr_sc
     step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
     data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND cc3m (= 1 batch regardless of gradient accum)
     end = time.time()
+    dtype = model.dtype
+    print(f"Using dtype {dtype}")
 
     # loop through dataloader
     for num_steps, (batch_cc3m) in tqdm(
@@ -206,7 +202,7 @@ def train_one_epoch(args, model, epoch, cc3m_loader, tokenizer, optimizer, lr_sc
 
         with accelerator.autocast():
             loss_cc3m = model(
-                vision_x=images,
+                vision_x=images.to(dtype),
                 lang_x=input_ids,
                 attention_mask=attention_mask,
                 labels=labels,
@@ -316,6 +312,8 @@ def main():
 
     args.local_rank, args.rank, args.world_size = world_info_from_env()
     accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps)
+    if accelerator.state.deepspeed_plugin is not None:
+        accelerator.state.deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = args.batch_size_cc3m
 
     device_id = accelerator.device
 
@@ -329,7 +327,7 @@ def main():
                 local_files_only=args.offline,
             )
         elif "flamingo" in args.run_name.lower():
-            if accelerator.num_processes > 1:
+            if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED":
                 model = FlamingoForConditionalGeneration.from_pretrained(
                     args.pretrained_model_name_or_path,
                     device_map={"": device_id},
@@ -378,26 +376,6 @@ def main():
 
     total_training_steps = cc3m_dataset.dataloader.num_batches * args.num_epochs
 
-    resume_from_epoch = 0
-    # check if a checkpoint exists for this run
-    args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
-    if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is True:
-        checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_steps*.pt") # or you chould change to 'epoch*.pt'
-        if len(checkpoint_list) == 0:
-            print(f"Found no checkpoints for run {args.external_save_dir}.")
-        else:
-            resume_from_checkpoint_path = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split("steps")[1].split(".")[0]))[-1]
-            # resume_from_checkpoint_path = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
-            print(f"Found checkpoint {resume_from_checkpoint_path} for run {args.external_save_dir}.")
-
-        if args.rank == 0:
-            print(f"Loading checkpoint from {resume_from_checkpoint_path}")
-        checkpoint = torch.load(resume_from_checkpoint_path, map_location="cpu")
-        model.load_state_dict(checkpoint["model_state_dict"], False)
-        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
-        resume_from_epoch = checkpoint["epoch"] + 1
-
     optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
 
     if args.rank == 0:
@@ -419,6 +397,26 @@ def main():
         )
     else:
         lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps)
+
+    resume_from_epoch = 0
+    # check if a checkpoint exists for this run
+    args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
+    if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is True:
+        checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_steps*.pt") # or you chould change to 'epoch*.pt'
+        if len(checkpoint_list) == 0:
+            print(f"Found no checkpoints for run {args.external_save_dir}.")
+        else:
+            resume_from_checkpoint_path = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split("steps")[1].split(".")[0]))[-1]
+            # resume_from_checkpoint_path = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
+            print(f"Found checkpoint {resume_from_checkpoint_path} for run {args.external_save_dir}.")
+
+        if args.rank == 0:
+            print(f"Loading checkpoint from {resume_from_checkpoint_path}")
+        checkpoint = torch.load(resume_from_checkpoint_path, map_location="cpu")
+        model.load_state_dict(checkpoint["model_state_dict"], False)
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
+        resume_from_epoch = checkpoint["epoch"] + 1
 
     if args.rank == 0 and args.report_to_wandb:
         wandb.init(

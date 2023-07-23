@@ -265,12 +265,12 @@ def preprocess_image(sample, image_processor):
 
 
 B_INST, E_INST = "[INST]", "[/INST]"
-def preprocess_text(sample, tokenizer, prompt_format=""):
+def preprocess_text(sample, tokenizer, prompt_format="simple"):
     tokenizer.padding_side = "right"
-    if prompt_format == "":
+    if prompt_format == "simple":
         sample = [(f"<image>{s.strip()}<|endofchunk|>{tokenizer.eos_token}") for s in sample]
-    elif prompt_format == "llama2":
-        llama2_sample = [(f"<image>{B_INST}please describe this image.{E_INST}{s.strip()}<|endofchunk|>{tokenizer.eos_token}") for s in sample]
+    elif prompt_format == "llama2_inst":
+        sample = [(f"<image>{B_INST}please describe this image.{E_INST}{s.strip()}<|endofchunk|>{tokenizer.eos_token}") for s in sample]
     text = tokenizer(
         sample,
         max_length=32,
