@@ -402,7 +402,7 @@ def main():
     # check if a checkpoint exists for this run
     args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
     if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is True:
-        checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_steps*.pt") # or you chould change to 'epoch*.pt'
+        checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_steps*.pt")  # or you chould change to 'epoch*.pt'
         if len(checkpoint_list) == 0:
             print(f"Found no checkpoints for run {args.external_save_dir}.")
         else:

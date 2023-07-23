@@ -265,6 +265,8 @@ def preprocess_image(sample, image_processor):
 
 
 B_INST, E_INST = "[INST]", "[/INST]"
+
+
 def preprocess_text(sample, tokenizer, prompt_format="simple"):
     tokenizer.padding_side = "right"
     if prompt_format == "simple":
