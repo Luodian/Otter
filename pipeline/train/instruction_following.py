@@ -72,9 +72,9 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         #### MIMIC-IT FORWARD PASS ####
         total_losses = []
         for batch_mimicit in batch_mimicits:
-            images = batch_mimicit["net_input"]["patch_images"]
-            input_ids = batch_mimicit["net_input"]["input_ids"]
-            attention_mask = batch_mimicit["net_input"]["attention_masks"]
+            images = batch_mimicit["net_input"]["patch_images"].to(device_id, non_blocking=True)
+            input_ids = batch_mimicit["net_input"]["input_ids"].to(device_id, non_blocking=True)
+            attention_mask = batch_mimicit["net_input"]["attention_masks"].to(device_id, non_blocking=True)
 
             labels = input_ids.clone()
             labels[labels == tokenizer.pad_token_id] = -100
@@ -340,6 +340,7 @@ def parse_args():
     parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
     # Sum of gradient optimization batch size
     parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--train_num_samples", type=int, default=-1)
 
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
     parser.add_argument(
@@ -425,8 +426,6 @@ def parse_args():
         action="store_true",
         help="delete previous checkpoint when saving new checkpoint",
     )
-
-    parser.add_argument("--train_num_samples", type=int, default=None)
     # parser = add_data_args(parser)
     args = parser.parse_args()
 
