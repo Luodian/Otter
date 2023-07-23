@@ -808,6 +808,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         )
 
         if "lora_config" in config.__dict__:
+            original_architecture_name = self.lang_encoder.__class__.__name__
             print(f"Using LoRA with config:{config.lora_config}")
             standard_modules = ["q_proj", "v_proj"]
             lang_encoder_short_name = MODEL_CLASSES[config.text_config.architectures[0]]
@@ -827,6 +828,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             )
             self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
             self.lang_encoder.print_trainable_parameters()
+            self.lang_encoder.__class__.__name__ = f"{original_architecture_name}LoRA"
 
         self.post_init()
 

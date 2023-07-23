@@ -10,6 +10,7 @@ import sys
 import tarfile
 from dataclasses import dataclass
 from multiprocessing import Value
+import numpy as np
 
 import braceexpand
 import torch
@@ -107,6 +108,7 @@ def decode_base64_image(key, value):
         except ValueError:
             pass
     image = image.convert("RGB")
+    print(image)
     return image
 
 
@@ -705,7 +707,11 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
         unified_datasets.append(unified_dataset)
 
     # args.train_num_samples = sum(len(dataset) for dataset in unified_datasets) / len(unified_datasets)
-    args.train_num_samples = statistics.median((len(dataset) for dataset in unified_datasets))
+    if args.train_num_samples == None
+        args.train_num_samples = statistics.median((len(dataset) for dataset in unified_datasets)) 
+    
+    assert args.train_num_samples <= max([len(dataset) for dataset in unified_datasets]), "your train_num_samples is larger than dataset"
+
     round_fn = math.floor if floor else math.ceil
     global_batch_size = args.batch_size * args.world_size
 
@@ -751,3 +757,22 @@ def get_dataset_fn(dataset_type):
 
 def get_data(args, image_processor, tokenizer, dataset_type, epoch=0):
     return get_dataset_fn(dataset_type)(args, image_processor=image_processor, epoch=epoch, tokenizer=tokenizer)
+
+
+if __name__ == "__main__":
+    from itertools import islice
+
+    dataset = (
+        wds.WebDataset("/mnt/petrelfs/zhangyuanhan/data/00000.tar")
+        .select(filter_no_caption_or_no_image)
+        .decode("pil", handler=log_and_continue)
+        .to_tuple("jpg;png;jpeg", "txt", handler=log_and_continue)
+    )
+    # dataset = wds.WebDataset("/mnt/petrelfs/zhangyuanhan/data/00000.tar")
+    # dataset = wds.Decoder(wds.handle_extension(".jpg", decode_base64_image))(dataset)
+
+    # import pdb;pdb.set_trace()
+    for image, data in islice(dataset, 0, 1):
+        print(data)
+        # import pdb;pdb.set_trace()
+        image.save("text.png")
