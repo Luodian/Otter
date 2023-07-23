@@ -56,6 +56,8 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
     data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
+    dtype = model.dtype
+    print(f"Using dtype {dtype}")
 
     # loop through dataloader
     for num_steps, (batch_mimicits) in tqdm(
@@ -113,7 +115,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
             with accelerator.autocast():
                 loss_mimicit = model(
-                    vision_x=images,
+                    vision_x=images.to(dtype),
                     lang_x=input_ids,
                     attention_mask=attention_mask,
                     labels=labels,
@@ -447,14 +449,14 @@ def parse_args():
 def main():
     args = parse_args()
     accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps)
+    if accelerator.state.deepspeed_plugin is not None:
+        accelerator.state.deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = args.batch_size
 
     device_id = accelerator.device
 
-    # random_seed(args.seed)
-
     if args.pretrained_model_name_or_path is not None:
         accelerator.print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
-        device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" else "auto"
+        device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED" else "auto"
         if "otter" in args.run_name.lower():
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
@@ -467,7 +469,6 @@ def main():
                 device_map=device_map,
                 local_files_only=args.offline,
             )
-            model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
     else:
         config = FlamingoConfig.from_json_file("./flamingo/config.json")
         model = FlamingoForConditionalGeneration(config=config)
@@ -486,7 +487,7 @@ def main():
 
     accelerator.wait_for_everyone()
 
-    if model.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+    if "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
         model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
 
     args.tokenizer = model.text_tokenizer
