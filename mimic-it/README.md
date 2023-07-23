@@ -47,7 +47,7 @@ You can download the `instructions.json` and `train.json` files, from our provid
 | **TVC** | ea16ec0ef7f35e810e0920e85ed467af | 166 MB |
 | **VST** | 988569e39aaa24da0df547644514b0d4 | 32 MB |
 | **SN** | 1c4751c5b2c0bcaaeb94dbc5fb39e7a6 | 8 MB |
-| **SD (General Diff)** | TBD | 81 MB |
+| **SD (General Diff)** | 7fd998c10baaba9c6e39b66761a456a0 | 8.1 MB |
 | **SD (Subtle Diff)** | 5175198daebb997672a21307e8b18a96 | 5 MB |
 | **E4D (1st Part)** | 504b779dbc852c943adbe7862d6924d7 | 710 MB/3.2 GB |
 
