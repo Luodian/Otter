@@ -23,7 +23,11 @@ MIMIC-IT provides multilingual instructions, supporting English, Chinese, Korean
 <img src="https://i.postimg.cc/4x66gHhw/mimic-it.jpg"  width="100%" height="100%">
 </p>
 
+
+
 ## Using MIMIC-IT Dataset
+
+We have integrated the MIMIC-IT dataset into the Hugging Face dataset. You can download and utilize the MIMIC-IT dataset from [here](https://huggingface.co/datasets/pufanyi/MIMICIT).
 
 You can following the steps to obtain the MIMIC-IT dataset. Each task (e.g. `DC`, `LA`) in MIMIC-IT is composed of three parts, including:
 1. `xx.json` file: the images in base64 format.
