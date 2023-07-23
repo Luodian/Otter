@@ -60,7 +60,7 @@ mimicit_data/DC/DC_train.json
 The `DC_instructions.json` includes a meta object with version, time, and author information. The data object contains instruction-response pairs, each with a unique identifier (e.g., "DC_INS_00001"). Each pair consists of an instruction, an answer, an array of associated image IDs, and an array of related instruction IDs (which can be arranged as in-context examples).
 ```json
 {   
-    "meta":{"virson":"0.0.1","time":"2023-06","author":"ntu"},
+    "meta":{"version":"0.0.1","time":"2023-06","author":"ntu"},
     "data": {
         "DC_INS_00001": {
             "instruction":"Who is the main focus of the video?",
