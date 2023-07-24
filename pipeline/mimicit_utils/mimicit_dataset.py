@@ -251,7 +251,7 @@ class MimicitDataset(Dataset):
         assert len(image_ids) == resample_frames
         return image_ids
 
-    def process_llavar(self, instruction_id, instruction, answer, image_ids, in_context_example_ids,inst_format="llama2"):
+    def process_llavar(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format="llama2"):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]

@@ -61,6 +61,7 @@ lora_config = LoraConfig(
 )
 model.config.update({"lora_config": {"r": 16, "lora_alpha": 32, "lora_dropout": 0.05}})
 model.lang_encoder = get_peft_model(model.lang_encoder, lora_config)
+model.lang_encoder.print_trainable_parameters()
 
 # Save the model
 checkpoint_path = args.save_path

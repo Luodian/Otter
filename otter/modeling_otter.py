@@ -857,11 +857,9 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
         if "lora_config" in self.config.__dict__:
             print(f"LoRA trainable param: {(sum(p.numel() for p in self.lang_encoder.parameters() if p.requires_grad)) / 1e9:.3f} B")
-            # Unfreeze gated_cross_attn_layers
-            for layer in self.lang_encoder._get_decoder_layers():
-                if layer.gated_cross_attn_layer is not None:
-                    for param in layer.gated_cross_attn_layer.parameters():
-                        param.requires_grad = True
+            for name, param in self.lang_encoder.named_parameters():
+                if "gated_cross_attn_layer" in name:
+                    param.requires_grad = True
         else:
             # Freeze all parameters in lang encoders except gated_cross_attn_layers
             for name, param in self.lang_encoder.named_parameters():
