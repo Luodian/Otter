@@ -477,7 +477,7 @@ def main():
                 local_files_only=args.offline,
             )
             # add special tokens for instruction tuning
-            model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"]})
+            model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>", "[INST]", "[/INST]"]})
     else:
         config = FlamingoConfig.from_json_file("./flamingo/config.json")
         model = FlamingoForConditionalGeneration(config=config)
