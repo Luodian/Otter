@@ -291,7 +291,7 @@ MAX_NUM_IMAGES = 5
 import base64
 
 
-def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold,distributed_type="no"):
+def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold, distributed_type="no"):
     info = json.loads(sample[0])
     sentences = info["text_list"]
 
@@ -714,8 +714,8 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
 
     # args.train_num_samples = sum(len(dataset) for dataset in unified_datasets) / len(unified_datasets)
     if args.train_num_samples == -1:
-        args.train_num_samples = statistics.median((len(dataset) for dataset in unified_datasets)) 
-    
+        args.train_num_samples = statistics.median((len(dataset) for dataset in unified_datasets))
+
     assert args.train_num_samples <= max([len(dataset) for dataset in unified_datasets]), "your train_num_samples is larger than dataset"
 
     round_fn = math.floor if floor else math.ceil
@@ -731,7 +731,7 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     dataloaders = []
 
     # unified_datasets = unified_old_datasets + unified_new_datasets
-    
+
     for unified_dataset in unified_datasets:
         sampler = RandomSampler(unified_dataset, replacement=True, num_samples=num_samples)
         if args.distributed_type == "DEEPSPEED":
