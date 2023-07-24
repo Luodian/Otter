@@ -509,6 +509,9 @@ def main():
 
     accelerator.wait_for_everyone()
 
+    args.distributed_type = accelerator.distributed_type
+
+    # import pdb;pdb.set_trace()
     if "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
         model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
 

@@ -24,6 +24,8 @@ from webdataset.filters import _shuffle
 from webdataset.tariterators import base_plus_ext, tar_file_expander, url_opener, valid_sample
 from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
 
+from .train_utils import DistributedProxySampler
+
 import statistics
 
 Image.MAX_IMAGE_PIXELS = 1000000000
@@ -289,7 +291,7 @@ MAX_NUM_IMAGES = 5
 import base64
 
 
-def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold):
+def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold, distributed_type="no"):
     info = json.loads(sample[0])
     sentences = info["text_list"]
 
@@ -712,8 +714,8 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
 
     # args.train_num_samples = sum(len(dataset) for dataset in unified_datasets) / len(unified_datasets)
     if args.train_num_samples == -1:
-        args.train_num_samples = statistics.median((len(dataset) for dataset in unified_datasets)) 
-    
+        args.train_num_samples = statistics.median((len(dataset) for dataset in unified_datasets))
+
     assert args.train_num_samples <= max([len(dataset) for dataset in unified_datasets]), "your train_num_samples is larger than dataset"
 
     round_fn = math.floor if floor else math.ceil
@@ -732,6 +734,8 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
 
     for unified_dataset in unified_datasets:
         sampler = RandomSampler(unified_dataset, replacement=True, num_samples=num_samples)
+        if args.distributed_type == "DEEPSPEED":
+            sampler = DistributedProxySampler(sampler, num_replicas=args.world_size, rank=args.rank)
         dataloader = torch.utils.data.DataLoader(
             unified_dataset,
             sampler=sampler,
