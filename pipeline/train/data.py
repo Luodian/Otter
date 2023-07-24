@@ -669,11 +669,16 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     if args.mimicit_path != "":
         all_mimicit_path = args.mimicit_path.split(",") + args.past_mimicit_path.split(",") if args.past_mimicit_path != "" else args.mimicit_path.split(",")
         all_images_path = args.images_path.split(",") + args.past_images_path.split(",") if args.past_images_path != "" else args.images_path.split(",")
+        all_train_config_path = (
+            args.train_config_path.split(",") + args.past_train_config_path.split(",")
+            if args.past_train_config_path != ""
+            else args.train_config_path.split(",")
+        )
         if args.past_mimicit_path != "":
             status = ["new"] * len(args.mimicit_path.split(",")) + ["past"] * len(args.past_mimicit_path.split(","))
         else:
             status = ["new"] * len(args.mimicit_path.split(","))
-        unified_dataset = MimicitDataset(args, all_mimicit_path, all_images_path, status_list=status)
+        unified_dataset = MimicitDataset(args, all_mimicit_path, all_images_path, all_train_config_path, status_list=status)
         unified_datasets.append(unified_dataset)
 
     # processing for text datasets
