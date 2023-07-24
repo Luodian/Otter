@@ -796,7 +796,14 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
             self.lang_encoder.lm_head.requires_grad_(True)
         # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
         # print model size in billions of parameters in 2 decimal places
-        print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
+        print("====================Model Grad Part====================")
+        total_params = 0
+        for name, param in self.named_parameters():
+            if param.requires_grad:
+                total_params += param.numel()
+                print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
+        print(f"Total Trainable param: {total_params / 1e9:.4f} B")
+        print(f"Total Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
     def forward(
         self,
