@@ -861,6 +861,8 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             for name, param in self.lang_encoder.named_parameters():
                 if "gated_cross_attn_layer" in name:
                     param.requires_grad = True
+                if "lm_head" in name:
+                    param.requires_grad = True
             for name, param in self.named_parameters():
                 if "perceiver" in name:
                     param.requires_grad = True
@@ -880,8 +882,8 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             if param.requires_grad:
                 total_params += param.numel()
                 print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
-        print(f"Total Trainable param: {total_params / 1e9:.4f} B")
-        print(f"Total Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.3f} B")
+        print(f"Total Trainable param: {total_params / 1e9:.6f} B")
+        print(f"Total Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.6f} B")
 
     def forward(
         self,
