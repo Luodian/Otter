@@ -572,25 +572,26 @@ def main():
 
     args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
 
+    num_warmup_steps = args.warmup_steps // args.gradient_accumulation_steps
+    num_training_steps = total_training_steps // args.gradient_accumulation_steps
+    if accelerator.distributed_type == "DEEPSPEED":
+        num_training_steps = num_training_steps * accelerator.num_processes
+        num_warmup_steps = num_warmup_steps * accelerator.num_processes
+        
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
             optimizer,
-            num_warmup_steps=args.warmup_steps // args.gradient_accumulation_steps,
-            num_training_steps=total_training_steps // args.gradient_accumulation_steps,
+            num_warmup_steps=num_warmup_steps,
+            num_training_steps=num_training_steps,
         )
     elif args.lr_scheduler == "cosine":
-        num_warmup_steps = args.warmup_steps // args.gradient_accumulation_steps
-        num_training_steps = total_training_steps // args.gradient_accumulation_steps
-        if accelerator.distributed_type == "DEEPSPEED":
-            num_training_steps = num_training_steps * accelerator.num_processes
-            num_warmup_steps = num_warmup_steps * accelerator.num_processes
         lr_scheduler = get_cosine_schedule_with_warmup(
             optimizer,
             num_warmup_steps=num_warmup_steps,
             num_training_steps=num_training_steps,
         )
     else:
-        lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps)
+        lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps)
 
     if args.rank == 0 and args.report_to_wandb:
         wandb.init(
