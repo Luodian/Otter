@@ -490,7 +490,7 @@ def main():
                 local_files_only=args.offline,
             )
             # add special tokens for instruction tuning
-            # model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>", "[INST]", "[/INST]"]})
+            model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"]})
     else:
         config = FlamingoConfig.from_json_file("./flamingo/config.json")
         model = FlamingoForConditionalGeneration(config=config)
@@ -509,6 +509,9 @@ def main():
 
     accelerator.wait_for_everyone()
 
+    args.distributed_type = accelerator.distributed_type
+    
+    # import pdb;pdb.set_trace()
     if "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
         model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
 
