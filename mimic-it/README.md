@@ -23,7 +23,11 @@ MIMIC-IT provides multilingual instructions, supporting English, Chinese, Korean
 <img src="https://i.postimg.cc/4x66gHhw/mimic-it.jpg"  width="100%" height="100%">
 </p>
 
+
+
 ## Using MIMIC-IT Dataset
+
+We have integrated the MIMIC-IT dataset into the Hugging Face dataset. You can download and utilize the MIMIC-IT dataset from [here](https://huggingface.co/datasets/pufanyi/MIMICIT).
 
 You can following the steps to obtain the MIMIC-IT dataset. Each task (e.g. `DC`, `LA`) in MIMIC-IT is composed of three parts, including:
 1. `xx.json` file: the images in base64 format.
@@ -47,7 +51,7 @@ You can download the `instructions.json` and `train.json` files, from our provid
 | **TVC** | ea16ec0ef7f35e810e0920e85ed467af | 166 MB |
 | **VST** | 988569e39aaa24da0df547644514b0d4 | 32 MB |
 | **SN** | 1c4751c5b2c0bcaaeb94dbc5fb39e7a6 | 8 MB |
-| **SD (General Diff)** | TBD | 81 MB |
+| **SD (General Diff)** | 7fd998c10baaba9c6e39b66761a456a0 | 8.1 MB |
 | **SD (Subtle Diff)** | 5175198daebb997672a21307e8b18a96 | 5 MB |
 | **E4D (1st Part)** | 504b779dbc852c943adbe7862d6924d7 | 710 MB/3.2 GB |
 
@@ -60,7 +64,7 @@ mimicit_data/DC/DC_train.json
 The `DC_instructions.json` includes a meta object with version, time, and author information. The data object contains instruction-response pairs, each with a unique identifier (e.g., "DC_INS_00001"). Each pair consists of an instruction, an answer, an array of associated image IDs, and an array of related instruction IDs (which can be arranged as in-context examples).
 ```json
 {   
-    "meta":{"virson":"0.0.1","time":"2023-06","author":"ntu"},
+    "meta":{"version":"0.0.1","time":"2023-06","author":"ntu"},
     "data": {
         "DC_INS_00001": {
             "instruction":"Who is the main focus of the video?",
