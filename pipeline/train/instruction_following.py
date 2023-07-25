@@ -577,7 +577,7 @@ def main():
     if accelerator.distributed_type == "DEEPSPEED":
         num_training_steps = num_training_steps * accelerator.num_processes
         num_warmup_steps = num_warmup_steps * accelerator.num_processes
-        
+
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
             optimizer,
