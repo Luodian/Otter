@@ -56,6 +56,8 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
     data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
+    dtype = model.dtype
+    print(f"Using dtype {dtype}")
 
     # loop through dataloader
     for num_steps, (batch_mimicits) in tqdm(
@@ -70,9 +72,9 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         #### MIMIC-IT FORWARD PASS ####
         total_losses = []
         for batch_mimicit in batch_mimicits:
-            images = batch_mimicit["net_input"]["patch_images"]
-            input_ids = batch_mimicit["net_input"]["input_ids"]
-            attention_mask = batch_mimicit["net_input"]["attention_masks"]
+            images = batch_mimicit["net_input"]["patch_images"].to(device_id, non_blocking=True)
+            input_ids = batch_mimicit["net_input"]["input_ids"].to(device_id, non_blocking=True)
+            attention_mask = batch_mimicit["net_input"]["attention_masks"].to(device_id, non_blocking=True)
 
             labels = input_ids.clone()
             labels[labels == tokenizer.pad_token_id] = -100
@@ -113,7 +115,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
             with accelerator.autocast():
                 loss_mimicit = model(
-                    vision_x=images,
+                    vision_x=images.to(dtype),
                     lang_x=input_ids,
                     attention_mask=attention_mask,
                     labels=labels,
@@ -211,6 +213,13 @@ def parse_args():
         default="otter-9b",
         help="used to name saving directory and wandb run",
     )
+    parser.add_argument(
+        "--model_name",
+        type=str,
+        default="otter",
+        choices=["otter", "flamingo"],
+        help="otters or flamingo",
+    )
     # Prepare the arguments for different types of data sources.
     # Arguments are grouped by data types and whether the data is from past or new sources.
     # Arguments for image-text data, including multi-run conversations.
@@ -224,8 +233,15 @@ def parse_args():
         "--past_images_path",
         type=str,
         default="",
-        help="Path to the past images dataset (including multi-run conversations). Should be in format /path/to/xx.json",
+        help="Path to the past images dataset (including base64 format images). Should be in format /path/to/xx.json",
     )
+    parser.add_argument(
+        "--past_train_config_path",
+        type=str,
+        default="",
+        help="Path to the past images dataset (including current ids and related in-context ids). Should be in format /path/to/xx_train.json",
+    )
+
     parser.add_argument(
         "--mimicit_path",
         type=str,
@@ -236,7 +252,13 @@ def parse_args():
         "--images_path",
         type=str,
         default="",
-        help="Path to the new images dataset (including multi-run conversations). Should be in format /path/to/xx.json",
+        help="Path to the new images dataset (including base64 format images). Should be in format /path/to/xx.json",
+    )
+    parser.add_argument(
+        "--train_config_path",
+        type=str,
+        default="",
+        help="Path to the new images dataset (including current ids and related in-context ids). Should be in format /path/to/xx_train.json",
     )
 
     # Arguments for image-text in-context data.
@@ -331,6 +353,7 @@ def parse_args():
     parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
     # Sum of gradient optimization batch size
     parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--train_num_samples", type=int, default=-1)
 
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
     parser.add_argument(
@@ -376,13 +399,13 @@ def parse_args():
     parser.add_argument(
         "--max-src-length",
         type=int,
-        default=1024,
+        default=256,
         help="the maximum src sequence length",
     )
     parser.add_argument(
         "--max-tgt-length",
         type=int,
-        default=1024,
+        default=256,
         help="the maximum target sequence length",
     )
     parser.add_argument("--patch-image-size", type=int, default=224)
@@ -416,7 +439,6 @@ def parse_args():
         action="store_true",
         help="delete previous checkpoint when saving new checkpoint",
     )
-
     # parser = add_data_args(parser)
     args = parser.parse_args()
 
@@ -447,27 +469,28 @@ def parse_args():
 def main():
     args = parse_args()
     accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps)
+    if accelerator.state.deepspeed_plugin is not None:
+        accelerator.state.deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = args.batch_size
 
     device_id = accelerator.device
 
-    # random_seed(args.seed)
-
     if args.pretrained_model_name_or_path is not None:
         accelerator.print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
-        device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" else "auto"
-        if "otter" in args.run_name.lower():
+        device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED" else "auto"
+        if "otter" in args.model_name.lower():
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
                 device_map=device_map,
                 local_files_only=args.offline,
             )
-        elif "flamingo" in args.run_name.lower():
+        elif "flamingo" in args.model_name.lower():
             model = FlamingoForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
                 device_map=device_map,
                 local_files_only=args.offline,
             )
-            model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+            # add special tokens for instruction tuning
+            model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"]})
     else:
         config = FlamingoConfig.from_json_file("./flamingo/config.json")
         model = FlamingoForConditionalGeneration(config=config)
@@ -486,7 +509,10 @@ def main():
 
     accelerator.wait_for_everyone()
 
-    if model.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+    args.distributed_type = accelerator.distributed_type
+
+    # import pdb;pdb.set_trace()
+    if "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
         model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
 
     args.tokenizer = model.text_tokenizer
@@ -546,20 +572,26 @@ def main():
 
     args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
 
+    num_warmup_steps = args.warmup_steps // args.gradient_accumulation_steps
+    num_training_steps = total_training_steps // args.gradient_accumulation_steps
+    if accelerator.distributed_type == "DEEPSPEED":
+        num_training_steps = num_training_steps * accelerator.num_processes
+        num_warmup_steps = num_warmup_steps * accelerator.num_processes
+
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
             optimizer,
-            num_warmup_steps=args.warmup_steps // args.gradient_accumulation_steps,
-            num_training_steps=total_training_steps // args.gradient_accumulation_steps,
+            num_warmup_steps=num_warmup_steps,
+            num_training_steps=num_training_steps,
         )
     elif args.lr_scheduler == "cosine":
         lr_scheduler = get_cosine_schedule_with_warmup(
             optimizer,
-            num_warmup_steps=args.warmup_steps // args.gradient_accumulation_steps,
-            num_training_steps=total_training_steps // args.gradient_accumulation_steps,
+            num_warmup_steps=num_warmup_steps,
+            num_training_steps=num_training_steps,
         )
     else:
-        lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps)
+        lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps)
 
     if args.rank == 0 and args.report_to_wandb:
         wandb.init(
@@ -627,7 +659,7 @@ def main():
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
         if args.save_hf_model:
-            model.save_pretrained(f"{args.external_save_dir}")
+            unwrapped_model.save_pretrained(f"{args.external_save_dir}")
 
 
 if __name__ == "__main__":

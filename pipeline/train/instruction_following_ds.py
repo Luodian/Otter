@@ -340,7 +340,7 @@ def main():
             {"params": params_without_wd, "weight_decay": 0.0},
         ]
 
-    args.train_num_samples = mimicit_dataset.dataloader.num_samples if args.train_num_samples is None else args.train_num_samples
+    args.train_num_samples = mimicit_loaders.dataloader.num_samples if args.train_num_samples is -1 else args.train_num_samples
     total_training_steps = ((args.train_num_samples) // (args.batch_size * args.world_size)) * args.num_epochs
 
     resume_from_epoch = 0

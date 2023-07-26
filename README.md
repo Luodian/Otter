@@ -1,4 +1,4 @@
-<p align="center" width="100%">
+![image](https://github.com/Luodian/Otter/assets/15847405/02d6a50c-875d-40e7-b699-f8e401a14396)<p align="center" width="100%">
 <img src="https://i.postimg.cc/MKmyP9wH/new-banner.png"  width="80%" height="80%">
 </p>
 
@@ -53,6 +53,12 @@
 **Contact: Leave issue or `drluodian@gmail.com/YUANHAN002@e.ntu.edu.sg`. We are on call to respond.**
 
 **[2023-07]**
+1. 🧨 Feature Updates:
+    - DeepSpeed ZeRo2 Integration + DDP Training
+    - Support Flamingo pretraining on LIAON400M/CC3M.
+    - Add LoRA support for tuning LLM decoder.
+    - Integration of multiple LLMs (Vicuna, MPT, LLama2, Falcon)
+2. 🤗 Checkout [MIMIC-IT](https://huggingface.co/datasets/pufanyi/MIMICIT) on Huggingface datasets.
 1. 🦦 Checkout our [Otter-MPT7B Image Demo](https://otter.cliangyu.com/). We update the model by incoporating OpenFlamingv2 and specifically tune it to enable generation abilities for both long and short answers.
 2. 🥚 Update [Eggs](./mimic-it/README.md/#eggs) section for downloading MIMIC-IT dataset.
 3. 🥃 Contact us **if you wish to develop Otter for your scenarios** (for satellite images or funny videos?). We aim to support and assist with Otter's diverse use cases. OpenFlamingo and Otter are strong models with the [Flamingo](https://www.deepmind.com/blog/tackling-multiple-tasks-with-a-single-visual-language-model)'s excellently designed architecture that accepts multiple images/videos or other modality inputs. Let's build more interesting models together. 

@@ -10,6 +10,7 @@ import sys
 import tarfile
 from dataclasses import dataclass
 from multiprocessing import Value
+import numpy as np
 
 import braceexpand
 import torch
@@ -22,6 +23,8 @@ from torch.utils.data.distributed import DistributedSampler
 from webdataset.filters import _shuffle
 from webdataset.tariterators import base_plus_ext, tar_file_expander, url_opener, valid_sample
 from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
+
+from .train_utils import DistributedProxySampler
 
 import statistics
 
@@ -252,7 +255,10 @@ class ResampledShards2(IterableDataset):
             yield dict(url=self.rng.choice(self.urls))
 
 
+# import uuid
 def preprocess_image(sample, image_processor):
+    # uuid_str = str(uuid.uuid4())
+    # sample[0].save(f'./archived/images/{uuid_str}.png')
     image = [image_processor.preprocess(s, return_tensors="pt")["pixel_values"] for s in sample]
     image = torch.cat(image, dim=0)
     # apply random horizontal flip wo/w color jitter
@@ -261,9 +267,15 @@ def preprocess_image(sample, image_processor):
     return image
 
 
-def preprocess_text(sample, tokenizer):
+B_INST, E_INST = "[INST]", "[/INST]"
+
+
+def preprocess_text(sample, tokenizer, prompt_format="simple"):
     tokenizer.padding_side = "right"
-    sample = [(f"<image>{s.strip()}<|endofchunk|>{tokenizer.eos_token}") for s in sample]
+    if prompt_format == "simple":
+        sample = [(f"<image>{s.strip()}<|endofchunk|>{tokenizer.eos_token}") for s in sample]
+    elif prompt_format == "llama2_inst":
+        sample = [(f"<image>{B_INST}please describe this image.{E_INST}{s.strip()}<|endofchunk|>{tokenizer.eos_token}") for s in sample]
     text = tokenizer(
         sample,
         max_length=32,
@@ -279,7 +291,7 @@ MAX_NUM_IMAGES = 5
 import base64
 
 
-def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold):
+def preprocess_interleaved(sample, tokenizer, clip_processor, sim_threshold, distributed_type="no"):
     info = json.loads(sample[0])
     sentences = info["text_list"]
 
@@ -532,6 +544,97 @@ def get_laion_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     return DataInfo(dataloader=dataloader, shared_epoch=shared_epoch)
 
 
+def get_cc3m_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
+    input_shards = args.cc3m_shards
+    assert input_shards is not None
+    resampled = getattr(args, "dataset_resampled", False)
+
+    num_samples, num_shards = get_dataset_size(input_shards)
+    num_samples = None
+    if not num_samples:
+        num_samples = args.train_num_samples_cc3m
+        if not num_samples:
+            raise RuntimeError(
+                "Currently, number of dataset samples must be specified for training dataset. "
+                "Please specify via `--train-num-samples` if no dataset length info present."
+            )
+
+    # create a shared epoch store to sync epoch to dataloader worker proc
+    shared_epoch = SharedEpoch(epoch=epoch)
+    if resampled:
+        pipeline = [ResampledShards2(input_shards, deterministic=True, epoch=shared_epoch)]
+    else:
+        pipeline = [wds.SimpleShardList(input_shards)]
+
+    # create two preprocess functions that take in the passed in image_processor and tokenizer
+    preprocess_image_fn = functools.partial(preprocess_image, image_processor=image_processor)
+    preprocess_text_fn = functools.partial(preprocess_text, tokenizer=tokenizer)
+
+    # at this point we have an iterator over all the shards
+    if not resampled:
+        pipeline.extend(
+            [
+                detshuffle2(
+                    bufsize=_SHARD_SHUFFLE_SIZE,
+                    initial=_SHARD_SHUFFLE_INITIAL,
+                    seed=args.seed,
+                    epoch=shared_epoch,
+                ),
+                wds.split_by_node,
+                wds.split_by_worker,
+            ]
+        )
+    pipeline.extend(
+        [
+            # at this point, we have an iterator over the shards assigned to each worker at each node
+            # wds.tarfile_to_samples(handler=log_and_continue),
+            tarfile_to_samples_nothrow,
+            wds.shuffle(
+                bufsize=_SAMPLE_SHUFFLE_SIZE,
+                initial=_SAMPLE_SHUFFLE_INITIAL,
+            ),
+        ]
+    )
+
+    pipeline.extend(
+        [
+            wds.select(filter_no_caption_or_no_image),
+            wds.decode("pil", handler=log_and_continue),
+            wds.to_tuple("jpg;png;jpeg", "txt", handler=log_and_continue),
+            wds.batched(args.batch_size_cc3m, partial=False),
+            wds.map_tuple(preprocess_image_fn, preprocess_text_fn, handler=log_and_continue),
+        ]
+    )
+
+    dataset = wds.DataPipeline(*pipeline)
+    if not resampled:
+        assert num_shards >= args.workers * args.world_size, "number of shards must be >= total workers"
+    # roll over and repeat a few samples to get same number of full batches on each node
+    round_fn = math.floor if floor else math.ceil
+    global_batch_size = args.batch_size_cc3m * args.world_size
+    num_batches = round_fn(num_samples / global_batch_size)
+    num_workers = max(1, args.workers)
+    num_worker_batches = round_fn(num_batches / num_workers)  # per dataloader worker
+    num_batches = num_worker_batches * num_workers
+    num_samples = num_batches * global_batch_size
+    # each worker is iterating over this
+    dataset = dataset.with_epoch(num_worker_batches)
+
+    dataloader = wds.WebLoader(
+        dataset,
+        batch_size=None,
+        shuffle=False,
+        num_workers=args.workers,
+        persistent_workers=True,
+    )
+
+    # add meta-data to dataloader instance for convenience
+    dataloader.num_batches = num_batches
+    dataloader.num_samples = num_samples
+
+    return DataInfo(dataloader=dataloader, shared_epoch=shared_epoch)
+
+
 import json
 
 from PIL import Image, ImageFile
@@ -568,11 +671,16 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     if args.mimicit_path != "":
         all_mimicit_path = args.mimicit_path.split(",") + args.past_mimicit_path.split(",") if args.past_mimicit_path != "" else args.mimicit_path.split(",")
         all_images_path = args.images_path.split(",") + args.past_images_path.split(",") if args.past_images_path != "" else args.images_path.split(",")
+        all_train_config_path = (
+            args.train_config_path.split(",") + args.past_train_config_path.split(",")
+            if args.past_train_config_path != ""
+            else args.train_config_path.split(",")
+        )
         if args.past_mimicit_path != "":
             status = ["new"] * len(args.mimicit_path.split(",")) + ["past"] * len(args.past_mimicit_path.split(","))
         else:
             status = ["new"] * len(args.mimicit_path.split(","))
-        unified_dataset = MimicitDataset(args, all_mimicit_path, all_images_path, status_list=status)
+        unified_dataset = MimicitDataset(args, all_mimicit_path, all_images_path, all_train_config_path, status_list=status)
         unified_datasets.append(unified_dataset)
 
     # processing for text datasets
@@ -605,7 +713,11 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
         unified_datasets.append(unified_dataset)
 
     # args.train_num_samples = sum(len(dataset) for dataset in unified_datasets) / len(unified_datasets)
-    args.train_num_samples = statistics.median((len(dataset) for dataset in unified_datasets))
+    if args.train_num_samples == -1:
+        args.train_num_samples = statistics.median((len(dataset) for dataset in unified_datasets))
+
+    assert args.train_num_samples <= max([len(dataset) for dataset in unified_datasets]), "your train_num_samples is larger than dataset"
+
     round_fn = math.floor if floor else math.ceil
     global_batch_size = args.batch_size * args.world_size
 
@@ -622,6 +734,8 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
 
     for unified_dataset in unified_datasets:
         sampler = RandomSampler(unified_dataset, replacement=True, num_samples=num_samples)
+        if args.distributed_type == "DEEPSPEED":
+            sampler = DistributedProxySampler(sampler, num_replicas=args.world_size, rank=args.rank)
         dataloader = torch.utils.data.DataLoader(
             unified_dataset,
             sampler=sampler,
@@ -643,6 +757,8 @@ def get_dataset_fn(dataset_type):
         return get_mmc4_dataset
     elif dataset_type == "mimicit":
         return get_mimicit_dataset
+    elif dataset_type == "cc3m":
+        return get_cc3m_dataset
     else:
         raise ValueError(f"Unsupported dataset type: {dataset_type}")
 

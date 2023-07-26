@@ -566,22 +566,48 @@ class FlamingoModel(FlamingoPreTrainedModel):
     def get_lang_encoder(self) -> nn.Module:
         return self.lang_encoder
 
+    # def init_weights(self):
+    #     # Freeze all parameters in vision encoder
+    #     for param in self.vision_encoder.parameters():
+    #         param.requires_grad = False
+    #     # Freeze all parameters in lang encoders except gated_cross_attn_layers
+    #     for name, param in self.lang_encoder.named_parameters():
+    #         if "gated_cross_attn_layer" not in name:
+    #             param.requires_grad = False
+    #     # Unfreeze LM input embeddings
+    #     self.lang_encoder.get_input_embeddings().requires_grad_(True)
+    #     ## MPTForCausalLM is tied word embedding
+    #     if self.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+    #         self.lang_encoder.lm_head.requires_grad_(True)
+    #     # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
+    #     # print model size in billions of parameters in 2 decimal places
+    #     print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
+
     def init_weights(self):
         # Freeze all parameters in vision encoder
         for param in self.vision_encoder.parameters():
             param.requires_grad = False
-        # Freeze all parameters in lang encoders except gated_cross_attn_layers
-        for name, param in self.lang_encoder.named_parameters():
-            if "gated_cross_attn_layer" not in name:
-                param.requires_grad = False
-        # Unfreeze LM input embeddings
+
+        if "lora_config" in self.config.__dict__:
+            print(f"LoRA trainable param: {(sum(p.numel() for p in self.lang_encoder.parameters() if p.requires_grad)) / 1e9:.3f} B")
+            # Unfreeze gated_cross_attn_layers
+            for layer in self.lang_encoder._get_decoder_layers():
+                if layer.gated_cross_attn_layer is not None:
+                    for param in layer.gated_cross_attn_layer.parameters():
+                        param.requires_grad = True
+        else:
+            # Freeze all parameters in lang encoders except gated_cross_attn_layers
+            for name, param in self.lang_encoder.named_parameters():
+                if "gated_cross_attn_layer" not in name:
+                    param.requires_grad = False
+        # Unfreeze LM input and output embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
         if self.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
             self.lang_encoder.lm_head.requires_grad_(True)
         # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
         # print model size in billions of parameters in 2 decimal places
-        print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
+        print(f"Total Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
     def forward(
         self,
@@ -682,27 +708,28 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
 
         ### TODO: give "LlamaForCausalLM" as the name of text_config.architectures of Llama_based flamingo
-        if "llama" not in config.text_config._name_or_path:
-            if config.text_config.architectures[0] == "MPTForCausalLM":
-                text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
-                lang_encoder = MPTForCausalLM(config=config.text_config)
-            elif config.text_config.architectures[0] == "MosaicGPT":
-                text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mosaic-llama-redpajama-final-candidate")
-                lang_encoder = MosaicGPT(config=config.text_config)
-            elif config.text_config.architectures[0] == "RWForCausalLM":
-                text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
-                lang_encoder = RWForCausalLM(config=config.text_config)
-            # TODO: what's the logic here?
-            elif config.text_config.architectures[0] == "LlamaForCausalLM":
-                text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
-                lang_encoder = LlamaForCausalLM(config=config.text_config)
-            else:
-                import pdb
-
-                pdb.set_trace()
-        else:
+        # assert hasattr(config.text_config, "_name_or_path")
+        # if "llama" not in config.text_config._name_or_path.lower():
+        if config.text_config.architectures[0] == "MPTForCausalLM":
+            text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
+            lang_encoder = MPTForCausalLM(config=config.text_config)
+        elif config.text_config.architectures[0] == "MosaicGPT":
+            text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mosaic-llama-redpajama-final-candidate")
+            lang_encoder = MosaicGPT(config=config.text_config)
+        elif config.text_config.architectures[0] == "RWForCausalLM":
+            text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
+            lang_encoder = RWForCausalLM(config=config.text_config)
+        # TODO: what's the logic here?
+        elif config.text_config.architectures[0] == "LlamaForCausalLM":
             text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
             lang_encoder = LlamaForCausalLM(config=config.text_config)
+        else:
+            import pdb
+
+            pdb.set_trace()
+        # else:
+        #     text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+        #     lang_encoder = LlamaForCausalLM(config=config.text_config)
 
         vision_encoder = CLIPVisionModel(config=config.vision_config)
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
@@ -769,7 +796,14 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
             self.lang_encoder.lm_head.requires_grad_(True)
         # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
         # print model size in billions of parameters in 2 decimal places
-        print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
+        print("====================Model Grad Part====================")
+        total_params = 0
+        for name, param in self.named_parameters():
+            if param.requires_grad:
+                total_params += param.numel()
+                print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
+        print(f"Total Trainable param: {total_params / 1e9:.4f} B")
+        print(f"Total Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
     def forward(
         self,

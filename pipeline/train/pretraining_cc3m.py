@@ -10,6 +10,7 @@ import numpy as np
 import torch
 import torch.nn
 from accelerate import Accelerator
+from accelerate import load_checkpoint_and_dispatch
 from tqdm import tqdm
 from transformers import (
     CLIPImageProcessor,
@@ -17,7 +18,6 @@ from transformers import (
     get_cosine_schedule_with_warmup,
     get_linear_schedule_with_warmup,
 )
-
 import wandb
 from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from otter.modeling_otter import OtterForConditionalGeneration
@@ -61,28 +61,14 @@ def parse_args():
         help="used to name saving directory and wandb run",
     )
     parser.add_argument(
-        "--mmc4_shards",
+        "--cc3m_shards",
         type=str,
-        help="path to c4 shards, this should be a glob pattern such as /path/to/shards/shard-{0000..0999}.tar",
+        help="path to cc3m shards, this should be a glob pattern such as /path/to/shards/shard-{0000..0999}.tar",
     )
-    parser.add_argument(
-        "--laion_shards",
-        type=str,
-        help="path to laion shards, this should be a glob pattern such as /path/to/shards/shard-{0000..0999}.tar",
-    )
-    parser.add_argument("--train_num_samples_mmc4", type=int, default=100)
-    parser.add_argument("--train_num_samples_laion", type=int, default=100)
-    parser.add_argument("--batch_size_mmc4", type=int, default=8)
-    parser.add_argument("--batch_size_laion", type=int, default=8)
+    parser.add_argument("--train_num_samples_cc3m", type=int, default=100)
+    parser.add_argument("--batch_size_cc3m", type=int, default=8)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--dataset_resampled", action="store_true")
-    parser.add_argument(
-        "--mmc4_textsim_threshold",
-        default=0.32,
-        type=float,
-        help="threshold for filtering images in mmc4 based on image-text similarity",
-    )
-
     # parser.add_argument("--use_media_placement_augmentation", action="store_true")
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--num_epochs", type=int, default=1)
@@ -105,17 +91,10 @@ def parse_args():
         type=str,
         help="constant, linear, or cosine",
     )
-    parser.add_argument("--loss_multiplier_mmc4", type=float, default=1.0)
-    parser.add_argument("--loss_multiplier_laion", type=float, default=0.2)
+    parser.add_argument("--loss_multiplier_cc3m", type=float, default=1)
     parser.add_argument("--warmup_steps", default=1000, type=int)
     parser.add_argument("--warmup_steps_ratio", default=None, type=float)
     parser.add_argument("--weight_decay", default=0.1, type=float)
-    parser.add_argument(
-        "--precision",
-        choices=["amp_bf16", "amp_bfloat16", "bf16", "amp", "fp16", "fp32"],
-        default="amp",
-        help="Floating point precision.",
-    )
     # distributed training args
     parser.add_argument(
         "--dist-url",
@@ -178,29 +157,28 @@ def random_seed(seed=42, rank=0):
     random.seed(seed + rank)
 
 
-def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
-    num_batches_per_epoch_laion = laion_loader.num_batches
-    num_batches_per_epoch_mmc4 = mmc4_loader.num_batches
+def train_one_epoch(args, model, epoch, cc3m_loader, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
+    num_batches_per_epoch_cc3m = cc3m_loader.num_batches
 
-    assert num_batches_per_epoch_laion == num_batches_per_epoch_mmc4, "Number of batches in laion and mmc4 datasets must be the same"
-
-    num_batches_per_epoch = num_batches_per_epoch_mmc4
+    num_batches_per_epoch = num_batches_per_epoch_cc3m
     total_training_steps = num_batches_per_epoch * args.num_epochs
 
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
     endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)["input_ids"][-1]
-    answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
+    # answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
 
     model.train()
 
     # setup logging
     step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
-    data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
+    data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND cc3m (= 1 batch regardless of gradient accum)
     end = time.time()
+    dtype = model.dtype
+    print(f"Using dtype {dtype}")
 
     # loop through dataloader
-    for num_steps, (batch_laion, batch_mmc4) in tqdm(
-        enumerate(zip(laion_loader, mmc4_loader)),
+    for num_steps, (batch_cc3m) in tqdm(
+        enumerate(cc3m_loader),
         disable=args.rank != 0,
         total=total_training_steps,
         initial=(epoch * num_batches_per_epoch),
@@ -211,10 +189,10 @@ def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, op
         total_losses = []
 
         #### LAION FORWARD PASS ####
-        images = batch_laion[0].to(device_id, non_blocking=True).unsqueeze(1).unsqueeze(1)
+        images = batch_cc3m[0].to(device_id, non_blocking=True).unsqueeze(1).unsqueeze(1)
 
-        input_ids = batch_laion[1][0].to(device_id, non_blocking=True)
-        attention_mask = batch_laion[1][1].to(device_id, non_blocking=True)
+        input_ids = batch_cc3m[1][0].to(device_id, non_blocking=True)
+        attention_mask = batch_cc3m[1][1].to(device_id, non_blocking=True)
 
         labels = input_ids.clone()
         labels[labels == tokenizer.pad_token_id] = -100
@@ -223,88 +201,17 @@ def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, op
         labels.to(device_id)
 
         with accelerator.autocast():
-            loss_laion = model(
-                vision_x=images,
+            loss_cc3m = model(
+                vision_x=images.to(dtype),
                 lang_x=input_ids,
                 attention_mask=attention_mask,
                 labels=labels,
             )[0]
-
-        # model.eval()
-        # model.text_tokenizer.padding_side = "left"
-        # text_prompt_lang_x = model.text_tokenizer(
-        #     [
-        #         "<image>",
-        #     ],
-        #     return_tensors="pt",
-        # )['input_ids']
-        # outputs_debug = model.generate(
-        #     vision_x=images.to(device_id),
-        #     lang_x=text_prompt_lang_x.to(device_id),
-        #     attention_mask=attention_mask.to(device_id),
-        #     max_length=256,
-        # )
-
-        # print(model.text_tokenizer.batch_decode(outputs_debug))
-        # print(model.text_tokenizer.batch_decode(input_ids))
-        # model.train()
 
         #### LAION BACKWARD ####
-        accelerator.backward(args.loss_multiplier_laion * loss_laion)
-        total_losses.append(args.loss_multiplier_laion * loss_laion)
+        accelerator.backward(args.loss_multiplier_cc3m * loss_cc3m)
+        total_losses.append(args.loss_multiplier_cc3m * loss_cc3m)
 
-        #### MMC4 FORWARD PASS ####
-        images = batch_mmc4[0].to(device_id, non_blocking=True).unsqueeze(2)
-        input_ids = torch.stack([x[0] for x in batch_mmc4[1]]).squeeze(1)
-        attention_mask = torch.stack([x[1] for x in batch_mmc4[1]]).squeeze(1)
-
-        # NOTE: irena: expected shape of clip_text_input_ids / attention_mask is (N, I, max_seq_len)
-        labels = input_ids.clone()
-        labels[labels == tokenizer.pad_token_id] = -100
-        labels[:, 0] = -100
-
-        for i in range(labels.shape[0]):
-            # remove loss for any token before the first <image> token
-            label_idx = 0
-            while label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id:
-                labels[i][label_idx] = -100
-                label_idx += 1
-
-            # get index of all endofchunk tokens in the sequence
-            endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
-            for endofchunk_idx in endofchunk_idxs:
-                token_idx = endofchunk_idx + 1
-                while token_idx < labels.shape[1] and labels[i][token_idx] != media_token_id:
-                    labels[i][token_idx] = -100
-                    token_idx += 1
-
-        labels[labels == media_token_id] = -100
-        labels.to(device_id)
-
-        # with accelerator.accumulate(model):
-        with accelerator.autocast():
-            loss_mmc4 = model(
-                vision_x=images,
-                lang_x=input_ids,
-                attention_mask=attention_mask,
-                labels=labels,
-            )[0]
-
-        # model.text_tokenizer.padding_side = "left"
-        # outputs_debug = model.generate(
-        #     vision_x=images.to(device_id),
-        #     lang_x=input_ids.to(device_id),
-        #     attention_mask=attention_mask.to(device_id),
-        #     max_length=256,
-        # )
-
-        # print(model.text_tokenizer.batch_decode(outputs_debug))
-        # print(model.text_tokenizer.batch_decode(input_ids))
-
-        #### MMC4 BACKWARD ####
-        accelerator.backward(args.loss_multiplier_mmc4 * loss_mmc4)
-        total_losses.append(args.loss_multiplier_mmc4 * loss_mmc4)
-        #### Collect MMC4/LAION Loss Info ####
         total_loss_sum = sum(total_losses)
         mean_loss = total_loss_sum / len(total_losses)
         # accelerator.backward(total_loss_sum.to(device_id))
@@ -339,18 +246,14 @@ def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, op
         if accelerator.sync_gradients:
             if args.rank == 0 and args.report_to_wandb:
                 # compute within rank 0
-                mmc4_samples_per_second = args.gradient_accumulation_steps * args.batch_size_mmc4 * args.world_size / step_time_m.val
-                mmc4_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_mmc4 / step_time_m.val
-                laion_samples_per_second = args.gradient_accumulation_steps * args.batch_size_laion * args.world_size / step_time_m.val
-                laion_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_laion / step_time_m.val
+                cc3m_samples_per_second = args.gradient_accumulation_steps * args.batch_size_cc3m * args.world_size / step_time_m.val
+                cc3m_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_cc3m / step_time_m.val
                 wandb.log(
                     {
                         "data_time": data_time_m.avg,
                         "step_time": step_time_m.avg,
-                        "mmc4_samples_per_second": mmc4_samples_per_second,
-                        "mmc4_samples_per_second_per_gpu": mmc4_samples_per_second_per_gpu,
-                        "laion_samples_per_second": laion_samples_per_second,
-                        "laion_samples_per_second_per_gpu": laion_samples_per_second_per_gpu,
+                        "cc3m_samples_per_second": cc3m_samples_per_second,
+                        "cc3m_samples_per_second_per_gpu": cc3m_samples_per_second_per_gpu,
                         "lr": optimizer.param_groups[0]["lr"],
                     },
                     commit=False,
@@ -360,8 +263,7 @@ def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, op
 
                 wandb.log(
                     {
-                        "mmc4_loss": loss_mmc4.item(),
-                        "laion_loss": loss_laion.item(),
+                        "cc3m_loss": loss_cc3m.item(),
                         "mean_loss": mean_loss.item(),
                         "global_step": global_step // args.gradient_accumulation_steps,
                     },
@@ -410,6 +312,8 @@ def main():
 
     args.local_rank, args.rank, args.world_size = world_info_from_env()
     accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps)
+    if accelerator.state.deepspeed_plugin is not None:
+        accelerator.state.deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = args.batch_size_cc3m
 
     device_id = accelerator.device
 
@@ -423,7 +327,7 @@ def main():
                 local_files_only=args.offline,
             )
         elif "flamingo" in args.run_name.lower():
-            if accelerator.num_processes > 1:
+            if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED":
                 model = FlamingoForConditionalGeneration.from_pretrained(
                     args.pretrained_model_name_or_path,
                     device_map={"": device_id},
@@ -435,7 +339,7 @@ def main():
                     device_map="auto",
                     local_files_only=args.offline,
                 )
-            model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+            # model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
     else:
         model = None
 
@@ -450,8 +354,7 @@ def main():
 
     image_processor = CLIPImageProcessor()
 
-    mmc4_dataset = get_data(args, image_processor, tokenizer, "mmc4")
-    laion_dataset = get_data(args, image_processor, tokenizer, "laion")
+    cc3m_dataset = get_data(args, image_processor, tokenizer, "cc3m")
 
     def get_grouped_params(model):
         params_with_wd, params_without_wd = [], []
@@ -471,27 +374,7 @@ def main():
             {"params": params_without_wd, "weight_decay": 0.0},
         ]
 
-    # total_training_steps = ((args.train_num_samples_mmc4) // (args.batch_size_mmc4 * args.world_size)) * args.num_epochs
-    total_training_steps = mmc4_dataset.dataloader.num_batches * args.num_epochs
-
-    resume_from_epoch = 0
-    # check if a checkpoint exists for this run
-    args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
-    if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is True:
-        checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
-        if len(checkpoint_list) == 0:
-            print(f"Found no checkpoints for run {args.external_save_dir}.")
-        else:
-            resume_from_checkpoint_path = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
-            print(f"Found checkpoint {resume_from_checkpoint_path} for run {args.external_save_dir}.")
-
-        if args.rank == 0:
-            print(f"Loading checkpoint from {resume_from_checkpoint_path}")
-        checkpoint = torch.load(resume_from_checkpoint_path, map_location="cpu")
-        model.load_state_dict(checkpoint["model_state_dict"], False)
-        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
-        resume_from_epoch = checkpoint["epoch"] + 1
+    total_training_steps = cc3m_dataset.dataloader.num_batches * args.num_epochs
 
     optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
 
@@ -515,6 +398,26 @@ def main():
     else:
         lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps)
 
+    resume_from_epoch = 0
+    # check if a checkpoint exists for this run
+    args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
+    if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is True:
+        checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_steps*.pt")  # or you chould change to 'epoch*.pt'
+        if len(checkpoint_list) == 0:
+            print(f"Found no checkpoints for run {args.external_save_dir}.")
+        else:
+            resume_from_checkpoint_path = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split("steps")[1].split(".")[0]))[-1]
+            # resume_from_checkpoint_path = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
+            print(f"Found checkpoint {resume_from_checkpoint_path} for run {args.external_save_dir}.")
+
+        if args.rank == 0:
+            print(f"Loading checkpoint from {resume_from_checkpoint_path}")
+        checkpoint = torch.load(resume_from_checkpoint_path, map_location="cpu")
+        model.load_state_dict(checkpoint["model_state_dict"], False)
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
+        resume_from_epoch = checkpoint["epoch"] + 1
+
     if args.rank == 0 and args.report_to_wandb:
         wandb.init(
             project=args.wandb_project,
@@ -532,11 +435,8 @@ def main():
     model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
-        laion_dataset.set_epoch(epoch)
-        laion_loader = laion_dataset.dataloader
-
-        mmc4_dataset.set_epoch(epoch)
-        mmc4_loader = mmc4_dataset.dataloader
+        cc3m_dataset.set_epoch(epoch)
+        cc3m_loader = cc3m_dataset.dataloader
 
         train_one_epoch(
             args=args,
@@ -545,8 +445,7 @@ def main():
             tokenizer=tokenizer,
             optimizer=optimizer,
             lr_scheduler=lr_scheduler,
-            mmc4_loader=mmc4_loader,
-            laion_loader=laion_loader,
+            cc3m_loader=cc3m_loader,
             accelerator=accelerator,
             device_id=device_id,
             wandb=wandb,

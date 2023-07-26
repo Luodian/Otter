@@ -196,3 +196,8 @@ pipeline/serve/examples/*.png
 
 tools
 otter9B-mpt7b-0705/config.json
+LICENSE
+tokenizer_checklist.chk
+tokenizer.model
+download.sh
+USE_POLICY.md
