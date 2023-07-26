@@ -1,4 +1,4 @@
-<p>
+<p align="center" width="100%">
 <img src="https://i.postimg.cc/MKmyP9wH/new-banner.png"  width="80%" height="80%">
 </p>
 
