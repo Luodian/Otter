@@ -1,7 +1,6 @@
-![image](https://github.com/Luodian/Otter/assets/15847405/02d6a50c-875d-40e7-b699-f8e401a14396)<p align="center" width="100%">
+<p>
 <img src="https://i.postimg.cc/MKmyP9wH/new-banner.png"  width="80%" height="80%">
 </p>
-
 
 <div>
 <div align="center">
