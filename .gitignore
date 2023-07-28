@@ -193,6 +193,7 @@ azure
 *.mp4
 checkpoints
 pipeline/serve/examples/*.png
+mimic-it/syphus/annotations/**/*.json
 
 tools
 otter9B-mpt7b-0705/config.json
