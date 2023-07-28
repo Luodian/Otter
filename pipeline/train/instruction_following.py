@@ -44,9 +44,7 @@ def random_seed(seed=42, rank=0):
     random.seed(seed + rank)
 
 
-def train_one_epoch(
-    args, model, epoch, mimicit_loaders, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb
-):
+def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
     num_batches_per_epoch = len(mimicit_loaders[0])
     total_training_steps = num_batches_per_epoch * args.num_epochs
 
@@ -58,9 +56,7 @@ def train_one_epoch(
 
     # setup logging
     step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
-    data_time_m = (
-        AverageMeter()
-    )  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
+    data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
     dtype = model.dtype
     print(f"Using dtype {dtype}")
@@ -126,11 +122,11 @@ def train_one_epoch(
                     image_attention_mask = get_image_attention_mask(input_ids, max_num_images, tokenizer)
                     assert images.shape[1] == 1, "The second dimension is not 1"
                     loss_mimicit = model(
-                        pixel_values = images.squeeze(1),
-                        input_ids = input_ids,
-                        attention_mask = attention_mask,
+                        pixel_values=images.squeeze(1),
+                        input_ids=input_ids,
+                        attention_mask=attention_mask,
                         image_attention_mask=image_attention_mask,
-                        labels = labels,
+                        labels=labels,
                     )
                     loss_mimicit = loss_mimicit.loss
                 else:
@@ -183,12 +179,8 @@ def train_one_epoch(
         if accelerator.sync_gradients:
             if args.rank == 0 and args.report_to_wandb:
                 # compute within rank 0
-                mimicit_samples_per_second = (
-                    args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.val
-                )
-                mimicit_samples_per_second_per_gpu = (
-                    args.gradient_accumulation_steps * args.batch_size / step_time_m.val
-                )
+                mimicit_samples_per_second = args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.val
+                mimicit_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size / step_time_m.val
 
                 wandb.log(
                     {
@@ -215,9 +207,7 @@ def train_one_epoch(
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
-            print(
-                f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss MIMIC-IT: {mean_loss.item():.3f}"
-            )
+            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss MIMIC-IT: {mean_loss.item():.3f}")
 
 
 def parse_args():
@@ -513,11 +503,7 @@ def main():
 
     if args.pretrained_model_name_or_path is not None:
         accelerator.print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
-        device_map = (
-            {"": device_id}
-            if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED"
-            else "auto"
-        )
+        device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED" else "auto"
         if "otter" in args.model_name.lower():
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
@@ -544,9 +530,7 @@ def main():
                 local_files_only=args.offline,
                 device_map=device_map,
             )
-            print(
-                f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B"
-            )
+            print(f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
             processor = AutoProcessor.from_pretrained(args.pretrained_model_name_or_path, legacy=False)
             past_special_tokens = processor.tokenizer.special_tokens_map["additional_special_tokens"]
             processor.tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>", "<|endofchunk|>"] + past_special_tokens})
@@ -573,7 +557,7 @@ def main():
 
     args.distributed_type = accelerator.distributed_type
 
-    if hasattr(model, 'lang_encoder') and "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
+    if hasattr(model, "lang_encoder") and "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
         model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
 
     random_seed(args.seed, args.rank)
@@ -588,13 +572,7 @@ def main():
         params_with_wd, params_without_wd = [], []
 
         def apply_decay(x):
-            return (
-                "gated_cross_attn_layer" in x
-                and "ff_gate" not in x
-                and "attn_gate" not in x
-                and "norm" not in x
-                and "bias" not in x
-            )
+            return "gated_cross_attn_layer" in x and "ff_gate" not in x and "attn_gate" not in x and "norm" not in x and "bias" not in x
 
         for n, p in model.named_parameters():
             # if p.requires_grad:
@@ -612,9 +590,7 @@ def main():
 
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
-    args.external_save_dir = (
-        os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
-    )
+    args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
     if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is True:
         checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
         if len(checkpoint_list) == 0:
@@ -636,9 +612,7 @@ def main():
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
 
-    args.warmup_steps = (
-        total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
-    )
+    args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
 
     num_warmup_steps = args.warmup_steps // args.gradient_accumulation_steps
     num_training_steps = total_training_steps // args.gradient_accumulation_steps
@@ -669,9 +643,7 @@ def main():
             config=vars(args),
         )
 
-    model, optimizer, lr_scheduler, mimicit_loaders = accelerator.prepare(
-        model, optimizer, lr_scheduler, mimicit_loaders
-    )
+    model, optimizer, lr_scheduler, mimicit_loaders = accelerator.prepare(model, optimizer, lr_scheduler, mimicit_loaders)
     model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):

@@ -4,7 +4,7 @@ from contextlib import suppress
 import torch
 from tqdm import tqdm
 from torch.utils.data.distributed import DistributedSampler
-from transformers.models.idefics.processing_idefics import (image_attention_mask_for_packed_input_ids, incremental_to_binary_attention_mask)
+from transformers.models.idefics.processing_idefics import image_attention_mask_for_packed_input_ids, incremental_to_binary_attention_mask
 
 
 def get_cast_dtype(precision: str):
@@ -286,10 +286,9 @@ class DistributedProxySampler(DistributedSampler):
 
         return iter(indices)
 
+
 # supporting idefics processing
 def get_image_attention_mask(output_input_ids, max_num_images, tokenizer):
     image_attention_mask, _ = image_attention_mask_for_packed_input_ids(output_input_ids, tokenizer)
-    image_attention_mask = incremental_to_binary_attention_mask(
-        image_attention_mask, num_classes=max_num_images
-    )
+    image_attention_mask = incremental_to_binary_attention_mask(image_attention_mask, num_classes=max_num_images)
     return image_attention_mask
