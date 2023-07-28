@@ -132,6 +132,7 @@ def train_one_epoch(
                         image_attention_mask=image_attention_mask,
                         labels = labels,
                     )
+                    loss_mimicit = loss_mimicit.loss
                 else:
                     loss_mimicit = model(
                         vision_x=images.to(dtype),
@@ -139,8 +140,6 @@ def train_one_epoch(
                         attention_mask=attention_mask,
                         labels=labels,
                     )[0]
-                if accelerator.deepspeed_config['zero_optimization']['stage'] == 3:
-                    loss_mimicit = loss_mimicit.loss
             if accelerator.mixed_precision == "fp16":
                 accelerator.backward(loss_mimicit.to(device_id))
             else:
@@ -541,6 +540,7 @@ def main():
             model = IdeficsForVisionText2Text.from_pretrained(
                 args.pretrained_model_name_or_path,
                 local_files_only=args.offline,
+                device_map=device_map,
             )
             print(
                 f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B"
