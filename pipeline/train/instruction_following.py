@@ -58,7 +58,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
     data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
-    dtype = model.dtype
+    dtype = accelerator.unwrap_model(model).dtype
     print(f"Using dtype {dtype}")
 
     # loop through dataloader
@@ -122,13 +122,12 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     image_attention_mask = get_image_attention_mask(input_ids, max_num_images, tokenizer)
                     assert images.shape[1] == 1, "The second dimension is not 1"
                     loss_mimicit = model(
-                        pixel_values=images.squeeze(1),
+                        pixel_values=images.squeeze(1).to(dtype),
                         input_ids=input_ids,
                         attention_mask=attention_mask,
                         image_attention_mask=image_attention_mask,
                         labels=labels,
-                    )
-                    loss_mimicit = loss_mimicit.loss
+                    )[0]
                 else:
                     loss_mimicit = model(
                         vision_x=images.to(dtype),
@@ -525,10 +524,12 @@ def main():
             tokenizer = model.text_tokenizer
             image_processor = CLIPImageProcessor()
         elif "idefics" in args.model_name.lower():
+            kwargs = {"local_files_only": args.offline, "device_map": device_map}
+            if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
+                kwargs.pop("device_map")
             model = IdeficsForVisionText2Text.from_pretrained(
                 args.pretrained_model_name_or_path,
-                local_files_only=args.offline,
-                device_map=device_map,
+                **kwargs,
             )
             print(f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
             processor = AutoProcessor.from_pretrained(args.pretrained_model_name_or_path, legacy=False)
