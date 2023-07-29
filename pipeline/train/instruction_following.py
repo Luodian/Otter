@@ -154,13 +154,13 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 # zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
                 m.weight.grad = m.weight.grad * zero_mask
 
-        if args.mask_lm_head:
+        if args.mask_lm_head and args.distributed_type != "DEEPSPEED":
             unwrapped_model = accelerator.unwrap_model(model)
             if isinstance(unwrapped_model, IdeficsForVisionText2Text):
                 unwrapped_model.lm_head.apply(mask_embedding)
             elif unwrapped_model.lang_encoder.__class__.__name__ in ["MPTForCausalLM", "MosaicGPT"]:
                 unwrapped_model.lang_encoder.transformer.wte.apply(mask_embedding)
-            elif unwrapped_model.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+            elif "LlamaForCausalLM" in unwrapped_model.lang_encoder.__class__.__name__ :
                 unwrapped_model.lang_encoder.model.embed_tokens.apply(mask_embedding)
                 unwrapped_model.lang_encoder.lm_head.apply(mask_embedding)
 
@@ -203,6 +203,21 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 )
                 torch.cuda.empty_cache()
                 gc.collect()  # forces garbage collection
+            
+            if args.rank == 0 and global_step != 0 and (args.save_steps_interval != -1) and (global_step % args.save_steps_interval == 0):
+                if not os.path.exists(args.external_save_dir):
+                    os.makedirs(args.external_save_dir)
+
+                unwrapped_model = accelerator.unwrap_model(model)
+                checkpoint_dict = {
+                    "steps": global_step,
+                    "model_state_dict": get_checkpoint(unwrapped_model),
+                }
+                print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_steps_{global_step}.pt")
+                accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_steps_{global_step}.pt")
+                if args.delete_previous_checkpoint:
+                    if epoch > 0 and os.path.exists(f"{args.external_save_dir}/checkpoint_step_{global_step-args.save_steps_interval}.pt"):
+                        os.remove(f"{args.external_save_dir}/checkpoint_step_{global_step-args.save_steps_interval}.pt")
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
@@ -382,10 +397,17 @@ def parse_args():
     parser.add_argument("--train_num_samples", type=int, default=-1)
 
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
+    parser.add_argument("--save_steps_interval", type=int, default=-1)
     parser.add_argument(
         "--pretrained_model_name_or_path",
         type=str,
         help="path to huggingface model or model identifier from local path or huggingface.co",
+        default=None,
+    )
+    parser.add_argument(
+        "--trained_ckpt",
+        type=str,
+        help="path to trained_ckpt",
         default=None,
     )
     parser.add_argument("--seed", type=int, default=42)
@@ -553,6 +575,14 @@ def main():
                 torch.load(args.load_from_original_checkpoint, map_location="cpu"),
                 False,
             )
+    
+    if args.trained_ckpt is not None:
+        train_ckpt = torch.load(args.trained_ckpt, map_location="cpu")
+        if train_ckpt.get("model_state_dict", None) is not None:
+            train_ckpt = train_ckpt["model_state_dict"]
+        _ = model.load_state_dict(train_ckpt, strict=False)
+        print(_[1])
+        # import pdb;pdb.set_trace()
 
     accelerator.wait_for_everyone()
 
@@ -613,7 +643,7 @@ def main():
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
 
-    args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
+    args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_stepsps
 
     num_warmup_steps = args.warmup_steps // args.gradient_accumulation_steps
     num_training_steps = total_training_steps // args.gradient_accumulation_steps
@@ -644,7 +674,11 @@ def main():
             config=vars(args),
         )
 
-    model, optimizer, lr_scheduler, mimicit_loaders = accelerator.prepare(model, optimizer, lr_scheduler, mimicit_loaders)
+    if accelerator.distributed_type == "DEEPSPEED":
+        model, optimizer, mimicit_loaders = accelerator.prepare(model, optimizer, mimicit_loaders)
+    else:
+        model, optimizer, lr_scheduler, mimicit_loaders = accelerator.prepare(model, optimizer, lr_scheduler, mimicit_loaders)
+
     model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):

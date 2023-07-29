@@ -552,11 +552,11 @@ class MimicitDataset(Dataset):
                     cur_text = f"[INST]{wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
                 else:
                     cur_text = f"[INST]{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
+<<<<<<< HEAD
             elif inst_format == "idefics":
                 cur_text = f"User:<fake_token_around_image><image><fake_token_around_image> {cur_instruction} Assistant:<answer> {cur_answer}<|endofchunk|>"
+>>>>>>> yhzhang/dev_sys_n_inst
             else:
-                cur_text = f"<image>User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
-            all_texts += cur_text
         # import pdb;pdb.set_trace()
         return patch_images, all_texts
 

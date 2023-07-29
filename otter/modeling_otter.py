@@ -874,7 +874,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         # Unfreeze LM input and output embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
-        if self.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+        if "LlamaForCausalLM" in self.lang_encoder.__class__.__name__:
             self.lang_encoder.lm_head.requires_grad_(True)
         print("====================Model Grad Part====================")
         total_params = 0
