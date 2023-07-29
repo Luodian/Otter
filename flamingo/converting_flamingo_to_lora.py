@@ -2,7 +2,7 @@ import argparse
 import torch
 import sys
 
-from .modeling_flamingo import FlamingoForConditionalGeneration
+from modeling_flamingo import FlamingoForConditionalGeneration
 from peft import get_peft_model, LoraConfig, TaskType
 
 MODEL_CLASSES = {
@@ -33,14 +33,15 @@ parser.add_argument(
 # Parse the input arguments
 args = parser.parse_args()
 
-load_bit = "bf16"
-if load_bit == "fp16":
-    precision = {"torch_dtype": torch.float16}
-elif load_bit == "bf16":
-    precision = {"torch_dtype": torch.bfloat16}
+# load_bit = "bf16"
+# if load_bit == "fp16":
+#     precision = {"torch_dtype": torch.float16}
+# elif load_bit == "bf16":
+#     precision = {"torch_dtype": torch.bfloat16}
 
 # Load the model
-model = FlamingoForConditionalGeneration.from_pretrained(args.checkpoint_path, device_map="auto", **precision)
+# model = FlamingoForConditionalGeneration.from_pretrained(args.checkpoint_path, device_map="auto", **precision)
+model = FlamingoForConditionalGeneration.from_pretrained(args.checkpoint_path, device_map="auto")
 
 # adding lora
 standard_modules = ["q_proj", "v_proj"]

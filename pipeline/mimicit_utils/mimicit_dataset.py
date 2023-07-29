@@ -251,7 +251,7 @@ class MimicitDataset(Dataset):
         assert len(image_ids) == resample_frames
         return image_ids
 
-    def process_llavar(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format="llama2"):
+    def process_llavar(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format="simple"):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -280,7 +280,7 @@ class MimicitDataset(Dataset):
         patch_images = self.patch_resize_transform(cur_image).unsqueeze(0).unsqueeze(0)
         return patch_images, all_texts  # incontext_text, query_text
 
-    def process_llava(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format="llama2"):
+    def process_llava(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format="simple"):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -506,7 +506,7 @@ class MimicitDataset(Dataset):
         patch_images = patch_images.unsqueeze(0)
         return patch_images, all_texts
 
-    def process_general_vqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format="llama2"):
+    def process_general_vqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format="simple"):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]

@@ -22,6 +22,12 @@ def dump_hf_model(pretrained_model_path: str, old_ckpt_path: str, new_folder_pat
         args.pretrained_model_path,
         device_map="auto",
     )
+
+    if "flamingo" in args.pretrained_model_path:
+        model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"]})
+        if "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
+            model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
+
     _ = model.load_state_dict(new_ckpt, strict=False)
     print(f"Saving HF model to {new_folder_path}")
     model.save_pretrained(new_folder_path)
