@@ -72,6 +72,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
         global_step = num_steps + epoch * num_batches_per_epoch
         #### MIMIC-IT FORWARD PASS ####
+
         total_losses = []
         for batch_mimicit in batch_mimicits:
             images = batch_mimicit["net_input"]["patch_images"].to(device_id, non_blocking=True)
@@ -121,6 +122,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     max_num_images = images.shape[1]
                     image_attention_mask = get_image_attention_mask(input_ids, max_num_images, tokenizer)
                     assert images.shape[1] == 1, "The second dimension is not 1"
+                    # import pdb;pdb.set_trace()
                     loss_mimicit = model(
                         pixel_values=images.squeeze(1).to(dtype),
                         input_ids=input_ids,
@@ -560,6 +562,22 @@ def main():
             image_processor = processor.image_processor
             tokenizer = processor.tokenizer
             model.resize_token_embeddings(len(tokenizer))
+            # Freeze all parameters in vision encoder
+            for param in self.vision_encoder.parameters():
+                param.requires_grad = False
+            # Freeze all parameters in lang encoders except gated_cross_attn_layers
+            for name, param in self.lang_encoder.named_parameters():
+                if "gated_cross_attn_layer" not in name:
+                    param.requires_grad = False
+            # Unfreeze LM input embeddings
+            self.lang_encoder.get_input_embeddings().requires_grad_(True)
+            ## MPTForCausalLM is tied word embedding
+            if self.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+                self.lang_encoder.lm_head.requires_grad_(True)
+            # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
+            # print model size in billions of parameters in 2 decimal places
+            print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
+            print(f"Total Trainable param: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
     else:
         config = FlamingoConfig.from_json_file("./flamingo/config.json")
         model = FlamingoForConditionalGeneration(config=config)
@@ -675,7 +693,7 @@ def main():
         )
 
     if accelerator.distributed_type == "DEEPSPEED":
-        model, optimizer, mimicit_loaders = accelerator.prepare(model, optimizer, mimicit_loaders)
+        model, optimizer = accelerator.prepare(model, optimizer)
     else:
         model, optimizer, lr_scheduler, mimicit_loaders = accelerator.prepare(model, optimizer, lr_scheduler, mimicit_loaders)
 
