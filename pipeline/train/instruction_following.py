@@ -26,7 +26,7 @@ from otter.modeling_otter import OtterForConditionalGeneration
 from pipeline.train.data import get_data
 from pipeline.train.distributed import world_info_from_env
 from pipeline.train.train_utils import AverageMeter, get_checkpoint, get_image_attention_mask
-from transformers import IdeficsForVisionText2Text, AutoProcessor
+from transformers import IdeficsForVisionText2Text, AutoProcessor, AutoConfig
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -162,7 +162,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 unwrapped_model.lm_head.apply(mask_embedding)
             elif unwrapped_model.lang_encoder.__class__.__name__ in ["MPTForCausalLM", "MosaicGPT"]:
                 unwrapped_model.lang_encoder.transformer.wte.apply(mask_embedding)
-            elif "LlamaForCausalLM" in unwrapped_model.lang_encoder.__class__.__name__ :
+            elif "LlamaForCausalLM" in unwrapped_model.lang_encoder.__class__.__name__:
                 unwrapped_model.lang_encoder.model.embed_tokens.apply(mask_embedding)
                 unwrapped_model.lang_encoder.lm_head.apply(mask_embedding)
 
@@ -205,7 +205,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 )
                 torch.cuda.empty_cache()
                 gc.collect()  # forces garbage collection
-            
+
             if args.rank == 0 and global_step != 0 and (args.save_steps_interval != -1) and (global_step % args.save_steps_interval == 0):
                 if not os.path.exists(args.external_save_dir):
                     os.makedirs(args.external_save_dir)
@@ -492,14 +492,6 @@ def parse_args():
     # parser = add_data_args(parser)
     args = parser.parse_args()
 
-    if args.save_checkpoints_to_wandb and not args.report_to_wandb:
-        raise ValueError("save_checkpoints_to_wandb requires report_to_wandb")
-
-    if args.offline:
-        os.environ["WANDB_MODE"] = "offline"
-        os.environ["TRANSFORMERS_OFFLINE"] = "1"
-
-    args.local_rank, args.rank, args.world_size = world_info_from_env()
     # Check for argument consistency and set environment variables if needed
     if args.save_checkpoints_to_wandb and not args.report_to_wandb:
         raise ValueError("save_checkpoints_to_wandb requires report_to_wandb")
@@ -509,6 +501,12 @@ def parse_args():
         os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
     args.local_rank, args.rank, args.world_size = world_info_from_env()
+
+    if "COUNT_NODE" in os.environ:
+        args.num_machines = int(os.environ["COUNT_NODE"])
+
+    if "THEID" in os.environ:
+        args.machine_rank = int(os.environ["THEID"])
 
     # Seed for reproducibility
     random_seed(args.seed)
@@ -551,33 +549,25 @@ def main():
             kwargs = {"local_files_only": args.offline, "device_map": device_map}
             if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
                 kwargs.pop("device_map")
+            # import pdb;pdb.set_trace()
             model = IdeficsForVisionText2Text.from_pretrained(
                 args.pretrained_model_name_or_path,
                 **kwargs,
             )
-            print(f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
+            # config = AutoConfig.from_pretrained(args.pretrained_model_name_or_path,)
+            # model = IdeficsForVisionText2Text(config=config)
+            # for name, param in model.named_parameters():
+            # if param.requires_grad:
+            # print(name)
+            print(device_id, f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
+            # import pdb;pdb.set_trace()
             processor = AutoProcessor.from_pretrained(args.pretrained_model_name_or_path, legacy=False)
             past_special_tokens = processor.tokenizer.special_tokens_map["additional_special_tokens"]
             processor.tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>", "<|endofchunk|>"] + past_special_tokens})
             image_processor = processor.image_processor
             tokenizer = processor.tokenizer
             model.resize_token_embeddings(len(tokenizer))
-            # Freeze all parameters in vision encoder
-            for param in self.vision_encoder.parameters():
-                param.requires_grad = False
-            # Freeze all parameters in lang encoders except gated_cross_attn_layers
-            for name, param in self.lang_encoder.named_parameters():
-                if "gated_cross_attn_layer" not in name:
-                    param.requires_grad = False
-            # Unfreeze LM input embeddings
-            self.lang_encoder.get_input_embeddings().requires_grad_(True)
-            ## MPTForCausalLM is tied word embedding
-            if self.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
-                self.lang_encoder.lm_head.requires_grad_(True)
-            # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
-            # print model size in billions of parameters in 2 decimal places
-            print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
-            print(f"Total Trainable param: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
+            # import pdb;pdb.set_trace()
     else:
         config = FlamingoConfig.from_json_file("./flamingo/config.json")
         model = FlamingoForConditionalGeneration(config=config)
@@ -593,7 +583,7 @@ def main():
                 torch.load(args.load_from_original_checkpoint, map_location="cpu"),
                 False,
             )
-    
+
     if args.trained_ckpt is not None:
         train_ckpt = torch.load(args.trained_ckpt, map_location="cpu")
         if train_ckpt.get("model_state_dict", None) is not None:
@@ -722,11 +712,15 @@ def main():
                 os.makedirs(args.external_save_dir)
 
             unwrapped_model = accelerator.unwrap_model(model)
+            # checkpoint_dict = {
+            #     "epoch": epoch,
+            #     "model_state_dict": get_checkpoint(unwrapped_model),
+            #     "optimizer_state_dict": optimizer.state_dict(),
+            #     "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+            # }
             checkpoint_dict = {
                 "epoch": epoch,
                 "model_state_dict": get_checkpoint(unwrapped_model),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "lr_scheduler_state_dict": lr_scheduler.state_dict(),
             }
             print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
             accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")

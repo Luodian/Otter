@@ -735,7 +735,7 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     for unified_dataset in unified_datasets:
         sampler = RandomSampler(unified_dataset, replacement=True, num_samples=num_samples)
         if args.distributed_type == "DEEPSPEED":
-            sampler = DistributedProxySampler(sampler, num_replicas=args.world_size, rank=args.rank)
+            sampler = DistributedProxySampler(sampler, num_replicas=args.world_size * args.num_machines, rank=args.machine_rank * 8 + args.rank)
         dataloader = torch.utils.data.DataLoader(
             unified_dataset,
             sampler=sampler,
