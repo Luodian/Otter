@@ -28,6 +28,8 @@ from pipeline.train.distributed import world_info_from_env
 from pipeline.train.train_utils import AverageMeter, get_checkpoint, get_image_attention_mask
 from transformers import IdeficsForVisionText2Text, AutoProcessor, AutoConfig
 
+import deepspeed
+
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # The flag below controls whether to allow TF32 on matmul. This flag defaults to False
@@ -504,9 +506,13 @@ def parse_args():
 
     if "COUNT_NODE" in os.environ:
         args.num_machines = int(os.environ["COUNT_NODE"])
+    else:
+        args.num_machines = 1
 
     if "THEID" in os.environ:
         args.machine_rank = int(os.environ["THEID"])
+    else:
+        args.machine_rank = 0
 
     # Seed for reproducibility
     random_seed(args.seed)
@@ -554,11 +560,16 @@ def main():
                 args.pretrained_model_name_or_path,
                 **kwargs,
             )
-            # config = AutoConfig.from_pretrained(args.pretrained_model_name_or_path,)
-            # model = IdeficsForVisionText2Text(config=config)
-            # for name, param in model.named_parameters():
-            # if param.requires_grad:
-            # print(name)
+
+            named_parameters = dict(model.named_parameters())
+            params_to_gather = [named_parameters[k] for k in named_parameters.keys()]
+            if len(params_to_gather) > 0:
+                with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
+                    if torch.distributed.get_rank() == 0:
+                        # 有参数
+                        print(device_id, f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
+                        
+
             print(device_id, f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
             # import pdb;pdb.set_trace()
             processor = AutoProcessor.from_pretrained(args.pretrained_model_name_or_path, legacy=False)
