@@ -562,7 +562,7 @@ def main():
                 args.pretrained_model_name_or_path,
                 **kwargs,
             )
-            
+
             if args.gradient_checkpointing:
                 model.gradient_checkpointing_enable()
 
@@ -570,12 +570,11 @@ def main():
             # params_to_gather = [named_parameters[k] for k in named_parameters.keys()]
             # if len(params_to_gather) > 0:
             if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
-                params_to_gather = [p for name,p in model.named_parameters() if p.requires_grad]
+                params_to_gather = [p for name, p in model.named_parameters() if p.requires_grad]
                 with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
                     if torch.distributed.get_rank() == 0:
                         # 有参数
                         print(device_id, f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
-                        
 
             print(device_id, f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
             # import pdb;pdb.set_trace()
@@ -671,7 +670,6 @@ def main():
 
     args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_stepsps
 
-
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
             optimizer,
@@ -723,7 +721,7 @@ def main():
         if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
             # trainable_state_dict = {}
             unwrapped_model = accelerator.unwrap_model(model)
-            params_to_gather = [p for name,p in unwrapped_model.named_parameters() if p.requires_grad]
+            params_to_gather = [p for name, p in unwrapped_model.named_parameters() if p.requires_grad]
             with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
                 if args.rank == 0:
                     trainable_state_dict = {}
@@ -759,7 +757,7 @@ def main():
                 checkpoint_dict = {
                     "model_state_dict": get_checkpoint(unwrapped_model),
                 }
-                    
+
                 # import pdb;pdb.set_trace()
                 print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
                 accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")

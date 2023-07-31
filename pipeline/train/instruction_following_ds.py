@@ -283,7 +283,9 @@ def main():
         os.environ["WANDB_MODE"] = "offline"
         os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
-    import pdb;pdb.set_trace()
+    import pdb
+
+    pdb.set_trace()
     args.local_rank, args.rank, args.world_size = world_info_from_env()
 
     if args.world_size > 1:

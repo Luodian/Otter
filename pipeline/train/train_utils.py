@@ -227,6 +227,7 @@ def get_checkpoint(model):
 
     return state_dict
 
+
 def get_checkpoint_deepspeed_zero3(model):
     state_dict = {}
     import deepspeed
@@ -241,9 +242,9 @@ def get_checkpoint_deepspeed_zero3(model):
 
     return state_dict
 
-            # if torch.distributed.get_rank() == 0:
-            #     # 有参数
-            #     print(device_id, f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
+    # if torch.distributed.get_rank() == 0:
+    #     # 有参数
+    #     print(device_id, f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
 
 class AverageMeter(object):
