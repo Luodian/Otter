@@ -4,7 +4,6 @@ deepspeed_config:
   gradient_clipping: 1.0
   offload_optimizer_device: none
   offload_param_device: none
-  zero3_init_flag: true
   zero_stage: 3
 distributed_type: DEEPSPEED
 fsdp_config: {}
