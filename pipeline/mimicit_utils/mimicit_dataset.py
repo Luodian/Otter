@@ -273,15 +273,18 @@ class MimicitDataset(Dataset):
                     cur_text = f"[INST]{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
             elif inst_format == "idefics":
                 if idx == 0:
-                    cur_text = f"User:<fake_token_around_image><image><fake_token_around_image> {cur_instruction} Assistant:<answer> {cur_answer}<|endofchunk|>"
+                    cur_text = f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
                 else:
-                    cur_text = f"User: {cur_instruction} Assistant:<answer> {cur_answer}<|endofchunk|>"
+                    cur_text = f"User:{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
             elif inst_format == "simple":
-                cur_text = f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+                if idx == 0:
+                    cur_text = f"<image>User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
+                else:
+                    cur_text = f"User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
             all_texts += cur_text
 
-        if inst_format == "simple":
-            all_texts = f"<image>{all_texts}"
+        # if inst_format == "simple":
+        #     all_texts = f"<image>{all_texts}"
         cur_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
         cur_image = self.images[cur_image_id]
         cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
@@ -309,18 +312,19 @@ class MimicitDataset(Dataset):
                 elif inst_format == "idefics":
                     if idx == 0:
                         cur_text = (
-                            f"User:<fake_token_around_image><image><fake_token_around_image> {cur_instruction} Assistant:<answer> {cur_answer}<|endofchunk|>"
+                            f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
                         )
                     else:
-                        cur_text = f"User: {cur_instruction} Assistant:<answer> {cur_answer}<|endofchunk|>"
+                        cur_text = f"User:{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
                 elif inst_format == "simple":
-                    cur_text = f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+                    if idx == 0:
+                        cur_text = f"<image>User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
+                    else:
+                        cur_text = f"User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
                 all_texts += cur_text
 
-            if inst_format == "simple":
-                all_texts = f"<image>{all_texts}"
-            # elif inst_format == "llama2":
-            #     all_texts = f"{wrap_sys}<image>{all_texts}"
+            # if inst_format == "simple":
+            #     all_texts = f"<image>{all_texts}"
             cur_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
             cur_image = self.images[cur_image_id]
             cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
@@ -340,12 +344,13 @@ class MimicitDataset(Dataset):
                 cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
                 cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
                 if inst_format == "llama2":
-                    if idx == 0:
-                        cur_text = f"[INST]{wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
-                    else:
-                        cur_text = f"[INST]{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
+                    cur_text = f"[INST]{wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
+                elif inst_format == "idefics":
+                    cur_text = (
+                            f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
+                        )
                 else:
-                    cur_text = f"<image>User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+                    cur_text = f"<image>User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
                 all_texts += cur_text
         # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
         # incontext_text = "<image>User: What does this image descibe? GPT:<answer>The children in the image, along with the rest of the family. They are Skiing. <|endofchunk|>"
@@ -364,7 +369,7 @@ class MimicitDataset(Dataset):
             cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
-            cur_text = f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+            cur_text = f"User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
             all_texts += cur_text
 
         all_texts = f"<image>{all_texts}"
@@ -393,7 +398,7 @@ class MimicitDataset(Dataset):
             cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
-            cur_text = f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+            cur_text = f"User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
             all_texts += cur_text
 
         all_texts = f"<image>{all_texts}"
@@ -424,7 +429,7 @@ class MimicitDataset(Dataset):
             cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
-            cur_text = f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+            cur_text = f"User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
             all_texts += cur_text
 
         all_texts = f"<image>{all_texts}"
@@ -503,7 +508,7 @@ class MimicitDataset(Dataset):
             cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
-            cur_text = f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+            cur_text = f"User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
             all_texts += cur_text
 
         all_texts = f"<image>{all_texts}"
@@ -553,9 +558,15 @@ class MimicitDataset(Dataset):
                 else:
                     cur_text = f"[INST]{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
             elif inst_format == "idefics":
-                cur_text = f"User:<fake_token_around_image><image><fake_token_around_image> {cur_instruction} Assistant:<answer> {cur_answer}<|endofchunk|>"
+                if idx == 0:
+                    cur_text = f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
+                else:
+                    cur_text = f"User:{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
             else:
-                cur_text = f"<image>User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+                if idx == 0:
+                    cur_text = f"<image>User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
+                else:
+                    cur_text = f"User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
             all_texts += cur_text
         # import pdb;pdb.set_trace()
         return patch_images, all_texts
@@ -577,7 +588,7 @@ class MimicitDataset(Dataset):
             if "baize" in instruction_id:
                 cur_text = f"{cur_answer}"
             else:
-                cur_text = f"User: {cur_instruction} GPT:<answer> {cur_answer}<|endofchunk|>"
+                cur_text = f"User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
             all_texts += cur_text
         return patch_images, all_texts
 

@@ -53,6 +53,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
     endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)["input_ids"][-1]
     answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
+    ens_token_id = tokenizer(tokenizer.eos_token, add_special_tokens=False)["input_ids"][-1]
 
     model.train()
 
@@ -106,7 +107,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     token_idx += 1
 
                 # remove loss for any token between <|endofchunk|> and <answer>, except <image>
-                for endofchunk_idx in endofchunk_idxs:
+                for endofchunk_idx in endofchunk_idxs[:-1]:
                     token_idx = endofchunk_idx + 1
                     while token_idx < labels.shape[1] and labels[i][token_idx] != answer_token_id:
                         if labels[i][token_idx] == media_token_id:
@@ -116,7 +117,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                         token_idx += 1
 
             labels[labels == answer_token_id] = -100
-            labels[labels == media_token_id] = -100
+            labels[labels == media_token_id] = -100            
 
             with accelerator.autocast():
                 if isinstance(model, IdeficsForVisionText2Text) or isinstance(model.module, IdeficsForVisionText2Text):
@@ -205,8 +206,8 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     },
                     commit=True,
                 )
-                torch.cuda.empty_cache()
-                gc.collect()  # forces garbage collection
+                # torch.cuda.empty_cache()
+                # gc.collect()  # forces garbage collection
 
             if args.rank == 0 and global_step != 0 and (args.save_steps_interval != -1) and (global_step % args.save_steps_interval == 0):
                 if not os.path.exists(args.external_save_dir):
