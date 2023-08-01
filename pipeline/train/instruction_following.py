@@ -117,7 +117,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                         token_idx += 1
 
             labels[labels == answer_token_id] = -100
-            labels[labels == media_token_id] = -100            
+            labels[labels == media_token_id] = -100
 
             with accelerator.autocast():
                 if isinstance(model, IdeficsForVisionText2Text) or isinstance(model.module, IdeficsForVisionText2Text):
