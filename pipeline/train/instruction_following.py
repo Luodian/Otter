@@ -29,6 +29,10 @@ from pipeline.train.train_utils import AverageMeter, get_checkpoint, get_checkpo
 from transformers import IdeficsForVisionText2Text, AutoProcessor, AutoConfig
 
 import deepspeed
+import json
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig
+from deepspeed.utils.zero_to_fp32 import load_state_dict_from_zero_checkpoint
+
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -576,6 +580,7 @@ def main():
                     if torch.distributed.get_rank() == 0:
                         # 有参数
                         print(device_id, f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
+                del params_to_gather
 
             print(device_id, f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
             # import pdb;pdb.set_trace()
@@ -720,31 +725,30 @@ def main():
         accelerator.wait_for_everyone()
 
         if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
-            if args.rank == 0:
-                if not os.path.exists(args.external_save_dir):
-                    os.makedirs(args.external_save_dir)
+            if not os.path.exists(args.external_save_dir):
+                os.makedirs(args.external_save_dir)
 
             unwrapped_model = accelerator.unwrap_model(model)
-            params_to_gather = [p for name, p in unwrapped_model.named_parameters() if p.requires_grad]
-            with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
-                if args.rank == 0:
-                    trainable_state_dict = {}
-                    index = 0
-                    for name, p in unwrapped_model.named_parameters():
-                        if p.requires_grad:
-                            trainable_state_dict[name] = params_to_gather[index].data
-                            index += 1
-                    print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
-                    accelerator.save(trainable_state_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
-                    # save the config
-                    unwrapped_model.config.save_pretrained(args.external_save_dir)
-                    if args.delete_previous_checkpoint:
-                        if epoch > 0:
-                            os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
 
-                    del trainable_state_dict
-                    del params_to_gather
-                    del unwrapped_model
+            trainable_params_name = [name for name, p in unwrapped_model.named_parameters() if p.requires_grad]
+
+            state_dict = accelerator.get_state_dict(model)
+
+            if args.rank == 0:
+                # import pdb;pdb.set_trace()
+                for name in list(state_dict.keys()):
+                    if name not in trainable_params_name:
+                        del state_dict[name]
+
+                print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
+                accelerator.save(state_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+                # save the config
+                unwrapped_model.config.save_pretrained(args.external_save_dir)
+                if args.delete_previous_checkpoint:
+                    if epoch > 0:
+                        os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
+
+            accelerator.wait_for_everyone()
         else:
             if args.rank == 0:
                 if not os.path.exists(args.external_save_dir):

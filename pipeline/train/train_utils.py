@@ -228,18 +228,13 @@ def get_checkpoint(model):
     return state_dict
 
 
-def get_checkpoint_deepspeed_zero3(model):
+def get_checkpoint_deepspeed_zero3(args, model):
     state_dict = {}
-    import deepspeed
 
-    named_parameters = dict(model.named_parameters())
-    params_to_gather = [named_parameters[k] for k in named_parameters.keys()]
-    if len(params_to_gather) > 0:
-        with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
-            for name, p in model.named_parameters():
-                if p.requires_grad:
-                    state_dict[name] = p
-
+    for name, p in model.named_parameters():
+        if p.requires_grad:
+            state_dict[name] = p.data
+    # import pdb;pdb.set_trace()
     return state_dict
 
     # if torch.distributed.get_rank() == 0:
