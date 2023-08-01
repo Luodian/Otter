@@ -719,7 +719,10 @@ def main():
         accelerator.wait_for_everyone()
 
         if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
-            # trainable_state_dict = {}
+            if args.rank == 0:
+                if not os.path.exists(args.external_save_dir):
+                    os.makedirs(args.external_save_dir)
+
             unwrapped_model = accelerator.unwrap_model(model)
             params_to_gather = [p for name, p in unwrapped_model.named_parameters() if p.requires_grad]
             with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
