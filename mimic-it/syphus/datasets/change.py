@@ -32,6 +32,7 @@ class SpotTheDifference(AbstractDataset):
             )
         return results
 
+
 class CocoSpotTheDifference(AbstractDataset):
     def __init__(
         self,
