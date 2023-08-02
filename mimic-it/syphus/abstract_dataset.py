@@ -5,6 +5,7 @@ import json
 
 AVAILABLE_DATASETS: List[str] = [
     "change.SpotTheDifference",
+    "change.CocoSpotTheDifference",
     "video.DenseCaptions",
     "video.TVCaptions",
     "video.VisualStoryTelling",
