@@ -2,7 +2,7 @@
 
 export PYTHONPATH=../..:$PYTHONPATH
 python evaluate.py \
-    --lm_path "luodian/OTTER-9B-DenseCaption" \
+    --lm_path "luodian/OTTER-Image-MPT7B" \
     --device_map "auto" \
     --precision fp32 \
     --batch_size 8 \
