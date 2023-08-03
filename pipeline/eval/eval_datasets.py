@@ -5,7 +5,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.datasets import ImageFolder
 
-from open_flamingo.eval.classification_utils import IMAGENET_1K_CLASS_ID_TO_LABEL
+from pipeline.eval.classification_utils import IMAGENET_1K_CLASS_ID_TO_LABEL
 
 
 class CaptionDataset(Dataset):

@@ -1,16 +1,18 @@
 #!/bin/bash
 
-export PYTHONPATH=".";
-python open_flamingo/open_flamingo/eval/evaluate.py \
-    --pretrained_model_path="" \
+export PYTHONPATH=../..:$PYTHONPATH
+python evaluate.py \
+    --lm_path "luodian/OTTER-9B-DenseCaption" \
+    --device_map "auto" \
+    --precision fp32 \
     --batch_size 8 \
     --eval_vqav2 \
-    --vqav2_train_image_dir_path "/home/bli/azure_storage/data/lavis/coco/images/train2014" \
-    --vqav2_train_annotations_json_path "/home/bli/azure_storage/data/lavis/vqav2/annotations/v2_mscoco_train2014_annotations.json" \
-    --vqav2_train_questions_json_path "/home/bli/azure_storage/data/lavis/vqav2/annotations/v2_OpenEnded_mscoco_train2014_questions.json" \
-    --vqav2_test_image_dir_path "/home/bli/azure_storage/data/lavis/coco/images/val2014" \
-    --vqav2_test_annotations_json_path "/home/bli/azure_storage/data/lavis/vqav2/annotations/v2_mscoco_val2014_annotations.json" \
-    --vqav2_test_questions_json_path "/home/bli/azure_storage/data/lavis/vqav2/annotations/v2_OpenEnded_mscoco_val2014_questions.json" \
+    --vqav2_train_image_dir_path "/data/666/download/lavis/coco/images/train2014" \
+    --vqav2_train_annotations_json_path "/data/666/download/lavis/vqav2/annotations/v2_mscoco_train2014_annotations.json" \
+    --vqav2_train_questions_json_path "/data/666/download/lavis/vqav2/annotations/v2_OpenEnded_mscoco_train2014_questions.json" \
+    --vqav2_test_image_dir_path "/data/666/download/lavis/coco/images/val2014" \
+    --vqav2_test_annotations_json_path "/data/666/download/lavis/vqav2/annotations/v2_mscoco_val2014_annotations.json" \
+    --vqav2_test_questions_json_path "/data/666/download/lavis/vqav2/annotations/v2_OpenEnded_mscoco_val2014_questions.json" \
     # --flickr_image_dir_path "/path/to/flickr30k/flickr30k-images" \
     # --flickr_karpathy_json_path "/path/to/flickr30k/dataset_flickr30k.json" \
     # --flickr_annotations_json_path "/path/to/flickr30k/dataset_flickr30k_coco_style.json" \
@@ -34,3 +36,16 @@ python open_flamingo/open_flamingo/eval/evaluate.py \
     # --hateful_memes_image_dir_path "/path/to/hateful_memes/img" \
     # --hateful_memes_train_annotations_json_path "/path/to/hateful_memes/train.json" \
     # --hateful_memes_test_annotations_json_path "/path/to/hateful_memes/dev.json" \
+
+
+
+
+
+    # --vision_encoder_path ViT-L-14 \
+    # --vision_encoder_pretrained openai\
+    # --lm_path anas-awadalla/mpt-1b-redpajama-200b \
+    # --lm_tokenizer_path anas-awadalla/mpt-1b-redpajama-200b \
+    # --cross_attn_every_n_layers 1 \
+    # --checkpoint_path "openflamingo/OpenFlamingo-3B-vitl-mpt1b/checkpoint.pt" \
+    # --results_file "results.json" \
+    # --precision amp_bf16 \

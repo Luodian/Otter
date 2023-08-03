@@ -4,7 +4,6 @@ from PIL import Image
 import torch
 
 from open_flamingo.eval.eval_model import BaseEvalModel
-from open_flamingo.src.factory import create_model_and_transforms
 from contextlib import suppress
 from open_flamingo.eval.models.utils import unwrap_model
 

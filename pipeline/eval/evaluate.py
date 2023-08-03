@@ -33,10 +33,9 @@ from classification_utils import (
 from eval_model import BaseEvalModel
 
 from ok_vqa_utils import postprocess_ok_vqa_generation
-from open_flamingo.src.flamingo import Flamingo
 from vqa_metric import compute_vqa_accuracy, postprocess_vqa_generation
 
-from open_flamingo.train.distributed import init_distributed_device, world_info_from_env
+from pipeline.train.distributed import init_distributed_device, world_info_from_env
 
 parser = argparse.ArgumentParser()
 
@@ -361,7 +360,13 @@ parser.add_argument(
 
 def main():
     args, leftovers = parser.parse_known_args()
-    module = importlib.import_module(f"open_flamingo.eval.models.{args.model}")
+
+    # import json
+    # print(json.dumps(vars(args), indent=4))
+
+    module = importlib.import_module(f"pipeline.eval.models.{args.model}")
+
+    # print(args)
 
     model_args = {leftovers[i].lstrip("-"): leftovers[i + 1] for i in range(0, len(leftovers), 2)}
     eval_model = module.EvalModel(model_args)

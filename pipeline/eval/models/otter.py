@@ -2,11 +2,12 @@ from typing import List
 
 from PIL import Image
 import torch
+import transformers
 
-from open_flamingo.eval.eval_model import BaseEvalModel
-from open_flamingo.src.factory import create_model_and_transforms
+from pipeline.eval.eval_model import BaseEvalModel
 from contextlib import suppress
-from open_flamingo.eval.models.utils import unwrap_model
+from pipeline.eval.models.utils import unwrap_model
+from otter.modeling_otter import OtterForConditionalGeneration
 
 
 class EvalModel(BaseEvalModel):
@@ -19,29 +20,37 @@ class EvalModel(BaseEvalModel):
     """
 
     def __init__(self, model_args):
-        assert (
-            "" in model_args
-            and "lm_path" in model_args
-            and "checkpoint_path" in model_args
-            and "lm_tokenizer_path" in model_args
-            and "cross_attn_every_n_layers" in model_args
-            and "vision_encoder_pretrained" in model_args
-            and "precision" in model_args
-        ), "OpenFlamingo requires vision_encoder_path, lm_path, device, checkpoint_path, lm_tokenizer_path, cross_attn_every_n_layers, vision_encoder_pretrained, and precision arguments to be specified"
+        # print(model_args)
+        # assert (
+        #     # "" in model_args
+        #     "lm_path" in model_args
+        #     and "checkpoint_path" in model_args
+        #     and "lm_tokenizer_path" in model_args
+        #     and "cross_attn_every_n_layers" in model_args
+        #     and "vision_encoder_pretrained" in model_args
+        #     and "precision" in model_args
+        # ), "OpenFlamingo requires vision_encoder_path, lm_path, device, checkpoint_path, lm_tokenizer_path, cross_attn_every_n_layers, vision_encoder_pretrained, and precision arguments to be specified"
 
         self.device = model_args["device"] if ("device" in model_args and model_args["device"] >= 0) else "cpu"
 
-        (
-            self.model,
-            self.image_processor,
-            self.tokenizer,
-        ) = create_model_and_transforms(
-            model_args["vision_encoder_path"],
-            model_args["vision_encoder_pretrained"],
+        def get_precision(load_bit: str):
+            if load_bit == "fp16":
+                return {"torch_dtype": torch.float16}
+            elif load_bit == "bf16":
+                return {"torch_dtype": torch.bfloat16}
+            elif load_bit == "fp32":
+                return {"torch_dtype": torch.float32}
+
+
+        print(model_args)
+        self.model = OtterForConditionalGeneration.from_pretrained(
             model_args["lm_path"],
-            model_args["lm_tokenizer_path"],
-            cross_attn_every_n_layers=int(model_args["cross_attn_every_n_layers"]),
+            device_map=model_args["device_map"],
+            **get_precision(model_args["precision"]),
         )
+        self.image_processor = transformers.CLIPImageProcessor()
+        self.tokenizer = self.model.text_tokenizer
+
         checkpoint = torch.load(model_args["checkpoint_path"], map_location=self.device)
         if "model_state_dict" in checkpoint:
             checkpoint = checkpoint["model_state_dict"]
