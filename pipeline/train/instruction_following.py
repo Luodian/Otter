@@ -374,6 +374,7 @@ def parse_args():
     parser.add_argument("--warmup_steps_ratio", default=None, type=float)
     parser.add_argument("--weight_decay", default=0.1, type=float)
     parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--train_num_samples", type=int, default=None)
     # distributed training args
     parser.add_argument(
         "--dist-url",
