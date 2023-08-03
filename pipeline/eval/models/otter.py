@@ -41,7 +41,6 @@ class EvalModel(BaseEvalModel):
             elif load_bit == "fp32":
                 return {"torch_dtype": torch.float32}
 
-
         print(model_args)
         self.model = OtterForConditionalGeneration.from_pretrained(
             model_args["lm_path"],
