@@ -41,9 +41,9 @@ class EvalModel(BaseEvalModel):
             elif load_bit == "fp32":
                 return {"torch_dtype": torch.float32}
 
-        print(model_args)
+        # print(model_args)
         self.model = OtterForConditionalGeneration.from_pretrained(
-            model_args["lm_path"],
+            model_args["model_path"],
             device_map=model_args["device_map"],
             **get_precision(model_args["precision"]),
         )
@@ -77,7 +77,7 @@ class EvalModel(BaseEvalModel):
         batch_images = None
         for iexample, example in enumerate(batch):
             for iimage, image in enumerate(example):
-                preprocessed = self.image_processor(image)
+                preprocessed = torch.from_numpy(self.image_processor(image)["pixel_values"][0])
 
                 if batch_images is None:
                     batch_images = torch.zeros(
