@@ -89,7 +89,6 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             labels = input_ids.clone()
             labels[labels == tokenizer.pad_token_id] = -100
             labels[:, 0] = -100
-            # import pdb;pdb.set_trace()
             for i in range(labels.shape[0]):
                 # remove loss for any token before the first <image> token
                 # label_idx = 0
@@ -123,14 +122,22 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             labels[labels == answer_token_id] = -100
             labels[labels == media_token_id] = -100
 
+            # Try importing IdeficsForVisionText2Text, and if it's not available, define a dummy class
+            try:
+                from transformers import IdeficsForVisionText2Text
+            except ImportError:
+                print("IdeficsForVisionText2Text does not exist")
+                IdeficsForVisionText2Text = type(None)
+
             with accelerator.autocast():
                 unwrapped_model = accelerator.unwrap_model(model)
+
                 if isinstance(unwrapped_model, IdeficsForVisionText2Text):
                     # only for image model
                     max_num_images = images.shape[1]
                     image_attention_mask = get_image_attention_mask(input_ids, max_num_images, tokenizer)
                     assert images.shape[1] == 1, "The second dimension is not 1"
-                    # import pdb;pdb.set_trace()
+                    
                     loss_mimicit = model(
                         pixel_values=images.squeeze(1).to(dtype),
                         input_ids=input_ids,
@@ -145,6 +152,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                         attention_mask=attention_mask,
                         labels=labels,
                     )[0]
+
             if accelerator.mixed_precision == "fp16":
                 accelerator.backward(loss_mimicit.to(device_id))
             else:
@@ -511,7 +519,6 @@ def parse_args():
         os.environ["WANDB_MODE"] = "offline"
         os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
-    # import pdb;pdb.set_trace()
     args.local_rank, args.rank, args.world_size = world_info_from_env()
 
     # if "COUNT_NODE" in os.environ:
@@ -563,11 +570,11 @@ def main():
             image_processor = CLIPImageProcessor()
         elif "idefics" in args.model_name.lower():
             from transformers import IdeficsForVisionText2Text
-
+            # you need to install the idefics version transformers package first
             kwargs = {"local_files_only": args.offline, "device_map": device_map, "torch_dtype": torch.bfloat16}
             if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
                 kwargs.pop("device_map")
-            # import pdb;pdb.set_trace()
+                
             model = IdeficsForVisionText2Text.from_pretrained(
                 args.pretrained_model_name_or_path,
                 **kwargs,
@@ -618,7 +625,6 @@ def main():
             train_ckpt = train_ckpt["model_state_dict"]
         _ = model.load_state_dict(train_ckpt, strict=False)
         print(_[1])
-        # import pdb;pdb.set_trace()
 
     accelerator.wait_for_everyone()
 

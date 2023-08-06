@@ -56,7 +56,6 @@ def world_info_from_env():
             global_rank = int(os.environ[v])
             break
     world_size = 1
-    # import pdb;pdb.set_trace()
     for v in ("WORLD_SIZE", "PMI_SIZE", "SLURM_NTASKS", "OMPI_COMM_WORLD_SIZE"):
         if v in os.environ:
             world_size = int(os.environ[v])

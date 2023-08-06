@@ -4,7 +4,10 @@ from contextlib import suppress
 import torch
 from tqdm import tqdm
 from torch.utils.data.distributed import DistributedSampler
-from transformers.models.idefics.processing_idefics import image_attention_mask_for_packed_input_ids, incremental_to_binary_attention_mask
+try:
+    from transformers.models.idefics.processing_idefics import image_attention_mask_for_packed_input_ids, incremental_to_binary_attention_mask
+except ImportError:
+    print("Failed to import Idefics processing module.")
 
 
 def get_cast_dtype(precision: str):
@@ -234,7 +237,6 @@ def get_checkpoint_deepspeed_zero3(args, model):
     for name, p in model.named_parameters():
         if p.requires_grad:
             state_dict[name] = p.data
-    # import pdb;pdb.set_trace()
     return state_dict
 
     # if torch.distributed.get_rank() == 0:

@@ -566,7 +566,6 @@ class MimicitDataset(Dataset):
                 else:
                     cur_text = f"User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
             all_texts += cur_text
-        # import pdb;pdb.set_trace()
         return patch_images, all_texts
 
     def process_text_instruction(self, instruction_id, instruction, answer, image_ids, in_context_example_ids):
@@ -607,8 +606,6 @@ class MimicitDataset(Dataset):
             self.train_config[cur_train_id],
         )
         inst_format = self.inst_format
-        # except:
-        #     import pdb;pdb.set_trace()
 
         # self.max_src_length = self.max_tgt_length = 256
 
@@ -763,118 +760,3 @@ def collate_tokens(
     for i, v in enumerate(values):
         copy_tensor(v, res[i][size - len(v) :] if left_pad else res[i][: len(v)])
     return res
-
-
-if __name__ == "__main__":
-    from PIL import Image, ImageFile
-    from io import BytesIO
-    import base64
-    from tqdm import tqdm
-    import json
-    import argparse
-    import sys
-    from transformers import LlamaTokenizer
-
-    sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/")
-    sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/otter")
-    sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/pipeline/mimicit_utils")
-    from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--multi_instruct_path",
-        type=str,
-        help="path to multi_instruct dataset, this should be a glob pattern such as vision_language_examples.tsv",
-    )
-    parser.add_argument("--offline", action="store_true")
-
-    args = parser.parse_args()
-
-    args.mimicit_path = "/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format/LACONV_instructions.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format//LADD_instructions.json"
-    args.images_path = (
-        "/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format/LA.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format//LA.json"
-    )
-    args.train_config_path = "/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format/LACONV_train.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format/LADD_train.json"
-    args.mimicit_vt_path = (
-        "/mnt/petrelfs/share_data/zhangyuanhan/mimicit/SD/SD_instructions.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/CGD/CGD_instructions.json"
-    )
-    args.images_vt_path = "/mnt/petrelfs/share_data/zhangyuanhan/mimicit/SD/SD_0626.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/CGD/CGD_0625.json"
-
-    args.past_mimicit_path = args.past_images_path = args.past_train_config_path = args.past_mimicit_vt_path = args.past_images_vt_path = ""
-
-    args.max_src_length = 256
-    args.max_tgt_length = 256
-    args.task = "pretrain"
-    args.pretrain_seed = 0
-    args.patch_image_size = 224
-    args.seed = 0
-    args.past_subset_ration = 1
-    args.inst_format = "simple"
-
-    with open("/mnt/petrelfs/zhangyuanhan/weights/flamingo_9b_hf/config.json") as f:
-        config = json.load(f)
-
-    args.task = "pretrain"
-
-    tokenizer = LlamaTokenizer.from_pretrained("/mnt/petrelfs/zhangyuanhan/weights/llama-7b-hf")
-    # add <answer> token to tokenizer
-    tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
-
-    tokenizer.add_special_tokens({"pad_token": "<PAD>"})
-
-    args.tokenizer = tokenizer
-
-    unified_datasets = []
-    # processing for image-text datasets
-    if args.mimicit_path != "":
-        all_mimicit_path = args.mimicit_path.split(",") + args.past_mimicit_path.split(",") if args.past_mimicit_path != "" else args.mimicit_path.split(",")
-        all_images_path = args.images_path.split(",") + args.past_images_path.split(",") if args.past_images_path != "" else args.images_path.split(",")
-        all_train_config_path = (
-            args.train_config_path.split(",") + args.past_train_config_path.split(",")
-            if args.past_train_config_path != ""
-            else args.train_config_path.split(",")
-        )
-        if args.past_mimicit_path != "":
-            status = ["new"] * len(args.mimicit_path.split(",")) + ["past"] * len(args.past_mimicit_path.split(","))
-        else:
-            status = ["new"] * len(args.mimicit_path.split(","))
-        unified_dataset = MimicitDataset(args, all_mimicit_path, all_images_path, all_train_config_path, status_list=status)
-        unified_datasets.append(unified_dataset)
-
-    # processing for video-text datasets
-    if args.mimicit_vt_path != "":
-        all_mimicit_vt_path = (
-            args.mimicit_vt_path.split(",") + args.past_mimicit_vt_path.split(",") if args.past_mimicit_vt_path != "" else args.mimicit_vt_path.split(",")
-        )
-        all_images_vt_path = (
-            args.images_vt_path.split(",") + args.past_images_vt_path.split(",") if args.past_images_vt_path != "" else args.images_vt_path.split(",")
-        )
-        if args.past_mimicit_vt_path != "":
-            vt_status = ["new"] * len(args.mimicit_vt_path.split(",")) + ["past"] * len(args.past_mimicit_vt_path.split(","))
-        else:
-            vt_status = ["new"] * len(args.mimicit_vt_path.split(","))
-        unified_dataset = MimicitDataset(args, all_mimicit_vt_path, all_images_vt_path, status_list=vt_status)
-        unified_datasets.append(unified_dataset)
-
-    # test_dataset = MimicitDataset(args, mimicit_text_path, status_list=it_status)
-
-    # test_dataset = MimicitDataset(args, all_mimicit_text_path, all_images_text_path, all_train_text_config_path, status_list=it_status)
-
-    # test_dataset = MimicitDataset(args, all_mimicit_text_path, all_images_text_path, status_list=it_status)
-
-    uniq_id_dict = {}
-    samples = []
-    counter = 0
-    for cur_dataset in tqdm(unified_datasets):
-        for _ in tqdm(cur_dataset):
-            import pdb
-
-            pdb.set_trace()
-        # if counter > 0:
-        #     break
-        # counter += 1
-        # samples.append(_)
-    # cur_data = test_dataset.collate(samples)
-    # import pdb
-
-    # pdb.set_trace()
