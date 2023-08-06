@@ -137,7 +137,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     max_num_images = images.shape[1]
                     image_attention_mask = get_image_attention_mask(input_ids, max_num_images, tokenizer)
                     assert images.shape[1] == 1, "The second dimension is not 1"
-                    
+
                     loss_mimicit = model(
                         pixel_values=images.squeeze(1).to(dtype),
                         input_ids=input_ids,
@@ -570,11 +570,12 @@ def main():
             image_processor = CLIPImageProcessor()
         elif "idefics" in args.model_name.lower():
             from transformers import IdeficsForVisionText2Text
+
             # you need to install the idefics version transformers package first
             kwargs = {"local_files_only": args.offline, "device_map": device_map, "torch_dtype": torch.bfloat16}
             if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
                 kwargs.pop("device_map")
-                
+
             model = IdeficsForVisionText2Text.from_pretrained(
                 args.pretrained_model_name_or_path,
                 **kwargs,

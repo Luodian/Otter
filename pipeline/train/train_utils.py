@@ -4,6 +4,7 @@ from contextlib import suppress
 import torch
 from tqdm import tqdm
 from torch.utils.data.distributed import DistributedSampler
+
 try:
     from transformers.models.idefics.processing_idefics import image_attention_mask_for_packed_input_ids, incremental_to_binary_attention_mask
 except ImportError:
