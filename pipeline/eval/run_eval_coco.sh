@@ -2,7 +2,7 @@
 
 # Set environment variables
 export PYTHONPATH=../..:$PYTHONPATH
-export CUDA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=3
 
 # Run the Python script with the specified arguments
 python -m pipeline.eval.evaluate \
@@ -12,13 +12,18 @@ python -m pipeline.eval.evaluate \
     --vqav2_test_image_dir_path=/data/pufanyi/download/lavis/coco/images/val2014 \
     --vqav2_test_annotations_json_path=/data/pufanyi/download/lavis/vqav2/annotations/v2_mscoco_val2014_annotations.json \
     --vqav2_test_questions_json_path=/data/pufanyi/download/lavis/vqav2/annotations/v2_OpenEnded_mscoco_val2014_questions.json \
+    --coco_train_image_dir_path=/data/pufanyi/download/lavis/coco/images/train2014 \
+    --coco_val_image_dir_path=/data/pufanyi/download/lavis/coco/images/val2014 \
+    --coco_karpathy_json_path=/data/pufanyi/download/lavis/coco/dataset_coco.json \
+    --coco_annotations_json_path=/data/pufanyi/download/lavis/coco/coco2014_annotations/annotations/captions_val2014.json \
     --model=otter \
     --model_path=/data/bli/checkpoints/OTTER-Image-MPT7B \
     --checkpoint_path=/data/bli/checkpoints/OTTER-Image-MPT7B/final_weights.pt \
     --device_map=auto \
     --precision=fp32 \
     --batch_size=8 \
-    --eval_vqav2
+    --eval_coco
+    # --eval_vqav2 \
 
 
 

@@ -41,7 +41,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--model",
     type=str,
-    help="Model name. Currently only `OpenFlamingo` is supported.",
+    help="Model name. Currently only `OpenFlamingo` and `Otter` is supported.",
     default="otter",
 )
 parser.add_argument(
