@@ -1,4 +1,4 @@
-*.pyc
+xxxxxxwww*.pyc
 open_flamingo.egg-info
 .vscode
 llama-7b-hf/*
@@ -202,3 +202,5 @@ tokenizer_checklist.chk
 tokenizer.model
 download.sh
 USE_POLICY.md
+*.bin
+

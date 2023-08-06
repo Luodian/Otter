@@ -620,7 +620,7 @@ class MimicitDataset(Dataset):
             patch_images, all_texts = self.process_tv_caption(instruction_id, instruction, answer, image_ids, in_context_example_ids)
         elif cur_train_id.startswith("E4D"):
             patch_images, all_texts = self.process_e4d(instruction_id, instruction, answer, image_ids, in_context_example_ids)
-        elif cur_train_id.startswith("SD"):
+        elif cur_train_id.startswith("SD") or cur_train_id.startswith("CGD"):
             patch_images, all_texts = self.process_spot_the_difference(instruction_id, instruction, answer, image_ids, in_context_example_ids)
         elif cur_train_id.startswith("SN"):
             patch_images, all_texts = self.process_scene_navigation(instruction_id, instruction, answer, image_ids, in_context_example_ids)
@@ -773,6 +773,7 @@ if __name__ == "__main__":
     import json
     import argparse
     import sys
+    from transformers import LlamaTokenizer
 
     sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/")
     sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/otter")
@@ -789,83 +790,87 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    for train_dataset in ["medical"]:
-        # args.multi_instruct_path = f"/mnt/petrelfs/zhangyuanhan/data/baize/{train_dataset}_instructions.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_instructions.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_instructions.json"
-        # args.images_path = f"/mnt/petrelfs/zhangyuanhan/data/baize/{train_dataset}.json"
-        # args.train_config_path = f"/mnt/petrelfs/zhangyuanhan/data/baize/{train_dataset}_train.json"  # ,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_I2I_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LACR_T2T_train.json,/mnt/petrelfs/zhangyuanhan/data/LLaVA-Instruct-150K/LA/LADD_train.json"
-        # args.past_mimicit_text_path="/mnt/petrelfs/zhangyuanhan/data/alpaca/alpaca_instructions.json,/mnt/petrelfs/zhangyuanhan/data/baize/medical_instructions.json,/mnt/petrelfs/zhangyuanhan/data/baize/quora_instructions.json,/mnt/petrelfs/zhangyuanhan/data/baize/stackoverflow_instructions.json"
-        # args.past_images_text_path="/mnt/petrelfs/zhangyuanhan/data/alpaca/alpaca.json,/mnt/petrelfs/zhangyuanhan/data/baize/medical.json,/mnt/petrelfs/zhangyuanhan/data/baize/quora.json,/mnt/petrelfs/zhangyuanhan/data/baize/stackoverflow.json"
-        # args.past_train_config_text_path="/mnt/petrelfs/zhangyuanhan/data/alpaca/alpaca_train.json,/mnt/petrelfs/zhangyuanhan/data/baize/medical_train.json,/mnt/petrelfs/zhangyuanhan/data/baize/quora_train.json,/mnt/petrelfs/zhangyuanhan/data/baize/stackoverflow_train.json"
+    args.mimicit_path="/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format/LACONV_instructions.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format//LADD_instructions.json"
+    args.images_path="/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format/LA.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format//LA.json"
+    args.train_config_path="/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format/LACONV_train.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format/LADD_train.json"
+    args.mimicit_vt_path="/mnt/petrelfs/share_data/zhangyuanhan/mimicit/SD/SD_instructions.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/CGD/CGD_instructions.json"
+    args.images_vt_path="/mnt/petrelfs/share_data/zhangyuanhan/mimicit/SD/SD_0626.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/CGD/CGD_0625.json"
 
-        # args.mimicit_text_path="/mnt/petrelfs/zhangyuanhan/data/Alpaca-CoT/auto-cot/auto-cot_instructions.json"
-        # args.images_text_path="/mnt/petrelfs/zhangyuanhan/data/Alpaca-CoT/auto-cot/auto-cot.json"
-        # args.train_config_text_path="/mnt/petrelfs/zhangyuanhan/data/Alpaca-CoT/auto-cot/auto-cot_train.json"
+    args.past_mimicit_path = args.past_images_path = args.past_train_config_path = args.past_mimicit_vt_path = args.past_images_vt_path = ""
 
-        # args.past_mimicit_text_path=""
-        # args.past_images_text_path=""
-        # args.past_train_config_text_path=""
+    args.max_src_length = 256
+    args.max_tgt_length = 256
+    args.task = "pretrain"
+    args.pretrain_seed = 0
+    args.patch_image_size = 224
+    args.seed = 0
+    args.past_subset_ration = 1
+    args.inst_format = "simple"
 
-        # args.mimicit_text_path="/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACR_T2T_instructions.json"
-        # args.images_text_path="/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json"
-        # args.train_config_text_path="/mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACR_T2T_train.json"
 
-        args.past_mimicit_text_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/PL/PL_instructions.json"
-        args.past_images_text_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/PL/PL.json"
+    with open("/mnt/petrelfs/zhangyuanhan/weights/flamingo_9b_hf/config.json") as f:
+        config = json.load(f)
 
-        args.mimicit_text_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/MEDRPT/MEDRPT_instructions.json"
-        args.images_text_path = "/mnt/petrelfs/zhangyuanhan/data/mimicit/MEDRPT/MEDRPT.json"
+    args.task = "pretrain"
 
-        all_mimicit_text_path = (
-            args.mimicit_text_path.split(",") + args.past_mimicit_text_path.split(",")
-            if args.past_mimicit_text_path != ""
-            else args.mimicit_text_path.split(",")
+    tokenizer = LlamaTokenizer.from_pretrained("/mnt/petrelfs/zhangyuanhan/weights/llama-7b-hf")
+    # add <answer> token to tokenizer
+    tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+
+    tokenizer.add_special_tokens({"pad_token": "<PAD>"})
+
+    args.tokenizer = tokenizer
+
+    unified_datasets = []
+    # processing for image-text datasets
+    if args.mimicit_path != "":
+        all_mimicit_path = args.mimicit_path.split(",") + args.past_mimicit_path.split(",") if args.past_mimicit_path != "" else args.mimicit_path.split(",")
+        all_images_path = args.images_path.split(",") + args.past_images_path.split(",") if args.past_images_path != "" else args.images_path.split(",")
+        all_train_config_path = (
+            args.train_config_path.split(",") + args.past_train_config_path.split(",")
+            if args.past_train_config_path != ""
+            else args.train_config_path.split(",")
         )
-        all_images_text_path = (
-            args.images_text_path.split(",") + args.past_images_text_path.split(",") if args.past_images_text_path != "" else args.images_text_path.split(",")
-        )
-        # all_train_text_config_path = args.train_config_text_path.split(",") + args.past_train_config_text_path.split(",") if args.past_train_config_text_path != "" else args.train_config_text_path.split(",")
-        if args.past_mimicit_text_path != "":
-            it_status = ["new"] * len(args.mimicit_text_path.split(",")) + ["past"] * len(args.past_mimicit_text_path.split(","))
+        if args.past_mimicit_path != "":
+            status = ["new"] * len(args.mimicit_path.split(",")) + ["past"] * len(args.past_mimicit_path.split(","))
         else:
-            it_status = ["new"] * len(args.mimicit_text_path.split(","))
+            status = ["new"] * len(args.mimicit_path.split(","))
+        unified_dataset = MimicitDataset(args, all_mimicit_path, all_images_path, all_train_config_path, status_list=status)
+        unified_datasets.append(unified_dataset)
 
-        args.max_src_length = 256
-        args.max_tgt_length = 256
-        args.task = "pretrain"
-        args.pretrain_seed = 0
-        args.patch_image_size = 224
-        args.seed = 0
-        args.past_subset_ration = 1
+    # processing for video-text datasets
+    if args.mimicit_vt_path != "":
+        all_mimicit_vt_path = (
+            args.mimicit_vt_path.split(",") + args.past_mimicit_vt_path.split(",") if args.past_mimicit_vt_path != "" else args.mimicit_vt_path.split(",")
+        )
+        all_images_vt_path = (
+            args.images_vt_path.split(",") + args.past_images_vt_path.split(",") if args.past_images_vt_path != "" else args.images_vt_path.split(",")
+        )
+        if args.past_mimicit_vt_path != "":
+            vt_status = ["new"] * len(args.mimicit_vt_path.split(",")) + ["past"] * len(args.past_mimicit_vt_path.split(","))
+        else:
+            vt_status = ["new"] * len(args.mimicit_vt_path.split(","))
+        unified_dataset = MimicitDataset(args, all_mimicit_vt_path, all_images_vt_path, status_list=vt_status)
+        unified_datasets.append(unified_dataset)
 
-        from transformers import LlamaTokenizer
 
-        with open("/mnt/petrelfs/zhangyuanhan/weights/flamingo_9b_hf/config.json") as f:
-            config = json.load(f)
+    # test_dataset = MimicitDataset(args, mimicit_text_path, status_list=it_status)
 
-        tokenizer = LlamaTokenizer.from_pretrained("/mnt/petrelfs/zhangyuanhan/weights/llama-7b-hf")
-        # add <answer> token to tokenizer
-        tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
+    # test_dataset = MimicitDataset(args, all_mimicit_text_path, all_images_text_path, all_train_text_config_path, status_list=it_status)
 
-        tokenizer.add_special_tokens({"pad_token": "<PAD>"})
+    # test_dataset = MimicitDataset(args, all_mimicit_text_path, all_images_text_path, status_list=it_status)
 
-        args.tokenizer = tokenizer
+    uniq_id_dict = {}
+    samples = []
+    counter = 0
+    for cur_dataset in tqdm(unified_datasets):
+        for _ in tqdm(cur_dataset):
+            import pdb;pdb.set_trace()
+        # if counter > 0:
+        #     break
+        # counter += 1
+        # samples.append(_)
+    # cur_data = test_dataset.collate(samples)
+    # import pdb
 
-        # test_dataset = MimicitDataset(args, mimicit_text_path, status_list=it_status)
-
-        # test_dataset = MimicitDataset(args, all_mimicit_text_path, all_images_text_path, all_train_text_config_path, status_list=it_status)
-
-        test_dataset = MimicitDataset(args, all_mimicit_text_path, all_images_text_path, status_list=it_status)
-
-        uniq_id_dict = {}
-        samples = []
-        counter = 0
-        for _ in tqdm(test_dataset):
-            pass
-            # if counter > 0:
-            #     break
-            # counter += 1
-            # samples.append(_)
-        # cur_data = test_dataset.collate(samples)
-        # import pdb
-
-        # pdb.set_trace()
+    # pdb.set_trace()

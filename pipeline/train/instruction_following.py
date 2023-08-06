@@ -89,7 +89,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             labels = input_ids.clone()
             labels[labels == tokenizer.pad_token_id] = -100
             labels[:, 0] = -100
-
+            # import pdb;pdb.set_trace()
             for i in range(labels.shape[0]):
                 # remove loss for any token before the first <image> token
                 # label_idx = 0
@@ -124,7 +124,8 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             labels[labels == media_token_id] = -100
 
             with accelerator.autocast():
-                if isinstance(model, IdeficsForVisionText2Text) or isinstance(model.module, IdeficsForVisionText2Text):
+                unwrapped_model = accelerator.unwrap_model(model)
+                if isinstance(unwrapped_model, IdeficsForVisionText2Text):
                     # only for image model
                     max_num_images = images.shape[1]
                     image_attention_mask = get_image_attention_mask(input_ids, max_num_images, tokenizer)
@@ -400,6 +401,7 @@ def parse_args():
     # optimizer args
     parser.add_argument("--gradient_checkpointing", action="store_true")
     parser.add_argument("--offline", action="store_true")
+    parser.add_argument("--save_ckpt_each_epoch", action="store_true")
     parser.add_argument("--num_epochs", type=int, default=1)
     parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
     # Sum of gradient optimization batch size
@@ -559,7 +561,7 @@ def main():
             tokenizer = model.text_tokenizer
             image_processor = CLIPImageProcessor()
         elif "idefics" in args.model_name.lower():
-            kwargs = {"local_files_only": args.offline, "device_map": device_map}
+            kwargs = {"local_files_only": args.offline, "device_map": device_map, "torch_dtype": torch.bfloat16}
             if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
                 kwargs.pop("device_map")
             # import pdb;pdb.set_trace()
@@ -589,8 +591,8 @@ def main():
             processor.tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>", "<|endofchunk|>"] + past_special_tokens})
             image_processor = processor.image_processor
             tokenizer = processor.tokenizer
-            model.resize_token_embeddings(len(tokenizer))
-            # import pdb;pdb.set_trace()
+            # For idefics model, do not resize token
+            # model.resize_token_embeddings(len(tokenizer))
     else:
         config = FlamingoConfig.from_json_file("./flamingo/config.json")
         model = FlamingoForConditionalGeneration(config=config)
@@ -724,49 +726,35 @@ def main():
         )
         accelerator.wait_for_everyone()
 
-        if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
-            if not os.path.exists(args.external_save_dir):
-                os.makedirs(args.external_save_dir)
-
-            unwrapped_model = accelerator.unwrap_model(model)
-
-            trainable_params_name = [name for name, p in unwrapped_model.named_parameters() if p.requires_grad]
-
-            state_dict = accelerator.get_state_dict(model)
-
-            if args.rank == 0:
-                # import pdb;pdb.set_trace()
-                for name in list(state_dict.keys()):
-                    if name not in trainable_params_name:
-                        del state_dict[name]
-
-                print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
-                accelerator.save(state_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
-                # save the config
-                unwrapped_model.config.save_pretrained(args.external_save_dir)
-                if args.delete_previous_checkpoint:
-                    if epoch > 0:
-                        os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
-
-            accelerator.wait_for_everyone()
-        else:
+        if args.save_ckpt_each_epoch:
             if args.rank == 0:
                 if not os.path.exists(args.external_save_dir):
                     os.makedirs(args.external_save_dir)
 
-                unwrapped_model = accelerator.unwrap_model(model)
-                # checkpoint_dict = {
-                #     "epoch": epoch,
-                #     "model_state_dict": get_checkpoint(unwrapped_model),
-                #     "optimizer_state_dict": optimizer.state_dict(),
-                #     "lr_scheduler_state_dict": lr_scheduler.state_dict(),
-                # }
+            if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
+                checkpoint_dict = accelerator.get_state_dict(model)
 
-                checkpoint_dict = {
-                    "model_state_dict": get_checkpoint(unwrapped_model),
-                }
+                if args.rank == 0:
+                    unwrapped_model = accelerator.unwrap_model(model)
+                    trainable_params_name = [name for name, p in unwrapped_model.named_parameters() if p.requires_grad]
+                    for name in list(checkpoint_dict.keys()):
+                        if name not in trainable_params_name:
+                            del checkpoint_dict[name]
 
-                # import pdb;pdb.set_trace()
+            else:
+                 if args.rank == 0:
+                    unwrapped_model = accelerator.unwrap_model(model)
+                    # checkpoint_dict = {
+                    #     "epoch": epoch,
+                    #     "model_state_dict": get_checkpoint(unwrapped_model),
+                    #     "optimizer_state_dict": optimizer.state_dict(),
+                    #     "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+                    # }
+                    checkpoint_dict = {
+                        "model_state_dict": get_checkpoint(unwrapped_model),
+                    }
+
+            if args.rank == 0:
                 print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
                 accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
                 # save the config
@@ -775,19 +763,47 @@ def main():
                     if epoch > 0:
                         os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
 
-        accelerator.wait_for_everyone()
+            accelerator.wait_for_everyone()
 
     accelerator.wait_for_everyone()
+
+    if args.rank == 0:
+        if not os.path.exists(args.external_save_dir):
+            os.makedirs(args.external_save_dir)
+
     if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
-        pass
+
+        checkpoint_dict = accelerator.get_state_dict(model)
+
+        unwrapped_model = accelerator.unwrap_model(model)
+
+        unwrapped_model.config.save_pretrained(args.external_save_dir)
+
+        if args.rank == 0 and not args.save_hf_model:
+            trainable_params_name = [name for name, p in unwrapped_model.named_parameters() if p.requires_grad]
+            for name in list(checkpoint_dict.keys()):
+                if name not in trainable_params_name:
+                    del checkpoint_dict[name]
+
+            accelerator.save(
+                checkpoint_dict,
+                f"{args.external_save_dir}/final_weights.pt",
+            )
+        elif args.rank == 0 and args.save_hf_model:
+            unwrapped_model.save_pretrained(
+                f"{args.external_save_dir}",
+                is_main_process=accelerator.is_main_process,
+                save_function=accelerator.save,
+                state_dict=checkpoint_dict,
+            )
+
     else:
         if args.rank == 0:
-            if not os.path.exists(args.external_save_dir):
-                os.makedirs(args.external_save_dir)
-
             unwrapped_model = accelerator.unwrap_model(model)
+            checkpoint_dict = get_checkpoint(model=unwrapped_model)
+
             accelerator.save(
-                get_checkpoint(model=unwrapped_model),
+                checkpoint_dict,
                 f"{args.external_save_dir}/final_weights.pt",
             )
             # save the config
@@ -797,6 +813,8 @@ def main():
                 wandb.save(f"{args.external_save_dir}/final_weights.pt")
             if args.save_hf_model:
                 unwrapped_model.save_pretrained(f"{args.external_save_dir}")
+
+    accelerator.wait_for_everyone()
 
 
 if __name__ == "__main__":
