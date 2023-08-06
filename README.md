@@ -54,7 +54,7 @@
 **[2023-07]**
 1. 🧨 Feature Updates:
     - DeepSpeed ZeRo2 Integration + DDP Training
-    - Support Flamingo pretraining on LIAON400M/CC3M.
+    - Support Flamingo pretraining on Laion400M/CC3M.
     - Add LoRA support for tuning LLM decoder.
     - Integration of multiple LLMs (Vicuna, MPT, LLama2, Falcon)
 2. 🤗 Checkout [MIMIC-IT](https://huggingface.co/datasets/pufanyi/MIMICIT) on Huggingface datasets.
