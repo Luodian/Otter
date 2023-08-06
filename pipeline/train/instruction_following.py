@@ -26,7 +26,7 @@ from otter.modeling_otter import OtterForConditionalGeneration
 from pipeline.train.data import get_data
 from pipeline.train.distributed import world_info_from_env
 from pipeline.train.train_utils import AverageMeter, get_checkpoint, get_checkpoint_deepspeed_zero3, get_image_attention_mask
-from transformers import IdeficsForVisionText2Text, AutoProcessor, AutoConfig
+from transformers import AutoProcessor, AutoConfig
 
 import deepspeed
 import json
@@ -167,6 +167,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         if args.mask_lm_head and args.distributed_type != "DEEPSPEED":
             unwrapped_model = accelerator.unwrap_model(model)
             if isinstance(unwrapped_model, IdeficsForVisionText2Text):
+                # This code need to be refined.
                 unwrapped_model.lm_head.apply(mask_embedding)
             elif unwrapped_model.lang_encoder.__class__.__name__ in ["MPTForCausalLM", "MosaicGPT"]:
                 unwrapped_model.lang_encoder.transformer.wte.apply(mask_embedding)
@@ -561,6 +562,8 @@ def main():
             tokenizer = model.text_tokenizer
             image_processor = CLIPImageProcessor()
         elif "idefics" in args.model_name.lower():
+            from transformers import IdeficsForVisionText2Text
+
             kwargs = {"local_files_only": args.offline, "device_map": device_map, "torch_dtype": torch.bfloat16}
             if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
                 kwargs.pop("device_map")
