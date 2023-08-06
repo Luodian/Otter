@@ -7,6 +7,7 @@ import random
 import time
 
 import numpy as np
+import gc
 import torch
 import torch.nn
 from accelerate import Accelerator
@@ -24,7 +25,14 @@ from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from otter.modeling_otter import OtterForConditionalGeneration
 from pipeline.train.data import get_data
 from pipeline.train.distributed import world_info_from_env
-from pipeline.train.train_utils import AverageMeter, get_checkpoint
+from pipeline.train.train_utils import AverageMeter, get_checkpoint, get_checkpoint_deepspeed_zero3, get_image_attention_mask
+from transformers import AutoProcessor, AutoConfig
+
+import deepspeed
+import json
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig
+from deepspeed.utils.zero_to_fp32 import load_state_dict_from_zero_checkpoint
+
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -49,6 +57,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
     endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)["input_ids"][-1]
     answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
+    ens_token_id = tokenizer(tokenizer.eos_token, add_special_tokens=False)["input_ids"][-1]
 
     model.train()
 
@@ -56,7 +65,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
     data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
-    dtype = model.dtype
+    dtype = accelerator.unwrap_model(model).dtype
     print(f"Using dtype {dtype}")
 
     # loop through dataloader
@@ -70,6 +79,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
         global_step = num_steps + epoch * num_batches_per_epoch
         #### MIMIC-IT FORWARD PASS ####
+
         total_losses = []
         for batch_mimicit in batch_mimicits:
             images = batch_mimicit["net_input"]["patch_images"].to(device_id, non_blocking=True)
@@ -79,7 +89,6 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             labels = input_ids.clone()
             labels[labels == tokenizer.pad_token_id] = -100
             labels[:, 0] = -100
-
             for i in range(labels.shape[0]):
                 # remove loss for any token before the first <image> token
                 # label_idx = 0
@@ -101,7 +110,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     token_idx += 1
 
                 # remove loss for any token between <|endofchunk|> and <answer>, except <image>
-                for endofchunk_idx in endofchunk_idxs:
+                for endofchunk_idx in endofchunk_idxs[:-1]:
                     token_idx = endofchunk_idx + 1
                     while token_idx < labels.shape[1] and labels[i][token_idx] != answer_token_id:
                         if labels[i][token_idx] == media_token_id:
@@ -113,13 +122,37 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             labels[labels == answer_token_id] = -100
             labels[labels == media_token_id] = -100
 
+            # Try importing IdeficsForVisionText2Text, and if it's not available, define a dummy class
+            try:
+                from transformers import IdeficsForVisionText2Text
+            except ImportError:
+                print("IdeficsForVisionText2Text does not exist")
+                IdeficsForVisionText2Text = type(None)
+
             with accelerator.autocast():
-                loss_mimicit = model(
-                    vision_x=images.to(dtype),
-                    lang_x=input_ids,
-                    attention_mask=attention_mask,
-                    labels=labels,
-                )[0]
+                unwrapped_model = accelerator.unwrap_model(model)
+
+                if isinstance(unwrapped_model, IdeficsForVisionText2Text):
+                    # only for image model
+                    max_num_images = images.shape[1]
+                    image_attention_mask = get_image_attention_mask(input_ids, max_num_images, tokenizer)
+                    assert images.shape[1] == 1, "The second dimension is not 1"
+
+                    loss_mimicit = model(
+                        pixel_values=images.squeeze(1).to(dtype),
+                        input_ids=input_ids,
+                        attention_mask=attention_mask,
+                        image_attention_mask=image_attention_mask,
+                        labels=labels,
+                    )[0]
+                else:
+                    loss_mimicit = model(
+                        vision_x=images.to(dtype),
+                        lang_x=input_ids,
+                        attention_mask=attention_mask,
+                        labels=labels,
+                    )[0]
+
             if accelerator.mixed_precision == "fp16":
                 accelerator.backward(loss_mimicit.to(device_id))
             else:
@@ -139,11 +172,14 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 # zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
                 m.weight.grad = m.weight.grad * zero_mask
 
-        if args.mask_lm_head:
+        if args.mask_lm_head and args.distributed_type != "DEEPSPEED":
             unwrapped_model = accelerator.unwrap_model(model)
-            if unwrapped_model.lang_encoder.__class__.__name__ in ["MPTForCausalLM", "MosaicGPT"]:
+            if isinstance(unwrapped_model, IdeficsForVisionText2Text):
+                # This code need to be refined.
+                unwrapped_model.lm_head.apply(mask_embedding)
+            elif unwrapped_model.lang_encoder.__class__.__name__ in ["MPTForCausalLM", "MosaicGPT"]:
                 unwrapped_model.lang_encoder.transformer.wte.apply(mask_embedding)
-            elif unwrapped_model.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+            elif "LlamaForCausalLM" in unwrapped_model.lang_encoder.__class__.__name__:
                 unwrapped_model.lang_encoder.model.embed_tokens.apply(mask_embedding)
                 unwrapped_model.lang_encoder.lm_head.apply(mask_embedding)
 
@@ -184,6 +220,23 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     },
                     commit=True,
                 )
+                # torch.cuda.empty_cache()
+                # gc.collect()  # forces garbage collection
+
+            if args.rank == 0 and global_step != 0 and (args.save_steps_interval != -1) and (global_step % args.save_steps_interval == 0):
+                if not os.path.exists(args.external_save_dir):
+                    os.makedirs(args.external_save_dir)
+
+                unwrapped_model = accelerator.unwrap_model(model)
+                checkpoint_dict = {
+                    "steps": global_step,
+                    "model_state_dict": get_checkpoint(unwrapped_model),
+                }
+                print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_steps_{global_step}.pt")
+                accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_steps_{global_step}.pt")
+                if args.delete_previous_checkpoint:
+                    if epoch > 0 and os.path.exists(f"{args.external_save_dir}/checkpoint_step_{global_step-args.save_steps_interval}.pt"):
+                        os.remove(f"{args.external_save_dir}/checkpoint_step_{global_step-args.save_steps_interval}.pt")
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
@@ -217,8 +270,15 @@ def parse_args():
         "--model_name",
         type=str,
         default="otter",
-        choices=["otter", "flamingo"],
+        choices=["otter", "flamingo", "idefics"],
         help="otters or flamingo",
+    )
+    parser.add_argument(
+        "--inst_format",
+        type=str,
+        default="simple",
+        choices=["simple", "llama2", "idefics"],
+        help="simple is for mpt/llama1, rest are in different instruction templates.",
     )
     # Prepare the arguments for different types of data sources.
     # Arguments are grouped by data types and whether the data is from past or new sources.
@@ -348,7 +408,9 @@ def parse_args():
     )
 
     # optimizer args
+    parser.add_argument("--gradient_checkpointing", action="store_true")
     parser.add_argument("--offline", action="store_true")
+    parser.add_argument("--save_ckpt_each_epoch", action="store_true")
     parser.add_argument("--num_epochs", type=int, default=1)
     parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
     # Sum of gradient optimization batch size
@@ -356,10 +418,17 @@ def parse_args():
     parser.add_argument("--train_num_samples", type=int, default=-1)
 
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
+    parser.add_argument("--save_steps_interval", type=int, default=-1)
     parser.add_argument(
         "--pretrained_model_name_or_path",
         type=str,
         help="path to huggingface model or model identifier from local path or huggingface.co",
+        default=None,
+    )
+    parser.add_argument(
+        "--trained_ckpt",
+        type=str,
+        help="path to trained_ckpt",
         default=None,
     )
     parser.add_argument("--seed", type=int, default=42)
@@ -442,14 +511,6 @@ def parse_args():
     # parser = add_data_args(parser)
     args = parser.parse_args()
 
-    if args.save_checkpoints_to_wandb and not args.report_to_wandb:
-        raise ValueError("save_checkpoints_to_wandb requires report_to_wandb")
-
-    if args.offline:
-        os.environ["WANDB_MODE"] = "offline"
-        os.environ["TRANSFORMERS_OFFLINE"] = "1"
-
-    args.local_rank, args.rank, args.world_size = world_info_from_env()
     # Check for argument consistency and set environment variables if needed
     if args.save_checkpoints_to_wandb and not args.report_to_wandb:
         raise ValueError("save_checkpoints_to_wandb requires report_to_wandb")
@@ -459,6 +520,16 @@ def parse_args():
         os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
     args.local_rank, args.rank, args.world_size = world_info_from_env()
+
+    # if "COUNT_NODE" in os.environ:
+    #     args.num_machines = int(os.environ["COUNT_NODE"])
+    # else:
+    #     args.num_machines = 1
+
+    # if "THEID" in os.environ:
+    #     args.machine_rank = int(os.environ["THEID"])
+    # else:
+    #     args.machine_rank = 0
 
     # Seed for reproducibility
     random_seed(args.seed)
@@ -483,6 +554,9 @@ def main():
                 device_map=device_map,
                 local_files_only=args.offline,
             )
+            args.tokenizer = model.text_tokenizer
+            tokenizer = model.text_tokenizer
+            image_processor = CLIPImageProcessor()
         elif "flamingo" in args.model_name.lower():
             model = FlamingoForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
@@ -491,6 +565,45 @@ def main():
             )
             # add special tokens for instruction tuning
             model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"]})
+            args.tokenizer = model.text_tokenizer
+            tokenizer = model.text_tokenizer
+            image_processor = CLIPImageProcessor()
+        elif "idefics" in args.model_name.lower():
+            from transformers import IdeficsForVisionText2Text
+
+            # you need to install the idefics version transformers package first
+            kwargs = {"local_files_only": args.offline, "device_map": device_map, "torch_dtype": torch.bfloat16}
+            if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
+                kwargs.pop("device_map")
+
+            model = IdeficsForVisionText2Text.from_pretrained(
+                args.pretrained_model_name_or_path,
+                **kwargs,
+            )
+
+            if args.gradient_checkpointing:
+                model.gradient_checkpointing_enable()
+
+            # named_parameters = dict(model.named_parameters())
+            # params_to_gather = [named_parameters[k] for k in named_parameters.keys()]
+            # if len(params_to_gather) > 0:
+            if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
+                params_to_gather = [p for name, p in model.named_parameters() if p.requires_grad]
+                with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
+                    if torch.distributed.get_rank() == 0:
+                        # 有参数
+                        print(device_id, f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
+                del params_to_gather
+
+            print(device_id, f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
+            # import pdb;pdb.set_trace()
+            processor = AutoProcessor.from_pretrained(args.pretrained_model_name_or_path, legacy=False)
+            past_special_tokens = processor.tokenizer.special_tokens_map["additional_special_tokens"]
+            processor.tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>", "<|endofchunk|>"] + past_special_tokens})
+            image_processor = processor.image_processor
+            tokenizer = processor.tokenizer
+            # For idefics model, do not resize token
+            # model.resize_token_embeddings(len(tokenizer))
     else:
         config = FlamingoConfig.from_json_file("./flamingo/config.json")
         model = FlamingoForConditionalGeneration(config=config)
@@ -507,23 +620,26 @@ def main():
                 False,
             )
 
+    if args.trained_ckpt is not None:
+        train_ckpt = torch.load(args.trained_ckpt, map_location="cpu")
+        if train_ckpt.get("model_state_dict", None) is not None:
+            train_ckpt = train_ckpt["model_state_dict"]
+        _ = model.load_state_dict(train_ckpt, strict=False)
+        print(_[1])
+
     accelerator.wait_for_everyone()
 
     args.distributed_type = accelerator.distributed_type
 
-    # import pdb;pdb.set_trace()
-    if "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
+    if hasattr(model, "lang_encoder") and "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
         model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
 
-    args.tokenizer = model.text_tokenizer
-    tokenizer = model.text_tokenizer
     random_seed(args.seed, args.rank)
 
     print(f"Start running training on rank {args.rank}.")
 
     # device_id = args.rank % torch.cuda.device_count()
 
-    image_processor = CLIPImageProcessor()
     mimicit_loaders = get_data(args, image_processor, tokenizer, "mimicit")
 
     def get_grouped_params(model):
@@ -570,25 +686,19 @@ def main():
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
 
-    args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
-
-    num_warmup_steps = args.warmup_steps // args.gradient_accumulation_steps
-    num_training_steps = total_training_steps // args.gradient_accumulation_steps
-    if accelerator.distributed_type == "DEEPSPEED":
-        num_training_steps = num_training_steps * accelerator.num_processes
-        num_warmup_steps = num_warmup_steps * accelerator.num_processes
+    args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_stepsps
 
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
             optimizer,
-            num_warmup_steps=num_warmup_steps,
-            num_training_steps=num_training_steps,
+            num_warmup_steps=args.warmup_steps // args.gradient_accumulation_steps,
+            num_training_steps=total_training_steps // args.gradient_accumulation_steps,
         )
     elif args.lr_scheduler == "cosine":
         lr_scheduler = get_cosine_schedule_with_warmup(
             optimizer,
-            num_warmup_steps=num_warmup_steps,
-            num_training_steps=num_training_steps,
+            num_warmup_steps=args.warmup_steps // args.gradient_accumulation_steps,
+            num_training_steps=total_training_steps // args.gradient_accumulation_steps,
         )
     else:
         lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps)
@@ -601,7 +711,11 @@ def main():
             config=vars(args),
         )
 
-    model, optimizer, lr_scheduler, mimicit_loaders = accelerator.prepare(model, optimizer, lr_scheduler, mimicit_loaders)
+    if accelerator.distributed_type == "DEEPSPEED" or accelerator.distributed_type == "MULTI_GPU":
+        model, optimizer = accelerator.prepare(model, optimizer)
+    else:
+        model, optimizer, lr_scheduler, mimicit_loaders = accelerator.prepare(model, optimizer, lr_scheduler, mimicit_loaders)
+
     model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
@@ -622,44 +736,94 @@ def main():
         )
         accelerator.wait_for_everyone()
 
-        if args.rank == 0:
-            if not os.path.exists(args.external_save_dir):
-                os.makedirs(args.external_save_dir)
+        if args.save_ckpt_each_epoch:
+            if args.rank == 0:
+                if not os.path.exists(args.external_save_dir):
+                    os.makedirs(args.external_save_dir)
 
-            unwrapped_model = accelerator.unwrap_model(model)
-            checkpoint_dict = {
-                "epoch": epoch,
-                "model_state_dict": get_checkpoint(unwrapped_model),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "lr_scheduler_state_dict": lr_scheduler.state_dict(),
-            }
-            print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
-            accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
-            # save the config
-            unwrapped_model.config.save_pretrained(args.external_save_dir)
-            if args.delete_previous_checkpoint:
-                if epoch > 0:
-                    os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
+            if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
+                checkpoint_dict = accelerator.get_state_dict(model)
 
-        accelerator.wait_for_everyone()
+                if args.rank == 0:
+                    unwrapped_model = accelerator.unwrap_model(model)
+                    trainable_params_name = [name for name, p in unwrapped_model.named_parameters() if p.requires_grad]
+                    for name in list(checkpoint_dict.keys()):
+                        if name not in trainable_params_name:
+                            del checkpoint_dict[name]
+
+            else:
+                if args.rank == 0:
+                    unwrapped_model = accelerator.unwrap_model(model)
+                    # checkpoint_dict = {
+                    #     "epoch": epoch,
+                    #     "model_state_dict": get_checkpoint(unwrapped_model),
+                    #     "optimizer_state_dict": optimizer.state_dict(),
+                    #     "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+                    # }
+                    checkpoint_dict = {
+                        "model_state_dict": get_checkpoint(unwrapped_model),
+                    }
+
+            if args.rank == 0:
+                print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
+                accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+                # save the config
+                unwrapped_model.config.save_pretrained(args.external_save_dir)
+                if args.delete_previous_checkpoint:
+                    if epoch > 0:
+                        os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
+
+            accelerator.wait_for_everyone()
 
     accelerator.wait_for_everyone()
+
     if args.rank == 0:
         if not os.path.exists(args.external_save_dir):
             os.makedirs(args.external_save_dir)
 
+    if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
+        checkpoint_dict = accelerator.get_state_dict(model)
+
         unwrapped_model = accelerator.unwrap_model(model)
-        accelerator.save(
-            get_checkpoint(model=unwrapped_model),
-            f"{args.external_save_dir}/final_weights.pt",
-        )
-        # save the config
+
         unwrapped_model.config.save_pretrained(args.external_save_dir)
 
-        if args.report_to_wandb and args.save_checkpoints_to_wandb:
-            wandb.save(f"{args.external_save_dir}/final_weights.pt")
-        if args.save_hf_model:
-            unwrapped_model.save_pretrained(f"{args.external_save_dir}")
+        if args.rank == 0 and not args.save_hf_model:
+            trainable_params_name = [name for name, p in unwrapped_model.named_parameters() if p.requires_grad]
+            for name in list(checkpoint_dict.keys()):
+                if name not in trainable_params_name:
+                    del checkpoint_dict[name]
+
+            accelerator.save(
+                checkpoint_dict,
+                f"{args.external_save_dir}/final_weights.pt",
+            )
+        elif args.rank == 0 and args.save_hf_model:
+            unwrapped_model.save_pretrained(
+                f"{args.external_save_dir}",
+                is_main_process=accelerator.is_main_process,
+                save_function=accelerator.save,
+                state_dict=checkpoint_dict,
+            )
+
+    else:
+        if args.rank == 0:
+            unwrapped_model = accelerator.unwrap_model(model)
+            checkpoint_dict = get_checkpoint(model=unwrapped_model)
+
+            accelerator.save(
+                checkpoint_dict,
+                f"{args.external_save_dir}/final_weights.pt",
+            )
+            # save the config
+            unwrapped_model.config.save_pretrained(args.external_save_dir)
+
+            if args.report_to_wandb and args.save_checkpoints_to_wandb:
+                wandb.save(f"{args.external_save_dir}/final_weights.pt")
+            if args.save_hf_model:
+                unwrapped_model.save_pretrained(f"{args.external_save_dir}")
+
+    accelerator.wait_for_everyone()
 
 
 if __name__ == "__main__":
