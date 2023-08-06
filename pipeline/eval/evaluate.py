@@ -7,13 +7,12 @@ import uuid
 from collections import defaultdict
 
 from einops import repeat
-import more_itertools
 import numpy as np
 import torch
 from sklearn.metrics import roc_auc_score
 
-from coco_metric import compute_cider, postprocess_captioning_generation
-from eval_datasets import (
+from .coco_metric import compute_cider, postprocess_captioning_generation
+from .eval_datasets import (
     CaptionDataset,
     VQADataset,
     ImageNetDataset,
@@ -22,28 +21,27 @@ from eval_datasets import (
 from tqdm import tqdm
 
 
-from eval_datasets import VQADataset, ImageNetDataset
-from classification_utils import (
+from .eval_datasets import VQADataset, ImageNetDataset
+from .classification_utils import (
     IMAGENET_CLASSNAMES,
     IMAGENET_1K_CLASS_ID_TO_LABEL,
     HM_CLASSNAMES,
     HM_CLASS_ID_TO_LABEL,
 )
 
-from eval_model import BaseEvalModel
+from .eval_model import BaseEvalModel
 
-from ok_vqa_utils import postprocess_ok_vqa_generation
-from open_flamingo.src.flamingo import Flamingo
-from vqa_metric import compute_vqa_accuracy, postprocess_vqa_generation
+from .ok_vqa_utils import postprocess_ok_vqa_generation
+from .vqa_metric import compute_vqa_accuracy, postprocess_vqa_generation
 
-from open_flamingo.train.distributed import init_distributed_device, world_info_from_env
+from pipeline.train.distributed import init_distributed_device, world_info_from_env
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
     "--model",
     type=str,
-    help="Model name. Currently only `OpenFlamingo` is supported.",
+    help="Model name. Currently only `OpenFlamingo` and `Otter` is supported.",
     default="otter",
 )
 parser.add_argument(
@@ -361,9 +359,19 @@ parser.add_argument(
 
 def main():
     args, leftovers = parser.parse_known_args()
-    module = importlib.import_module(f"open_flamingo.eval.models.{args.model}")
 
-    model_args = {leftovers[i].lstrip("-"): leftovers[i + 1] for i in range(0, len(leftovers), 2)}
+    # import json
+    # print(json.dumps(vars(args), indent=4))
+
+    module = importlib.import_module(f"pipeline.eval.models.{args.model}")
+
+    # print("======================================")
+    # print(args)
+    # print("======================================")
+    # print(leftovers)
+    # print("======================================")
+
+    model_args = {leftover.lstrip("-").split("=")[0]: leftover.split("=")[1] for leftover in leftovers}
     eval_model = module.EvalModel(model_args)
 
     # set up distributed evaluation
@@ -372,7 +380,7 @@ def main():
     eval_model.set_device(device_id)
     eval_model.init_distributed()
 
-    if (args.model != "open_flamingo" or args.model != "otter") and args.shots != [0]:
+    if args.model != "open_flamingo" and args.model != "otter" and args.shots != [0]:
         raise ValueError("Only 0 shot eval is supported for non-open_flamingo models")
 
     if len(args.trial_seeds) != args.num_trials:
