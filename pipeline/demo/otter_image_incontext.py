@@ -79,7 +79,6 @@ def get_response(image_list, prompt: str, model=None, image_processor=None, in_c
     lang_x_input_ids = lang_x["input_ids"]
     lang_x_attention_mask = lang_x["attention_mask"]
 
-    bad_words_id = model.text_tokenizer(["User:", "GPT1:", "GFT:", "GPT:"], add_special_tokens=False).input_ids
     generated_text = model.generate(
         vision_x=vision_x.to(model.device),
         lang_x=lang_x_input_ids.to(model.device),
@@ -87,7 +86,6 @@ def get_response(image_list, prompt: str, model=None, image_processor=None, in_c
         max_new_tokens=512,
         num_beams=3,
         no_repeat_ngram_size=3,
-        bad_words_ids=bad_words_id,
     )
     parsed_output = (
         model.text_tokenizer.decode(generated_text[0])
@@ -115,7 +113,7 @@ if __name__ == "__main__":
         precision["torch_dtype"] = torch.float16
     elif load_bit == "fp32":
         precision["torch_dtype"] = torch.float32
-    model = OtterForConditionalGeneration.from_pretrained("luodian/OTTER-9B-LA-InContext", device_map="sequential", **precision)
+    model = OtterForConditionalGeneration.from_pretrained("luodian/OTTER-Image-MPT7B", device_map="sequential", **precision)
     model.text_tokenizer.padding_side = "left"
     tokenizer = model.text_tokenizer
     image_processor = transformers.CLIPImageProcessor()
