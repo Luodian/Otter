@@ -790,11 +790,15 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    args.mimicit_path="/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format/LACONV_instructions.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format//LADD_instructions.json"
-    args.images_path="/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format/LA.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format//LA.json"
-    args.train_config_path="/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format/LACONV_train.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format/LADD_train.json"
-    args.mimicit_vt_path="/mnt/petrelfs/share_data/zhangyuanhan/mimicit/SD/SD_instructions.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/CGD/CGD_instructions.json"
-    args.images_vt_path="/mnt/petrelfs/share_data/zhangyuanhan/mimicit/SD/SD_0626.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/CGD/CGD_0625.json"
+    args.mimicit_path = "/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format/LACONV_instructions.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format//LADD_instructions.json"
+    args.images_path = (
+        "/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format/LA.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format//LA.json"
+    )
+    args.train_config_path = "/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format/LACONV_train.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/LA/release_format/LADD_train.json"
+    args.mimicit_vt_path = (
+        "/mnt/petrelfs/share_data/zhangyuanhan/mimicit/SD/SD_instructions.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/CGD/CGD_instructions.json"
+    )
+    args.images_vt_path = "/mnt/petrelfs/share_data/zhangyuanhan/mimicit/SD/SD_0626.json,/mnt/petrelfs/share_data/zhangyuanhan/mimicit/CGD/CGD_0625.json"
 
     args.past_mimicit_path = args.past_images_path = args.past_train_config_path = args.past_mimicit_vt_path = args.past_images_vt_path = ""
 
@@ -806,7 +810,6 @@ if __name__ == "__main__":
     args.seed = 0
     args.past_subset_ration = 1
     args.inst_format = "simple"
-
 
     with open("/mnt/petrelfs/zhangyuanhan/weights/flamingo_9b_hf/config.json") as f:
         config = json.load(f)
@@ -853,7 +856,6 @@ if __name__ == "__main__":
         unified_dataset = MimicitDataset(args, all_mimicit_vt_path, all_images_vt_path, status_list=vt_status)
         unified_datasets.append(unified_dataset)
 
-
     # test_dataset = MimicitDataset(args, mimicit_text_path, status_list=it_status)
 
     # test_dataset = MimicitDataset(args, all_mimicit_text_path, all_images_text_path, all_train_text_config_path, status_list=it_status)
@@ -865,7 +867,9 @@ if __name__ == "__main__":
     counter = 0
     for cur_dataset in tqdm(unified_datasets):
         for _ in tqdm(cur_dataset):
-            import pdb;pdb.set_trace()
+            import pdb
+
+            pdb.set_trace()
         # if counter > 0:
         #     break
         # counter += 1

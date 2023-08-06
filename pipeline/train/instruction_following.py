@@ -742,7 +742,7 @@ def main():
                             del checkpoint_dict[name]
 
             else:
-                 if args.rank == 0:
+                if args.rank == 0:
                     unwrapped_model = accelerator.unwrap_model(model)
                     # checkpoint_dict = {
                     #     "epoch": epoch,
@@ -772,7 +772,6 @@ def main():
             os.makedirs(args.external_save_dir)
 
     if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
-
         checkpoint_dict = accelerator.get_state_dict(model)
 
         unwrapped_model = accelerator.unwrap_model(model)
