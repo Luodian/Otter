@@ -65,7 +65,14 @@ __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
     "MosaicGPT": "transformer.blocks",
 }
 
-MODEL_CLASSES = {"LlamaForCausalLM": "llama", "OPTForCausalLM": "opt", "GPTJForCausalLM": "gptj", "GPTNeoXForCausalLM": "gpt_neox", "MPTForCausalLM": "mpt"}
+MODEL_CLASSES = {
+    "LlamaForCausalLM": "llama",
+    "OPTForCausalLM": "opt",
+    "GPTJForCausalLM": "gptj",
+    "GPTNeoXForCausalLM": "gpt_neox",
+    "MPTForCausalLM": "mpt",
+    "MosaicGPT": "mpt",
+}
 
 
 def _infer_decoder_layers_attr_name(model: nn.Module):
@@ -586,10 +593,27 @@ class OtterModel(OtterPreTrainedModel):
             use_media_placement_augmentation=self.use_media_placement_augmentation,
         )
 
-        # config.update({"lora_config": {"r": 16, "lora_alpha": 16, "task_type": "CAUSAL_LM"}})
-        # lora_config = LoraConfig(r=16, lora_alpha=16, task_type=TaskType.CAUSAL_LM)
-        # self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
-        # self.lang_encoder.print_trainable_parameters()
+        if "lora_config" in config.__dict__:
+            print(f"Using LoRA with config:{config.lora_config}")
+            standard_modules = ["q_proj", "v_proj"]
+            lang_encoder_short_name = MODEL_CLASSES[config.text_config.architectures[0]]
+            model_to_lora_modules = {
+                "llama": standard_modules,
+                "opt": standard_modules,
+                "gptj": standard_modules,
+                "gpt_neox": ["query_key_value"],
+                "mpt": ["Wqkv"],
+            }
+            lora_config = LoraConfig(
+                r=config.lora_config["r"],
+                lora_alpha=config.lora_config["lora_alpha"],
+                lora_dropout=config.lora_config["lora_dropout"],
+                task_type=TaskType.CAUSAL_LM,
+                target_modules=model_to_lora_modules[lang_encoder_short_name],
+            )
+            self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
+            self.lang_encoder.print_trainable_parameters()
+
         self.post_init()
 
     def get_input_embeddings(self) -> nn.Module:
@@ -784,6 +808,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         )
 
         if "lora_config" in config.__dict__:
+            original_architecture_name = self.lang_encoder.__class__.__name__
             print(f"Using LoRA with config:{config.lora_config}")
             standard_modules = ["q_proj", "v_proj"]
             lang_encoder_short_name = MODEL_CLASSES[config.text_config.architectures[0]]
@@ -803,6 +828,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             )
             self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
             self.lang_encoder.print_trainable_parameters()
+            self.lang_encoder.__class__.__name__ = f"{original_architecture_name}LoRA"
 
         self.post_init()
 
@@ -830,12 +856,16 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             param.requires_grad = False
 
         if "lora_config" in self.config.__dict__:
+            # Use another logic to unfreeze gated_cross_attn_layers and perceivers
             print(f"LoRA trainable param: {(sum(p.numel() for p in self.lang_encoder.parameters() if p.requires_grad)) / 1e9:.3f} B")
-            # Unfreeze gated_cross_attn_layers
-            for layer in self.lang_encoder._get_decoder_layers():
-                if layer.gated_cross_attn_layer is not None:
-                    for param in layer.gated_cross_attn_layer.parameters():
-                        param.requires_grad = True
+            for name, param in self.lang_encoder.named_parameters():
+                if "gated_cross_attn_layer" in name:
+                    param.requires_grad = True
+                if "lm_head" in name:
+                    param.requires_grad = True
+            for name, param in self.named_parameters():
+                if "perceiver" in name:
+                    param.requires_grad = True
         else:
             # Freeze all parameters in lang encoders except gated_cross_attn_layers
             for name, param in self.lang_encoder.named_parameters():
@@ -844,11 +874,16 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         # Unfreeze LM input and output embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
-        if self.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+        if "LlamaForCausalLM" in self.lang_encoder.__class__.__name__:
             self.lang_encoder.lm_head.requires_grad_(True)
-        # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
-        # print model size in billions of parameters in 2 decimal places
-        print(f"Total Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.3f} B")
+        print("====================Model Grad Part====================")
+        total_params = 0
+        for name, param in self.named_parameters():
+            if param.requires_grad:
+                total_params += param.numel()
+                print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
+        print(f"Total Trainable param: {total_params / 1e9:.6f} B")
+        print(f"Total Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.6f} B")
 
     def forward(
         self,

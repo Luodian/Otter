@@ -13,14 +13,17 @@ from typing import List, Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from transformers import AutoTokenizer, PreTrainedModel
+from transformers import PreTrainedModel
 from transformers.modeling_outputs import CausalLMOutputWithPast
 
-from .attention import attn_bias as module_attn_bias, attn_bias_shape as module_attn_bias_shape
-from .gpt_blocks import GPTBlock
+from flamingo.mpt.custom_embedding import SharedEmbedding
+
+from .attention import attn_bias as module_attn_bias
+from .attention import attn_bias_shape as module_attn_bias_shape
 from .configuration_mosaic_gpt import MosaicGPTConfig
-from .param_init_fns import MODEL_INIT_REGISTRY
+from .gpt_blocks import GPTBlock
 from .low_precision_layernorm import LPLayerNorm
+from .param_init_fns import MODEL_INIT_REGISTRY
 
 
 class MosaicGPT(PreTrainedModel):

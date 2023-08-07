@@ -3,6 +3,12 @@ from contextlib import suppress
 
 import torch
 from tqdm import tqdm
+from torch.utils.data.distributed import DistributedSampler
+
+try:
+    from transformers.models.idefics.processing_idefics import image_attention_mask_for_packed_input_ids, incremental_to_binary_attention_mask
+except ImportError:
+    print("Failed to import Idefics processing module.")
 
 
 def get_cast_dtype(precision: str):
@@ -226,6 +232,19 @@ def get_checkpoint(model):
     return state_dict
 
 
+def get_checkpoint_deepspeed_zero3(args, model):
+    state_dict = {}
+
+    for name, p in model.named_parameters():
+        if p.requires_grad:
+            state_dict[name] = p.data
+    return state_dict
+
+    # if torch.distributed.get_rank() == 0:
+    #     # 有参数
+    #     print(device_id, f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
+
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
 
@@ -243,3 +262,50 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
+
+class DistributedProxySampler(DistributedSampler):
+    """Sampler that restricts data loading to a subset of input sampler indices.
+
+    It is especially useful in conjunction with
+    :class:`torch.nn.parallel.DistributedDataParallel`. In such case, each
+    process can pass a DistributedSampler instance as a DataLoader sampler,
+    and load a subset of the original dataset that is exclusive to it.
+
+    .. note::
+        Input sampler is assumed to be of constant size.
+
+    Arguments:
+        sampler: Input data sampler.
+        num_replicas (optional): Number of processes participating in
+            distributed training.
+        rank (optional): Rank of the current process within num_replicas.
+    """
+
+    def __init__(self, sampler, num_replicas=None, rank=None):
+        super(DistributedProxySampler, self).__init__(sampler, num_replicas=num_replicas, rank=rank, shuffle=False)
+        self.sampler = sampler
+
+    def __iter__(self):
+        # deterministically shuffle based on epoch
+        torch.manual_seed(self.epoch)
+        indices = list(self.sampler)
+
+        # add extra samples to make it evenly divisible
+        indices += indices[: (self.total_size - len(indices))]
+        if len(indices) != self.total_size:
+            raise RuntimeError("{} vs {}".format(len(indices), self.total_size))
+
+        # subsample
+        indices = indices[self.rank : self.total_size : self.num_replicas]
+        if len(indices) != self.num_samples:
+            raise RuntimeError("{} vs {}".format(len(indices), self.num_samples))
+
+        return iter(indices)
+
+
+# supporting idefics processing
+def get_image_attention_mask(output_input_ids, max_num_images, tokenizer):
+    image_attention_mask, _ = image_attention_mask_for_packed_input_ids(output_input_ids, tokenizer)
+    image_attention_mask = incremental_to_binary_attention_mask(image_attention_mask, num_classes=max_num_images)
+    return image_attention_mask

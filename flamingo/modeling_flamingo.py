@@ -566,22 +566,48 @@ class FlamingoModel(FlamingoPreTrainedModel):
     def get_lang_encoder(self) -> nn.Module:
         return self.lang_encoder
 
+    # def init_weights(self):
+    #     # Freeze all parameters in vision encoder
+    #     for param in self.vision_encoder.parameters():
+    #         param.requires_grad = False
+    #     # Freeze all parameters in lang encoders except gated_cross_attn_layers
+    #     for name, param in self.lang_encoder.named_parameters():
+    #         if "gated_cross_attn_layer" not in name:
+    #             param.requires_grad = False
+    #     # Unfreeze LM input embeddings
+    #     self.lang_encoder.get_input_embeddings().requires_grad_(True)
+    #     ## MPTForCausalLM is tied word embedding
+    #     if self.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+    #         self.lang_encoder.lm_head.requires_grad_(True)
+    #     # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
+    #     # print model size in billions of parameters in 2 decimal places
+    #     print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
+
     def init_weights(self):
         # Freeze all parameters in vision encoder
         for param in self.vision_encoder.parameters():
             param.requires_grad = False
-        # Freeze all parameters in lang encoders except gated_cross_attn_layers
-        for name, param in self.lang_encoder.named_parameters():
-            if "gated_cross_attn_layer" not in name:
-                param.requires_grad = False
-        # Unfreeze LM input embeddings
+
+        if "lora_config" in self.config.__dict__:
+            print(f"LoRA trainable param: {(sum(p.numel() for p in self.lang_encoder.parameters() if p.requires_grad)) / 1e9:.3f} B")
+            # Unfreeze gated_cross_attn_layers
+            for layer in self.lang_encoder._get_decoder_layers():
+                if layer.gated_cross_attn_layer is not None:
+                    for param in layer.gated_cross_attn_layer.parameters():
+                        param.requires_grad = True
+        else:
+            # Freeze all parameters in lang encoders except gated_cross_attn_layers
+            for name, param in self.lang_encoder.named_parameters():
+                if "gated_cross_attn_layer" not in name:
+                    param.requires_grad = False
+        # Unfreeze LM input and output embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
         if self.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
             self.lang_encoder.lm_head.requires_grad_(True)
         # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
         # print model size in billions of parameters in 2 decimal places
-        print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
+        print(f"Total Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
     def forward(
         self,
@@ -716,7 +742,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         extend_instance(lang_encoder, FlamingoLMMixin)
         decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
         lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        if lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+        if "LlamaForCausalLM" in lang_encoder.__class__.__name__:
             lang_encoder.resize_token_embeddings(len(text_tokenizer))
         self.lang_encoder = lang_encoder
 
@@ -766,11 +792,18 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         # Unfreeze LM input embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
-        if self.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+        if "LlamaForCausalLM" in self.lang_encoder.__class__.__name__:
             self.lang_encoder.lm_head.requires_grad_(True)
         # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
         # print model size in billions of parameters in 2 decimal places
-        print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
+        print("====================Model Grad Part====================")
+        total_params = 0
+        for name, param in self.named_parameters():
+            if param.requires_grad:
+                total_params += param.numel()
+                print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
+        print(f"Total Trainable param: {total_params / 1e9:.4f} B")
+        print(f"Total Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
     def forward(
         self,
