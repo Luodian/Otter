@@ -374,7 +374,7 @@ def main():
     args.local_rank, args.rank, args.world_size = world_info_from_env()
     device_id = init_distributed_device(args, model_args)
     eval_model.set_device(device_id)
-    if device_id != torch.device('cpu'):
+    if device_id != torch.device("cpu"):
         eval_model.init_distributed()
 
     if args.model != "open_flamingo" and args.model != "otter" and args.shots != [0]:
