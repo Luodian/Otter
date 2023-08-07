@@ -36,6 +36,9 @@ python -m pipeline.eval.evaluate \
     --vizwiz_train_annotations_json_path=/data/pufanyi/download/lavis/vizwiz/annotations/train_annotations_vqa_format.json \
     --vizwiz_test_questions_json_path=/data/pufanyi/download/lavis/vizwiz/annotations/val_questions_vqa_format.json \
     --vizwiz_test_annotations_json_path=/data/pufanyi/download/lavis/vizwiz/annotations/val_annotations_vqa_format.json \
+    --hateful_memes_image_dir_path=/data/pufanyi/download/lavis/hateful_memes/img \
+    --hateful_memes_train_annotations_json_path=/data/pufanyi/download/lavis/hateful_memes/train.json \
+    --hateful_memes_test_annotations_json_path=/data/pufanyi/download/lavis/hateful_memes/dev.json \
     --model=otter \
     --model_path=/data/bli/checkpoints/OTTER-Image-MPT7B \
     --checkpoint_path=/data/bli/checkpoints/OTTER-Image-MPT7B/final_weights.pt \
