@@ -28,15 +28,16 @@ class EvalModel(BaseEvalModel):
             elif load_bit == "fp32":
                 return torch.float32
 
+        self.device = model_args["device"]
         kwargs = {"device_map": model_args["device_map"], "torch_dtype": get_precision(model_args["precision"])}
-        if model_args["device"] == "cpu":
+        if self.device == "cpu":
             kwargs.pop("device_map")
 
         self.model = OtterForConditionalGeneration.from_pretrained(
             model_args["model_path"],
             **kwargs,
         )
-        self.model.to(model_args["device"])
+        self.model.to(self.device)
         self.image_processor = transformers.CLIPImageProcessor()
         self.tokenizer = self.model.text_tokenizer
 

@@ -883,7 +883,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
                 total_params += param.numel()
                 print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
         print(f"Total Trainable param: {total_params / 1e9:.6f} B")
-        print(f"Total Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.6f} B")
+        # print(f"Total Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.6f} B")
 
     def forward(
         self,
