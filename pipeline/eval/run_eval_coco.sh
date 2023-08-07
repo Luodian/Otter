@@ -16,14 +16,39 @@ python -m pipeline.eval.evaluate \
     --coco_val_image_dir_path=/data/pufanyi/download/lavis/coco/images/val2014 \
     --coco_karpathy_json_path=/data/pufanyi/download/lavis/coco/dataset_coco.json \
     --coco_annotations_json_path=/data/pufanyi/download/lavis/coco/coco2014_annotations/annotations/captions_val2014.json \
+    --flickr_image_dir_path=/data/pufanyi/download/lavis/flickr30k/images/flickr30k-images \
+    --flickr_karpathy_json_path=/data/pufanyi/download/lavis/flickr30k/dataset_flickr30k.json \
+    --ok_vqa_train_image_dir_path=/data/pufanyi/download/lavis/okvqa/images/train2014 \
+    --ok_vqa_train_annotations_json_path=/data/pufanyi/download/lavis/okvqa/annotations/mscoco_train2014_annotations.json \
+    --ok_vqa_train_questions_json_path=/data/pufanyi/download/lavis/okvqa/annotations/OpenEnded_mscoco_train2014_questions.json \
+    --ok_vqa_train_questions_json_path=/data/pufanyi/download/lavis/okvqa/annotations/OpenEnded_mscoco_train2014_questions.json \
+    --ok_vqa_test_image_dir_path=/data/pufanyi/download/lavis/okvqa/images/val2014 \
+    --ok_vqa_test_annotations_json_path=/data/pufanyi/download/lavis/okvqa/annotations/mscoco_val2014_annotations.json \
+    --ok_vqa_test_questions_json_path=/data/pufanyi/download/lavis/okvqa/annotations/OpenEnded_mscoco_val2014_questions.json \
+    --textvqa_image_dir_path=/data/pufanyi/download/lavis/textvqa/images/train_images/ \
+    --textvqa_train_questions_json_path=/data/pufanyi/download/lavis/textvqa/annotations/train_questions_vqa_format.json \
+    --textvqa_train_annotations_json_path=/data/pufanyi/download/lavis/textvqa/annotations/train_annotations_vqa_format.json \
+    --textvqa_test_questions_json_path=/data/pufanyi/download/lavis/textvqa/annotations/val_questions_vqa_format.json \
+    --textvqa_test_annotations_json_path=/data/pufanyi/download/lavis/textvqa/annotations/val_annotations_vqa_format.json \
+    --vizwiz_train_image_dir_path=/data/pufanyi/download/lavis/vizwiz/train \
+    --vizwiz_test_image_dir_path=/data/pufanyi/download/lavis/vizwiz/val \
+    --vizwiz_train_questions_json_path=/data/pufanyi/download/lavis/vizwiz/annotations/train_questions_vqa_format.json \
+    --vizwiz_train_annotations_json_path=/data/pufanyi/download/lavis/vizwiz/annotations/train_annotations_vqa_format.json \
+    --vizwiz_test_questions_json_path=/data/pufanyi/download/lavis/vizwiz/annotations/val_questions_vqa_format.json \
+    --vizwiz_test_annotations_json_path=/data/pufanyi/download/lavis/vizwiz/annotations/val_annotations_vqa_format.json \
     --model=otter \
     --model_path=/data/bli/checkpoints/OTTER-Image-MPT7B \
     --checkpoint_path=/data/bli/checkpoints/OTTER-Image-MPT7B/final_weights.pt \
     --device_map=auto \
     --precision=fp32 \
     --batch_size=8 \
-    --eval_coco
-    # --eval_vqav2 \
+    --eval_coco \
+    --eval_vqav2 \
+    --eval_flickr30 \
+    --eval_ok_vqa \
+    --eval_textvqa \
+    --eval_vizwiz \
+    --eval_hateful_memes \
 
 
 
