@@ -359,10 +359,6 @@ parser.add_argument(
 
 def main():
     args, leftovers = parser.parse_known_args()
-
-    # import json
-    # print(json.dumps(vars(args), indent=4))
-
     module = importlib.import_module(f"pipeline.eval.models.{args.model}")
 
     # print("======================================")

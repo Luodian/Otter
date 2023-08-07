@@ -20,33 +20,23 @@ class EvalModel(BaseEvalModel):
     """
 
     def __init__(self, model_args):
-        # print(model_args)
-        # assert (
-        #     # "" in model_args
-        #     "lm_path" in model_args
-        #     and "checkpoint_path" in model_args
-        #     and "lm_tokenizer_path" in model_args
-        #     and "cross_attn_every_n_layers" in model_args
-        #     and "vision_encoder_pretrained" in model_args
-        #     and "precision" in model_args
-        # ), "OpenFlamingo requires vision_encoder_path, lm_path, device, checkpoint_path, lm_tokenizer_path, cross_attn_every_n_layers, vision_encoder_pretrained, and precision arguments to be specified"
-
-        self.device = model_args["device"] if ("device" in model_args and model_args["device"] >= 0) else "cpu"
-
         def get_precision(load_bit: str):
             if load_bit == "fp16":
-                return {"torch_dtype": torch.float16}
+                return torch.float16
             elif load_bit == "bf16":
-                return {"torch_dtype": torch.bfloat16}
+                return torch.bfloat16
             elif load_bit == "fp32":
-                return {"torch_dtype": torch.float32}
+                return torch.float32
 
-        # print(model_args)
+        kwargs = {"device_map": model_args["device_map"], "torch_dtype": get_precision(model_args["precision"])}
+        if model_args["device"] == "cpu":
+            kwargs.pop("device_map")
+
         self.model = OtterForConditionalGeneration.from_pretrained(
             model_args["model_path"],
-            device_map=model_args["device_map"],
-            **get_precision(model_args["precision"]),
+            **kwargs,
         )
+        self.model.to(model_args["device"])
         self.image_processor = transformers.CLIPImageProcessor()
         self.tokenizer = self.model.text_tokenizer
 

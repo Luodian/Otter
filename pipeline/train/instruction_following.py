@@ -572,7 +572,7 @@ def main():
             from transformers import IdeficsForVisionText2Text
 
             # you need to install the idefics version transformers package first
-            kwargs = {"local_files_only": args.offline, "device_map": device_map, "torch_dtype": torch.bfloat16}
+            kwargs = {"local_files_only": args.offline, "device_map": device_map}
             if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
                 kwargs.pop("device_map")
 
