@@ -105,7 +105,7 @@ class EvalModel(BaseEvalModel):
             outputs = self.model.generate(
                 self._prepare_images(batch_images).to(self.device, dtype=self.cast_dtype, non_blocking=True),
                 input_ids.to(self.device, dtype=self.cast_dtype, non_blocking=True),
-                attention_mask=attention_mask.to(self.device, dtype=self.cast_dtype, non_blocking=True),
+                attention_mask=attention_mask.to(self.device, non_blocking=True),
                 min_new_tokens=min_generation_length,
                 max_new_tokens=max_generation_length,
                 num_beams=num_beams,
