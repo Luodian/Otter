@@ -372,7 +372,7 @@ def main():
 
     # set up distributed evaluation
     args.local_rank, args.rank, args.world_size = world_info_from_env()
-    device_id = init_distributed_device(args)
+    device_id = init_distributed_device(args, model_args)
     eval_model.set_device(device_id)
     eval_model.init_distributed()
 

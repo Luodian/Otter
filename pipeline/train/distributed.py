@@ -63,7 +63,7 @@ def world_info_from_env():
     return local_rank, global_rank, world_size
 
 
-def init_distributed_device(args):
+def init_distributed_device(args, model_args):
     # Distributed training = training on more than one GPU.
     # Works in both single and multi-node scenarios.
     args.distributed = False
@@ -110,7 +110,7 @@ def init_distributed_device(args):
             rank=0,
         )
 
-    if args.device != 'cpu' and torch.cuda.is_available():
+    if model_args['device'] != 'cpu' and torch.cuda.is_available():
         if args.distributed and not args.no_set_device_rank:
             device = "cuda:%d" % args.local_rank
         else:
