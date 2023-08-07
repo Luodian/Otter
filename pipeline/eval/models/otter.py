@@ -29,10 +29,7 @@ class EvalModel(BaseEvalModel):
                 return torch.float32
 
         self.device = model_args["device"]
-        kwargs = {"device_map": model_args["device_map"], "torch_dtype": get_precision(model_args["precision"])}
-        if self.device == "cpu":
-            kwargs.pop("device_map")
-
+        kwargs = {"torch_dtype": get_precision(model_args["precision"])}
         self.model = OtterForConditionalGeneration.from_pretrained(
             model_args["model_path"],
             **kwargs,
@@ -101,8 +98,8 @@ class EvalModel(BaseEvalModel):
             with self.autocast():
                 outputs = unwrap_model(self.model).generate(
                     self._prepare_images(batch_images).to(self.device, dtype=self.cast_dtype, non_blocking=True),
-                    input_ids.to(self.device, dtype=self.cast_dtype, non_blocking=True),
-                    attention_mask=attention_mask.to(self.device, dtype=self.cast_dtype, non_blocking=True),
+                    input_ids.to(self.device, non_blocking=True),
+                    attention_mask=attention_mask.to(self.device, non_blocking=True),
                     min_new_tokens=min_generation_length,
                     max_new_tokens=max_generation_length,
                     num_beams=num_beams,
