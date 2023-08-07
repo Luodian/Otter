@@ -104,6 +104,7 @@ class EvalModel(BaseEvalModel):
                     max_new_tokens=max_generation_length,
                     num_beams=num_beams,
                     length_penalty=length_penalty,
+                    pad_token_id=self.tokenizer.eos_token_id,
                 )
 
         outputs = outputs[:, len(input_ids[0]) :]
