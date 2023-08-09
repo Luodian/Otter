@@ -189,9 +189,9 @@ class OKVQAStemmer:
 
     def __init__(self):
         self._wordnet_lemmatizer = nltk.stem.WordNetLemmatizer()
-        nltk.download('punkt')
-        nltk.download('averaged_perceptron_tagger')
-        nltk.download('wordnet')
+        nltk.download("punkt")
+        nltk.download("averaged_perceptron_tagger")
+        nltk.download("wordnet")
 
     def stem(self, input_string):
         """Apply stemming."""
