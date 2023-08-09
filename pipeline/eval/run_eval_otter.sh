@@ -12,8 +12,8 @@ realpath .
 # pipeline/eval/evaluate.py
 python -m pipeline.eval.evaluate \
     --model=otter \
-    --model_path=/data/bli/checkpoints/OTTER-Image-MPT7B \
-    --checkpoint_path="/data/bli/checkpoints/OTTER-Image-MPT7B/final_weights.pt" \
+    --model_path="/mnt/petrelfs/share_data/libo/OTTER-MPT7B-Instruct0710" \
+    --checkpoint_path="/mnt/petrelfs/share_data/libo/OTTER-MPT7B-Instruct0710/final_weights.pt" \
     --results_file="OTTER_0725_pub_eval_results.json" \
     --precision="bf16" \
     --batch_size=8 \
