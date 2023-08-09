@@ -920,7 +920,7 @@ def evaluate_classification(
     Returns:
         float: accuracy score
     """
-    if args.model != "open_flamingo":
+    if args.model not in ("open_flamingo", "otter"):
         raise NotImplementedError("evaluate_classification is currently only supported for OpenFlamingo " "models")
     batch_size = args.batch_size
     num_samples = args.num_samples
@@ -977,11 +977,11 @@ def evaluate_classification(
             in_context_samples = [train_dataset[i] for i in context_indices]
 
             if num_shots > 0:
-                vision_x = [eval_model.image_processor(data["image"]).unsqueeze(0) for data in in_context_samples]
+                vision_x = [torch.from_numpy(eval_model.image_processor(data["image"])["pixel_values"][0]).unsqueeze(0) for data in in_context_samples]
             else:
                 vision_x = []
 
-            vision_x = vision_x + [eval_model.image_processor(batch["image"][idx]).unsqueeze(0)]
+            vision_x = vision_x + [torch.from_numpy(eval_model.image_processor(batch["image"][idx])["pixel_values"][0]).unsqueeze(0)]
             batch_images.append(torch.cat(vision_x, dim=0))
 
             def sample_to_prompt(sample):
