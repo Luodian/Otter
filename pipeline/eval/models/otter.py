@@ -8,6 +8,9 @@ from pipeline.eval.eval_model import BaseEvalModel
 from contextlib import suppress
 from pipeline.eval.models.utils import unwrap_model
 from otter.modeling_otter import OtterForConditionalGeneration
+import os
+
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 class EvalModel(BaseEvalModel):
@@ -34,7 +37,7 @@ class EvalModel(BaseEvalModel):
             model_args["model_path"],
             **kwargs,
         )
-        self.model.to(self.device)
+        # self.model.to(self.device)
         self.image_processor = transformers.CLIPImageProcessor()
         self.tokenizer = self.model.text_tokenizer
 
@@ -43,7 +46,7 @@ class EvalModel(BaseEvalModel):
             checkpoint = checkpoint["model_state_dict"]
             checkpoint = {k.replace("module.", ""): v for k, v in checkpoint.items()}
         self.model.load_state_dict(checkpoint, strict=False)
-        self.model.to(self.device)
+        # self.model.to(self.device)
         self.model.eval()
         self.tokenizer.padding_side = "left"
 
@@ -141,10 +144,10 @@ class EvalModel(BaseEvalModel):
         unwrap_model(self.model).cache_media(input_ids=input_ids, vision_x=vision_x)
 
     def get_vqa_prompt(self, question, answer=None) -> str:
-        return f"<image>Question:{question} Short answer:{answer if answer is not None else ''}{'<|endofchunk|>' if answer is not None else ''}"
+        return f"<image>User: {question} Please answer it briefly. GPT:<answer>{answer if answer is not None else ''}{'<|endofchunk|>' if answer is not None else ''}"
 
     def get_caption_prompt(self, caption=None) -> str:
-        return f"<image>Output:{caption if caption is not None else ''}{'<|endofchunk|>' if caption is not None else ''}"
+        return f"<image>User: What does the image describe? GPT:<answer>{caption if caption is not None else ''}{'<|endofchunk|>' if caption is not None else ''}"
 
 
 def get_cast_dtype(precision: str):

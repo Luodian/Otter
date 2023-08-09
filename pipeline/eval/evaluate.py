@@ -337,6 +337,12 @@ parser.add_argument(
 
 # Distributed evaluation
 parser.add_argument(
+    "--world_size",
+    default=1,
+    type=int,
+    help="number of distributed processes",
+)
+parser.add_argument(
     "--dist-url",
     default="env://",
     type=str,
@@ -367,14 +373,14 @@ def main():
     # print(leftovers)
     # print("======================================")
 
-    model_args = {leftover.lstrip("-").split("=")[0]: leftover.split("=")[1] for leftover in leftovers}
-    eval_model = module.EvalModel(model_args)
-
     # set up distributed evaluation
+    model_args = {leftover.lstrip("-").split("=")[0]: leftover.split("=")[1] for leftover in leftovers}
     args.local_rank, args.rank, args.world_size = world_info_from_env()
     device_id = init_distributed_device(args, model_args)
+
+    eval_model = module.EvalModel(model_args)
     eval_model.set_device(device_id)
-    if device_id != torch.device("cpu"):
+    if device_id != torch.device("cpu") and args.world_size > 1:
         eval_model.init_distributed()
 
     if args.model != "open_flamingo" and args.model != "otter" and args.shots != [0]:

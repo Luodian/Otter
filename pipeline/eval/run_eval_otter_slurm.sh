@@ -1,15 +1,27 @@
 #!/bin/bash
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=2
+#SBATCH --gpus-per-task=1
 
-export CUDA_VISIBLE_DEVICES="1,2,3"
-export MASTER_ADDR="localhost"
-export MASTER_PORT="29501"
-export WORLD_SIZE=3
-export RANK=0
+<<com
+Example Slurm evaluation script. 
+Notes:
+- VQAv2 test-dev and test-std annotations are not publicly available. 
+  To evaluate on these splits, please follow the VQAv2 instructions and submit to EvalAI.
+  This script will evaluate on the val split.
+com
 
-cd /data/bli/Otter
+export PYTHONFAULTHANDLER=1
+export CUDA_LAUNCH_BLOCKING=0
+export HOSTNAMES=$(scontrol show hostnames "$SLURM_JOB_NODELIST")
+export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
+export MASTER_PORT=$(shuf -i 0-65535 -n 1)
+export COUNT_NODE=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | wc -l)
 
-realpath .
-# pipeline/eval/evaluate.py
+echo go $COUNT_NODE
+echo $HOSTNAMES
+export PYTHONPATH="$PYTHONPATH:Otter"
+srun --cpu_bind=v --accel-bind=gn
 python -m pipeline.eval.evaluate \
     --model=otter \
     --model_path=/data/bli/checkpoints/OTTER-Image-MPT7B \

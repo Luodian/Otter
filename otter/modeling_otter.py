@@ -876,12 +876,12 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         ## MPTForCausalLM is tied word embedding
         if "LlamaForCausalLM" in self.lang_encoder.__class__.__name__:
             self.lang_encoder.lm_head.requires_grad_(True)
-        print("====================Model Grad Part====================")
+        # print("====================Model Grad Part====================")
         total_params = 0
         for name, param in self.named_parameters():
             if param.requires_grad:
                 total_params += param.numel()
-                print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
+                # print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
         print(f"Total Trainable param: {total_params / 1e9:.6f} B")
         # print(f"Total Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.6f} B")
 
