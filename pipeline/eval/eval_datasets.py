@@ -88,7 +88,7 @@ class VQADataset(Dataset):
 
     def __getitem__(self, idx):
         question = self.questions[idx]
-        img_path = self.get_img_path(question)
+        img_path = self.get_img_path(question).strip()
         image = Image.open(img_path)
         image.load()
         results = {
