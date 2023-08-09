@@ -1,4 +1,5 @@
 import os
+
 os.environ["NCCL_P2P_DISABLE"] = "1"
 
 import torch
@@ -7,6 +8,7 @@ try:
     import horovod.torch as hvd
 except ImportError:
     hvd = None
+
 
 def is_global_master(args):
     return args.rank == 0
