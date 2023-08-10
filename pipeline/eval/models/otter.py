@@ -36,16 +36,18 @@ class EvalModel(BaseEvalModel):
         self.model = OtterForConditionalGeneration.from_pretrained(
             model_args["model_path"],
             **kwargs,
-        )
+        ).cuda()
         # self.model.to(self.device)
         self.image_processor = transformers.CLIPImageProcessor()
         self.tokenizer = self.model.text_tokenizer
 
-        checkpoint = torch.load(model_args["checkpoint_path"], map_location=self.device)
-        if "model_state_dict" in checkpoint:
-            checkpoint = checkpoint["model_state_dict"]
-            checkpoint = {k.replace("module.", ""): v for k, v in checkpoint.items()}
-        self.model.load_state_dict(checkpoint, strict=False)
+        if "checkpoint_path" in model_args:
+            checkpoint = torch.load(model_args["checkpoint_path"], map_location=self.device)
+            if "model_state_dict" in checkpoint:
+                checkpoint = checkpoint["model_state_dict"]
+                checkpoint = {k.replace("module.", ""): v for k, v in checkpoint.items()}
+            msg = self.model.load_state_dict(checkpoint, strict=False)
+            print(msg)
         # self.model.to(self.device)
         self.model.eval()
         self.tokenizer.padding_side = "left"
@@ -92,7 +94,7 @@ class EvalModel(BaseEvalModel):
             padding="longest",
             truncation=True,
             return_tensors="pt",
-            max_length=2000,
+            max_length=2048,
         )
         input_ids = encodings["input_ids"]
         attention_mask = encodings["attention_mask"]
@@ -144,10 +146,10 @@ class EvalModel(BaseEvalModel):
         unwrap_model(self.model).cache_media(input_ids=input_ids, vision_x=vision_x)
 
     def get_vqa_prompt(self, question, answer=None) -> str:
-        return f"<image>User: {question} Please answer it briefly. GPT:<answer>{answer if answer is not None else ''}{'<|endofchunk|>' if answer is not None else ''}"
+        return f"<image>User: {question} Please answer in short words. GPT:<answer>{answer if answer is not None else ''}{'<|endofchunk|>' if answer is not None else ''}"
 
     def get_caption_prompt(self, caption=None) -> str:
-        return f"<image>User: An image of GPT:<answer>{caption if caption is not None else ''}{'<|endofchunk|>' if caption is not None else ''}"
+        return f"<image>User: What does the image describe? GPT:<answer>{caption if caption is not None else ''}{'<|endofchunk|>' if caption is not None else ''}"
 
 
 def get_cast_dtype(precision: str):

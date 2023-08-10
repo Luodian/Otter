@@ -376,7 +376,7 @@ def main():
     # set up distributed evaluation
     model_args = {leftover.lstrip("-").split("=")[0]: leftover.split("=")[1] for leftover in leftovers}
     args.local_rank, args.rank, args.world_size = world_info_from_env()
-    device_id = init_distributed_device(args, model_args)
+    device_id = init_distributed_device(args)
 
     eval_model = module.EvalModel(model_args)
     eval_model.set_device(device_id)
@@ -403,7 +403,7 @@ def main():
                     seed=seed,
                     dataset_name="flickr",
                     min_generation_length=0,
-                    max_generation_length=20,
+                    max_generation_length=128,
                     num_beams=3,
                 )
                 if args.rank == 0:
@@ -413,6 +413,9 @@ def main():
             if args.rank == 0:
                 print(f"Shots {shot} Mean CIDEr score: {np.nanmean(scores)}")
                 results["flickr30"].append({"shots": shot, "trials": scores, "mean": np.nanmean(scores)})
+        if args.rank == 0 and args.results_file is not None:
+            with open(args.results_file, "w") as f:
+                json.dump(results, f)
 
     if args.eval_coco:
         print("Evaluating on COCO...")
@@ -425,6 +428,9 @@ def main():
                     num_shots=shot,
                     seed=seed,
                     dataset_name="coco",
+                    min_generation_length=0,
+                    max_generation_length=64,
+                    num_beams=3,
                 )
                 if args.rank == 0:
                     print(f"Shots {shot} Trial {trial} CIDEr score: {cider_score}")
@@ -433,6 +439,9 @@ def main():
             if args.rank == 0:
                 print(f"Shots {shot} Mean CIDEr score: {np.nanmean(scores)}")
                 results["coco"].append({"shots": shot, "trials": scores, "mean": np.nanmean(scores)})
+        if args.rank == 0 and args.results_file is not None:
+            with open(args.results_file, "w") as f:
+                json.dump(results, f)
 
     if args.eval_ok_vqa:
         print("Evaluating on OK-VQA...")
@@ -453,6 +462,9 @@ def main():
             if args.rank == 0:
                 print(f"Shots {shot} Mean OK-VQA score: {np.nanmean(scores)}")
                 results["ok_vqa"].append({"shots": shot, "trials": scores, "mean": np.nanmean(scores)})
+        if args.rank == 0 and args.results_file is not None:
+            with open(args.results_file, "w") as f:
+                json.dump(results, f)
 
     if args.eval_vqav2:
         print("Evaluating on VQAv2...")
@@ -473,6 +485,9 @@ def main():
             if args.rank == 0:
                 print(f"Shots {shot} Mean VQA score: {np.nanmean(scores)}")
                 results["vqav2"].append({"shots": shot, "trials": scores, "mean": np.nanmean(scores)})
+        if args.rank == 0 and args.results_file is not None:
+            with open(args.results_file, "w") as f:
+                json.dump(results, f)
 
     if args.eval_vizwiz:
         print("Evaluating on VizWiz...")
@@ -493,6 +508,9 @@ def main():
             if args.rank == 0:
                 print(f"Shots {shot} Mean VizWiz score: {np.nanmean(scores)}")
                 results["vizwiz"].append({"shots": shot, "trials": scores, "mean": np.nanmean(scores)})
+        if args.rank == 0 and args.results_file is not None:
+            with open(args.results_file, "w") as f:
+                json.dump(results, f)
 
     if args.eval_textvqa:
         print("Evaluating on TextVQA...")
@@ -514,6 +532,9 @@ def main():
             if args.rank == 0:
                 print(f"Shots {shot} Mean TextVQA score: {np.nanmean(scores)}")
                 results["textvqa"].append({"shots": shot, "trials": scores, "mean": np.nanmean(scores)})
+        if args.rank == 0 and args.results_file is not None:
+            with open(args.results_file, "w") as f:
+                json.dump(results, f)
 
     if args.eval_imagenet:
         print("Evaluating on ImageNet...")
@@ -535,6 +556,9 @@ def main():
             if args.rank == 0:
                 print(f"Shots {shot} Mean ImageNet score: {np.nanmean(scores)}")
                 results["imagenet"].append({"shots": shot, "trials": scores, "mean": np.nanmean(scores)})
+        if args.rank == 0 and args.results_file is not None:
+            with open(args.results_file, "w") as f:
+                json.dump(results, f)
 
     if args.eval_hateful_memes:
         print("Evaluating on Hateful Memes...")
@@ -725,6 +749,7 @@ def evaluate_captioning(
         return
 
     all_predictions = {k: v for d in all_predictions for k, v in d.items()}  # merge dicts
+    print(f"In total {len(all_predictions)} predictions.")
 
     # save the predictions to a temporary file
     results_path = f"{dataset_name}results_{uuid.uuid4()}.json"
@@ -882,6 +907,7 @@ def evaluate_vqa(
         return
 
     all_predictions = [item for sublist in all_predictions for item in sublist]  # flatten
+    print(f"In total {len(all_predictions)} predictions.")
 
     # save the predictions to a temporary file
     random_uuid = str(uuid.uuid4())
