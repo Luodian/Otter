@@ -149,7 +149,9 @@ class EvalModel(BaseEvalModel):
         return f"<image>User: {question} Please answer in short words. GPT:<answer>{answer if answer is not None else ''}{'<|endofchunk|>' if answer is not None else ''}"
 
     def get_caption_prompt(self, caption=None) -> str:
-        return f"<image>User: What does the image describe? GPT:<answer>{caption if caption is not None else ''}{'<|endofchunk|>' if caption is not None else ''}"
+        return (
+            f"<image>User: What does the image describe? GPT:<answer>{caption if caption is not None else ''}{'<|endofchunk|>' if caption is not None else ''}"
+        )
 
 
 def get_cast_dtype(precision: str):
