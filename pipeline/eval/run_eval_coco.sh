@@ -18,6 +18,7 @@ python -m pipeline.eval.evaluate \
     --coco_annotations_json_path=/data/pufanyi/download/lavis/coco/coco2014_annotations/annotations/captions_val2014.json \
     --flickr_image_dir_path=/data/pufanyi/download/lavis/flickr30k/images/flickr30k-images \
     --flickr_karpathy_json_path=/data/pufanyi/download/lavis/flickr30k/dataset_flickr30k.json \
+    --flickr_annotations_json_path=/data/pufanyi/download/lavis/flickr30k/dataset_flickr30k_coco_style.json \
     --ok_vqa_train_image_dir_path=/data/pufanyi/download/lavis/okvqa/images/train2014 \
     --ok_vqa_train_annotations_json_path=/data/pufanyi/download/lavis/okvqa/annotations/mscoco_train2014_annotations.json \
     --ok_vqa_train_questions_json_path=/data/pufanyi/download/lavis/okvqa/annotations/OpenEnded_mscoco_train2014_questions.json \
