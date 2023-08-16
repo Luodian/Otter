@@ -27,3 +27,4 @@ webdataset>=0.2.48
 xformers>=0.0.20
 natsort>=8.4.0
 peft>=0.4.0
+litellm==0.1.400
