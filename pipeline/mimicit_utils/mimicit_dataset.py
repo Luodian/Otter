@@ -9,7 +9,7 @@ import re
 import contextlib
 import os
 import orjson
-
+import ijson.backends.yajl2_c as ijson
 from PIL import ImageFile
 from torchvision import transforms
 import random
@@ -87,6 +87,7 @@ class MimicitDataset(Dataset):
         self.epoch = 0
 
         self.inst_format = args.inst_format
+        self.resample_frames = args.resample_frames
 
         scales = [(args.patch_image_size, args.patch_image_size)]
 
@@ -123,13 +124,17 @@ class MimicitDataset(Dataset):
                     self.dataset.update(orjson.loads(f.read())["data"])
 
             # Load the images
-            if cur_images_path != "":
-                assert os.path.exists(cur_images_path), f"Error: The local images_path {cur_images_path} not exists!"
-                with open(cur_images_path, "rb") as f:
-                    if self.images == {}:
-                        self.images = orjson.loads(f.read())
-                    else:
-                        self.images.update(orjson.loads(f.read()))
+            # if cur_images_path != "":
+            # check if file is larger than 100GB
+            # use ijson for large files
+            with open(cur_images_path, "rb") as f:
+                for key, value in ijson.kvitems(f, ""):
+                    self.images[key] = value
+            #     with open(cur_images_path, "rb") as f:
+            #         if not self.images:
+            #             self.images = orjson.loads(f.read())
+            #         else:
+            #             self.images.update(orjson.loads(f.read()))
 
             # Load the train_config
             if cur_train_config_path != "":
@@ -247,7 +252,7 @@ class MimicitDataset(Dataset):
     def set_epoch(self, epoch, **unused):
         self.epoch = epoch
 
-    def resample_frames(self, image_ids, resample_frames):
+    def resample_frames_fn(self, image_ids, resample_frames):
         indices = np.linspace(0, len(image_ids) - 1, resample_frames, dtype=int)
         image_ids = [image_ids[i] for i in indices]
         assert len(image_ids) == resample_frames
@@ -373,7 +378,7 @@ class MimicitDataset(Dataset):
         all_texts = f"<image>{all_texts}"
         # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
         # <image>User: what does the image describe? GPT: XXX <|endofchunk|>User: Do you think this image is funny GPT:<answer> YYY <|endofchunk|>
-        image_ids = self.resample_frames(image_ids, resample_frames)
+        image_ids = self.resample_frames_fn(image_ids, resample_frames)
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
             cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
@@ -404,7 +409,7 @@ class MimicitDataset(Dataset):
         # <image>User: what does the image describe? GPT: XXX <|endofchunk|>User: Do you think this image is funny GPT:<answer> YYY <|endofchunk|>
 
         # make sure the frames are evenly sampled to certain number to enable batch processing
-        image_ids = self.resample_frames(image_ids, resample_frames)
+        image_ids = self.resample_frames_fn(image_ids, resample_frames)
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
             cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
@@ -434,7 +439,7 @@ class MimicitDataset(Dataset):
         # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
         # <image>User: what does the image describe? GPT: XXX <|endofchunk|>User: Do you think this image is funny GPT:<answer> YYY <|endofchunk|>
         # make sure the frames are evenly sampled to certain number to enable batch processing
-        image_ids = self.resample_frames(image_ids, resample_frames)
+        image_ids = self.resample_frames_fn(image_ids, resample_frames)
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
             cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
@@ -496,7 +501,7 @@ class MimicitDataset(Dataset):
         all_texts = f"{incontext_text}{all_texts}"
         return patch_images, all_texts
 
-    def process_funqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids):
+    def process_funqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=128):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -512,6 +517,7 @@ class MimicitDataset(Dataset):
         all_texts = f"<image>{all_texts}"
         # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
         # <image>User: what does the image describe? GPT: XXX <|endofchunk|>User: Do you think this image is funny GPT:<answer> YYY <|endofchunk|>
+        image_ids = self.resample_frames_fn(image_ids, resample_frames)
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
             cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
@@ -606,15 +612,19 @@ class MimicitDataset(Dataset):
             self.train_config[cur_train_id],
         )
         inst_format = self.inst_format
-
+        resample_frames = self.resample_frames
         # self.max_src_length = self.max_tgt_length = 256
 
         if cur_train_id.startswith("LA"):
             patch_images, all_texts = self.process_llava(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
         elif cur_train_id.startswith("DC"):
-            patch_images, all_texts = self.process_dense_caption(instruction_id, instruction, answer, image_ids, in_context_example_ids)
+            patch_images, all_texts = self.process_dense_caption(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=resample_frames
+            )
         elif cur_train_id.startswith("TVC"):
-            patch_images, all_texts = self.process_tv_caption(instruction_id, instruction, answer, image_ids, in_context_example_ids)
+            patch_images, all_texts = self.process_tv_caption(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=resample_frames
+            )
         elif cur_train_id.startswith("E4D"):
             patch_images, all_texts = self.process_e4d(instruction_id, instruction, answer, image_ids, in_context_example_ids)
         elif cur_train_id.startswith("SD") or cur_train_id.startswith("CGD"):
@@ -622,7 +632,9 @@ class MimicitDataset(Dataset):
         elif cur_train_id.startswith("SN"):
             patch_images, all_texts = self.process_scene_navigation(instruction_id, instruction, answer, image_ids, in_context_example_ids)
         elif cur_train_id.startswith("FunQA"):
-            patch_images, all_texts = self.process_funqa(instruction_id, instruction, answer, image_ids, in_context_example_ids)
+            patch_images, all_texts = self.process_funqa(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=resample_frames
+            )
         elif cur_train_id.startswith("LLAVAR"):
             patch_images, all_texts = self.process_llavar(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
         elif cur_train_id.startswith("TXT"):
