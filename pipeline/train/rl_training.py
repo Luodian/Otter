@@ -15,19 +15,18 @@ from transformers import (
 
 from dataclasses import dataclass, field
 from typing import Optional
-from flamingo.configuration_flamingo import FlamingoConfig
 from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
-from otter.modeling_otter import OtterForConditionalGeneration
+from otter.modeling_otter import OtterForConditionalGenerationWithValueHead
 from pipeline.train.data import get_data
 from transformers import AutoProcessor, HfArgumentParser
 
 import deepspeed
 from trl import PPOTrainer, PPOConfig, create_reference_model
 from trl.core import LengthSampler
+from trl.models.modeling_value_head import AutoModelForCausalLMWithValueHead
 from datasets import load_dataset
-from peft import LoraConfig
 from tqdm import tqdm
-from transformers import Adafactor, AutoTokenizer, HfArgumentParser, pipeline
+from transformers import Adafactor, HfArgumentParser, pipeline
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -72,7 +71,8 @@ class ScriptArguments:
     batched_gen: Optional[bool] = field(default=False, metadata={"help": "whether to use the batched text gen"})
     save_freq: Optional[int] = field(default=None, metadata={"help": "n steps to save the model"})
     output_dir: Optional[str] = field(default="runs/", metadata={"help": "n steps to save the model"})
-    seed: Optional[int] = field(default=0, metadata={"help": "the seed"})
+    seed: Optional[int] = field(default=42, metadata={"help": "the seed"})
+    rank: Optional[int] = field(default=0, metadata={"help": "the rank"})
     steps: Optional[int] = field(default=20000, metadata={"help": "number of epochs"})
     init_kl_coef: Optional[float] = field(
         default=0.2,
@@ -80,6 +80,7 @@ class ScriptArguments:
     )
 
     adap_kl_ctrl: Optional[bool] = field(default=True, metadata={"help": "Use adaptive KL control, otherwise linear"})
+    offline: Optional[bool] = field(default=False, metadata={"help": "whether to load from local files"})
 
 
 # Below is an example function to build the dataset. In our case, we use the IMDB dataset
@@ -168,14 +169,13 @@ def main():
         accelerator.print(f"Loading pretrained model from {script_args.pretrained_model_name_or_path}")
         device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED" else "auto"
         if "otter" in script_args.model_name.lower():
-            model = OtterForConditionalGeneration.from_pretrained(
+            model = OtterForConditionalGenerationWithValueHead.from_pretrained(
                 script_args.pretrained_model_name_or_path,
                 device_map=device_map,
                 local_files_only=script_args.offline,
             )
             script_args.tokenizer = model.text_tokenizer
             tokenizer = model.text_tokenizer
-            image_processor = CLIPImageProcessor()
         elif "flamingo" in script_args.model_name.lower():
             model = FlamingoForConditionalGeneration.from_pretrained(
                 script_args.pretrained_model_name_or_path,
@@ -186,7 +186,6 @@ def main():
             model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"]})
             script_args.tokenizer = model.text_tokenizer
             tokenizer = model.text_tokenizer
-            image_processor = CLIPImageProcessor()
         elif "idefics" in script_args.model_name.lower():
             from transformers import IdeficsForVisionText2Text
 
@@ -229,40 +228,19 @@ def main():
             tokenizer = processor.tokenizer
             # For idefics model, do not resize token
             # model.resize_token_embeddings(len(tokenizer))
-    else:
-        config = FlamingoConfig.from_json_file("./flamingo/config.json")
-        model = FlamingoForConditionalGeneration(config=config)
 
-        """
-        TODO: deprecate this option since the original checkpoints are not supported in future versions
-        TODO: all future checkpoints (even released from openflamingo), we will convert them and save to huggingface format.
-        TODO: supposedly using "args.pretrained_model_name_or_path" should be the best way to load the model.
-        """
-        if script_args.load_from_original_checkpoint is not None:
-            print(f"Loading checkpoint from {script_args.load_from_original_checkpoint}")
-            model.load_state_dict(
-                torch.load(script_args.load_from_original_checkpoint, map_location="cpu"),
-                False,
-            )
-
-    if script_args.trained_ckpt is not None:
-        train_ckpt = torch.load(script_args.trained_ckpt, map_location="cpu")
-        if train_ckpt.get("model_state_dict", None) is not None:
-            train_ckpt = train_ckpt["model_state_dict"]
-        _ = model.load_state_dict(train_ckpt, strict=False)
-        print(_[1])
 
     accelerator.wait_for_everyone()
 
     script_args.distributed_type = accelerator.distributed_type
 
-    if hasattr(model, "lang_encoder") and "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
-        model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
+    if hasattr(model, "lang_decoder") and "LlamaForCausalLM" in model.lang_decoder.__class__.__name__:
+        model.lang_decoder.resize_token_embeddings(len(model.text_tokenizer))
 
     random_seed(script_args.seed, script_args.rank)
     print(f"Start running training on rank {script_args.rank}.")
 
-    model_ref = create_reference_model(model)
+    ref_lang_decoder = create_reference_model(model.lang_decoder)
 
     # We then define the arguments to pass to the `generate` function. These arguments
     # are passed to the `generate` function of the PPOTrainer, which is a wrapper around
@@ -297,8 +275,8 @@ def main():
     # We then build the PPOTrainer, passing the model, the reference model, the tokenizer
     ppo_trainer = PPOTrainer(
         config,
-        model,
-        ref_model=None,
+        model.lang_decoder,
+        ref_model=ref_lang_decoder,
         tokenizer=tokenizer,
         dataset=dataset,
         data_collator=collator,

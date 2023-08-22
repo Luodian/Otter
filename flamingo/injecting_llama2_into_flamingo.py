@@ -79,14 +79,14 @@ for key in state_dict:
     save_state_dict_1[f"{target_key}"] = state_dict[key]
 
 # Reshape the token embedding to 50280 for compatible
-model.lang_encoder.resize_token_embeddings(32000)
+model.lang_decoder.resize_token_embeddings(32000)
 
-load_msg = model.lang_encoder.load_state_dict(
+load_msg = model.lang_decoder.load_state_dict(
     save_state_dict_1,
     False,
 )
 # Reshape the token embedding to 32002 for compatible
-model.lang_encoder.resize_token_embeddings(32002)
+model.lang_decoder.resize_token_embeddings(32002)
 # print incompatible keys
 print(load_msg[1])
 

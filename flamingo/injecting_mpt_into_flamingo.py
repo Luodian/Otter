@@ -82,7 +82,7 @@ for key in state_dict:
         target_key = key
     save_state_dict_1[f"{target_key}"] = state_dict[key]
 
-load_msg = model.lang_encoder.load_state_dict(
+load_msg = model.lang_decoder.load_state_dict(
     save_state_dict_1,
     False,
 )
@@ -94,7 +94,7 @@ if args.flamingo_dir is not None:
 
     real_vocab_size = config.text_config.vocab_size
     # Reshape the token embedding to 50280 for compatible
-    model.lang_encoder.resize_token_embeddings(save_state_dict_2["lang_encoder.transformer.wte.weight"].shape[0])
+    model.lang_decoder.resize_token_embeddings(save_state_dict_2["lang_decoder.transformer.wte.weight"].shape[0])
 
     load_msg = model.load_state_dict(
         save_state_dict_2,
@@ -103,7 +103,7 @@ if args.flamingo_dir is not None:
     # print incompatible keys
     print(load_msg[1])
     # Reshape the token embedding to 50432
-    model.lang_encoder.resize_token_embeddings(real_vocab_size)
+    model.lang_decoder.resize_token_embeddings(real_vocab_size)
 
 print(f"Saving model to {save_path}...")
 model.save_pretrained(save_path, max_shard_size="10GB")

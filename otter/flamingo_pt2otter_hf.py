@@ -31,7 +31,7 @@ class OtterModel(OtterPreTrainedModel):
     ):
         super().__init__(config)
         text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
-        lang_encoder = LlamaForCausalLM.from_pretrained(config.text_config._name_or_path)
+        lang_decoder = LlamaForCausalLM.from_pretrained(config.text_config._name_or_path)
         vision_encoder = CLIPVisionModel.from_pretrained(config.vision_config._name_or_path)
 
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
@@ -41,11 +41,11 @@ class OtterModel(OtterPreTrainedModel):
         self.eoc_token_id = text_tokenizer.encode("<|endofchunk|>")[-1]
         self.media_token_id = text_tokenizer.encode("<image>")[-1]
 
-        extend_instance(lang_encoder, OtterLMMixin)
-        decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
-        lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        lang_encoder.resize_token_embeddings(len(text_tokenizer))
-        self.lang_encoder = lang_encoder
+        extend_instance(lang_decoder, OtterLMMixin)
+        decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_decoder)
+        lang_decoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
+        lang_decoder.resize_token_embeddings(len(text_tokenizer))
+        self.lang_decoder = lang_decoder
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
@@ -57,7 +57,7 @@ class OtterModel(OtterPreTrainedModel):
         self.vis_dim = 1024
         self.perceiver = OtterPerceiverResampler(dim=self.vis_dim)
 
-        self.lang_encoder.init_otter(
+        self.lang_decoder.init_otter(
             media_token_id=self.media_token_id,
             vis_hidden_size=self.vis_dim,
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
@@ -66,16 +66,16 @@ class OtterModel(OtterPreTrainedModel):
         )
 
     def get_input_embeddings(self) -> nn.Module:
-        return self.lang_encoder.get_input_embeddings()
+        return self.lang_decoder.get_input_embeddings()
 
     def set_input_embeddings(self, new_embeddings):
-        self.lang_encoder.set_input_embeddings(new_embeddings)
+        self.lang_decoder.set_input_embeddings(new_embeddings)
 
     def get_output_embeddings(self) -> nn.Module:
-        return self.lang_encoder.get_output_embeddings()
+        return self.lang_decoder.get_output_embeddings()
 
     def set_output_embeddings(self, new_embeddings):
-        self.lang_encoder.set_output_embeddings(new_embeddings)
+        self.lang_decoder.set_output_embeddings(new_embeddings)
 
 
 def rename_flamingo_checkpoint(old_ckpt: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
@@ -92,9 +92,9 @@ def rename_flamingo_checkpoint(old_ckpt: dict[str, torch.Tensor]) -> dict[str, t
             new_key = re.sub(r"([0-9])\.1", r"\1.feed_forward", key)
             new_ckpt.pop(key)
             new_ckpt[new_key] = value
-        elif key.startswith("lang_encoder.gated_cross_attn_layers."):
+        elif key.startswith("lang_decoder.gated_cross_attn_layers."):
             new_ckpt.pop(key)
-        elif key.startswith("lang_encoder.") and "ff_gate" not in key:
+        elif key.startswith("lang_decoder.") and "ff_gate" not in key:
             new_key = key.replace("ff", "feed_forward")
             new_ckpt.pop(key)
             new_ckpt[new_key] = value
@@ -114,7 +114,7 @@ def dump_hf_model(old_ckpt_path: str, new_folder_path: str) -> None:
     model.load_state_dict(new_ckpt, strict=False)
     text_tokenizer = model.text_tokenizer
     text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
-    model.lang_encoder.resize_token_embeddings(len(text_tokenizer))
+    model.lang_decoder.resize_token_embeddings(len(text_tokenizer))
     print(f"Saving HF model to {new_folder_path}")
     model.save_pretrained(new_folder_path)
 
