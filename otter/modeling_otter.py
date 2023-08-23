@@ -1022,7 +1022,10 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         self.lang_decoder.clear_conditioned_layers()
         return output
 
+
 from trl.models.modeling_value_head import AutoModelForCausalLMWithValueHead
+
+
 class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
     config_class = OtterConfig
 
@@ -1157,11 +1160,13 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
             for name, param in self.named_parameters():
                 if "perceiver" in name:
                     param.requires_grad = True
-                
+
         if "lora_config" in self.config.__dict__:
             # Use another logic to unfreeze gated_cross_attn_layers and perceivers
-            print(f"LoRA trainable param: {(sum(p.numel() for p in self.lang_decoder_with_vhead.pretrained_model.parameters() if p.requires_grad)) / 1e9:.3f} B")
-            
+            print(
+                f"LoRA trainable param: {(sum(p.numel() for p in self.lang_decoder_with_vhead.pretrained_model.parameters() if p.requires_grad)) / 1e9:.3f} B"
+            )
+
         # Unfreeze LM input and output embeddings
         self.lang_decoder_with_vhead.pretrained_model.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding

@@ -229,7 +229,6 @@ def main():
             # For idefics model, do not resize token
             # model.resize_token_embeddings(len(tokenizer))
 
-
     accelerator.wait_for_everyone()
 
     script_args.distributed_type = accelerator.distributed_type
