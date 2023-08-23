@@ -1146,12 +1146,12 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
 
         # Freeze all parameters in lang encoders except gated_cross_attn_layers
         if "train_lang_decoder" in self.config.__dict__ and self.config.train_lang_decoder is True:
-            for name, param in self.lang_decoder.named_parameters():
+            for name, param in self.lang_decoder_with_vhead.named_parameters():
                 param.requires_grad = True
 
         # Freeze all parameters in lang encoders except gated_cross_attn_layers
         if "train_connector" in self.config.__dict__ and self.config.train_connector is True:
-            for name, param in self.lang_decoder.pretrained_model.named_parameters():
+            for name, param in self.lang_decoder_with_vhead.pretrained_model.named_parameters():
                 if "gated_cross_attn_layer" in name:
                     param.requires_grad = True
             for name, param in self.named_parameters():
@@ -1160,13 +1160,13 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
                 
         if "lora_config" in self.config.__dict__:
             # Use another logic to unfreeze gated_cross_attn_layers and perceivers
-            print(f"LoRA trainable param: {(sum(p.numel() for p in self.lang_decoder.pretrained_model.parameters() if p.requires_grad)) / 1e9:.3f} B")
+            print(f"LoRA trainable param: {(sum(p.numel() for p in self.lang_decoder_with_vhead.pretrained_model.parameters() if p.requires_grad)) / 1e9:.3f} B")
             
         # Unfreeze LM input and output embeddings
-        self.lang_decoder.get_input_embeddings().requires_grad_(True)
+        self.lang_decoder_with_vhead.pretrained_model.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
-        if "LlamaForCausalLM" in self.lang_decoder.__class__.__name__:
-            self.lang_decoder.lm_head.requires_grad_(True)
+        if "LlamaForCausalLM" in self.lang_decoder_with_vhead.__class__.__name__:
+            self.lang_decoder_with_vhead.lm_head.requires_grad_(True)
         # print("====================Model Grad Part====================")
         total_params = 0
         for name, param in self.named_parameters():

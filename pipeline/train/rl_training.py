@@ -16,7 +16,7 @@ from transformers import (
 from dataclasses import dataclass, field
 from typing import Optional
 from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
-from otter.modeling_otter import OtterForConditionalGenerationWithValueHead
+from otter.modeling_otter import OtterForConditionalGeneration
 from pipeline.train.data import get_data
 from transformers import AutoProcessor, HfArgumentParser
 
@@ -169,7 +169,7 @@ def main():
         accelerator.print(f"Loading pretrained model from {script_args.pretrained_model_name_or_path}")
         device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED" else "auto"
         if "otter" in script_args.model_name.lower():
-            model = OtterForConditionalGenerationWithValueHead.from_pretrained(
+            model = OtterForConditionalGeneration.from_pretrained(
                 script_args.pretrained_model_name_or_path,
                 device_map=device_map,
                 local_files_only=script_args.offline,
@@ -239,8 +239,8 @@ def main():
 
     random_seed(script_args.seed, script_args.rank)
     print(f"Start running training on rank {script_args.rank}.")
-
-    ref_lang_decoder = create_reference_model(model.lang_decoder)
+    model.lang_decoder_with_vhead = AutoModelForCausalLMWithValueHead(model.lang_decoder)
+    ref_lang_decoder = create_reference_model(model.lang_decoder_with_vhead)
 
     # We then define the arguments to pass to the `generate` function. These arguments
     # are passed to the `generate` function of the PPOTrainer, which is a wrapper around
@@ -275,7 +275,7 @@ def main():
     # We then build the PPOTrainer, passing the model, the reference model, the tokenizer
     ppo_trainer = PPOTrainer(
         config,
-        model.lang_decoder,
+        model=model.lang_decoder_with_vhead,
         ref_model=ref_lang_decoder,
         tokenizer=tokenizer,
         dataset=dataset,
