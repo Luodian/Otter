@@ -16,9 +16,9 @@ def rename_flamingo_checkpoint(old_ckpt: dict[str, torch.Tensor]) -> dict[str, t
             new_key = re.sub(r"([0-9])\.1", r"\1.feed_forward", key)
             new_ckpt.pop(key)
             new_ckpt[new_key] = value
-        elif key.startswith("lang_decoder.gated_cross_attn_layers."):
+        elif key.startswith("lang_encoder.gated_cross_attn_layers."):
             new_ckpt.pop(key)
-        elif key.startswith("lang_decoder.") and "ff_gate" not in key:
+        elif key.startswith("lang_encoder.") and "ff_gate" not in key:
             new_key = key.replace("ff", "feed_forward")
             new_ckpt.pop(key)
             new_ckpt[new_key] = value

@@ -177,11 +177,11 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             if isinstance(unwrapped_model, IdeficsForVisionText2Text):
                 # This code need to be refined.
                 unwrapped_model.lm_head.apply(mask_embedding)
-            elif unwrapped_model.lang_decoder.__class__.__name__ in ["MPTForCausalLM", "MosaicGPT"]:
-                unwrapped_model.lang_decoder.transformer.wte.apply(mask_embedding)
-            elif "LlamaForCausalLM" in unwrapped_model.lang_decoder.__class__.__name__:
-                unwrapped_model.lang_decoder.model.embed_tokens.apply(mask_embedding)
-                unwrapped_model.lang_decoder.lm_head.apply(mask_embedding)
+            elif unwrapped_model.lang_encoder.__class__.__name__ in ["MPTForCausalLM", "MosaicGPT"]:
+                unwrapped_model.lang_encoder.transformer.wte.apply(mask_embedding)
+            elif "LlamaForCausalLM" in unwrapped_model.lang_encoder.__class__.__name__:
+                unwrapped_model.lang_encoder.model.embed_tokens.apply(mask_embedding)
+                unwrapped_model.lang_encoder.lm_head.apply(mask_embedding)
 
         if accelerator.sync_gradients:
             accelerator.clip_grad_norm_(model.parameters(), 1.0)
@@ -361,16 +361,28 @@ def parse_args():
 
     # Arguments for text data, including multi-run conversations.
     parser.add_argument(
+        "--mimicit_text_path",
+        type=str,
+        default="",
+        help="Path to the new text dataset (including multi-run conversations). Should be in format /path/to/xx_instruction.json",
+    )
+    parser.add_argument(
+        "--train_config_text_path",
+        type=str,
+        default="",
+        help="Path to the new text dataset (including multi-run conversations). Should be in format /path/to/xx_train.json",
+    )
+    parser.add_argument(
         "--past_mimicit_text_path",
         type=str,
         default="",
         help="Path to the past text dataset (including multi-run conversations). Should be in format /path/to/xx_instruction.json",
     )
     parser.add_argument(
-        "--mimicit_text_path",
+        "--past_train_config_text_path",
         type=str,
         default="",
-        help="Path to the new text dataset (including multi-run conversations). Should be in format /path/to/xx_instruction.json",
+        help="Path to the past text dataset (including multi-run conversations). Should be in format /path/to/xx_train.json",
     )
 
     # Arguments for video-text data.
@@ -622,14 +634,12 @@ def main():
 
     args.distributed_type = accelerator.distributed_type
 
-    if hasattr(model, "lang_decoder") and "LlamaForCausalLM" in model.lang_decoder.__class__.__name__:
-        model.lang_decoder.resize_token_embeddings(len(model.text_tokenizer))
+    if hasattr(model, "lang_encoder") and "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
+        model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
 
     random_seed(args.seed, args.rank)
 
     print(f"Start running training on rank {args.rank}.")
-
-    # device_id = args.rank % torch.cuda.device_count()
 
     mimicit_loaders = get_data(args, image_processor, tokenizer, "mimicit")
 

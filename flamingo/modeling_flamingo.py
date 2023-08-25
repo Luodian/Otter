@@ -505,16 +505,16 @@ class FlamingoModel(FlamingoPreTrainedModel):
         if "llama" not in config.text_config._name_or_path:
             if config.text_config.architectures[0] == "MPTForCausalLM":
                 text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
-                lang_decoder = MPTForCausalLM(config=config.text_config)
+                lang_encoder = MPTForCausalLM(config=config.text_config)
             elif config.text_config.text_config.architectures[0] == "MosaicGPT":
                 text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mosaic-llama-redpajama-final-candidate")
-                lang_decoder = MosaicGPT(config=config.text_config)
+                lang_encoder = MosaicGPT(config=config.text_config)
             elif config.text_config.architectures[0] == "RWForCausalLM":
                 text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
-                lang_decoder = RWForCausalLM(config=config.text_config)
+                lang_encoder = RWForCausalLM(config=config.text_config)
         else:
             text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
-            lang_decoder = LlamaForCausalLM(config=config.text_config)
+            lang_encoder = LlamaForCausalLM(config=config.text_config)
 
         vision_encoder = CLIPVisionModel(config=config.vision_config)
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
@@ -524,12 +524,12 @@ class FlamingoModel(FlamingoPreTrainedModel):
         self.eoc_token_id = text_tokenizer.encode("<|endofchunk|>")[-1]
         self.media_token_id = text_tokenizer.encode("<image>")[-1]
 
-        extend_instance(lang_decoder, FlamingoLMMixin)
-        decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_decoder)
-        lang_decoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        if lang_decoder.__class__.__name__ == "LlamaForCausalLM":
-            lang_decoder.resize_token_embeddings(len(text_tokenizer))
-        self.lang_decoder = lang_decoder
+        extend_instance(lang_encoder, FlamingoLMMixin)
+        decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
+        lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
+        if lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+            lang_encoder.resize_token_embeddings(len(text_tokenizer))
+        self.lang_encoder = lang_encoder
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers if hasattr(config, "cross_attn_every_n_layers") else 4
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
@@ -540,7 +540,7 @@ class FlamingoModel(FlamingoPreTrainedModel):
         self.vis_dim = 1024
         self.perceiver = FlamingoPerceiverResampler(dim=self.vis_dim)
 
-        self.lang_decoder.init_flamingo(
+        self.lang_encoder.init_flamingo(
             media_token_id=self.media_token_id,
             vis_hidden_size=self.vis_dim,
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
@@ -549,36 +549,36 @@ class FlamingoModel(FlamingoPreTrainedModel):
         self.post_init()
 
     def get_input_embeddings(self) -> nn.Module:
-        return self.lang_decoder.get_input_embeddings()
+        return self.lang_encoder.get_input_embeddings()
 
     def set_input_embeddings(self, new_embeddings):
-        self.lang_decoder.set_input_embeddings(new_embeddings)
+        self.lang_encoder.set_input_embeddings(new_embeddings)
 
     def get_output_embeddings(self) -> nn.Module:
-        return self.lang_decoder.get_output_embeddings()
+        return self.lang_encoder.get_output_embeddings()
 
     def set_output_embeddings(self, new_embeddings):
-        self.lang_decoder.set_output_embeddings(new_embeddings)
+        self.lang_encoder.set_output_embeddings(new_embeddings)
 
     def get_image_encoder(self) -> nn.Module:
         return self.vision_encoder
 
-    def get_lang_decoder(self) -> nn.Module:
-        return self.lang_decoder
+    def get_lang_encoder(self) -> nn.Module:
+        return self.lang_encoder
 
     # def init_weights(self):
     #     # Freeze all parameters in vision encoder
     #     for param in self.vision_encoder.parameters():
     #         param.requires_grad = False
     #     # Freeze all parameters in lang encoders except gated_cross_attn_layers
-    #     for name, param in self.lang_decoder.named_parameters():
+    #     for name, param in self.lang_encoder.named_parameters():
     #         if "gated_cross_attn_layer" not in name:
     #             param.requires_grad = False
     #     # Unfreeze LM input embeddings
-    #     self.lang_decoder.get_input_embeddings().requires_grad_(True)
+    #     self.lang_encoder.get_input_embeddings().requires_grad_(True)
     #     ## MPTForCausalLM is tied word embedding
-    #     if self.lang_decoder.__class__.__name__ == "LlamaForCausalLM":
-    #         self.lang_decoder.lm_head.requires_grad_(True)
+    #     if self.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+    #         self.lang_encoder.lm_head.requires_grad_(True)
     #     # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
     #     # print model size in billions of parameters in 2 decimal places
     #     print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
@@ -589,22 +589,22 @@ class FlamingoModel(FlamingoPreTrainedModel):
             param.requires_grad = False
 
         if "lora_config" in self.config.__dict__:
-            print(f"LoRA trainable param: {(sum(p.numel() for p in self.lang_decoder.parameters() if p.requires_grad)) / 1e9:.3f} B")
+            print(f"LoRA trainable param: {(sum(p.numel() for p in self.lang_encoder.parameters() if p.requires_grad)) / 1e9:.3f} B")
             # Unfreeze gated_cross_attn_layers
-            for layer in self.lang_decoder._get_decoder_layers():
+            for layer in self.lang_encoder._get_decoder_layers():
                 if layer.gated_cross_attn_layer is not None:
                     for param in layer.gated_cross_attn_layer.parameters():
                         param.requires_grad = True
         else:
             # Freeze all parameters in lang encoders except gated_cross_attn_layers
-            for name, param in self.lang_decoder.named_parameters():
+            for name, param in self.lang_encoder.named_parameters():
                 if "gated_cross_attn_layer" not in name:
                     param.requires_grad = False
         # Unfreeze LM input and output embeddings
-        self.lang_decoder.get_input_embeddings().requires_grad_(True)
+        self.lang_encoder.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
-        if self.lang_decoder.__class__.__name__ == "LlamaForCausalLM":
-            self.lang_decoder.lm_head.requires_grad_(True)
+        if self.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+            self.lang_encoder.lm_head.requires_grad_(True)
         # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
         # print model size in billions of parameters in 2 decimal places
         print(f"Total Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.3f} B")
@@ -647,13 +647,13 @@ class FlamingoModel(FlamingoPreTrainedModel):
             # Case: use cached; vision_x should be cached and other
             # vision-related inputs should not be provided.
             assert vision_x is None, "Expect vision_x to be None when use_cached_vision_x is True."
-            assert self.lang_decoder.is_conditioned()
+            assert self.lang_encoder.is_conditioned()
 
         else:
             # Case: do not use caching (i.e. this is a standard forward pass);
             self._encode_vision_x(vision_x=vision_x)
 
-        output = self.lang_decoder(
+        output = self.lang_encoder(
             input_ids=lang_x,
             attention_mask=attention_mask,
             labels=labels,
@@ -663,7 +663,7 @@ class FlamingoModel(FlamingoPreTrainedModel):
         )
 
         if clear_conditioned_layers:
-            self.lang_decoder.clear_conditioned_layers()
+            self.lang_encoder.clear_conditioned_layers()
 
         return output
 
@@ -690,7 +690,7 @@ class FlamingoModel(FlamingoPreTrainedModel):
 
         vision_x = self.perceiver(vision_x)  # reshapes to (b, T, n, d)
 
-        for layer in self.lang_decoder._get_decoder_layers():
+        for layer in self.lang_encoder._get_decoder_layers():
             layer.condition_vis_x(vision_x)
 
 
@@ -704,7 +704,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         super().__init__(config)
         # TODO: hardcode right because autoXXX is too slow
         # vision_encoder = AutoModel.from_config(config.vision_config).vision_model
-        # lang_decoder = AutoModelForCausalLM.from_config(config.text_config)
+        # lang_encoder = AutoModelForCausalLM.from_config(config.text_config)
         # text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
 
         ### TODO: give "LlamaForCausalLM" as the name of text_config.architectures of Llama_based flamingo
@@ -712,24 +712,24 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         # if "llama" not in config.text_config._name_or_path.lower():
         if config.text_config.architectures[0] == "MPTForCausalLM":
             text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
-            lang_decoder = MPTForCausalLM(config=config.text_config)
+            lang_encoder = MPTForCausalLM(config=config.text_config)
         elif config.text_config.architectures[0] == "MosaicGPT":
             text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mosaic-llama-redpajama-final-candidate")
-            lang_decoder = MosaicGPT(config=config.text_config)
+            lang_encoder = MosaicGPT(config=config.text_config)
         elif config.text_config.architectures[0] == "RWForCausalLM":
             text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
-            lang_decoder = RWForCausalLM(config=config.text_config)
+            lang_encoder = RWForCausalLM(config=config.text_config)
         # TODO: what's the logic here?
         elif config.text_config.architectures[0] == "LlamaForCausalLM":
             text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
-            lang_decoder = LlamaForCausalLM(config=config.text_config)
+            lang_encoder = LlamaForCausalLM(config=config.text_config)
         else:
             import pdb
 
             pdb.set_trace()
         # else:
         #     text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
-        #     lang_decoder = LlamaForCausalLM(config=config.text_config)
+        #     lang_encoder = LlamaForCausalLM(config=config.text_config)
 
         vision_encoder = CLIPVisionModel(config=config.vision_config)
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>"]})
@@ -739,12 +739,12 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         self.eoc_token_id = text_tokenizer.encode("<|endofchunk|>")[-1]
         self.media_token_id = text_tokenizer.encode("<image>")[-1]
 
-        extend_instance(lang_decoder, FlamingoLMMixin)
-        decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_decoder)
-        lang_decoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        if "LlamaForCausalLM" in lang_decoder.__class__.__name__:
-            lang_decoder.resize_token_embeddings(len(text_tokenizer))
-        self.lang_decoder = lang_decoder
+        extend_instance(lang_encoder, FlamingoLMMixin)
+        decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
+        lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
+        if "LlamaForCausalLM" in lang_encoder.__class__.__name__:
+            lang_encoder.resize_token_embeddings(len(text_tokenizer))
+        self.lang_encoder = lang_encoder
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers if hasattr(config, "cross_attn_every_n_layers") else 4
         self.use_media_placement_augmentation = config.use_media_placement_augmentation
@@ -755,7 +755,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         self.vis_dim = 1024
         self.perceiver = FlamingoPerceiverResampler(dim=self.vis_dim)
 
-        self.lang_decoder.init_flamingo(
+        self.lang_encoder.init_flamingo(
             media_token_id=self.media_token_id,
             vis_hidden_size=self.vis_dim,
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
@@ -764,36 +764,36 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         self.post_init()
 
     def get_input_embeddings(self) -> nn.Module:
-        return self.lang_decoder.get_input_embeddings()
+        return self.lang_encoder.get_input_embeddings()
 
     def set_input_embeddings(self, new_embeddings):
-        self.lang_decoder.set_input_embeddings(new_embeddings)
+        self.lang_encoder.set_input_embeddings(new_embeddings)
 
     def get_output_embeddings(self) -> nn.Module:
-        return self.lang_decoder.get_output_embeddings()
+        return self.lang_encoder.get_output_embeddings()
 
     def set_output_embeddings(self, new_embeddings):
-        self.lang_decoder.set_output_embeddings(new_embeddings)
+        self.lang_encoder.set_output_embeddings(new_embeddings)
 
     def get_image_encoder(self) -> nn.Module:
         return self.vision_encoder
 
-    def get_lang_decoder(self) -> nn.Module:
-        return self.lang_decoder
+    def get_lang_encoder(self) -> nn.Module:
+        return self.lang_encoder
 
     def init_weights(self):
         # Freeze all parameters in vision encoder
         for param in self.vision_encoder.parameters():
             param.requires_grad = False
         # Freeze all parameters in lang encoders except gated_cross_attn_layers
-        for name, param in self.lang_decoder.named_parameters():
+        for name, param in self.lang_encoder.named_parameters():
             if "gated_cross_attn_layer" not in name:
                 param.requires_grad = False
         # Unfreeze LM input embeddings
-        self.lang_decoder.get_input_embeddings().requires_grad_(True)
+        self.lang_encoder.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
-        if "LlamaForCausalLM" in self.lang_decoder.__class__.__name__:
-            self.lang_decoder.lm_head.requires_grad_(True)
+        if "LlamaForCausalLM" in self.lang_encoder.__class__.__name__:
+            self.lang_encoder.lm_head.requires_grad_(True)
         # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
         # print model size in billions of parameters in 2 decimal places
         print("====================Model Grad Part====================")
@@ -843,13 +843,13 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
             # Case: use cached; vision_x should be cached and other
             # vision-related inputs should not be provided.
             assert vision_x is None, "Expect vision_x to be None when use_cached_vision_x is True."
-            assert self.lang_decoder.is_conditioned()
+            assert self.lang_encoder.is_conditioned()
 
         else:
             # Case: do not use caching (i.e. this is a standard forward pass);
             self._encode_vision_x(vision_x=vision_x)
 
-        output = self.lang_decoder(
+        output = self.lang_encoder(
             input_ids=lang_x,
             attention_mask=attention_mask,
             labels=labels,
@@ -859,7 +859,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         )
 
         if clear_conditioned_layers:
-            self.lang_decoder.clear_conditioned_layers()
+            self.lang_encoder.clear_conditioned_layers()
 
         return output
 
@@ -886,7 +886,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
 
         vision_x = self.perceiver(vision_x)  # reshapes to (b, T, n, d)
 
-        for layer in self.lang_decoder._get_decoder_layers():
+        for layer in self.lang_encoder._get_decoder_layers():
             layer.condition_vis_x(vision_x)
 
     @torch.no_grad()
@@ -934,17 +934,17 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
             torch.Tensor: lang_x with generated tokens appended to it
         """
         if hasattr(self, "_hf_hook"):
-            # add a hook to make sure that the output of lang_decoder is mapped to the same device as the lang_x
+            # add a hook to make sure that the output of lang_encoder is mapped to the same device as the lang_x
             hook = AlignDevicesHook(
                 execution_device=lang_x.device,
                 io_same_device=True,
                 place_submodules=False,
             )
-            add_hook_to_module(self.lang_decoder, hook)
+            add_hook_to_module(self.lang_encoder, hook)
         if num_beams > 1:
             vision_x = vision_x.repeat_interleave(num_beams, dim=0)
         self._encode_vision_x(vision_x=vision_x)
-        output = self.lang_decoder.generate(
+        output = self.lang_encoder.generate(
             lang_x,
             attention_mask=attention_mask,
             eos_token_id=self.eoc_token_id,
@@ -962,5 +962,5 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
             **kwargs,
         )
 
-        self.lang_decoder.clear_conditioned_layers()
+        self.lang_encoder.clear_conditioned_layers()
         return output

@@ -41,7 +41,7 @@ for key in state_dict:
     else:
         target_key = key
     save_state_dict_1[f"{target_key}"] = state_dict[key]
-_ = model.lang_decoder.load_state_dict(
+_ = model.lang_encoder.load_state_dict(
     save_state_dict_1,
     False,
 )

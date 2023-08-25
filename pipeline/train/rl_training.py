@@ -233,13 +233,13 @@ def main():
 
     script_args.distributed_type = accelerator.distributed_type
 
-    if hasattr(model, "lang_decoder") and "LlamaForCausalLM" in model.lang_decoder.__class__.__name__:
-        model.lang_decoder.resize_token_embeddings(len(model.text_tokenizer))
+    if hasattr(model, "lang_encoder") and "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
+        model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
 
     random_seed(script_args.seed, script_args.rank)
     print(f"Start running training on rank {script_args.rank}.")
-    model.lang_decoder_with_vhead = AutoModelForCausalLMWithValueHead(model.lang_decoder)
-    ref_lang_decoder = create_reference_model(model.lang_decoder_with_vhead)
+    model.lang_encoder_with_vhead = AutoModelForCausalLMWithValueHead(model.lang_encoder)
+    ref_lang_encoder = create_reference_model(model.lang_encoder_with_vhead)
 
     # We then define the arguments to pass to the `generate` function. These arguments
     # are passed to the `generate` function of the PPOTrainer, which is a wrapper around
@@ -274,8 +274,8 @@ def main():
     # We then build the PPOTrainer, passing the model, the reference model, the tokenizer
     ppo_trainer = PPOTrainer(
         config,
-        model=model.lang_decoder_with_vhead,
-        ref_model=ref_lang_decoder,
+        model=model.lang_encoder_with_vhead,
+        ref_model=ref_lang_encoder,
         tokenizer=tokenizer,
         dataset=dataset,
         data_collator=collator,

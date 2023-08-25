@@ -226,11 +226,11 @@ def train_one_epoch(args, model, epoch, cc3m_loader, tokenizer, optimizer, lr_sc
 
         if args.mask_lm_head:
             unwrapped_model = accelerator.unwrap_model(model)
-            if unwrapped_model.lang_decoder.__class__.__name__ == "MPTForCausalLM":
-                unwrapped_model.lang_decoder.transformer.wte.apply(mask_embedding)
-            elif unwrapped_model.lang_decoder.__class__.__name__ == "LlamaForCausalLM":
-                unwrapped_model.lang_decoder.model.embed_tokens.apply(mask_embedding)
-                unwrapped_model.lang_decoder.lm_head.apply(mask_embedding)
+            if unwrapped_model.lang_encoder.__class__.__name__ == "MPTForCausalLM":
+                unwrapped_model.lang_encoder.transformer.wte.apply(mask_embedding)
+            elif unwrapped_model.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+                unwrapped_model.lang_encoder.model.embed_tokens.apply(mask_embedding)
+                unwrapped_model.lang_encoder.lm_head.apply(mask_embedding)
 
         if accelerator.sync_gradients:
             accelerator.clip_grad_norm_(model.parameters(), 1.0)
@@ -345,8 +345,8 @@ def main():
 
     accelerator.wait_for_everyone()
 
-    if model.lang_decoder.__class__.__name__ != "MPTForCausalLM":
-        model.lang_decoder.resize_token_embeddings(len(model.text_tokenizer))
+    if model.lang_encoder.__class__.__name__ != "MPTForCausalLM":
+        model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
 
     args.tokenizer = model.text_tokenizer
     tokenizer = model.text_tokenizer

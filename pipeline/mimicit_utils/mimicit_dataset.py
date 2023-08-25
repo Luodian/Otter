@@ -88,6 +88,8 @@ class MimicitDataset(Dataset):
 
         self.inst_format = args.inst_format
         self.resample_frames = args.resample_frames
+        self.text_data_list = ["LIMA", "MBPP", "SHAREGPT", "AL", "CAL"]
+        self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.\n<</SYS>>\n\n"
 
         scales = [(args.patch_image_size, args.patch_image_size)]
 
@@ -123,18 +125,9 @@ class MimicitDataset(Dataset):
                 else:
                     self.dataset.update(orjson.loads(f.read())["data"])
 
-            # Load the images
-            # if cur_images_path != "":
-            # check if file is larger than 100GB
-            # use ijson for large files
             with open(cur_images_path, "rb") as f:
                 for key, value in ijson.kvitems(f, ""):
                     self.images[key] = value
-            #     with open(cur_images_path, "rb") as f:
-            #         if not self.images:
-            #             self.images = orjson.loads(f.read())
-            #         else:
-            #             self.images.update(orjson.loads(f.read()))
 
             # Load the train_config
             if cur_train_config_path != "":
@@ -262,7 +255,6 @@ class MimicitDataset(Dataset):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
-        wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.\n<</SYS>>\n\n"
         # random.shuffle(all_instruction_ids)
         for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
             cur_instruction_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
@@ -273,7 +265,7 @@ class MimicitDataset(Dataset):
             if inst_format == "llama2":
                 if idx == 0:
                     # insert image to the first sentence of a conversation
-                    cur_text = f"[INST]{wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
+                    cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
                 else:
                     cur_text = f"[INST]{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
             elif inst_format == "idefics":
@@ -300,7 +292,6 @@ class MimicitDataset(Dataset):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
-        wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.\n<</SYS>>\n\n"
         # random.shuffle(all_instruction_ids)
         if "CONV" in instruction_id:
             for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
@@ -311,7 +302,7 @@ class MimicitDataset(Dataset):
                 cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
                 if inst_format == "llama2":
                     if idx == 0:
-                        cur_text = f"[INST]{wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
+                        cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
                     else:
                         cur_text = f"[INST]{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
                 elif inst_format == "idefics":
@@ -349,7 +340,7 @@ class MimicitDataset(Dataset):
                 cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
                 cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
                 if inst_format == "llama2":
-                    cur_text = f"[INST]{wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
+                    cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
                 elif inst_format == "idefics":
                     cur_text = f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
                 else:
@@ -534,7 +525,6 @@ class MimicitDataset(Dataset):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
-        wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.\n<</SYS>>\n\n"
         for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
             cur_instruction_image_id = (
                 self.dataset[cur_instruction_id]["image_ids"][0]
@@ -558,7 +548,7 @@ class MimicitDataset(Dataset):
             cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
             if inst_format == "llama2":
                 if idx == 0:
-                    cur_text = f"[INST]{wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
+                    cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
                 else:
                     cur_text = f"[INST]{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
             elif inst_format == "idefics":
@@ -574,11 +564,11 @@ class MimicitDataset(Dataset):
             all_texts += cur_text
         return patch_images, all_texts
 
-    def process_text_instruction(self, instruction_id, instruction, answer, image_ids, in_context_example_ids):
+    def process_text_instruction(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format="simple"):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
-        for cur_instruction_id in all_instruction_ids[:]:
+        for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_patch_image = torch.zeros(3, 224, 224).unsqueeze(0).unsqueeze(0)
@@ -590,6 +580,13 @@ class MimicitDataset(Dataset):
             cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
             if "baize" in instruction_id:
                 cur_text = f"{cur_answer}"
+            elif inst_format == "llama2":
+                if idx == 0:
+                    cur_text = f"[INST]{self.wrap_sys} {cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
+                else:
+                    cur_text = f"[INST]{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
+            elif inst_format == "idefics":
+                cur_text = f"User:{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
             else:
                 cur_text = f"User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
             all_texts += cur_text
@@ -637,7 +634,8 @@ class MimicitDataset(Dataset):
             )
         elif cur_train_id.startswith("LLAVAR"):
             patch_images, all_texts = self.process_llavar(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
-        elif cur_train_id.startswith("TXT"):
+        elif any(cur_train_id.startswith(text_id) for text_id in self.text_data_list):
+            # code to execute if cur_train_id starts with an item in self.text_data_list
             patch_images, all_texts = self.process_text_instruction(instruction_id, instruction, answer, image_ids, in_context_example_ids)
         else:
             patch_images, all_texts = self.process_general_vqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)

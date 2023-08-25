@@ -552,16 +552,16 @@ class OtterModel(OtterPreTrainedModel):
         if "llama" not in config.text_config._name_or_path:
             if config.text_config.architectures[0] == "MPTForCausalLM":
                 text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
-                lang_decoder = MPTForCausalLM(config=config.text_config)
+                lang_encoder = MPTForCausalLM(config=config.text_config)
             elif config.text_config.text_config.architectures[0] == "MosaicGPT":
                 text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mosaic-llama-redpajama-final-candidate")
-                lang_decoder = MosaicGPT(config=config.text_config)
+                lang_encoder = MosaicGPT(config=config.text_config)
             elif config.text_config.architectures[0] == "RWForCausalLM":
                 text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
-                lang_decoder = RWForCausalLM(config=config.text_config)
+                lang_encoder = RWForCausalLM(config=config.text_config)
         else:
             text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
-            lang_decoder = LlamaForCausalLM(config=config.text_config)
+            lang_encoder = LlamaForCausalLM(config=config.text_config)
         vision_encoder = CLIPVisionModel(config=config.vision_config)
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
         if text_tokenizer.pad_token is None:
@@ -570,12 +570,12 @@ class OtterModel(OtterPreTrainedModel):
         self.eoc_token_id = text_tokenizer.encode("<|endofchunk|>")[-1]
         self.media_token_id = text_tokenizer.encode("<image>")[-1]
 
-        extend_instance(lang_decoder, OtterLMMixin)
-        decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_decoder)
-        lang_decoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        if lang_decoder.__class__.__name__ == "LlamaForCausalLM":
-            lang_decoder.resize_token_embeddings(len(text_tokenizer))
-        self.lang_decoder = lang_decoder
+        extend_instance(lang_encoder, OtterLMMixin)
+        decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
+        lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
+        if lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+            lang_encoder.resize_token_embeddings(len(text_tokenizer))
+        self.lang_encoder = lang_encoder
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         # use_media_placement_augmentation is strictly false for Otter model
@@ -588,7 +588,7 @@ class OtterModel(OtterPreTrainedModel):
         self.vis_dim = 1024
         self.perceiver = OtterPerceiverResampler(dim=self.vis_dim, max_num_frames=self.max_num_frames)
 
-        self.lang_decoder.init_otter(
+        self.lang_encoder.init_otter(
             media_token_id=self.media_token_id,
             vis_hidden_size=self.vis_dim,
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
@@ -598,7 +598,7 @@ class OtterModel(OtterPreTrainedModel):
         if "lora_config" in config.__dict__:
             print(f"Using LoRA with config:{config.lora_config}")
             standard_modules = ["q_proj", "v_proj"]
-            lang_decoder_short_name = MODEL_CLASSES[config.text_config.architectures[0]]
+            lang_encoder_short_name = MODEL_CLASSES[config.text_config.architectures[0]]
             model_to_lora_modules = {
                 "llama": standard_modules,
                 "opt": standard_modules,
@@ -611,30 +611,30 @@ class OtterModel(OtterPreTrainedModel):
                 lora_alpha=config.lora_config["lora_alpha"],
                 lora_dropout=config.lora_config["lora_dropout"],
                 task_type=TaskType.CAUSAL_LM,
-                target_modules=model_to_lora_modules[lang_decoder_short_name],
+                target_modules=model_to_lora_modules[lang_encoder_short_name],
             )
-            self.lang_decoder = get_peft_model(self.lang_decoder, lora_config)
-            self.lang_decoder.print_trainable_parameters()
+            self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
+            self.lang_encoder.print_trainable_parameters()
 
         self.post_init()
 
     def get_input_embeddings(self) -> nn.Module:
-        return self.lang_decoder.get_input_embeddings()
+        return self.lang_encoder.get_input_embeddings()
 
     def set_input_embeddings(self, new_embeddings):
-        self.lang_decoder.set_input_embeddings(new_embeddings)
+        self.lang_encoder.set_input_embeddings(new_embeddings)
 
     def get_output_embeddings(self) -> nn.Module:
-        return self.lang_decoder.get_output_embeddings()
+        return self.lang_encoder.get_output_embeddings()
 
     def set_output_embeddings(self, new_embeddings):
-        self.lang_decoder.set_output_embeddings(new_embeddings)
+        self.lang_encoder.set_output_embeddings(new_embeddings)
 
     def get_image_encoder(self) -> nn.Module:
         return self.vision_encoder
 
-    def get_lang_decoder(self) -> nn.Module:
-        return self.lang_decoder
+    def get_lang_encoder(self) -> nn.Module:
+        return self.lang_encoder
 
     def tie_weights(self):
         return super().tie_weights()
@@ -644,14 +644,14 @@ class OtterModel(OtterPreTrainedModel):
         for param in self.vision_encoder.parameters():
             param.requires_grad = False
         # Freeze all parameters in lang encoders except gated_cross_attn_layers
-        for name, param in self.lang_decoder.named_parameters():
+        for name, param in self.lang_encoder.named_parameters():
             if "gated_cross_attn_layer" not in name:
                 param.requires_grad = False
         # Unfreeze LM input embeddings
-        self.lang_decoder.get_input_embeddings().requires_grad_(True)
+        self.lang_encoder.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
-        if self.lang_decoder.__class__.__name__ == "LlamaForCausalLM":
-            self.lang_decoder.lm_head.requires_grad_(True)
+        if self.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+            self.lang_encoder.lm_head.requires_grad_(True)
         # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
         # print model size in billions of parameters in 2 decimal places
         print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
@@ -694,13 +694,13 @@ class OtterModel(OtterPreTrainedModel):
             # Case: use cached; vision_x should be cached and other
             # vision-related inputs should not be provided.
             assert vision_x is None, "Expect vision_x to be None when use_cached_vision_x is True."
-            assert self.lang_decoder.is_conditioned()
+            assert self.lang_encoder.is_conditioned()
 
         else:
             # Case: do not use caching (i.e. this is a standard forward pass);
             self._encode_vision_x(vision_x=vision_x)
 
-        output = self.lang_decoder(
+        output = self.lang_encoder(
             input_ids=lang_x,
             attention_mask=attention_mask,
             labels=labels,
@@ -710,7 +710,7 @@ class OtterModel(OtterPreTrainedModel):
         )
 
         if clear_conditioned_layers:
-            self.lang_decoder.clear_conditioned_layers()
+            self.lang_encoder.clear_conditioned_layers()
 
         return output
 
@@ -736,7 +736,7 @@ class OtterModel(OtterPreTrainedModel):
 
         vision_x = self.perceiver(vision_x)  # reshapes to (b, T, n, d)
 
-        for layer in self.lang_decoder._get_decoder_layers():
+        for layer in self.lang_encoder._get_decoder_layers():
             layer.condition_vis_x(vision_x)
 
 
@@ -752,23 +752,23 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         if "llama" not in config.text_config._name_or_path:
             if config.text_config.architectures[0] == "MPTForCausalLM":
                 text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
-                lang_decoder = MPTForCausalLM(config=config.text_config)
+                lang_encoder = MPTForCausalLM(config=config.text_config)
             elif config.text_config.architectures[0] == "MosaicGPT":
                 text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mosaic-llama-redpajama-final-candidate")
-                lang_decoder = MosaicGPT(config=config.text_config)
+                lang_encoder = MosaicGPT(config=config.text_config)
             elif config.text_config.architectures[0] == "RWForCausalLM":
                 text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
-                lang_decoder = RWForCausalLM(config=config.text_config)
+                lang_encoder = RWForCausalLM(config=config.text_config)
             elif config.text_config.architectures[0] == "LlamaForCausalLM":
                 text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
-                lang_decoder = LlamaForCausalLM(config=config.text_config)
+                lang_encoder = LlamaForCausalLM(config=config.text_config)
             else:
                 import pdb
 
                 pdb.set_trace()
         else:
             text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
-            lang_decoder = LlamaForCausalLM(config=config.text_config)
+            lang_encoder = LlamaForCausalLM(config=config.text_config)
         vision_encoder = CLIPVisionModel(config=config.vision_config)
 
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
@@ -778,12 +778,12 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         self.eoc_token_id = text_tokenizer.encode("<|endofchunk|>")[-1]
         self.media_token_id = text_tokenizer.encode("<image>")[-1]
 
-        extend_instance(lang_decoder, OtterLMMixin)
-        decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_decoder)
-        lang_decoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        if lang_decoder.__class__.__name__ == "LlamaForCausalLM":
-            lang_decoder.resize_token_embeddings(len(text_tokenizer))
-        self.lang_decoder = lang_decoder
+        extend_instance(lang_encoder, OtterLMMixin)
+        decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
+        lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
+        if lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+            lang_encoder.resize_token_embeddings(len(text_tokenizer))
+        self.lang_encoder = lang_encoder
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         # use_media_placement_augmentation is strictly false for Otter model
@@ -802,7 +802,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         self.vis_dim = 1024
         self.perceiver = OtterPerceiverResampler(dim=self.vis_dim, max_num_frames=self.max_num_frames)
 
-        self.lang_decoder.init_otter(
+        self.lang_encoder.init_otter(
             media_token_id=self.media_token_id,
             vis_hidden_size=self.vis_dim,
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
@@ -810,10 +810,10 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         )
 
         if "lora_config" in config.__dict__:
-            original_architecture_name = self.lang_decoder.__class__.__name__
+            original_architecture_name = self.lang_encoder.__class__.__name__
             print(f"Using LoRA with config:{config.lora_config}")
             standard_modules = ["q_proj", "v_proj"]
-            lang_decoder_short_name = MODEL_CLASSES[config.text_config.architectures[0]]
+            lang_encoder_short_name = MODEL_CLASSES[config.text_config.architectures[0]]
             model_to_lora_modules = {
                 "llama": standard_modules,
                 "opt": standard_modules,
@@ -826,31 +826,31 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
                 lora_alpha=config.lora_config["lora_alpha"],
                 lora_dropout=config.lora_config["lora_dropout"],
                 task_type=TaskType.CAUSAL_LM,
-                target_modules=model_to_lora_modules[lang_decoder_short_name],
+                target_modules=model_to_lora_modules[lang_encoder_short_name],
             )
-            self.lang_decoder = get_peft_model(self.lang_decoder, lora_config)
-            self.lang_decoder.print_trainable_parameters()
-            self.lang_decoder.__class__.__name__ = f"{original_architecture_name}LoRA"
+            self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
+            self.lang_encoder.print_trainable_parameters()
+            self.lang_encoder.__class__.__name__ = f"{original_architecture_name}LoRA"
 
         self.post_init()
 
     def get_input_embeddings(self) -> nn.Module:
-        return self.lang_decoder.get_input_embeddings()
+        return self.lang_encoder.get_input_embeddings()
 
     def set_input_embeddings(self, new_embeddings):
-        self.lang_decoder.set_input_embeddings(new_embeddings)
+        self.lang_encoder.set_input_embeddings(new_embeddings)
 
     def get_output_embeddings(self) -> nn.Module:
-        return self.lang_decoder.get_output_embeddings()
+        return self.lang_encoder.get_output_embeddings()
 
     def set_output_embeddings(self, new_embeddings):
-        self.lang_decoder.set_output_embeddings(new_embeddings)
+        self.lang_encoder.set_output_embeddings(new_embeddings)
 
     def get_image_encoder(self) -> nn.Module:
         return self.vision_encoder
 
-    def get_lang_decoder(self) -> nn.Module:
-        return self.lang_decoder
+    def get_lang_encoder(self) -> nn.Module:
+        return self.lang_encoder
 
     def init_weights(self):
         # Freeze all parameters in self.model
@@ -863,16 +863,16 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
                 param.requires_grad = True
 
         # Freeze all parameters in lang encoders except gated_cross_attn_layers
-        if "train_lang_decoder" in self.config.__dict__ and self.config.train_lang_decoder is True:
-            for name, param in self.lang_decoder.named_parameters():
+        if "train_lang_encoder" in self.config.__dict__ and self.config.train_lang_encoder is True:
+            for name, param in self.lang_encoder.named_parameters():
                 param.requires_grad = True
 
         if "lora_config" in self.config.__dict__:
             # Use another logic to unfreeze gated_cross_attn_layers and perceivers
-            print(f"LoRA trainable param: {(sum(p.numel() for p in self.lang_decoder.parameters() if p.requires_grad)) / 1e9:.3f} B")
+            print(f"LoRA trainable param: {(sum(p.numel() for p in self.lang_encoder.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
         # Freeze all parameters in lang encoders except gated_cross_attn_layers
-        for name, param in self.lang_decoder.named_parameters():
+        for name, param in self.lang_encoder.named_parameters():
             if "gated_cross_attn_layer" in name:
                 param.requires_grad = True
             if "lm_head" in name:
@@ -881,10 +881,10 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             if "perceiver" in name:
                 param.requires_grad = True
         # Unfreeze LM input and output embeddings
-        self.lang_decoder.get_input_embeddings().requires_grad_(True)
+        self.lang_encoder.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
-        if "LlamaForCausalLM" in self.lang_decoder.__class__.__name__:
-            self.lang_decoder.lm_head.requires_grad_(True)
+        if "LlamaForCausalLM" in self.lang_encoder.__class__.__name__:
+            self.lang_encoder.lm_head.requires_grad_(True)
         # print("====================Model Grad Part====================")
         total_params = 0
         for name, param in self.named_parameters():
@@ -932,13 +932,13 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             # Case: use cached; vision_x should be cached and other
             # vision-related inputs should not be provided.
             assert vision_x is None, "Expect vision_x to be None when use_cached_vision_x is True."
-            assert self.lang_decoder.is_conditioned()
+            assert self.lang_encoder.is_conditioned()
 
         else:
             # Case: do not use caching (i.e. this is a standard forward pass);
             self._encode_vision_x(vision_x=vision_x)
 
-        output = self.lang_decoder(
+        output = self.lang_encoder(
             input_ids=lang_x,
             attention_mask=attention_mask,
             labels=labels,
@@ -948,7 +948,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         )
 
         if clear_conditioned_layers:
-            self.lang_decoder.clear_conditioned_layers()
+            self.lang_encoder.clear_conditioned_layers()
 
         return output
 
@@ -974,7 +974,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
         vision_x = self.perceiver(vision_x)  # reshapes to (b, T, n, d)
 
-        for layer in self.lang_decoder._get_decoder_layers():
+        for layer in self.lang_encoder._get_decoder_layers():
             layer.condition_vis_x(vision_x)
 
     @torch.no_grad()
@@ -1001,25 +1001,25 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             torch.Tensor: lang_x with generated tokens appended to it
         """
         if hasattr(self, "_hf_hook"):
-            # add a hook to make sure that the output of lang_decoder is mapped to the same device as the lang_x
+            # add a hook to make sure that the output of lang_encoder is mapped to the same device as the lang_x
             hook = AlignDevicesHook(
                 execution_device=lang_x.device,
                 io_same_device=True,
                 place_submodules=False,
             )
-            add_hook_to_module(self.lang_decoder, hook)
+            add_hook_to_module(self.lang_encoder, hook)
         num_beams = generate_kwargs.get("num_beams", 1)
         if num_beams > 1:
             vision_x = vision_x.repeat_interleave(num_beams, dim=0)
         self._encode_vision_x(vision_x=vision_x)
-        output = self.lang_decoder.generate(
+        output = self.lang_encoder.generate(
             input_ids=lang_x,
             attention_mask=attention_mask,
             eos_token_id=self.eoc_token_id,
             **generate_kwargs,
         )
 
-        self.lang_decoder.clear_conditioned_layers()
+        self.lang_encoder.clear_conditioned_layers()
         return output
 
 
@@ -1038,23 +1038,23 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
         if "llama" not in config.text_config._name_or_path:
             if config.text_config.architectures[0] == "MPTForCausalLM":
                 text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b-instruct")
-                lang_decoder = MPTForCausalLM(config=config.text_config)
+                lang_encoder = MPTForCausalLM(config=config.text_config)
             elif config.text_config.architectures[0] == "MosaicGPT":
                 text_tokenizer = AutoTokenizer.from_pretrained("mosaicml/mosaic-llama-redpajama-final-candidate")
-                lang_decoder = MosaicGPT(config=config.text_config)
+                lang_encoder = MosaicGPT(config=config.text_config)
             elif config.text_config.architectures[0] == "RWForCausalLM":
                 text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
-                lang_decoder = RWForCausalLM(config=config.text_config)
+                lang_encoder = RWForCausalLM(config=config.text_config)
             elif config.text_config.architectures[0] == "LlamaForCausalLM":
                 text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
-                lang_decoder = LlamaForCausalLM(config=config.text_config)
+                lang_encoder = LlamaForCausalLM(config=config.text_config)
             else:
                 import pdb
 
                 pdb.set_trace()
         else:
             text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
-            lang_decoder = LlamaForCausalLM(config=config.text_config)
+            lang_encoder = LlamaForCausalLM(config=config.text_config)
         vision_encoder = CLIPVisionModel(config=config.vision_config)
 
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
@@ -1063,12 +1063,12 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
         self.text_tokenizer = text_tokenizer
         self.eoc_token_id = text_tokenizer.encode("<|endofchunk|>")[-1]
         self.media_token_id = text_tokenizer.encode("<image>")[-1]
-        self.lang_decoder_with_vhead = AutoModelForCausalLMWithValueHead(lang_decoder)
-        extend_instance(self.lang_decoder_with_vhead.pretrained_model, OtterLMMixin)
-        decoder_layers_attr_name = _infer_decoder_layers_attr_name(self.lang_decoder_with_vhead.pretrained_model)
-        self.lang_decoder_with_vhead.pretrained_model.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        if self.lang_decoder_with_vhead.pretrained_model.__class__.__name__ == "LlamaForCausalLM":
-            self.lang_decoder_with_vhead.pretrained_model.resize_token_embeddings(len(text_tokenizer))
+        self.lang_encoder_with_vhead = AutoModelForCausalLMWithValueHead(lang_encoder)
+        extend_instance(self.lang_encoder_with_vhead.pretrained_model, OtterLMMixin)
+        decoder_layers_attr_name = _infer_decoder_layers_attr_name(self.lang_encoder_with_vhead.pretrained_model)
+        self.lang_encoder_with_vhead.pretrained_model.set_decoder_layers_attr_name(decoder_layers_attr_name)
+        if self.lang_encoder_with_vhead.pretrained_model.__class__.__name__ == "LlamaForCausalLM":
+            self.lang_encoder_with_vhead.pretrained_model.resize_token_embeddings(len(text_tokenizer))
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
         # use_media_placement_augmentation is strictly false for Otter model
@@ -1087,7 +1087,7 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
         self.vis_dim = 1024
         self.perceiver = OtterPerceiverResampler(dim=self.vis_dim, max_num_frames=self.max_num_frames)
 
-        self.lang_decoder_with_vhead.pretrained_model.init_otter(
+        self.lang_encoder_with_vhead.pretrained_model.init_otter(
             media_token_id=self.media_token_id,
             vis_hidden_size=self.vis_dim,
             cross_attn_every_n_layers=self.cross_attn_every_n_layers,
@@ -1095,10 +1095,10 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
         )
 
         if "lora_config" in config.__dict__:
-            original_architecture_name = self.lang_decoder_with_vhead.pretrained_model.__class__.__name__
+            original_architecture_name = self.lang_encoder_with_vhead.pretrained_model.__class__.__name__
             print(f"Using LoRA with config:{config.lora_config}")
             standard_modules = ["q_proj", "v_proj"]
-            lang_decoder_short_name = MODEL_CLASSES[config.text_config.architectures[0]]
+            lang_encoder_short_name = MODEL_CLASSES[config.text_config.architectures[0]]
             model_to_lora_modules = {
                 "llama": standard_modules,
                 "opt": standard_modules,
@@ -1111,31 +1111,31 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
                 lora_alpha=config.lora_config["lora_alpha"],
                 lora_dropout=config.lora_config["lora_dropout"],
                 task_type=TaskType.CAUSAL_LM,
-                target_modules=model_to_lora_modules[lang_decoder_short_name],
+                target_modules=model_to_lora_modules[lang_encoder_short_name],
             )
-            self.lang_decoder_with_vhead.pretrained_model = get_peft_model(self.lang_decoder_with_vhead.pretrained_model, lora_config)
-            self.lang_decoder_with_vhead.pretrained_model.print_trainable_parameters()
-            self.lang_decoder_with_vhead.pretrained_model.__class__.__name__ = f"{original_architecture_name}LoRA"
+            self.lang_encoder_with_vhead.pretrained_model = get_peft_model(self.lang_encoder_with_vhead.pretrained_model, lora_config)
+            self.lang_encoder_with_vhead.pretrained_model.print_trainable_parameters()
+            self.lang_encoder_with_vhead.pretrained_model.__class__.__name__ = f"{original_architecture_name}LoRA"
 
         self.post_init()
 
     def get_input_embeddings(self) -> nn.Module:
-        return self.lang_decoder.get_input_embeddings()
+        return self.lang_encoder.get_input_embeddings()
 
     def set_input_embeddings(self, new_embeddings):
-        self.lang_decoder.set_input_embeddings(new_embeddings)
+        self.lang_encoder.set_input_embeddings(new_embeddings)
 
     def get_output_embeddings(self) -> nn.Module:
-        return self.lang_decoder.get_output_embeddings()
+        return self.lang_encoder.get_output_embeddings()
 
     def set_output_embeddings(self, new_embeddings):
-        self.lang_decoder.set_output_embeddings(new_embeddings)
+        self.lang_encoder.set_output_embeddings(new_embeddings)
 
     def get_image_encoder(self) -> nn.Module:
         return self.vision_encoder
 
-    def get_lang_decoder(self) -> nn.Module:
-        return self.lang_decoder
+    def get_lang_encoder(self) -> nn.Module:
+        return self.lang_encoder
 
     def init_weights(self):
         # Freeze all parameters in self.model
@@ -1148,13 +1148,13 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
                 param.requires_grad = True
 
         # Freeze all parameters in lang encoders except gated_cross_attn_layers
-        if "train_lang_decoder" in self.config.__dict__ and self.config.train_lang_decoder is True:
-            for name, param in self.lang_decoder_with_vhead.named_parameters():
+        if "train_lang_encoder" in self.config.__dict__ and self.config.train_lang_encoder is True:
+            for name, param in self.lang_encoder_with_vhead.named_parameters():
                 param.requires_grad = True
 
         # Freeze all parameters in lang encoders except gated_cross_attn_layers
         if "train_connector" in self.config.__dict__ and self.config.train_connector is True:
-            for name, param in self.lang_decoder_with_vhead.pretrained_model.named_parameters():
+            for name, param in self.lang_encoder_with_vhead.pretrained_model.named_parameters():
                 if "gated_cross_attn_layer" in name:
                     param.requires_grad = True
             for name, param in self.named_parameters():
@@ -1164,14 +1164,14 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
         if "lora_config" in self.config.__dict__:
             # Use another logic to unfreeze gated_cross_attn_layers and perceivers
             print(
-                f"LoRA trainable param: {(sum(p.numel() for p in self.lang_decoder_with_vhead.pretrained_model.parameters() if p.requires_grad)) / 1e9:.3f} B"
+                f"LoRA trainable param: {(sum(p.numel() for p in self.lang_encoder_with_vhead.pretrained_model.parameters() if p.requires_grad)) / 1e9:.3f} B"
             )
 
         # Unfreeze LM input and output embeddings
-        self.lang_decoder_with_vhead.pretrained_model.get_input_embeddings().requires_grad_(True)
+        self.lang_encoder_with_vhead.pretrained_model.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
-        if "LlamaForCausalLM" in self.lang_decoder_with_vhead.__class__.__name__:
-            self.lang_decoder_with_vhead.lm_head.requires_grad_(True)
+        if "LlamaForCausalLM" in self.lang_encoder_with_vhead.__class__.__name__:
+            self.lang_encoder_with_vhead.lm_head.requires_grad_(True)
         # print("====================Model Grad Part====================")
         total_params = 0
         for name, param in self.named_parameters():
@@ -1218,13 +1218,13 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
             # Case: use cached; vision_x should be cached and other
             # vision-related inputs should not be provided.
             assert vision_x is None, "Expect vision_x to be None when use_cached_vision_x is True."
-            assert self.lang_decoder_with_vhead.is_conditioned()
+            assert self.lang_encoder_with_vhead.is_conditioned()
 
         else:
             # Case: do not use caching (i.e. this is a standard forward pass);
             self._encode_vision_x(vision_x=vision_x)
 
-        output = self.lang_decoder_with_vhead(
+        output = self.lang_encoder_with_vhead(
             input_ids=lang_x,
             attention_mask=attention_mask,
             labels=labels,
@@ -1234,7 +1234,7 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
         )
 
         if clear_conditioned_layers:
-            self.lang_decoder_with_vhead.clear_conditioned_layers()
+            self.lang_encoder_with_vhead.clear_conditioned_layers()
 
         return output
 
@@ -1260,7 +1260,7 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
 
         vision_x = self.perceiver(vision_x)  # reshapes to (b, T, n, d)
 
-        for layer in self.lang_decoder._get_decoder_layers():
+        for layer in self.lang_encoder._get_decoder_layers():
             layer.condition_vis_x(vision_x)
 
     @torch.no_grad()
@@ -1287,23 +1287,23 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
             torch.Tensor: lang_x with generated tokens appended to it
         """
         if hasattr(self, "_hf_hook"):
-            # add a hook to make sure that the output of lang_decoder is mapped to the same device as the lang_x
+            # add a hook to make sure that the output of lang_encoder is mapped to the same device as the lang_x
             hook = AlignDevicesHook(
                 execution_device=lang_x.device,
                 io_same_device=True,
                 place_submodules=False,
             )
-            add_hook_to_module(self.lang_decoder, hook)
+            add_hook_to_module(self.lang_encoder, hook)
         num_beams = generate_kwargs.get("num_beams", 1)
         if num_beams > 1:
             vision_x = vision_x.repeat_interleave(num_beams, dim=0)
         self._encode_vision_x(vision_x=vision_x)
-        output = self.lang_decoder.generate(
+        output = self.lang_encoder.generate(
             input_ids=lang_x,
             attention_mask=attention_mask,
             eos_token_id=self.eoc_token_id,
             **generate_kwargs,
         )
 
-        self.lang_decoder.clear_conditioned_layers()
+        self.lang_encoder.clear_conditioned_layers()
         return output

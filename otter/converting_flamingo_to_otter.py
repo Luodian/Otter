@@ -18,8 +18,8 @@ args = parser.parse_args()
 # Load the model
 model = FlamingoForConditionalGeneration.from_pretrained(args.checkpoint_path, device_map="auto")
 model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
-if model.lang_decoder.__class__.__name__ == "LlamaForCausalLM":
-    model.lang_decoder.resize_token_embeddings(len(model.text_tokenizer))
+if model.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+    model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
 
 # Save the model
 checkpoint_path = args.save_path
