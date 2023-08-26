@@ -563,6 +563,8 @@ def main():
         accelerator.print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
         device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED" else "auto"
         kwargs = {"local_files_only": args.offline, "device_map": device_map}
+        if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
+            kwargs.pop("device_map")
         if args.customized_config is not None:
             kwargs["config"] = args.customized_config
         if "otter" in args.model_name.lower():
@@ -584,8 +586,6 @@ def main():
             tokenizer = model.text_tokenizer
             image_processor = CLIPImageProcessor()
         elif "idefics" in args.model_name.lower():
-            if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
-                kwargs.pop("device_map")
             # import pdb;pdb.set_trace()
             model = IdeficsForVisionText2Text.from_pretrained(
                 args.pretrained_model_name_or_path,
