@@ -20,19 +20,14 @@ from transformers import (
 )
 
 import wandb
-from flamingo.configuration_flamingo import FlamingoConfig
 from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from otter.modeling_otter import OtterForConditionalGeneration
 from pipeline.train.data import get_data
 from pipeline.train.distributed import world_info_from_env
-from pipeline.train.train_utils import AverageMeter, get_checkpoint, get_checkpoint_deepspeed_zero3, get_image_attention_mask
-from transformers import AutoProcessor, AutoConfig
+from pipeline.train.train_utils import AverageMeter, get_checkpoint, get_image_attention_mask
+from transformers import AutoProcessor
 
 import deepspeed
-import json
-from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig
-from deepspeed.utils.zero_to_fp32 import load_state_dict_from_zero_checkpoint
-
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 

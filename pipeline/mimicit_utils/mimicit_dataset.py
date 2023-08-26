@@ -88,7 +88,7 @@ class MimicitDataset(Dataset):
 
         self.inst_format = args.inst_format
         self.resample_frames = args.resample_frames
-        self.text_data_list = ["LIMA", "MBPP", "SHAREGPT", "AL", "CAL"]
+        self.text_data_list = ['LIMA', "MBPP", "SHAREGPT", "AL", "CAL"]
         self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.\n<</SYS>>\n\n"
 
         scales = [(args.patch_image_size, args.patch_image_size)]
@@ -644,6 +644,8 @@ class MimicitDataset(Dataset):
             f"{all_texts}",
             return_tensors="pt",
             add_special_tokens=False,
+            truncation=True,
+            max_length=2042 # for current 2k mpt/llama model, setting to 2048 causes error (2042 works)
         )
 
         src_item = src_text["input_ids"].squeeze(0)
