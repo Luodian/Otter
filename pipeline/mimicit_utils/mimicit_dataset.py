@@ -68,9 +68,8 @@ class MimicitDataset(Dataset):
         images_paths="",
         train_config_paths="",
         status_list=["past", "new"],
-        task_name = "DC",
+        task_name="DC",
     ):
-
         self.args = args
         self.tokenizer = args.tokenizer
 
@@ -84,9 +83,9 @@ class MimicitDataset(Dataset):
 
         self.inst_format = args.inst_format
         self.resample_frames = args.resample_frames
-        self.text_data_list = ['LIMA', "MBPP", "SHAREGPT", "AL", "CAL"]
-        self.image_data_list = ['LA', "M3IT"]
-        self.video_data_list = ['DC', "FunQA", "E4D", "TVC", "VideoQA"]
+        self.text_data_list = ["LIMA", "MBPP", "SHAREGPT", "AL", "CAL"]
+        self.image_data_list = ["LA", "M3IT"]
+        self.video_data_list = ["DC", "FunQA", "E4D", "TVC", "VideoQA"]
         self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.\n<</SYS>>\n\n"
 
         scales = [(args.patch_image_size, args.patch_image_size)]
@@ -113,9 +112,12 @@ class MimicitDataset(Dataset):
         self.train_config = []
         self.task_name = args.task_name
 
-        for cur_mimicit_path, cur_images_path, cur_train_config_path, cur_status, in zip(
-            self.mimicit_paths, self.images_paths, self.train_config_paths, self.status_list
-        ):
+        for (
+            cur_mimicit_path,
+            cur_images_path,
+            cur_train_config_path,
+            cur_status,
+        ) in zip(self.mimicit_paths, self.images_paths, self.train_config_paths, self.status_list):
             # Load the dataset
             assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!"
             with open(cur_mimicit_path, "rb") as f:
@@ -512,14 +514,16 @@ class MimicitDataset(Dataset):
             # code to execute if cur_train_id starts with an item in self.text_data_list
             patch_images, all_texts = self.process_general_text(instruction_id, instruction, answer, image_ids, in_context_example_ids)
         elif any(cur_train_id.startswith(image_id) for image_id in self.image_data_list) or self.task_name in self.image_data_list:
-            patch_images, all_texts = self.process_general_imageqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
+            patch_images, all_texts = self.process_general_imageqa(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format
+            )
 
         src_text = self.tokenizer(
             f"{all_texts}",
             return_tensors="pt",
             add_special_tokens=False,
             truncation=True,
-            max_length=2042 # for current 2k mpt/llama model, setting to 2048 causes error (2042 works)
+            max_length=2042,  # for current 2k mpt/llama model, setting to 2048 causes error (2042 works)
         )
 
         src_item = src_text["input_ids"].squeeze(0)
