@@ -14,5 +14,5 @@ main_process_port: null
 main_training_function: main
 mixed_precision: bf16
 num_machines: 1
-num_processes: 2
+num_processes: 8
 use_cpu: false
