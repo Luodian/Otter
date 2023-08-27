@@ -473,16 +473,10 @@ def parse_args():
     # YH: Training detail
     parser.add_argument("--mask_lm_head", action="store_true")
     parser.add_argument(
-        "--max-src-length",
+        "--max_seq_len",
         type=int,
-        default=256,
+        default=2048,
         help="the maximum src sequence length",
-    )
-    parser.add_argument(
-        "--max-tgt-length",
-        type=int,
-        default=256,
-        help="the maximum target sequence length",
     )
     parser.add_argument("--patch-image-size", type=int, default=224)
     parser.add_argument("--resample_frames", type=int, default=32)

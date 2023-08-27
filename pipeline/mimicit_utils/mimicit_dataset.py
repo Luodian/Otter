@@ -73,11 +73,12 @@ class MimicitDataset(Dataset):
         self.args = args
         self.tokenizer = args.tokenizer
 
-        self.max_src_length = args.max_src_length
-        self.max_tgt_length = args.max_tgt_length
+        # self.max_src_length = args.max_src_length
+        # self.max_tgt_length = args.max_tgt_length
 
         self.seed = args.seed
         self.patch_image_size = args.patch_image_size
+        self.max_seq_len = args.max_seq_len
 
         self.epoch = 0
 
@@ -173,7 +174,7 @@ class MimicitDataset(Dataset):
 
         return first_letter + question[1:]
 
-    def pre_question(self, question, max_ques_words):
+    def pre_question(self, question):
         question = question.lower().lstrip(",.!?*#:;~").replace("-", " ").replace("/", " ")
         question = self.random_init_case(question)
 
@@ -186,14 +187,9 @@ class MimicitDataset(Dataset):
         question = question.rstrip("\n")
         question = question.strip(" ")
 
-        # truncate question
-        question_words = question.split(" ")
-        if len(question_words) > max_ques_words:
-            question = " ".join(question_words[:max_ques_words])
-
         return question
 
-    def pre_answer(self, answer, max_ans_words):
+    def pre_answer(self, answer, max_ans_words=1024):
         answer = re.sub(
             r"\s{2,}",
             " ",
@@ -262,8 +258,8 @@ class MimicitDataset(Dataset):
                 cur_instruction_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
                 cur_instruction = self.dataset[cur_instruction_id]["instruction"]
                 cur_answer = self.dataset[cur_instruction_id]["answer"]
-                cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
-                cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+                cur_instruction = self.pre_question(cur_instruction)
+                cur_answer = self.pre_answer(cur_answer)
                 if inst_format == "llama2":
                     if idx == 0:
                         cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
@@ -301,7 +297,7 @@ class MimicitDataset(Dataset):
                     patch_images = cur_patch_image
                 else:
                     patch_images = torch.cat((patch_images, cur_patch_image))
-                cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
+                cur_instruction = self.pre_question(cur_instruction)
                 cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
                 if inst_format == "llama2":
                     cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
@@ -324,7 +320,7 @@ class MimicitDataset(Dataset):
         random.shuffle(all_instruction_ids)
         for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
-            cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
+            cur_instruction = self.pre_question(cur_instruction)
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
             if inst_format == "llama2":
@@ -374,7 +370,7 @@ class MimicitDataset(Dataset):
                 patch_images = torch.cat((patch_images, cur_patch_image))
 
         patch_images = patch_images.unsqueeze(0)
-        instruction = self.pre_question(instruction, self.max_src_length)
+        instruction = self.pre_question(instruction)
         answer = self.pre_answer(answer, self.max_tgt_length)
         query_text = f"<image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>"
         all_texts = f"{incontext_text}{query_text}"
@@ -385,7 +381,7 @@ class MimicitDataset(Dataset):
         incontext_text = ""
         for cur_incontext_id in in_context_example_ids:
             cur_incontext_instruction = self.dataset[cur_incontext_id]["instruction"]
-            cur_incontext_instruction = self.pre_question(cur_incontext_instruction, self.max_src_length)
+            cur_incontext_instruction = self.pre_question(cur_incontext_instruction)
             cur_incontext_answer = self.dataset[cur_incontext_id]["answer"]
             cur_incontext_answer = self.pre_answer(cur_incontext_answer, self.max_tgt_length)
             cur_incontext_text = f"User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>"
@@ -403,7 +399,7 @@ class MimicitDataset(Dataset):
                 patch_images = torch.cat((patch_images, cur_patch_image))
 
         patch_images = patch_images.unsqueeze(0)
-        instruction = self.pre_question(instruction, self.max_src_length)
+        instruction = self.pre_question(instruction)
         answer = self.pre_answer(answer, self.max_tgt_length)
         query_text = f"User: {instruction} GPT:<answer> {answer}<|endofchunk|>"
         all_texts = f"{incontext_text}{all_texts}"
@@ -432,7 +428,7 @@ class MimicitDataset(Dataset):
                 patch_images = cur_patch_image
             else:
                 patch_images = torch.cat((patch_images, cur_patch_image))
-            cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
+            cur_instruction = self.pre_question(cur_instruction)
             cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
             if inst_format == "llama2":
                 if idx == 0:
@@ -464,7 +460,7 @@ class MimicitDataset(Dataset):
                 patch_images = cur_patch_image
             else:
                 patch_images = torch.cat((patch_images, cur_patch_image))
-            cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
+            cur_instruction = self.pre_question(cur_instruction)
             cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
             if "baize" in instruction_id:
                 cur_text = f"{cur_answer}"
@@ -518,26 +514,26 @@ class MimicitDataset(Dataset):
                 instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format
             )
 
-        src_text = self.tokenizer(
+        all_text = self.tokenizer(
             f"{all_texts}",
             return_tensors="pt",
             add_special_tokens=False,
             truncation=True,
-            max_length=2042,  # for current 2k mpt/llama model, setting to 2048 causes error (2042 works)
+            max_length=self.max_seq_len,  # for current 2k mpt/llama model, setting to 2048 causes error (2042 works)
         )
 
-        src_item = src_text["input_ids"].squeeze(0)
-        src_item_mask = src_text["attention_mask"].squeeze(0)
+        all_item = all_text["input_ids"].squeeze(0)
+        all_item_mask = all_text["attention_mask"].squeeze(0)
 
-        src_item = torch.cat([self.bos_item, src_item, self.eos_item])
-        src_item_mask = torch.cat([self.bos_mask, src_item_mask, self.eos_mask])
+        all_item = torch.cat([self.bos_item, all_item, self.eos_item])
+        all_item_mask = torch.cat([self.bos_mask, all_item_mask, self.eos_mask])
         # src_item = torch.cat([self.bos_item, src_item])
         # src_item_mask = torch.cat([self.bos_mask, src_item_mask])
 
         example = {
             "id": instruction_id,
-            "source": src_item,
-            "text_mask": src_item_mask,
+            "source": all_item,
+            "text_mask": all_item_mask,
             "patch_images": patch_images,
         }
 
