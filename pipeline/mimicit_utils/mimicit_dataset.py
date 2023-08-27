@@ -298,7 +298,7 @@ class MimicitDataset(Dataset):
                 else:
                     patch_images = torch.cat((patch_images, cur_patch_image))
                 cur_instruction = self.pre_question(cur_instruction)
-                cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+                cur_answer = self.pre_answer(cur_answer)
                 if inst_format == "llama2":
                     cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
                 elif inst_format == "idefics":
@@ -322,7 +322,7 @@ class MimicitDataset(Dataset):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_instruction = self.pre_question(cur_instruction)
             cur_answer = self.dataset[cur_instruction_id]["answer"]
-            cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+            cur_answer = self.pre_answer(cur_answer)
             if inst_format == "llama2":
                 if idx == 0:
                     cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
@@ -429,7 +429,7 @@ class MimicitDataset(Dataset):
             else:
                 patch_images = torch.cat((patch_images, cur_patch_image))
             cur_instruction = self.pre_question(cur_instruction)
-            cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+            cur_answer = self.pre_answer(cur_answer)
             if inst_format == "llama2":
                 if idx == 0:
                     cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
@@ -461,7 +461,7 @@ class MimicitDataset(Dataset):
             else:
                 patch_images = torch.cat((patch_images, cur_patch_image))
             cur_instruction = self.pre_question(cur_instruction)
-            cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+            cur_answer = self.pre_answer(cur_answer)
             if "baize" in instruction_id:
                 cur_text = f"{cur_answer}"
             elif inst_format == "llama2":
