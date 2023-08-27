@@ -494,6 +494,7 @@ def parse_args():
         type=str,
         help="path to customized additional config.json, use to modify from the original config.json in pretrained model.",
     )
+    parser.add_argument("--task_names", default="LA", type=str, help="task name, used to decide different function to load dataset.")
     # wandb args
     parser.add_argument("--report_to_wandb", default=False, action="store_true")
     parser.add_argument(

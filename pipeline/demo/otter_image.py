@@ -32,7 +32,7 @@ def get_content_type(file_path):
 
 def get_image(url: str) -> Union[Image.Image, list]:
     if not url.strip():  # Blank input, return a blank Image
-        return Image.new('RGB', (224, 224))  # Assuming 224x224 is the default size for the model. Adjust if needed.
+        return Image.new("RGB", (224, 224))  # Assuming 224x224 is the default size for the model. Adjust if needed.
     elif "://" not in url:  # Local file
         content_type = get_content_type(url)
     else:  # Remote URL
