@@ -869,14 +869,16 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
         if "lora_config" in self.config.__dict__:
             # Use another logic to unfreeze gated_cross_attn_layers and perceivers
-            print(f"LoRA trainable param: {(sum(p.numel() for p in self.lang_encoder.parameters() if p.requires_grad)) / 1e9:.3f} B")
+            print(f"LoRA trainable param: {(sum(param.numel() for name, param in self.lang_encoder.named_parameters() if 'lora' in name)) / 1e6:.3f} M")
+            for name, param in self.lang_encoder.named_parameters():
+                if "lora" in name:
+                    param.requires_grad = True
 
         # Freeze all parameters in lang encoders except gated_cross_attn_layers
         for name, param in self.lang_encoder.named_parameters():
             if "gated_cross_attn_layer" in name:
                 param.requires_grad = True
-            if "lm_head" in name:
-                param.requires_grad = True
+
         for name, param in self.named_parameters():
             if "perceiver" in name:
                 param.requires_grad = True
@@ -890,7 +892,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         for name, param in self.named_parameters():
             if param.requires_grad:
                 total_params += param.numel()
-                print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
+                # print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
         print(f"Total Trainable param: {total_params / 1e9:.6f} B")
         # print(f"Total Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.6f} B")
 
