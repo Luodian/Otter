@@ -130,8 +130,9 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 if IdeficsForVisionText2Text is not None and isinstance(unwrapped_model, IdeficsForVisionText2Text):
                     # only for image model
                     max_num_images = images.shape[1]
-                    image_attention_mask = get_image_attention_mask(input_ids, max_num_images, tokenizer)
-                    assert images.shape[1] == 1, "The second dimension is not 1"
+                    include_image = torch.all(images == 0)
+                    image_attention_mask = get_image_attention_mask(input_ids, max_num_images, tokenizer, include_image=include_image)
+                    # assert images.shape[1] == 1, "The second dimension is not 1"
 
                     loss_mimicit = model(
                         pixel_values=images.squeeze(1).to(dtype),
