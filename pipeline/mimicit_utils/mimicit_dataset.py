@@ -20,12 +20,6 @@ from PIL import Image, ImageFile
 import torch
 import numpy as np
 
-# from .transforms import *
-
-# from transforms import *
-
-# from transforms import *
-
 from torch.utils.data import Dataset
 
 
@@ -84,8 +78,8 @@ class MimicitDataset(Dataset):
 
         self.inst_format = args.inst_format
         self.resample_frames = args.resample_frames
-        self.text_data_list = ["LIMA", "MBPP", "SHAREGPT", "AL", "CAL"]
-        self.image_data_list = ["LA", "M3IT"]
+        self.text_data_list = ["LIMA", "MBPP", "TXT_SHAREGPT", "AL", "CAL", "TEXT_ONLY"]
+        self.image_data_list = ["LA", "M3IT", "PF"]
         self.video_data_list = ["DC", "FunQA", "E4D", "TVC", "VideoQA"]
         self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.\n<</SYS>>\n\n"
 
