@@ -305,7 +305,7 @@ class DistributedProxySampler(DistributedSampler):
 
 
 # supporting idefics processing
-def get_image_attention_mask(output_input_ids, max_num_images, tokenizer, include_image=False):
+def get_image_attention_mask(output_input_ids, max_num_images, tokenizer, include_image=True):
     # image_attention_mask, _ = image_attention_mask_for_packed_input_ids(output_input_ids, tokenizer)
     # image_attention_mask = incremental_to_binary_attention_mask(image_attention_mask, num_classes=max_num_images)
     if include_image:

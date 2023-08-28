@@ -270,7 +270,9 @@ class MimicitDataset(Dataset):
                         cur_text = (
                             f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
                         )
-                    else:
+                    elif idx < len(all_instruction_ids) - 1:
+                        cur_text = f"User:{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
+                    elif idx == len(all_instruction_ids) - 1:
                         cur_text = f"User:{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
                 elif inst_format == "simple":
                     if idx == 0:
