@@ -495,9 +495,13 @@ class MimicitDataset(Dataset):
         if cur_train_id.upper().startswith("LA"):
             patch_images, all_texts = self.process_llava(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
         elif cur_train_id.upper().startswith("SD") or cur_train_id.startswith("CGD"):
-            patch_images, all_texts = self.process_spot_the_difference(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
+            patch_images, all_texts = self.process_spot_the_difference(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format
+            )
         elif cur_train_id.upper().startswith("SN"):
-            patch_images, all_texts = self.process_scene_navigation(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
+            patch_images, all_texts = self.process_scene_navigation(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format
+            )
         elif any(cur_train_id.upper().startswith(videoqa_task) for videoqa_task in self.video_data_list) or self.task_name in self.video_data_list:
             patch_images, all_texts = self.process_general_videoqa(
                 instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=resample_frames, inst_format=inst_format
