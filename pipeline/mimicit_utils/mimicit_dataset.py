@@ -9,7 +9,7 @@ import re
 import contextlib
 import os
 import orjson
-import ijson.backends.yajl2_c as ijson
+import ijson.backends.yajl2_cffi as ijson
 from PIL import ImageFile
 from torchvision import transforms
 import random
@@ -128,7 +128,7 @@ class MimicitDataset(Dataset):
                     self.dataset.update(orjson.loads(f.read())["data"])
 
             with open(cur_images_path, "rb") as f:
-                for key, value in ijson.kvitems(f, ""):
+                for key, value in ijson.kvitems(f, "", use_float=True):
                     self.images[key] = value
 
             # Load the train_config
@@ -496,20 +496,20 @@ class MimicitDataset(Dataset):
         resample_frames = self.resample_frames
         # self.max_src_length = self.max_tgt_length = 256
 
-        if cur_train_id.startswith("LA"):
+        if cur_train_id.upper().startswith("LA"):
             patch_images, all_texts = self.process_llava(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
-        elif cur_train_id.startswith("SD") or cur_train_id.startswith("CGD"):
+        elif cur_train_id.upper().startswith("SD") or cur_train_id.startswith("CGD"):
             patch_images, all_texts = self.process_spot_the_difference(instruction_id, instruction, answer, image_ids, in_context_example_ids)
-        elif cur_train_id.startswith("SN"):
+        elif cur_train_id.upper().startswith("SN"):
             patch_images, all_texts = self.process_scene_navigation(instruction_id, instruction, answer, image_ids, in_context_example_ids)
-        elif any(cur_train_id.startswith(videoqa_task) for videoqa_task in self.video_data_list) or self.task_name in self.video_data_list:
+        elif any(cur_train_id.upper().startswith(videoqa_task) for videoqa_task in self.video_data_list) or self.task_name in self.video_data_list:
             patch_images, all_texts = self.process_general_videoqa(
                 instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=resample_frames
             )
-        elif any(cur_train_id.startswith(text_id) for text_id in self.text_data_list) or self.task_name in self.text_data_list:
+        elif any(cur_train_id.upper().startswith(text_id) for text_id in self.text_data_list) or self.task_name in self.text_data_list:
             # code to execute if cur_train_id starts with an item in self.text_data_list
             patch_images, all_texts = self.process_general_text(instruction_id, instruction, answer, image_ids, in_context_example_ids)
-        elif any(cur_train_id.startswith(image_id) for image_id in self.image_data_list) or self.task_name in self.image_data_list:
+        elif any(cur_train_id.upper().startswith(image_id) for image_id in self.image_data_list) or self.task_name in self.image_data_list:
             patch_images, all_texts = self.process_general_imageqa(
                 instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format
             )
