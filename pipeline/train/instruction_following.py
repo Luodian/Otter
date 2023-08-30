@@ -20,19 +20,14 @@ from transformers import (
 )
 
 import wandb
-from flamingo.configuration_flamingo import FlamingoConfig
 from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from otter.modeling_otter import OtterForConditionalGeneration
 from pipeline.train.data import get_data
 from pipeline.train.distributed import world_info_from_env
-from pipeline.train.train_utils import AverageMeter, get_checkpoint, get_checkpoint_deepspeed_zero3, get_image_attention_mask
-from transformers import AutoProcessor, AutoConfig
+from pipeline.train.train_utils import AverageMeter, get_checkpoint, get_image_attention_mask
+from transformers import AutoProcessor
 
 import deepspeed
-import json
-from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig
-from deepspeed.utils.zero_to_fp32 import load_state_dict_from_zero_checkpoint
-
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -61,8 +56,16 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     num_batches_per_epoch = len(mimicit_loaders[0])
     total_training_steps = num_batches_per_epoch * args.num_epochs
 
+    # special design for Idefics Model's prompt strategy
+    fake_token_image_exists = True if "<fake_token_around_image>" in tokenizer.special_tokens_map["additional_special_tokens"] else False
+    fake_token_image_token_id = tokenizer("<fake_token_around_image>", add_special_tokens=False)["input_ids"][-1]
+
+    # normal prompt strategy
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
-    endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)["input_ids"][-1]
+    endofchunk_text = (
+        "<|endofchunk|>" if "<|endofchunk|>" in tokenizer.special_tokens_map["additional_special_tokens"] else "<end_of_utterance>"
+    )  # for different tokenizer
+    endofchunk_token_id = tokenizer(endofchunk_text, add_special_tokens=False)["input_ids"][-1]
     answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
     ens_token_id = tokenizer(tokenizer.eos_token, add_special_tokens=False)["input_ids"][-1]
 
@@ -72,8 +75,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
     data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
-    dtype = accelerator.unwrap_model(model).dtype
-    print(f"Using dtype {dtype}")
+    autocast_type = torch.bfloat16 if accelerator.mixed_precision == "bf16" else torch.float32
 
     # loop through dataloader
     for num_steps, (batch_mimicits) in tqdm(
@@ -97,15 +99,6 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             labels[labels == tokenizer.pad_token_id] = -100
             labels[:, 0] = -100
             for i in range(labels.shape[0]):
-                # remove loss for any token before the first <image> token
-                # label_idx = 0
-                # while label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id:
-                #     labels[i][label_idx] = -100
-                #     label_idx += 1
-
-                # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
-                # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
-
                 # get index of all endofchunk/media tokens in the sequence
                 endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
                 media_idxs = torch.where(labels[i] == media_token_id)[0]
@@ -128,18 +121,29 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
             labels[labels == answer_token_id] = -100
             labels[labels == media_token_id] = -100
+            if fake_token_image_exists:
+                labels[labels == fake_token_image_token_id] = -100
 
             with accelerator.autocast():
                 unwrapped_model = accelerator.unwrap_model(model)
+                if num_steps == 0:
+                    # info check
+                    accelerator.print(f"input_ids: {input_ids.shape}")
+                    accelerator.print(f"images: {images.shape}")
+                    accelerator.print(f"attention_mask: {attention_mask.shape}")
+                    accelerator.print(f"labels: {labels.shape}")
+                    accelerator.print(f"model: {unwrapped_model.__class__.__name__}")
+                    accelerator.print(f"model dtype: {unwrapped_model.dtype}")
 
                 if IdeficsForVisionText2Text is not None and isinstance(unwrapped_model, IdeficsForVisionText2Text):
                     # only for image model
                     max_num_images = images.shape[1]
-                    image_attention_mask = get_image_attention_mask(input_ids, max_num_images, tokenizer)
-                    assert images.shape[1] == 1, "The second dimension is not 1"
+                    pure_text = torch.all(images == 0)
+                    image_attention_mask = get_image_attention_mask(input_ids, max_num_images, tokenizer, include_image=not pure_text)
+                    # assert images.shape[1] == 1, "The second dimension is not 1"
 
                     loss_mimicit = model(
-                        pixel_values=images.squeeze(1).to(dtype),
+                        pixel_values=images.squeeze(1).to(autocast_type),
                         input_ids=input_ids,
                         attention_mask=attention_mask,
                         image_attention_mask=image_attention_mask,
@@ -147,7 +151,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     )[0]
                 else:
                     loss_mimicit = model(
-                        vision_x=images.to(dtype),
+                        vision_x=images.to(autocast_type),
                         lang_x=input_ids,
                         attention_mask=attention_mask,
                         labels=labels,
@@ -361,16 +365,28 @@ def parse_args():
 
     # Arguments for text data, including multi-run conversations.
     parser.add_argument(
+        "--mimicit_text_path",
+        type=str,
+        default="",
+        help="Path to the new text dataset (including multi-run conversations). Should be in format /path/to/xx_instruction.json",
+    )
+    parser.add_argument(
+        "--train_config_text_path",
+        type=str,
+        default="",
+        help="Path to the new text dataset (including multi-run conversations). Should be in format /path/to/xx_train.json",
+    )
+    parser.add_argument(
         "--past_mimicit_text_path",
         type=str,
         default="",
         help="Path to the past text dataset (including multi-run conversations). Should be in format /path/to/xx_instruction.json",
     )
     parser.add_argument(
-        "--mimicit_text_path",
+        "--past_train_config_text_path",
         type=str,
         default="",
-        help="Path to the new text dataset (including multi-run conversations). Should be in format /path/to/xx_instruction.json",
+        help="Path to the past text dataset (including multi-run conversations). Should be in format /path/to/xx_train.json",
     )
 
     # Arguments for video-text data.
@@ -466,20 +482,22 @@ def parse_args():
     # YH: Training detail
     parser.add_argument("--mask_lm_head", action="store_true")
     parser.add_argument(
-        "--max-src-length",
+        "--max_seq_len",
         type=int,
-        default=256,
+        default=2048,
         help="the maximum src sequence length",
     )
-    parser.add_argument(
-        "--max-tgt-length",
-        type=int,
-        default=256,
-        help="the maximum target sequence length",
-    )
     parser.add_argument("--patch-image-size", type=int, default=224)
+    parser.add_argument("--resample_frames", type=int, default=32)
     # this could potentially save 33GB of all model parameters for otter-9b, including the language and vision model.
     parser.add_argument("--save_hf_model", default=False, action="store_true")
+    parser.add_argument(
+        "--customized_config",
+        default=None,
+        type=str,
+        help="path to customized additional config.json, use to modify from the original config.json in pretrained model.",
+    )
+    parser.add_argument("--task_name", default="", type=str, help="task name, used to decide different function to load dataset.")
     # wandb args
     parser.add_argument("--report_to_wandb", default=False, action="store_true")
     parser.add_argument(
@@ -539,7 +557,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps)
+    accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps, mixed_precision="bf16")
     if accelerator.state.deepspeed_plugin is not None:
         accelerator.state.deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = args.batch_size
 
@@ -548,11 +566,15 @@ def main():
     if args.pretrained_model_name_or_path is not None:
         accelerator.print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
         device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED" else "auto"
+        kwargs = {"local_files_only": args.offline, "device_map": device_map}
+        if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
+            kwargs.pop("device_map")
+        if args.customized_config is not None:
+            kwargs["config"] = args.customized_config
         if "otter" in args.model_name.lower():
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
-                device_map=device_map,
-                local_files_only=args.offline,
+                **kwargs,
             )
             args.tokenizer = model.text_tokenizer
             tokenizer = model.text_tokenizer
@@ -560,8 +582,7 @@ def main():
         elif "flamingo" in args.model_name.lower():
             model = FlamingoForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
-                device_map=device_map,
-                local_files_only=args.offline,
+                **kwargs,
             )
             # add special tokens for instruction tuning
             model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"]})
@@ -569,18 +590,11 @@ def main():
             tokenizer = model.text_tokenizer
             image_processor = CLIPImageProcessor()
         elif "idefics" in args.model_name.lower():
-            from transformers import IdeficsForVisionText2Text
-
-            # you need to install the idefics version transformers package first
-            kwargs = {"local_files_only": args.offline, "device_map": device_map}
-            if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
-                kwargs.pop("device_map")
-
+            # import pdb;pdb.set_trace()
             model = IdeficsForVisionText2Text.from_pretrained(
                 args.pretrained_model_name_or_path,
                 **kwargs,
             )
-
             if args.gradient_checkpointing:
                 model.gradient_checkpointing_enable()
 
@@ -592,33 +606,23 @@ def main():
                 with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
                     if torch.distributed.get_rank() == 0:
                         # 有参数
-                        print(device_id, f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
-                del params_to_gather
-
-            print(device_id, f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
-            # import pdb;pdb.set_trace()
+                        print(
+                            device_id,
+                            f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B",
+                        )
+            else:
+                print(
+                    device_id,
+                    f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B",
+                )
             processor = AutoProcessor.from_pretrained(args.pretrained_model_name_or_path, legacy=False)
             past_special_tokens = processor.tokenizer.special_tokens_map["additional_special_tokens"]
-            processor.tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>", "<|endofchunk|>"] + past_special_tokens})
+            processor.tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"] + past_special_tokens})
             image_processor = processor.image_processor
             tokenizer = processor.tokenizer
-            # For idefics model, do not resize token
-            # model.resize_token_embeddings(len(tokenizer))
-    else:
-        config = FlamingoConfig.from_json_file("./flamingo/config.json")
-        model = FlamingoForConditionalGeneration(config=config)
-
-        """
-        TODO: deprecate this option since the original checkpoints are not supported in future versions
-        TODO: all future checkpoints (even released from openflamingo), we will convert them and save to huggingface format.
-        TODO: supposedly using "args.pretrained_model_name_or_path" should be the best way to load the model.
-        """
-        if args.load_from_original_checkpoint is not None:
-            print(f"Loading checkpoint from {args.load_from_original_checkpoint}")
-            model.load_state_dict(
-                torch.load(args.load_from_original_checkpoint, map_location="cpu"),
-                False,
-            )
+            # make embedding size divisible by 64 for hardware compatiblity https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html#requirements-tc
+            new_embedding_size = (len(tokenizer) // 64 + 1) * 64
+            model.resize_token_embeddings(new_embedding_size, pad_to_multiple_of=64)
 
     if args.trained_ckpt is not None:
         train_ckpt = torch.load(args.trained_ckpt, map_location="cpu")
@@ -637,8 +641,6 @@ def main():
     random_seed(args.seed, args.rank)
 
     print(f"Start running training on rank {args.rank}.")
-
-    # device_id = args.rank % torch.cuda.device_count()
 
     mimicit_loaders = get_data(args, image_processor, tokenizer, "mimicit")
 

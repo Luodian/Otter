@@ -851,26 +851,35 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         return self.lang_encoder
 
     def init_weights(self):
-        # Freeze all parameters in vision encoder
-        for param in self.vision_encoder.parameters():
+        # Freeze all parameters in self.model
+        for param in self.parameters():
             param.requires_grad = False
+
+        # Freeze all parameters in vision encoder
+        if "train_vision_encoder" in self.config.__dict__ and self.config.train_vision_encoder is True:
+            for param in self.vision_encoder.parameters():
+                param.requires_grad = True
+
+        # Freeze all parameters in lang encoders except gated_cross_attn_layers
+        if "train_lang_encoder" in self.config.__dict__ and self.config.train_lang_encoder is True:
+            for name, param in self.lang_encoder.named_parameters():
+                param.requires_grad = True
 
         if "lora_config" in self.config.__dict__:
             # Use another logic to unfreeze gated_cross_attn_layers and perceivers
-            print(f"LoRA trainable param: {(sum(p.numel() for p in self.lang_encoder.parameters() if p.requires_grad)) / 1e9:.3f} B")
+            print(f"LoRA trainable param: {(sum(param.numel() for name, param in self.lang_encoder.named_parameters() if 'lora' in name)) / 1e6:.3f} M")
             for name, param in self.lang_encoder.named_parameters():
-                if "gated_cross_attn_layer" in name:
+                if "lora" in name:
                     param.requires_grad = True
-                if "lm_head" in name:
-                    param.requires_grad = True
-            for name, param in self.named_parameters():
-                if "perceiver" in name:
-                    param.requires_grad = True
-        else:
-            # Freeze all parameters in lang encoders except gated_cross_attn_layers
-            for name, param in self.lang_encoder.named_parameters():
-                if "gated_cross_attn_layer" not in name:
-                    param.requires_grad = False
+
+        # Freeze all parameters in lang encoders except gated_cross_attn_layers
+        for name, param in self.lang_encoder.named_parameters():
+            if "gated_cross_attn_layer" in name:
+                param.requires_grad = True
+
+        for name, param in self.named_parameters():
+            if "perceiver" in name:
+                param.requires_grad = True
         # Unfreeze LM input and output embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
