@@ -678,14 +678,31 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
 
     # processing for text datasets
     if args.mimicit_text_path != "":
+<<<<<<< HEAD:pipeline/mimicit_utils/data.py
         all_mimicit_text_path = args.mimicit_text_path.split(",") + args.past_mimicit_text_path.split(",") if args.past_mimicit_text_path != "" else args.mimicit_text_path.split(",")
         all_train_config_text_path = args.train_config_text_path.split(",") + args.past_train_config_text_path.split(",") if args.past_train_config_text_path != "" else args.train_config_text_path.split(",")
+=======
+        all_mimicit_text_path = (
+            args.mimicit_text_path.split(",") + args.past_mimicit_text_path.split(",")
+            if args.past_mimicit_text_path != ""
+            else args.mimicit_text_path.split(",")
+        )
+        all_train_config_text_path = (
+            args.train_config_text_path.split(",") + args.past_train_config_text_path.split(",")
+            if args.past_train_config_text_path != ""
+            else args.train_config_text_path.split(",")
+        )
+>>>>>>> 3ff22c5 ([Model] Fix bugs and improve code logic/performance (#258)):pipeline/train/data.py
 
         if args.past_mimicit_text_path != "":
             text_status = ["new"] * len(args.mimicit_text_path.split(",")) + ["past"] * len(args.past_mimicit_text_path.split(","))
         else:
             text_status = ["new"] * len(args.mimicit_text_path.split(","))
+<<<<<<< HEAD:pipeline/mimicit_utils/data.py
         unified_dataset = MimicitDataset(args=args, mimicit_paths=all_mimicit_text_path, train_config_paths=all_train_config_text_path, status_list=text_status)
+=======
+        unified_dataset = MimicitDataset(args, all_mimicit_text_path, all_train_config_text_path, status_list=text_status)
+>>>>>>> 3ff22c5 ([Model] Fix bugs and improve code logic/performance (#258)):pipeline/train/data.py
         unified_datasets.append(unified_dataset)
 
     # processing for video-text datasets
