@@ -12,7 +12,6 @@ __pycache__/
 *.zip
 *.dat
 *.dir
-*.json
 *.html
 *.mp4
 *.png

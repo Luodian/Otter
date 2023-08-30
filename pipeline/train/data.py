@@ -690,11 +690,17 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
             if args.past_mimicit_text_path != ""
             else args.mimicit_text_path.split(",")
         )
+        all_train_config_text_path = (
+            args.train_config_text_path.split(",") + args.past_train_config_text_path.split(",")
+            if args.past_train_config_text_path != ""
+            else args.train_config_text_path.split(",")
+        )
+
         if args.past_mimicit_text_path != "":
             text_status = ["new"] * len(args.mimicit_text_path.split(",")) + ["past"] * len(args.past_mimicit_text_path.split(","))
         else:
             text_status = ["new"] * len(args.mimicit_text_path.split(","))
-        unified_dataset = MimicitDataset(args, all_mimicit_text_path, status_list=text_status)
+        unified_dataset = MimicitDataset(args, all_mimicit_text_path, all_train_config_text_path, status_list=text_status)
         unified_datasets.append(unified_dataset)
 
     # processing for video-text datasets
