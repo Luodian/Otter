@@ -31,7 +31,9 @@ def get_content_type(file_path):
 
 
 def get_image(url: str) -> Union[Image.Image, list]:
-    if "://" not in url:  # Local file
+    if not url.strip():  # Blank input, return a blank Image
+        return Image.new("RGB", (224, 224))  # Assuming 224x224 is the default size for the model. Adjust if needed.
+    elif "://" not in url:  # Local file
         content_type = get_content_type(url)
     else:  # Remote URL
         content_type = requests.head(url, stream=True, verify=False).headers.get("Content-Type")
@@ -56,7 +58,10 @@ def get_response(image, prompt: str, model=None, image_processor=None) -> str:
     input_data = image
 
     if isinstance(input_data, Image.Image):
-        vision_x = image_processor.preprocess([input_data], return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)
+        if input_data.size == (224, 224) and not any(input_data.getdata()):  # Check if image is blank 224x224 image
+            vision_x = torch.zeros(1, 1, 1, 3, 224, 224, dtype=next(model.parameters()).dtype)
+        else:
+            vision_x = image_processor.preprocess([input_data], return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)
     else:
         raise ValueError("Invalid input data. Expected PIL Image.")
 
