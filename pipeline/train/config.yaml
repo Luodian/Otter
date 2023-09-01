@@ -1,5 +1,7 @@
-training_data:
-  - mimicit: /home/luodian/projects/Otter/archived/VideoQA_Instruction.json
-    images: /home/luodian/projects/Otter/archived/VideoQA_Images.json
-  - mimicit: /home/luodian/projects/data/DC/DC_instructions.json
-    images: /home/luodian/projects/data/DC/DC_images.json
+mimicit_vt_path:
+  - /data/pufanyi/training_data/SD/SD_instructions.json
+  - /data/pufanyi/training_data/CGD/CGD_instructions.json
+
+images_vt_path:
+  - /data/pufanyi/training_data/SD/SD.json
+  - /data/pufanyi/training_data/CGD/CGD.json
