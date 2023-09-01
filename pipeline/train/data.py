@@ -17,7 +17,6 @@ import torch
 import torch.utils
 import torchvision
 import webdataset as wds
-from typing import List, Iterable
 from PIL import Image, ImageSequence, ImageFile
 from torch.utils.data import DataLoader, IterableDataset, RandomSampler, get_worker_info
 from torch.utils.data.distributed import DistributedSampler
