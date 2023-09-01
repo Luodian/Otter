@@ -7,7 +7,7 @@ import math
 import os
 import random
 import sys
-import tarfile
+import yaml
 from dataclasses import dataclass
 from multiprocessing import Value
 import numpy as np
@@ -647,6 +647,19 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     args.task = "pretrain"
     args.tokenizer = tokenizer
     unified_datasets = []
+
+    def append_datasets(args, dataset_config_dict):
+        for name, data in dataset_config_dict.items():
+            if getattr(args, name) == "":
+                setattr(args, name, ",".join(data))
+            else:
+                setattr(args, name, ",".join(data + [getattr(args, name)]))
+
+    if args.training_data_yaml != "":
+        with open(args.training_data_yaml, "r") as f:
+            dataset_config_dict = yaml.safe_load(f)
+            append_datasets(args, dataset_config_dict)
+
     # processing for image-text in-context datasets
     if args.mimicit_ic_path != "":
         all_mimicit_ic_path = (

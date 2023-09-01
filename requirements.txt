@@ -33,3 +33,4 @@ yajl>=0.3.5
 deepspeed>=0.10.0
 wandb>=0.15.8
 trl>=0.5.0
+pyyaml>=6.0.1
