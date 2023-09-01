@@ -391,6 +391,12 @@ def parse_args():
 
     # Arguments for video-text data.
     parser.add_argument(
+        "--training_data_yaml",
+        type=str,
+        default="",
+        help="Path to the training data yaml file.",
+    )
+    parser.add_argument(
         "--past_mimicit_vt_path",
         type=str,
         default="",
