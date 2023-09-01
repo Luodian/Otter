@@ -11,6 +11,7 @@ AVAILABLE_DATASETS: List[str] = [
     "3d.SceneNavigation",
     "fpv.EGO4D",
     "2d.Llava",
+    "video.FunQA",
 ]
 
 

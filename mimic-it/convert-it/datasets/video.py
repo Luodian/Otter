@@ -207,3 +207,24 @@ class TVCaptions(AbstractDataset):
             progress_bar.close()
 
         return all_images
+
+
+# TODO add a FunQA dataset class
+
+
+class FunQA(AbstractDataset):
+    """
+    Dataset class for FunQA
+    """
+
+    def __init__(self, name: str, short_name: str, *, image_path: str, num_threads: int):
+        """
+        Initializes a FunQA dataset.
+
+        Args:
+            name (str): The name of the dataset. Defaults to "FunQA".
+            short_name (str): The short name of the dataset. Defaults to "FunQA".
+            image_path (str): The path to the directory containing the dataset images, downloaded from https://entuedu-my.sharepoint.com/:f:/g/personal/jingkang001_e_ntu_edu_sg/EmBja9v8w4NAgqVmLC_xZ2QBKD1a2vjzxpW-QZisk1sc-g?e=bSbdQg
+            num_threads (int): The number of threads to use for processing the images.
+        """
+        super().__init__(name, short_name, image_path, num_threads)
