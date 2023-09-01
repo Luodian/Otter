@@ -42,7 +42,12 @@
 > Our models would be sometimes offline due to GPU limitation (if we need to train new models lol). You can refer to 🏎️ [Run Otter Locally](./pipeline/demo) to try Otter-Image and Otter-Video more smoothly on your local machine, with at least 16G GPU mem (BF16/FP16 Mode) to help your tasks like image/video tagging, captioning or identifying harmful content.
 
 **Corresponding Checkpoints:**  [luodian/OTTER-Image-MPT7B](https://huggingface.co/luodian/OTTER-Image-MPT7B) | [luodian/OTTER-Video-LLaMA7B-DenseCaption](https://huggingface.co/luodian/OTTER-Video-LLaMA7B-DenseCaption)
+
+For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.org.cn/header/openxlab_models.svg)](https://openxlab.org.cn/models/detail/YuanhanZhang/OTTER-Image-MPT7B) | [![Open in OpenXLab](https://cdn-static.openxlab.org.cn/header/openxlab_models.svg)](https://openxlab.org.cn/models/detail/YuanhanZhang/OTTER-Video-LLaMA7B-DenseCaption))
 > **Otter-Image** supports multiple images input as in-context examples, which is **the first multi-modal instruction tuned model** that supports to organize inputs this way.
+
+
+
 
 > **Otter-Video** supports videos inputs (frames are arranged as original Flamingo's implementation) and multiple images inputs (they serve as in-context examples for each other).
 
