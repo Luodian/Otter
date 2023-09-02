@@ -217,7 +217,7 @@ class FunQA(AbstractDataset):
     Dataset class for FunQA
     """
 
-    def __init__(self, name: str, short_name: str, *, image_path: str, num_threads: int):
+    def __init__(self, name: str = "FunQA", short_name: str = "FunQA", *, image_path: str, num_threads: int):
         """
         Initializes a FunQA dataset.
 
