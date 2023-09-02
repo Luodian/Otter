@@ -30,9 +30,9 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
     ],
-    entry_points={
-        "console_scripts": [
-            # "syphus = syphus.cli.syphus_cli:main",
-        ],
-    },
+    # entry_points={
+    #     "console_scripts": [
+    #         # "syphus = syphus.cli.syphus_cli:main",
+    #     ],
+    # },
 )

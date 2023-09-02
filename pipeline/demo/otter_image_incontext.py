@@ -11,9 +11,9 @@ from torchvision.transforms import Compose, Resize, ToTensor
 from tqdm import tqdm
 import sys
 
-sys.path.append("../..")
+sys.path.append("../../src")
 
-from models.otter.modeling_otter import OtterForConditionalGeneration
+from otter import OtterForConditionalGeneration
 
 
 # Disable warnings

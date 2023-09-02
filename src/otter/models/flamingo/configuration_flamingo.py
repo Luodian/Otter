@@ -7,9 +7,9 @@ from transformers.models.auto import CONFIG_MAPPING
 from transformers.models.clip import CLIPVisionConfig
 import sys
 
-from models.flamingo.falcon.configuration_RW import RWConfig
-from models.flamingo.mpt.configuration_mpt import MPTConfig
-from models.flamingo.mpt_redpajama.configuration_mosaic_gpt import MosaicGPTConfig
+from .falcon.configuration_RW import RWConfig
+from .mpt.configuration_mpt import MPTConfig
+from .mpt_redpajama.configuration_mosaic_gpt import MosaicGPTConfig
 
 
 logger = logging.get_logger(__name__)

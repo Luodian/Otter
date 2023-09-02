@@ -8,9 +8,9 @@ import transformers
 from PIL import Image
 import sys
 
-sys.path.append("../..")
+sys.path.append("../../src")
 # make sure you can properly access the otter folder
-from models.otter.modeling_otter import OtterForConditionalGeneration
+from otter import OtterForConditionalGeneration
 
 # Disable warnings
 requests.packages.urllib3.disable_warnings()

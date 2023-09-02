@@ -19,8 +19,8 @@ from transformers import (
     get_linear_schedule_with_warmup,
 )
 import wandb
-from models.flamingo.modeling_flamingo import FlamingoForConditionalGeneration
-from models.otter.modeling_otter import OtterForConditionalGeneration
+from otter import FlamingoForConditionalGeneration
+from otter import OtterForConditionalGeneration
 from pipeline.train.data import get_data
 from pipeline.train.distributed import world_info_from_env
 from pipeline.train.train_utils import AverageMeter, get_checkpoint

@@ -7,7 +7,7 @@ import transformers
 from pipeline.eval.eval_model import BaseEvalModel
 from contextlib import suppress
 from pipeline.eval.models.utils import unwrap_model
-from models.otter.modeling_otter import OtterForConditionalGeneration
+from otter import OtterForConditionalGeneration
 import os
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
