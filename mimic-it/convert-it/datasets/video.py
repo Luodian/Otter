@@ -230,3 +230,27 @@ class FunQA(AbstractDataset):
         super().__init__(name, short_name, image_path, num_threads)
 
     def _load_images(self, image_path: str, num_thread: int) -> dict[str, bytes]:
+        dataset_type = "test"
+        videos = (
+            glob(f"{image_path}/{dataset_type}_creative/*.mp4")
+            + glob(f"{image_path}/{dataset_type}_humor/*.mp4")
+            + glob(f"{image_path}/{dataset_type}_magic/*.mp4")
+        )
+        if len(videos) <= 100:
+            raise ValueError("Not enough videos in the dataset, please check the path.")
+        with ThreadPoolExecutor(max_workers=num_thread) as executor:
+            results = {}
+            process_bar = tqdm(total=len(videos), desc="Processing videos into images", unit="video")
+            cnt = 0
+            for video, framed_results in executor.map(lambda x: (get_image_name(x), frame_video(x)), videos):
+                for index, result in enumerate(framed_results):
+                    # print("video", video)
+                    name = video + "_" + str(index).zfill(4)
+                    results[name] = result
+                process_bar.update(1)
+
+                cnt = cnt + 1
+                if cnt % 100 == 0:
+                    gc.collect()
+            process_bar.close()
+            return results
