@@ -10,7 +10,7 @@ import sys
 
 sys.path.append("../..")
 # make sure you can properly access the otter folder
-from otter.modeling_otter import OtterForConditionalGeneration
+from models.otter.modeling_otter import OtterForConditionalGeneration
 
 # Disable warnings
 requests.packages.urllib3.disable_warnings()

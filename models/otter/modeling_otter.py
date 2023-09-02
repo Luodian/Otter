@@ -9,9 +9,9 @@ from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
 from .configuration_otter import OtterConfig
 
-from flamingo.falcon.modelling_RW import RWForCausalLM
-from flamingo.mpt.modeling_mpt import MPTForCausalLM
-from flamingo.mpt_redpajama.mosaic_gpt import MosaicGPT
+from models.flamingo.falcon.modelling_RW import RWForCausalLM
+from models.flamingo.mpt.modeling_mpt import MPTForCausalLM
+from models.flamingo.mpt_redpajama.mosaic_gpt import MosaicGPT
 
 from transformers.models.auto import AutoModel, AutoModelForCausalLM, AutoTokenizer
 from peft import get_peft_model, LoraConfig, TaskType

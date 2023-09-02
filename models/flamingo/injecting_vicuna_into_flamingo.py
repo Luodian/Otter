@@ -6,8 +6,8 @@ from tqdm import tqdm
 
 import sys
 
-from flamingo.configuration_flamingo import FlamingoConfig
-from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
+from models.flamingo.configuration_flamingo import FlamingoConfig
+from models.flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 
 # from .configuration_flamingo import FlamingoConfig
 # from .modeling_flamingo import FlamingoForConditionalGeneration
