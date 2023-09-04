@@ -6,8 +6,8 @@ with open("requirements.txt") as f:
     requirements = f.read().splitlines()
 
 setup(
-    name="otter",
-    version="0.0.0.1",
+    name="otter-ai",
+    version="0.0.0-alpha",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     install_requires=requirements,
@@ -25,7 +25,6 @@ setup(
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
