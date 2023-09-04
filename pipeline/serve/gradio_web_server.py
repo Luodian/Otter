@@ -8,7 +8,7 @@ import uuid
 import gradio as gr
 import requests
 import re
-from pipeline.conversation import default_conversation, conv_templates, SeparatorStyle
+from pipeline.serve.conversation import default_conversation, conv_templates, SeparatorStyle
 from pipeline.constants import LOGDIR
 from pipeline.serve.serving_utils import (
     build_logger,

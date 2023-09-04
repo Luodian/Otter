@@ -3,7 +3,7 @@ import json
 
 import requests
 
-from pipeline.conversation import default_conversation
+from pipeline.serve.conversation import default_conversation
 
 
 def main():
