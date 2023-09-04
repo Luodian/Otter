@@ -16,7 +16,7 @@ import torch.nn.functional as F
 from transformers import PreTrainedModel
 from transformers.modeling_outputs import CausalLMOutputWithPast
 
-from otter.models.flamingo.mpt.custom_embedding import SharedEmbedding
+from otter_ai.models.flamingo.mpt.custom_embedding import SharedEmbedding
 
 from .attention import attn_bias as module_attn_bias
 from .attention import attn_bias_shape as module_attn_bias_shape

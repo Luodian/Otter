@@ -19,8 +19,8 @@ from transformers import (
 )
 
 import wandb
-from otter import FlamingoForConditionalGeneration
-from otter import OtterForConditionalGeneration
+from otter_ai import FlamingoForConditionalGeneration
+from otter_ai import OtterForConditionalGeneration
 from pipeline.train.data import get_data
 from pipeline.train.distributed import world_info_from_env
 from pipeline.train.train_utils import AverageMeter, get_checkpoint

@@ -5,9 +5,9 @@ from transformers.utils import logging
 from transformers.models.auto import CONFIG_MAPPING
 from transformers.models.clip import CLIPVisionConfig
 
-from otter.models.flamingo.falcon.configuration_RW import RWConfig
-from otter.models.flamingo.mpt.configuration_mpt import MPTConfig
-from otter.models.flamingo.mpt_redpajama.configuration_mosaic_gpt import MosaicGPTConfig
+from otter_ai.models.flamingo.falcon.configuration_RW import RWConfig
+from otter_ai.models.flamingo.mpt.configuration_mpt import MPTConfig
+from otter_ai.models.flamingo.mpt_redpajama.configuration_mosaic_gpt import MosaicGPTConfig
 
 logger = logging.get_logger(__name__)
 

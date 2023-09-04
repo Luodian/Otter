@@ -7,7 +7,7 @@ with open("requirements.txt") as f:
 
 setup(
     name="otter-ai",
-    version="0.0.0-alpha",
+    version="0.0.0-alpha-2",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     install_requires=requirements,
@@ -15,8 +15,8 @@ setup(
     #     "otter": ["resources/**/*"],
     # },
     # include_package_data=True,
-    author="Bo Li, Yuanhan Zhang, Liangyu Chen, Jinghao Wang, Fanyi Pu, Jingkang Yang, Chunyuan Li, Ziwei Liu",
-    author_email="LIBO0013@e.ntu.edu.sg, YUANHAN002@e.ntu.edu.sg, LCHEN025@e.ntu.edu.sg, JINGHAO003@e.ntu.edu.sg, FPU001@e.ntu.edu.sg, chunyl@microsoft.com, ziwei.liu@ntu.edu.sg",
+    author="Otter Team",
+    author_email="drluodian@gmail.com",
     description="Otter: A Multi-Modal Model with In-Context Instruction Tuning",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",

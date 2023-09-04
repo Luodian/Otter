@@ -2,8 +2,8 @@
 # You can use it in parent folder by running: python -m models.otter.converting_flamingo_to_otter --checkpoint_path <path_to_flamingo_checkpoint> --save_path <path_to_save_otter_checkpoint>
 import argparse
 import torch
-from otter.models.otter.modeling_otter import OtterForConditionalGeneration
-from otter.models.flamingo.modeling_flamingo import FlamingoForConditionalGeneration
+from otter_ai.models.otter.modeling_otter import OtterForConditionalGeneration
+from otter_ai.models.flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 
 # Define argument parser
 parser = argparse.ArgumentParser(description="Load a model with specified precision and save it to a specified path.")

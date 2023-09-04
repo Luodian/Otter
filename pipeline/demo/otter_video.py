@@ -10,7 +10,7 @@ import sys
 
 sys.path.append("../../src")
 # make sure you can properly access the otter folder
-from otter import OtterForConditionalGeneration
+from otter_ai import OtterForConditionalGeneration
 
 # Disable warnings
 requests.packages.urllib3.disable_warnings()

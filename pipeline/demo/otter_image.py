@@ -13,7 +13,7 @@ import sys
 
 sys.path.append("../../src")
 
-from otter import OtterForConditionalGeneration
+from otter_ai import OtterForConditionalGeneration
 
 
 # Disable warnings
