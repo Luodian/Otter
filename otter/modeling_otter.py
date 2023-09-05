@@ -19,7 +19,7 @@ from peft import get_peft_model, LoraConfig, TaskType
 import sys
 import random
 
-from trl import AutoModelForCausalLMWithValueHead
+from pipeline.utils.modeling_value_head import AutoModelForCausalLMWithValueHead
 
 # The package importlib_metadata is in a different place, depending on the python version.
 if sys.version_info < (3, 8):
@@ -1023,11 +1023,6 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
         self.lang_encoder.clear_conditioned_layers()
         return output
-
-
-from trl.models.modeling_value_head import AutoModelForCausalLMWithValueHead
-
-
 class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
     config_class = OtterConfig
 
@@ -1050,10 +1045,6 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
             elif config.text_config.architectures[0] == "LlamaForCausalLM":
                 text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
                 lang_encoder = LlamaForCausalLM(config=config.text_config)
-            else:
-                import pdb
-
-                pdb.set_trace()
         else:
             text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
             lang_encoder = LlamaForCausalLM(config=config.text_config)

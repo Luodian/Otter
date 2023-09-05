@@ -16,12 +16,12 @@ from transformers import (
 from dataclasses import dataclass, field
 from typing import Optional
 from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
-from otter.modeling_otter import OtterForConditionalGeneration
+from otter.modeling_otter import OtterForConditionalGenerationWithValueHead
 from pipeline.train.data import get_data
 from transformers import AutoProcessor, HfArgumentParser
 
 import deepspeed
-from trl import PPOTrainer, PPOConfig, create_reference_model
+from pipeline.utils.otter_ppo_trainer import OTTERPPOTrainer, PPOConfig, create_reference_model
 from trl.core import LengthSampler
 from trl.models.modeling_value_head import AutoModelForCausalLMWithValueHead
 from datasets import load_dataset
@@ -78,7 +78,7 @@ class ScriptArguments:
         default=0.2,
         metadata={"help": "Initial KL penalty coefficient (used for adaptive and linear control)"},
     )
-
+    worker: Optional[int] = field(default=24, metadata={"help": "the worker name"})
     adap_kl_ctrl: Optional[bool] = field(default=True, metadata={"help": "Use adaptive KL control, otherwise linear"})
     offline: Optional[bool] = field(default=False, metadata={"help": "whether to load from local files"})
 
@@ -90,6 +90,7 @@ def build_dataset(
     train_dataset,
     tokenizer,
     dataset_name="lvwerra/stack-exchange-paired",
+    num_proc = 24,
 ):
     """
     Build dataset for training. This builds the dataset from `load_dataset`, one should
@@ -169,7 +170,7 @@ def main():
         accelerator.print(f"Loading pretrained model from {script_args.pretrained_model_name_or_path}")
         device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED" else "auto"
         if "otter" in script_args.model_name.lower():
-            model = OtterForConditionalGeneration.from_pretrained(
+            model = OtterForConditionalGenerationWithValueHead.from_pretrained(
                 script_args.pretrained_model_name_or_path,
                 device_map=device_map,
                 local_files_only=script_args.offline,
@@ -238,8 +239,8 @@ def main():
 
     random_seed(script_args.seed, script_args.rank)
     print(f"Start running training on rank {script_args.rank}.")
-    model.lang_encoder_with_vhead = AutoModelForCausalLMWithValueHead(model.lang_encoder)
-    ref_lang_encoder = create_reference_model(model.lang_encoder_with_vhead)
+    # model.lang_encoder_with_vhead = AutoModelForCausalLMWithValueHead(model.lang_encoder)
+    # ref_lang_encoder = create_reference_model(model.lang_encoder_with_vhead)
 
     # We then define the arguments to pass to the `generate` function. These arguments
     # are passed to the `generate` function of the PPOTrainer, which is a wrapper around
@@ -266,16 +267,16 @@ def main():
     train_dataset = load_dataset("lvwerra/stack-exchange-paired", data_dir="data/rl", split="train")
     train_dataset = train_dataset.select(range(100000))
     # We retrieve the dataloader by calling the `build_dataset` function.
-    dataset = build_dataset(train_dataset, tokenizer)
+    dataset = build_dataset(train_dataset, tokenizer, num_proc=script_args.worker)
 
     def collator(data):
         return dict((key, [d[key] for d in data]) for key in data[0])
 
-    # We then build the PPOTrainer, passing the model, the reference model, the tokenizer
-    ppo_trainer = PPOTrainer(
+    # We then build the OTTERPPOTrainer, passing the model, the reference model, the tokenizer
+    ppo_trainer = OTTERPPOTrainer(
         config,
-        model=model.lang_encoder_with_vhead,
-        ref_model=ref_lang_encoder,
+        model=model,
+        # ref_model=ref_lang_encoder,
         tokenizer=tokenizer,
         dataset=dataset,
         data_collator=collator,
