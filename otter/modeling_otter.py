@@ -1023,6 +1023,8 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
         self.lang_encoder.clear_conditioned_layers()
         return output
+
+
 class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
     config_class = OtterConfig
 

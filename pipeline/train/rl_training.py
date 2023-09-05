@@ -90,7 +90,7 @@ def build_dataset(
     train_dataset,
     tokenizer,
     dataset_name="lvwerra/stack-exchange-paired",
-    num_proc = 24,
+    num_proc=24,
 ):
     """
     Build dataset for training. This builds the dataset from `load_dataset`, one should

@@ -55,9 +55,8 @@ from trl.import_utils import is_torch_greater_2_0
 from trl.models import PreTrainedModelWrapper, create_reference_model
 from trl.trainer import AdaptiveKLController, BaseTrainer, FixedKLController, PPOConfig
 from otter.modeling_otter import OtterForConditionalGenerationWithValueHead
-SUPPORTED_ARCHITECTURES = (
-    OtterForConditionalGenerationWithValueHead
-)
+
+SUPPORTED_ARCHITECTURES = OtterForConditionalGenerationWithValueHead
 
 
 MODEL_CARD_TEMPLATE = """---
@@ -184,13 +183,9 @@ class OTTERPPOTrainer(BaseTrainer):
         if not isinstance(config, PPOConfig):
             raise ValueError(f"config must be a PPOConfig, got {type(config)}")
         if not isinstance(tokenizer, (PreTrainedTokenizerBase)):
-            raise ValueError(
-                f"tokenizer must be a PreTrainedTokenizerBase like a PreTrainedTokenizer or a PreTrainedTokenizerFast, got {type(tokenizer)}"
-            )
+            raise ValueError(f"tokenizer must be a PreTrainedTokenizerBase like a PreTrainedTokenizer or a PreTrainedTokenizerFast, got {type(tokenizer)}")
         if not isinstance(model, (SUPPORTED_ARCHITECTURES)):
-            raise ValueError(
-                f"model must be a PreTrainedModelWrapper, got {type(model)} - supported architectures are: {SUPPORTED_ARCHITECTURES}"
-            )
+            raise ValueError(f"model must be a PreTrainedModelWrapper, got {type(model)} - supported architectures are: {SUPPORTED_ARCHITECTURES}")
         # Step 1: Initialize Accelerator
         self.accelerator = Accelerator(
             log_with=config.log_with,
@@ -226,14 +221,11 @@ class OTTERPPOTrainer(BaseTrainer):
             self.ref_model = None
         else:
             raise ValueError(
-                f"ref_model must be a PreTrainedModelWrapper or `None`, got {type(ref_model)} - supported "
-                f"architectures are: {SUPPORTED_ARCHITECTURES} "
+                f"ref_model must be a PreTrainedModelWrapper or `None`, got {type(ref_model)} - supported " f"architectures are: {SUPPORTED_ARCHITECTURES} "
             )
 
         if not (isinstance(tokenizer, PreTrainedTokenizer) or isinstance(tokenizer, PreTrainedTokenizerFast)):
-            raise ValueError(
-                "tokenizer must be a transformers.PreTrainedTokenizer or transformers.PreTrainedTokenizerFast"
-            )
+            raise ValueError("tokenizer must be a transformers.PreTrainedTokenizer or transformers.PreTrainedTokenizerFast")
         self.tokenizer = tokenizer
 
         if dataset is not None and not (isinstance(dataset, torch.utils.data.Dataset) or isinstance(dataset, Dataset)):
@@ -273,16 +265,10 @@ class OTTERPPOTrainer(BaseTrainer):
 
         self.lr_scheduler = lr_scheduler
         if self.lr_scheduler is not None:
-            lr_scheduler_class = (
-                torch.optim.lr_scheduler._LRScheduler
-                if not is_torch_greater_2_0()
-                else torch.optim.lr_scheduler.LRScheduler
-            )
+            lr_scheduler_class = torch.optim.lr_scheduler._LRScheduler if not is_torch_greater_2_0() else torch.optim.lr_scheduler.LRScheduler
 
             if not isinstance(self.lr_scheduler, lr_scheduler_class):
-                raise ValueError(
-                    "lr_scheduler must be a torch.optim.lr_scheduler._LRScheduler or torch.optim.lr_scheduler.LRScheduler (for torch >= 2.0)"
-                )
+                raise ValueError("lr_scheduler must be a torch.optim.lr_scheduler._LRScheduler or torch.optim.lr_scheduler.LRScheduler (for torch >= 2.0)")
 
         if self.config.adap_kl_ctrl:
             self.kl_ctl = AdaptiveKLController(self.config.init_kl_coef, self.config.target, self.config.horizon)
@@ -290,9 +276,7 @@ class OTTERPPOTrainer(BaseTrainer):
             self.kl_ctl = FixedKLController(self.config.init_kl_coef)
 
         # Safety checkers for DS integration
-        is_deepspeed_used = self.accelerator.distributed_type == "DEEPSPEED" and hasattr(
-            self.accelerator.state, "deepspeed_plugin"
-        )
+        is_deepspeed_used = self.accelerator.distributed_type == "DEEPSPEED" and hasattr(self.accelerator.state, "deepspeed_plugin")
 
         (
             self.model,
@@ -310,8 +294,7 @@ class OTTERPPOTrainer(BaseTrainer):
         if is_deepspeed_used:
             # 8 bit models are already set on the correct device
             if not self.is_peft_model and not (
-                getattr(self.ref_model.pretrained_model, "is_loaded_in_8bit", False)
-                or getattr(self.ref_model.pretrained_model, "is_loaded_in_4bit", False)
+                getattr(self.ref_model.pretrained_model, "is_loaded_in_8bit", False) or getattr(self.ref_model.pretrained_model, "is_loaded_in_4bit", False)
             ):
                 # DS integration only allows for single model and as `ref_model` is only used for
                 # `KL divergence loss`,i.e, in eval model, just have it be on the respective device and
@@ -455,9 +438,7 @@ class OTTERPPOTrainer(BaseTrainer):
         else:
             if length_sampler is not None:
                 generation_kwargs["max_new_tokens"] = length_sampler()
-            response = self.accelerator.unwrap_model(self.model).generate(
-                input_ids=query_tensor.unsqueeze(dim=0), **generation_kwargs
-            )
+            response = self.accelerator.unwrap_model(self.model).generate(input_ids=query_tensor.unsqueeze(dim=0), **generation_kwargs)
 
             if not return_prompt and not self.is_encoder_decoder:
                 return response[:, query_tensor.shape[0] :]
@@ -550,9 +531,7 @@ class OTTERPPOTrainer(BaseTrainer):
             if not isinstance(tensor_list[0], torch.Tensor):
                 raise ValueError(f"Elements in {name} must be tensors - got {type(tensor_list[0])}")
             if batch_size is not None and len(tensor_list) != batch_size:
-                raise ValueError(
-                    f"Batch size ({batch_size}) does not match number of examples - but got {len(tensor_list)} for: {name}"
-                )
+                raise ValueError(f"Batch size ({batch_size}) does not match number of examples - but got {len(tensor_list)} for: {name}")
 
         # add queries, scores and responses on the correct device
         queries = [tensor.to(self.current_device) for tensor in queries]
@@ -620,9 +599,7 @@ class OTTERPPOTrainer(BaseTrainer):
                 pad_index=self.tokenizer.pad_token_id,
                 pad_first=pad_first,
             )
-            model_inputs["attention_mask"] = self.accelerator.pad_across_processes(
-                model_inputs["attention_mask"], dim=1, pad_index=0, pad_first=pad_first
-            )
+            model_inputs["attention_mask"] = self.accelerator.pad_across_processes(model_inputs["attention_mask"], dim=1, pad_index=0, pad_first=pad_first)
             if self.is_encoder_decoder:
                 model_inputs["decoder_input_ids"] = self.accelerator.pad_across_processes(
                     model_inputs["decoder_input_ids"],
@@ -642,9 +619,7 @@ class OTTERPPOTrainer(BaseTrainer):
         full_kl_penalty = self.config.kl_penalty == "full"
 
         with torch.no_grad():
-            all_logprobs, logits_or_none, values, masks = self.batched_forward_pass(
-                self.model, queries, responses, model_inputs, return_logits=full_kl_penalty
-            )
+            all_logprobs, logits_or_none, values, masks = self.batched_forward_pass(self.model, queries, responses, model_inputs, return_logits=full_kl_penalty)
 
             # for when the model is a peft model
             if self.is_peft_model and hasattr(
@@ -673,9 +648,7 @@ class OTTERPPOTrainer(BaseTrainer):
                 active_full_logprobs = logprobs_from_logits(logits_or_none, None, gather=False)
                 ref_full_logprobs = logprobs_from_logits(ref_logits_or_none, None, gather=False)
 
-                rewards, non_score_reward = self.compute_rewards(
-                    scores, active_full_logprobs, ref_full_logprobs, masks
-                )
+                rewards, non_score_reward = self.compute_rewards(scores, active_full_logprobs, ref_full_logprobs, masks)
             else:
                 rewards, non_score_reward = self.compute_rewards(scores, all_logprobs, ref_logprobs, masks)
             timing["time/ppo/compute_rewards"] = time.time() - t
@@ -858,22 +831,16 @@ class OTTERPPOTrainer(BaseTrainer):
 
     def prepare_model_inputs(self, queries: torch.Tensor, responses: torch.Tensor):
         if self.is_encoder_decoder:
-            input_data = self.data_collator(
-                [{"input_ids": q, "attention_mask": torch.ones_like(q)} for q in queries]
-            ).to(self.current_device)
+            input_data = self.data_collator([{"input_ids": q, "attention_mask": torch.ones_like(q)} for q in queries]).to(self.current_device)
 
-            decoder_inputs = self.data_collator(
-                [{"input_ids": r, "attention_mask": torch.ones_like(r)} for r in responses]
-            ).to(self.current_device)
+            decoder_inputs = self.data_collator([{"input_ids": r, "attention_mask": torch.ones_like(r)} for r in responses]).to(self.current_device)
 
             input_data["decoder_input_ids"] = decoder_inputs["input_ids"]
             input_data["decoder_attention_mask"] = decoder_inputs["attention_mask"]
 
         else:
             input_ids = [torch.cat([q, r]) for q, r in zip(queries, responses)]
-            input_data = self.data_collator(
-                [{"input_ids": ids, "attention_mask": torch.ones_like(ids)} for ids in input_ids]
-            ).to(self.current_device)
+            input_data = self.data_collator([{"input_ids": ids, "attention_mask": torch.ones_like(ids)} for ids in input_ids]).to(self.current_device)
 
         input_data.pop("labels", None)  # we don't want to compute LM losses
 
@@ -990,9 +957,7 @@ class OTTERPPOTrainer(BaseTrainer):
             train_stats (dict[str, `torch.Tensor`]):
                 Dictionary of training statistics
         """
-        loss_p, loss_v, train_stats = self.loss(
-            old_logprobs, values, logits, vpreds, logprobs, mask, advantages, returns
-        )
+        loss_p, loss_v, train_stats = self.loss(old_logprobs, values, logits, vpreds, logprobs, mask, advantages, returns)
         loss = loss_p + loss_v
         self.accelerator.backward(loss)
         if self.config.max_grad_norm is not None:
@@ -1129,9 +1094,7 @@ class OTTERPPOTrainer(BaseTrainer):
 
         avg_ratio = masked_mean(ratio, mask).item()
         if avg_ratio > self.config.ratio_threshold:
-            warnings.warn(
-                f"The average ratio of batch ({avg_ratio:.2f}) exceeds threshold {self.config.ratio_threshold:.2f}. Skipping batch."
-            )
+            warnings.warn(f"The average ratio of batch ({avg_ratio:.2f}) exceeds threshold {self.config.ratio_threshold:.2f}. Skipping batch.")
             pg_loss = pg_loss * 0.0
             vf_loss = vf_loss * 0.0
             loss = loss * 0.0
@@ -1187,9 +1150,7 @@ class OTTERPPOTrainer(BaseTrainer):
         mean_kl = kl_list.mean()
         mean_entropy = (-data["logprobs"] * mask).sum(axis=-1).mean()
 
-        mean_non_score_reward = masked_mean(
-            data["non_score_reward"], mask
-        )  # non_score_reward is size `batch_size`, `response_length`
+        mean_non_score_reward = masked_mean(data["non_score_reward"], mask)  # non_score_reward is size `batch_size`, `response_length`
         mean_scores = torch.stack(data["scores"]).mean()  # scores is size `batch_size`
         std_scores = torch.stack(data["scores"]).std()
 
@@ -1256,10 +1217,7 @@ class OTTERPPOTrainer(BaseTrainer):
 
             if "query" not in batch.keys() and "response" not in batch.keys():
                 # warn the user that the game logs will not be logged
-                warnings.warn(
-                    "The game logs will not be logged because the batch does not contain the keys 'query' and "
-                    "'response'. "
-                )
+                warnings.warn("The game logs will not be logged because the batch does not contain the keys 'query' and " "'response'. ")
             elif self.config.log_with == "wandb":
                 import wandb
 
