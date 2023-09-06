@@ -293,7 +293,7 @@ def main():
     device = ppo_trainer.accelerator.device
     if ppo_trainer.accelerator.num_processes == 1:
         device = 0 if torch.cuda.is_available() else "cpu"  # to avoid a ` pipeline` bug
-        
+
     sentiment_pipe = pipeline(
         "sentiment-analysis",
         model=reward_model_name,

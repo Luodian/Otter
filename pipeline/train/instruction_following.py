@@ -538,7 +538,7 @@ def parse_args():
         os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
     args.local_rank, args.rank, args.world_size = world_info_from_env()
-    
+
     random_seed(args.seed)
 
     return args
