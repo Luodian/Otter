@@ -382,9 +382,11 @@ class MimicitDataset(Dataset):
                     cur_text = f"[INST]{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
             elif inst_format == "idefics":
                 if idx == 0:
-                    cur_text = f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
-                else:
-                    cur_text = f"User:{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
+                    cur_text = f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
+                elif idx < len(all_instruction_ids) - 1:
+                    cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
+                elif idx == len(all_instruction_ids) - 1:
+                    cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>"
             elif inst_format == "simple":
                 if idx == 0:
                     cur_text = f"<image>User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
