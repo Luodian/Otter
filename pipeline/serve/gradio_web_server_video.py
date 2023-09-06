@@ -14,7 +14,6 @@ import cv2
 import re
 
 from pipeline.serve.conversation import default_conversation, conv_templates, SeparatorStyle
-from pipeline.constants import LOGDIR
 from pipeline.serve.serving_utils import (
     build_logger,
     server_error_msg,
@@ -23,6 +22,10 @@ from pipeline.serve.serving_utils import (
 )
 from pipeline.serve.gradio_patch import Chatbot as grChatbot
 from pipeline.serve.gradio_css import code_highlight_css
+
+CONTROLLER_HEART_BEAT_EXPIRATION = 2 * 60
+WORKER_HEART_BEAT_INTERVAL = 30
+LOGDIR = "./logs"
 
 DEFAULT_IMAGE_TOKEN = "<image>"
 DEFAULT_DEMO_END_TOKEN = "<|endofchunk|>"
