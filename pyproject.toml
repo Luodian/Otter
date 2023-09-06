@@ -1,2 +1,8 @@
 [tool.black]
-line-length = 160
+line-length = 180
+
+[tool.isort]
+atomic = true
+profile = "black"
+line_length = 180
+skip_gitignore = true

@@ -52,18 +52,24 @@ def random_seed(seed=42, rank=0):
     random.seed(seed + rank)
 
 
-def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
+def train_one_epoch(
+    args, model, epoch, mimicit_loaders, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb
+):
     num_batches_per_epoch = len(mimicit_loaders[0])
     total_training_steps = num_batches_per_epoch * args.num_epochs
 
     # special design for Idefics Model's prompt strategy
-    fake_token_image_exists = True if "<fake_token_around_image>" in tokenizer.special_tokens_map["additional_special_tokens"] else False
+    fake_token_image_exists = (
+        True if "<fake_token_around_image>" in tokenizer.special_tokens_map["additional_special_tokens"] else False
+    )
     fake_token_image_token_id = tokenizer("<fake_token_around_image>", add_special_tokens=False)["input_ids"][-1]
 
     # normal prompt strategy
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
     endofchunk_text = (
-        "<|endofchunk|>" if "<|endofchunk|>" in tokenizer.special_tokens_map["additional_special_tokens"] else "<end_of_utterance>"
+        "<|endofchunk|>"
+        if "<|endofchunk|>" in tokenizer.special_tokens_map["additional_special_tokens"]
+        else "<end_of_utterance>"
     )  # for different tokenizer
     endofchunk_token_id = tokenizer(endofchunk_text, add_special_tokens=False)["input_ids"][-1]
     answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
@@ -73,7 +79,9 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
     # setup logging
     step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
-    data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
+    data_time_m = (
+        AverageMeter()
+    )  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
     autocast_type = torch.bfloat16 if accelerator.mixed_precision == "bf16" else torch.float32
 
@@ -139,7 +147,9 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     # only for image model
                     max_num_images = images.shape[1]
                     pure_text = torch.all(images == 0)
-                    image_attention_mask = get_image_attention_mask(input_ids, max_num_images, tokenizer, include_image=not pure_text)
+                    image_attention_mask = get_image_attention_mask(
+                        input_ids, max_num_images, tokenizer, include_image=not pure_text
+                    )
                     # assert images.shape[1] == 1, "The second dimension is not 1"
 
                     loss_mimicit = model(
@@ -201,8 +211,12 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         if accelerator.sync_gradients:
             if args.rank == 0 and args.report_to_wandb:
                 # compute within rank 0
-                mimicit_samples_per_second = args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.val
-                mimicit_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size / step_time_m.val
+                mimicit_samples_per_second = (
+                    args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.val
+                )
+                mimicit_samples_per_second_per_gpu = (
+                    args.gradient_accumulation_steps * args.batch_size / step_time_m.val
+                )
 
                 wandb.log(
                     {
@@ -227,7 +241,12 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 # torch.cuda.empty_cache()
                 # gc.collect()  # forces garbage collection
 
-            if args.rank == 0 and global_step != 0 and (args.save_steps_interval != -1) and (global_step % args.save_steps_interval == 0):
+            if (
+                args.rank == 0
+                and global_step != 0
+                and (args.save_steps_interval != -1)
+                and (global_step % args.save_steps_interval == 0)
+            ):
                 if not os.path.exists(args.external_save_dir):
                     os.makedirs(args.external_save_dir)
 
@@ -239,12 +258,16 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_steps_{global_step}.pt")
                 accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_steps_{global_step}.pt")
                 if args.delete_previous_checkpoint:
-                    if epoch > 0 and os.path.exists(f"{args.external_save_dir}/checkpoint_step_{global_step-args.save_steps_interval}.pt"):
+                    if epoch > 0 and os.path.exists(
+                        f"{args.external_save_dir}/checkpoint_step_{global_step-args.save_steps_interval}.pt"
+                    ):
                         os.remove(f"{args.external_save_dir}/checkpoint_step_{global_step-args.save_steps_interval}.pt")
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
-            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss MIMIC-IT: {mean_loss.item():.3f}")
+            print(
+                f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss MIMIC-IT: {mean_loss.item():.3f}"
+            )
 
 
 def parse_args():
@@ -497,22 +520,14 @@ def parse_args():
         type=str,
         help="path to customized additional config.json, use to modify from the original config.json in pretrained model.",
     )
-    parser.add_argument("--task_name", default="", type=str, help="task name, used to decide different function to load dataset.")
-    # wandb args
+    parser.add_argument(
+        "--task_name", default="", type=str, help="task name, used to decide different function to load dataset."
+    )
     parser.add_argument("--report_to_wandb", default=False, action="store_true")
+    parser.add_argument("--wandb_project", type=str)
+    parser.add_argument("--wandb_entity", type=str)
     parser.add_argument(
-        "--wandb_project",
-        type=str,
-    )
-    parser.add_argument(
-        "--wandb_entity",
-        type=str,
-    )
-    parser.add_argument(
-        "--save_checkpoints_to_wandb",
-        default=False,
-        action="store_true",
-        help="save checkpoints to wandb",
+        "--save_checkpoints_to_wandb", default=False, action="store_true", help="save checkpoints to wandb"
     )
     parser.add_argument(
         "--resume_from_checkpoint",
@@ -526,7 +541,6 @@ def parse_args():
         action="store_true",
         help="delete previous checkpoint when saving new checkpoint",
     )
-    # parser = add_data_args(parser)
     args = parser.parse_args()
 
     # Check for argument consistency and set environment variables if needed
@@ -554,7 +568,11 @@ def main():
 
     if args.pretrained_model_name_or_path is not None:
         accelerator.print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
-        device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED" else "auto"
+        device_map = (
+            {"": device_id}
+            if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED"
+            else "auto"
+        )
         kwargs = {"local_files_only": args.offline, "device_map": device_map}
         if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
             kwargs.pop("device_map")
@@ -640,7 +658,13 @@ def main():
         params_with_wd, params_without_wd = [], []
 
         def apply_decay(x):
-            return "gated_cross_attn_layer" in x and "ff_gate" not in x and "attn_gate" not in x and "norm" not in x and "bias" not in x
+            return (
+                "gated_cross_attn_layer" in x
+                and "ff_gate" not in x
+                and "attn_gate" not in x
+                and "norm" not in x
+                and "bias" not in x
+            )
 
         for n, p in model.named_parameters():
             # if p.requires_grad:
@@ -657,7 +681,9 @@ def main():
     total_training_steps = len(mimicit_loaders[0]) * args.num_epochs
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
-    args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
+    args.external_save_dir = (
+        os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
+    )
     if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is True:
         checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
         if len(checkpoint_list) == 0:
@@ -679,7 +705,9 @@ def main():
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
 
-    args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_stepsps
+    args.warmup_steps = (
+        total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
+    )
 
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
@@ -707,7 +735,9 @@ def main():
     if accelerator.distributed_type == "DEEPSPEED" or accelerator.distributed_type == "MULTI_GPU":
         model, optimizer = accelerator.prepare(model, optimizer)
     else:
-        model, optimizer, lr_scheduler, mimicit_loaders = accelerator.prepare(model, optimizer, lr_scheduler, mimicit_loaders)
+        model, optimizer, lr_scheduler, mimicit_loaders = accelerator.prepare(
+            model, optimizer, lr_scheduler, mimicit_loaders
+        )
 
     model.train()
 
