@@ -226,9 +226,7 @@ def _convert_bloom_causal_lm_to_prefix_lm(model: BloomForCausalLM) -> BloomForCa
         **deprecated_arguments,
     ) -> Union[Tuple[torch.Tensor, ...], BaseModelOutputWithPastAndCrossAttentions]:
         if deprecated_arguments.pop("position_ids", False) is not False:
-            warnings.warn(
-                "`position_ids` have no functionality in BLOOM and will be removed in v5.0.0. " + "You can safely ignore passing `position_ids`.", FutureWarning
-            )
+            warnings.warn("`position_ids` have no functionality in BLOOM and will be removed in v5.0.0. " + "You can safely ignore passing `position_ids`.", FutureWarning)
         if len(deprecated_arguments) > 0:
             raise ValueError(f"Got unexpected arguments: {deprecated_arguments}")
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
@@ -262,12 +260,8 @@ def _convert_bloom_causal_lm_to_prefix_lm(model: BloomForCausalLM) -> BloomForCa
             attention_mask = torch.ones((batch_size, seq_length_with_past), device=hidden_states.device)
         else:
             attention_mask = attention_mask.to(hidden_states.device)
-        alibi = self._build_alibi_tensor(
-            batch_size=batch_size, query_length=seq_length, key_length=seq_length_with_past, dtype=hidden_states.dtype, device=hidden_states.device
-        )
-        causal_mask = self._prepare_attn_mask(
-            attention_mask, bidirectional_mask, input_shape=(batch_size, seq_length), past_key_values_length=past_key_values_length
-        )
+        alibi = self._build_alibi_tensor(batch_size=batch_size, query_length=seq_length, key_length=seq_length_with_past, dtype=hidden_states.dtype, device=hidden_states.device)
+        causal_mask = self._prepare_attn_mask(attention_mask, bidirectional_mask, input_shape=(batch_size, seq_length), past_key_values_length=past_key_values_length)
         for i, (block, layer_past) in enumerate(zip(self.h, past_key_values)):
             if output_hidden_states:
                 hst = (hidden_states,)
@@ -306,9 +300,7 @@ def _convert_bloom_causal_lm_to_prefix_lm(model: BloomForCausalLM) -> BloomForCa
             all_hidden_states = all_hidden_states + hst
         if not return_dict:
             return tuple((v for v in [hidden_states, presents, all_hidden_states, all_self_attentions] if v is not None))
-        return BaseModelOutputWithPastAndCrossAttentions(
-            last_hidden_state=hidden_states, past_key_values=presents, hidden_states=all_hidden_states, attentions=all_self_attentions
-        )
+        return BaseModelOutputWithPastAndCrossAttentions(last_hidden_state=hidden_states, past_key_values=presents, hidden_states=all_hidden_states, attentions=all_self_attentions)
 
     setattr(model.transformer, "_prepare_attn_mask", MethodType(_prepare_attn_mask, model.transformer))
     setattr(model.transformer, "_build_alibi_tensor", MethodType(_build_alibi_tensor, model.transformer))
@@ -332,9 +324,7 @@ def _convert_bloom_causal_lm_to_prefix_lm(model: BloomForCausalLM) -> BloomForCa
     ) -> Union[Tuple[torch.Tensor], CausalLMOutputWithCrossAttentions]:
         """Replacement forward method for BloomCausalLM."""
         if deprecated_arguments.pop("position_ids", False) is not False:
-            warnings.warn(
-                "`position_ids` have no functionality in BLOOM and will be removed " + "in v5.0.0. You can safely ignore passing `position_ids`.", FutureWarning
-            )
+            warnings.warn("`position_ids` have no functionality in BLOOM and will be removed " + "in v5.0.0. You can safely ignore passing `position_ids`.", FutureWarning)
         if len(deprecated_arguments) > 0:
             raise ValueError(f"Got unexpected arguments: {deprecated_arguments}")
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
@@ -409,18 +399,12 @@ def _convert_opt_causal_lm_to_prefix_lm(model: OPTForCausalLM) -> OPTForCausalLM
         if input_shape[-1] > 1:
             if self.bidirectional_mask == "g":
                 (bsz, src_length) = input_shape
-                combined_attention_mask = torch.zeros(
-                    (bsz, 1, src_length, src_length + past_key_values_length), dtype=inputs_embeds.dtype, device=inputs_embeds.device
-                )
+                combined_attention_mask = torch.zeros((bsz, 1, src_length, src_length + past_key_values_length), dtype=inputs_embeds.dtype, device=inputs_embeds.device)
             else:
-                combined_attention_mask = _make_causal_mask_opt(input_shape, inputs_embeds.dtype, past_key_values_length=past_key_values_length).to(
-                    inputs_embeds.device
-                )
+                combined_attention_mask = _make_causal_mask_opt(input_shape, inputs_embeds.dtype, past_key_values_length=past_key_values_length).to(inputs_embeds.device)
                 if self.bidirectional_mask is not None:
                     assert attention_mask.shape == self.bidirectional_mask.shape
-                    expanded_bidirectional_mask = _expand_mask_opt(self.bidirectional_mask, inputs_embeds.dtype, tgt_len=input_shape[-1]).to(
-                        inputs_embeds.device
-                    )
+                    expanded_bidirectional_mask = _expand_mask_opt(self.bidirectional_mask, inputs_embeds.dtype, tgt_len=input_shape[-1]).to(inputs_embeds.device)
                     combined_attention_mask = torch.maximum(expanded_bidirectional_mask, combined_attention_mask)
         if attention_mask is not None:
             expanded_attn_mask = _expand_mask_opt(attention_mask, inputs_embeds.dtype, tgt_len=input_shape[-1]).to(inputs_embeds.device)
@@ -568,8 +552,6 @@ def add_bidirectional_mask_if_missing(batch: Dict[str, Any]):
             for i, continuation_indices in enumerate(batch["continuation_indices"]):
                 batch["bidirectional_mask"][i, continuation_indices] = 0
         elif "labels" in batch and "attention_mask" in batch:
-            batch["bidirectional_mask"] = torch.logical_and(torch.eq(batch["attention_mask"], 1), torch.eq(batch["labels"], -100)).type_as(
-                batch["attention_mask"]
-            )
+            batch["bidirectional_mask"] = torch.logical_and(torch.eq(batch["attention_mask"], 1), torch.eq(batch["labels"], -100)).type_as(batch["attention_mask"])
         else:
             raise KeyError("No bidirectional_mask in batch and not sure how to construct one.")

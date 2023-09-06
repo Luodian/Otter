@@ -162,11 +162,7 @@ class MosaicGPT(PreTrainedModel):
     def _apply_prefix_mask(self, attn_bias: torch.Tensor, prefix_mask: torch.Tensor):
         s_k, s_q = attn_bias.shape[-2:]
         if (s_k != self.config.max_seq_len) or (s_q != self.config.max_seq_len):
-            raise ValueError(
-                "attn_bias does not match the expected shape. "
-                + f"The last two dimensions should both be {self.config.max_length} "
-                + f"but are {s_k} and {s_q}."
-            )
+            raise ValueError("attn_bias does not match the expected shape. " + f"The last two dimensions should both be {self.config.max_length} " + f"but are {s_k} and {s_q}.")
         seq_len = prefix_mask.shape[-1]
         if seq_len > self.config.max_seq_len:
             raise ValueError(f"prefix_mask sequence length cannot exceed max_seq_len={self.config.max_seq_len}")
@@ -240,9 +236,7 @@ class MosaicGPT(PreTrainedModel):
 
         if self.training:
             if self.attn_uses_sequence_id and sequence_id is None:
-                raise ValueError(
-                    "sequence_id is a required argument when MosaicGPT is configured with attn_uses_sequence_id=True " + "and the model is in train mode."
-                )
+                raise ValueError("sequence_id is a required argument when MosaicGPT is configured with attn_uses_sequence_id=True " + "and the model is in train mode.")
             elif (self.attn_uses_sequence_id is False) and (sequence_id is not None):
                 warnings.warn(
                     "MosaicGPT received non-None input for `sequence_id` but is configured with attn_uses_sequence_id=False. "
@@ -261,8 +255,7 @@ class MosaicGPT(PreTrainedModel):
             if past_key_values is not None:
                 if len(past_key_values) != self.config.n_layers:
                     raise ValueError(
-                        f"past_key_values must provide a past_key_value for each attention "
-                        + f"layer in the network ({len(past_key_values)=}; {self.config.n_layers=})."
+                        f"past_key_values must provide a past_key_value for each attention " + f"layer in the network ({len(past_key_values)=}; {self.config.n_layers=})."
                     )
                 # get the key tensor whose spec should be (batch, seq, dim), and
                 # collect the `seq`, so that the position embedding is shifted
@@ -289,9 +282,7 @@ class MosaicGPT(PreTrainedModel):
             assert isinstance(self.transformer.emb_drop, nn.Module)  # pyright
             x = self.transformer.emb_drop(x_shrunk)
 
-        attn_bias, attention_mask = self._attn_bias(
-            device=x.device, dtype=x.dtype, attention_mask=attention_mask, prefix_mask=prefix_mask, sequence_id=sequence_id
-        )
+        attn_bias, attention_mask = self._attn_bias(device=x.device, dtype=x.dtype, attention_mask=attention_mask, prefix_mask=prefix_mask, sequence_id=sequence_id)
 
         # initialize the past key values cache if it should be used
         if use_cache and past_key_values is None:

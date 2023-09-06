@@ -130,9 +130,7 @@ class ModelWorker:
         assert r.status_code == 200
 
     def send_heart_beat(self):
-        logger.info(
-            f"Send heart beat. Models: {[self.model_name]}. " f"Semaphore: {pretty_print_semaphore(model_semaphore)}. " f"global_counter: {global_counter}"
-        )
+        logger.info(f"Send heart beat. Models: {[self.model_name]}. " f"Semaphore: {pretty_print_semaphore(model_semaphore)}. " f"global_counter: {global_counter}")
 
         url = self.controller_addr + "/receive_heart_beat"
 

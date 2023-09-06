@@ -82,9 +82,7 @@ def _infer_decoder_layers_attr_name(model: nn.Module):
         if k.lower() in model.__class__.__name__.lower():
             return __KNOWN_DECODER_LAYERS_ATTR_NAMES[k]
 
-    raise ValueError(
-        f"We require the attribute name for the nn.ModuleList in the decoder storing the transformer block layers. Please supply this string manually."
-    )
+    raise ValueError(f"We require the attribute name for the nn.ModuleList in the decoder storing the transformer block layers. Please supply this string manually.")
 
 
 def extend_instance(obj, mixin):
@@ -475,12 +473,7 @@ class OtterLMMixin(nn.Module):
             ]
         )
         self._set_decoder_layers(
-            nn.ModuleList(
-                [
-                    OtterLayer(gated_cross_attn_layer, decoder_layer)
-                    for gated_cross_attn_layer, decoder_layer in zip(gated_cross_attn_layers, self._get_decoder_layers())
-                ]
-            )
+            nn.ModuleList([OtterLayer(gated_cross_attn_layer, decoder_layer) for gated_cross_attn_layer, decoder_layer in zip(gated_cross_attn_layers, self._get_decoder_layers())])
         )
         self.media_token_id = media_token_id
         self.use_media_placement_augmentation = use_media_placement_augmentation
@@ -1158,9 +1151,7 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
 
         if "lora_config" in self.config.__dict__:
             # Use another logic to unfreeze gated_cross_attn_layers and perceivers
-            print(
-                f"LoRA trainable param: {(sum(p.numel() for p in self.lang_encoder_with_vhead.pretrained_model.parameters() if p.requires_grad)) / 1e9:.3f} B"
-            )
+            print(f"LoRA trainable param: {(sum(p.numel() for p in self.lang_encoder_with_vhead.pretrained_model.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
         # Unfreeze LM input and output embeddings
         self.lang_encoder_with_vhead.pretrained_model.get_input_embeddings().requires_grad_(True)

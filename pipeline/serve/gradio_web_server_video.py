@@ -506,24 +506,14 @@ def build_demo(embed_mode):
 
         with gr.Row():
             with gr.Column(scale=3):
-                model_selector = gr.Dropdown(choices=models, value=models[0] if len(models) > 0 else "", interactive=True, show_label=False).style(
-                    container=False
-                )
+                model_selector = gr.Dropdown(choices=models, value=models[0] if len(models) > 0 else "", interactive=True, show_label=False).style(container=False)
 
                 videobox_3 = gr.Video(label="Video")
 
-                textbox_demo_question_1 = gr.Textbox(label="Demo Text Query 1 (optional)", show_label=True, placeholder="Example: What is in the image?").style(
-                    container=True
-                )
-                textbox_demo_answer_1 = gr.Textbox(label="Demo Text Answer 1 (optional)", show_label=True, placeholder="<Describe Demo Image 1>").style(
-                    container=True
-                )
-                textbox_demo_question_2 = gr.Textbox(label="Demo Text Query 2 (optional)", show_label=True, placeholder="Example: What is in the image?").style(
-                    container=True
-                )
-                textbox_demo_answer_2 = gr.Textbox(label="Demo Text Answer 2 (optional)", show_label=True, placeholder="<Describe Demo Image 2>").style(
-                    container=True
-                )
+                textbox_demo_question_1 = gr.Textbox(label="Demo Text Query 1 (optional)", show_label=True, placeholder="Example: What is in the image?").style(container=True)
+                textbox_demo_answer_1 = gr.Textbox(label="Demo Text Answer 1 (optional)", show_label=True, placeholder="<Describe Demo Image 1>").style(container=True)
+                textbox_demo_question_2 = gr.Textbox(label="Demo Text Query 2 (optional)", show_label=True, placeholder="Example: What is in the image?").style(container=True)
+                textbox_demo_answer_2 = gr.Textbox(label="Demo Text Answer 2 (optional)", show_label=True, placeholder="<Describe Demo Image 2>").style(container=True)
 
                 with gr.Accordion("Parameters", open=False, visible=False) as parameter_row:
                     max_new_tokens = gr.Slider(minimum=16, maximum=512, value=512, step=1, interactive=True, label="# generation tokens")
@@ -650,7 +640,5 @@ if __name__ == "__main__":
     models = get_model_list()
     logger.info(args)
     demo = build_demo(args.embed)
-    demo.queue(concurrency_count=args.concurrency_count, status_update_rate=10, api_open=False).launch(
-        server_name=args.host, server_port=args.port, share=args.share
-    )
+    demo.queue(concurrency_count=args.concurrency_count, status_update_rate=10, api_open=False).launch(server_name=args.host, server_port=args.port, share=args.share)
     gr.close_all()

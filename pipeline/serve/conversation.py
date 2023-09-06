@@ -177,8 +177,7 @@ class Conversation:
 
 
 conv_v1 = Conversation(
-    system="A chat between a curious human and an artificial intelligence assistant. "
-    "The assistant gives helpful, detailed, and polite answers to the human's questions.",
+    system="A chat between a curious human and an artificial intelligence assistant. " "The assistant gives helpful, detailed, and polite answers to the human's questions.",
     roles=("Human", "Assistant"),
     messages=(
         ("Human", "Give three tips for staying healthy."),
@@ -206,8 +205,7 @@ conv_v1 = Conversation(
 )
 
 conv_v1_2 = Conversation(
-    system="A chat between a curious human and an artificial intelligence assistant. "
-    "The assistant gives helpful, detailed, and polite answers to the human's questions.",
+    system="A chat between a curious human and an artificial intelligence assistant. " "The assistant gives helpful, detailed, and polite answers to the human's questions.",
     roles=("Human", "Assistant"),
     messages=(
         (

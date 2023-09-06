@@ -801,9 +801,7 @@ class FlashAttnKVPackedFunc(torch.autograd.Function):
         with torch.inference_mode():
             dq = torch.empty_like(q)
             dkv = torch.empty_like(kv)
-            _flash_attn_backward(
-                do, q, kv[:, :, 0], kv[:, :, 1], o, lse, dq, dkv[:, :, 0], dkv[:, :, 1], bias=bias, causal=ctx.causal, softmax_scale=ctx.softmax_scale
-            )
+            _flash_attn_backward(do, q, kv[:, :, 0], kv[:, :, 1], o, lse, dq, dkv[:, :, 0], dkv[:, :, 1], bias=bias, causal=ctx.causal, softmax_scale=ctx.softmax_scale)
         return (dq, dkv, None, None, None)
 
 

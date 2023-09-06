@@ -1022,9 +1022,7 @@ def evaluate_classification(
                 else:
                     return prompt_text
 
-            context_text = "".join(
-                f"{sample_to_prompt(in_context_samples[i])}{in_context_samples[i]['class_name']}<|endofchunk|>" for i in range(effective_num_shots)
-            )
+            context_text = "".join(f"{sample_to_prompt(in_context_samples[i])}{in_context_samples[i]['class_name']}<|endofchunk|>" for i in range(effective_num_shots))
 
             # Keep the text but remove the image tags for the zero-shot case
             if num_shots == 0:

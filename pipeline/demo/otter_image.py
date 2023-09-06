@@ -86,17 +86,7 @@ def get_response(image, prompt: str, model=None, image_processor=None) -> str:
         num_beams=3,
         no_repeat_ngram_size=3,
     )
-    parsed_output = (
-        model.text_tokenizer.decode(generated_text[0])
-        .split("<answer>")[-1]
-        .lstrip()
-        .rstrip()
-        .split("<|endofchunk|>")[0]
-        .lstrip()
-        .rstrip()
-        .lstrip('"')
-        .rstrip('"')
-    )
+    parsed_output = model.text_tokenizer.decode(generated_text[0]).split("<answer>")[-1].lstrip().rstrip().split("<|endofchunk|>")[0].lstrip().rstrip().lstrip('"').rstrip('"')
     return parsed_output
 
 

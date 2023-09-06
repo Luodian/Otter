@@ -255,28 +255,10 @@ def add_text(
 
     if text_demo_answer_2 != "":
         assert image_demo_2 is not None
-        text = (
-            DEFAULT_IMAGE_TOKEN
-            + human_role_label
-            + text_demo_question_2
-            + bot_role_label
-            + DEFAULT_ANSWER_TOKEN
-            + text_demo_answer_2
-            + DEFAULT_DEMO_END_TOKEN
-            + text
-        )
+        text = DEFAULT_IMAGE_TOKEN + human_role_label + text_demo_question_2 + bot_role_label + DEFAULT_ANSWER_TOKEN + text_demo_answer_2 + DEFAULT_DEMO_END_TOKEN + text
     if text_demo_answer_1 != "":
         assert image_demo_1 is not None
-        text = (
-            DEFAULT_IMAGE_TOKEN
-            + human_role_label
-            + text_demo_question_1
-            + bot_role_label
-            + DEFAULT_ANSWER_TOKEN
-            + text_demo_answer_1
-            + DEFAULT_DEMO_END_TOKEN
-            + text
-        )
+        text = DEFAULT_IMAGE_TOKEN + human_role_label + text_demo_question_1 + bot_role_label + DEFAULT_ANSWER_TOKEN + text_demo_answer_1 + DEFAULT_DEMO_END_TOKEN + text
 
     input = (text, image_demo_1, image_demo_2, image_3)
     state.append_message(state.roles[0], input)
@@ -857,7 +839,5 @@ if __name__ == "__main__":
     models = get_model_list()
     logger.info(args)
     demo = build_demo(args.embed)
-    demo.queue(concurrency_count=args.concurrency_count, status_update_rate=10, api_open=False).launch(
-        server_name=args.host, server_port=args.port, share=args.share
-    )
+    demo.queue(concurrency_count=args.concurrency_count, status_update_rate=10, api_open=False).launch(server_name=args.host, server_port=args.port, share=args.share)
     gr.close_all()

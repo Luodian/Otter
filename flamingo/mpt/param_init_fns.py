@@ -56,10 +56,7 @@ def generic_param_init_fn_(
         raise ValueError(f"Expected init_div_is_residual to be boolean or numeric, got {init_div_is_residual}")
     if init_div_is_residual is not False:
         if verbose > 1:
-            warnings.warn(
-                f"Initializing _is_residual layers then dividing them by {div_is_residual:.3f}. "
-                + f"Set `init_div_is_residual: false` in init config to disable this."
-            )
+            warnings.warn(f"Initializing _is_residual layers then dividing them by {div_is_residual:.3f}. " + f"Set `init_div_is_residual: false` in init config to disable this.")
     if isinstance(module, nn.Linear):
         if hasattr(module, "_fused"):
             fused_init_helper_(module, init_fn_)
