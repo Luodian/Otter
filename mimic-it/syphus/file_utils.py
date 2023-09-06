@@ -8,6 +8,7 @@ import time
 
 import openai
 import random
+from litellm import completion
 
 engine = os.environ.get("OPENAI_API_ENGINE", "davinci")
 
@@ -49,7 +50,7 @@ def query_gpt(inputs: dict[str], dataset_name: str) -> tuple[dict[str, str], str
     succuss = True
     while succuss:
         try:
-            response = openai.ChatCompletion.create(
+            response = completion(
                 engine=engine,  # defined by os.environ, default engine="chatgpt0301",
                 messages=messages,
                 temperature=0.7,
