@@ -658,7 +658,6 @@ def main():
         ]
 
     total_training_steps = len(mimicit_loaders[0]) * args.num_epochs
-
     resume_from_epoch = 0
     # check if a checkpoint exists for this run
     args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name

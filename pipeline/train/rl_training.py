@@ -16,7 +16,7 @@ from transformers import (
 from dataclasses import dataclass, field
 from typing import Optional
 from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
-from otter.modeling_otter import OtterForConditionalGenerationWithValueHead
+from otter.modeling_otter import OtterForConditionalGenerationWithValueHead, OtterForConditionalGeneration
 from pipeline.train.data import get_data
 from transformers import AutoProcessor, HfArgumentParser
 
@@ -56,7 +56,7 @@ class ScriptArguments:
     reward_model_name: Optional[str] = field(default="", metadata={"help": "the reward model name"})
     log_with: Optional[str] = field(default="wandb", metadata={"help": "use 'wandb' to log with wandb"})
     learning_rate: Optional[float] = field(default=2e-5, metadata={"help": "the learning rate"})
-    output_max_length: Optional[int] = field(default=128, metadata={"help": "maximum length for generation"})
+    output_max_length: Optional[int] = field(default=256, metadata={"help": "maximum length for generation"})
     mini_batch_size: Optional[int] = field(default=1, metadata={"help": "the PPO minibatch size"})
     batch_size: Optional[int] = field(default=32, metadata={"help": "the batch size"})
     ppo_epochs: Optional[int] = field(default=4, metadata={"help": "the number of ppo epochs"})
@@ -81,17 +81,13 @@ class ScriptArguments:
     worker: Optional[int] = field(default=24, metadata={"help": "the worker name"})
     adap_kl_ctrl: Optional[bool] = field(default=True, metadata={"help": "Use adaptive KL control, otherwise linear"})
     offline: Optional[bool] = field(default=False, metadata={"help": "whether to load from local files"})
+    tracker_project_name: Optional[str] = field(default="otter_trl", metadata={"help": "the tracker project name"})
 
 
 # Below is an example function to build the dataset. In our case, we use the IMDB dataset
 # from the `datasets` library. One should customize this function to train the model on
 # its own dataset.
-def build_dataset(
-    train_dataset,
-    tokenizer,
-    dataset_name="lvwerra/stack-exchange-paired",
-    num_proc=24,
-):
+def build_dataset(tokenizer, dataset_name="lvwerra/stack-exchange-paired", num_proc=24):
     """
     Build dataset for training. This builds the dataset from `load_dataset`, one should
     customize this function to train the model on its own dataset.
@@ -105,10 +101,10 @@ def build_dataset(
             The dataloader for the dataset.
     """
 
-    # load imdb with datasets
     ds = load_dataset(dataset_name, data_dir="data/rl", split="train")
+    ds = ds.select(range(100))
     original_columns = ds.column_names
-    num_proc = 24
+    num_proc = num_proc
 
     def preprocess_function(examples):
         new_examples = {
@@ -117,19 +113,19 @@ def build_dataset(
         }
         for question in examples["question"]:
             query = "Question: " + question + "\n\nAnswer: "
-            tokenized_question = tokenizer(query, truncation=True)
+            tokenized_question = tokenizer(query, truncation=True, max_length=2048)
             new_examples["query"].append(query)
             new_examples["input_ids"].append(tokenized_question["input_ids"])
 
         return new_examples
 
-    ds = train_dataset.map(
+    ds = ds.map(
         preprocess_function,
         batched=True,
         num_proc=num_proc,
         remove_columns=original_columns,
     )
-    ds = ds.filter(lambda x: len(x["input_ids"]) < 512, batched=False)
+    # ds = ds.filter(lambda x: len(x["input_ids"]) < 256, batched=False)
 
     ds.set_format(type="torch")
     return ds
@@ -137,70 +133,71 @@ def build_dataset(
 
 def main():
     parser = HfArgumentParser(ScriptArguments)
-    script_args: ScriptArguments = parser.parse_args_into_dataclasses()[0]
-    reward_model_name = script_args.reward_model_name
-    dataset_name = "lvwerra/stack-exchange-paired"
+    args: ScriptArguments = parser.parse_args_into_dataclasses()[0]
+    reward_model_name = args.reward_model_name
     config = PPOConfig(
-        steps=script_args.steps,
-        model_name=script_args.model_name,
-        learning_rate=script_args.learning_rate,
-        log_with=script_args.log_with,
-        batch_size=script_args.batch_size,
-        mini_batch_size=script_args.mini_batch_size,
-        gradient_accumulation_steps=script_args.gradient_accumulation_steps,
+        steps=args.steps,
+        model_name=args.model_name,
+        learning_rate=args.learning_rate,
+        log_with=args.log_with,
+        tracker_project_name=args.tracker_project_name,
+        batch_size=args.batch_size,
+        mini_batch_size=args.mini_batch_size,
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
         optimize_cuda_cache=True,
-        early_stopping=script_args.early_stopping,
-        target_kl=script_args.target_kl,
-        ppo_epochs=script_args.ppo_epochs,
-        seed=script_args.seed,
-        init_kl_coef=script_args.init_kl_coef,
-        adap_kl_ctrl=script_args.adap_kl_ctrl,
+        early_stopping=args.early_stopping,
+        target_kl=args.target_kl,
+        ppo_epochs=args.ppo_epochs,
+        seed=args.seed,
+        init_kl_coef=args.init_kl_coef,
+        adap_kl_ctrl=args.adap_kl_ctrl,
+        remove_unused_columns=False,
     )
 
-    train_dataset = load_dataset("lvwerra/stack-exchange-paired", data_dir="data/rl", split="train")
-    train_dataset = train_dataset.select(range(100000))
-    accelerator = Accelerator(gradient_accumulation_steps=script_args.gradient_accumulation_steps)
+    # train_dataset = load_dataset("lvwerra/stack-exchange-paired", data_dir="data/rl", split="train")
+    # train_dataset = train_dataset.select(range(100000))
+    accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps)
     if accelerator.state.deepspeed_plugin is not None:
-        accelerator.state.deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = script_args.batch_size
+        accelerator.state.deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = args.batch_size
 
     device_id = accelerator.local_process_index
 
     # Model Preparation
-    if script_args.pretrained_model_name_or_path is not None:
-        accelerator.print(f"Loading pretrained model from {script_args.pretrained_model_name_or_path}")
+    if args.pretrained_model_name_or_path is not None:
+        accelerator.print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
         device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED" else "auto"
-        if "otter" in script_args.model_name.lower():
-            model = OtterForConditionalGenerationWithValueHead.from_pretrained(
-                script_args.pretrained_model_name_or_path,
+        if "otter" in args.model_name.lower():
+            model = OtterForConditionalGeneration.from_pretrained(
+                args.pretrained_model_name_or_path,
                 device_map=device_map,
-                local_files_only=script_args.offline,
+                local_files_only=args.offline,
             )
-            script_args.tokenizer = model.text_tokenizer
+            args.tokenizer = model.text_tokenizer
             tokenizer = model.text_tokenizer
-        elif "flamingo" in script_args.model_name.lower():
+        elif "flamingo" in args.model_name.lower():
             model = FlamingoForConditionalGeneration.from_pretrained(
-                script_args.pretrained_model_name_or_path,
+                args.pretrained_model_name_or_path,
                 device_map=device_map,
-                local_files_only=script_args.offline,
+                local_files_only=args.offline,
             )
             # add special tokens for instruction tuning
             model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"]})
-            script_args.tokenizer = model.text_tokenizer
+            args.tokenizer = model.text_tokenizer
             tokenizer = model.text_tokenizer
-        elif "idefics" in script_args.model_name.lower():
+        elif "idefics" in args.model_name.lower():
             from transformers import IdeficsForVisionText2Text
 
             # you need to install the idefics version transformers package first
-            kwargs = {"local_files_only": script_args.offline, "device_map": device_map}
+            kwargs = {"local_files_only": args.offline, "device_map": device_map}
             if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
                 kwargs.pop("device_map")
 
             model = IdeficsForVisionText2Text.from_pretrained(
-                script_args.pretrained_model_name_or_path,
+                args.pretrained_model_name_or_path,
                 **kwargs,
             )
 
-            if script_args.gradient_checkpointing:
+            if args.gradient_checkpointing:
                 model.gradient_checkpointing_enable()
 
             # named_parameters = dict(model.named_parameters())
@@ -222,7 +219,7 @@ def main():
                 f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B",
             )
             # import pdb;pdb.set_trace()
-            processor = AutoProcessor.from_pretrained(script_args.pretrained_model_name_or_path, legacy=False)
+            processor = AutoProcessor.from_pretrained(args.pretrained_model_name_or_path, legacy=False)
             past_special_tokens = processor.tokenizer.special_tokens_map["additional_special_tokens"]
             processor.tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>", "<|endofchunk|>"] + past_special_tokens})
             image_processor = processor.image_processor
@@ -232,15 +229,16 @@ def main():
 
     accelerator.wait_for_everyone()
 
-    script_args.distributed_type = accelerator.distributed_type
+    args.distributed_type = accelerator.distributed_type
 
     if hasattr(model, "lang_encoder") and "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
         model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
 
-    random_seed(script_args.seed, script_args.rank)
-    print(f"Start running training on rank {script_args.rank}.")
-    # model.lang_encoder_with_vhead = AutoModelForCausalLMWithValueHead(model.lang_encoder)
-    # ref_lang_encoder = create_reference_model(model.lang_encoder_with_vhead)
+    random_seed(args.seed, args.rank)
+    print(f"Start running training on rank {args.rank}.")
+
+    def collator(data):
+        return dict((key, [d[key] for d in data]) for key in data[0])
 
     # We then define the arguments to pass to the `generate` function. These arguments
     # are passed to the `generate` function of the PPOTrainer, which is a wrapper around
@@ -255,7 +253,7 @@ def main():
     }
 
     optimizer = None
-    if script_args.adafactor:
+    if args.adafactor:
         optimizer = Adafactor(
             filter(lambda p: p.requires_grad, model.parameters()),
             scale_parameter=False,
@@ -264,13 +262,10 @@ def main():
             lr=config.learning_rate,
         )
 
-    train_dataset = load_dataset("lvwerra/stack-exchange-paired", data_dir="data/rl", split="train")
-    train_dataset = train_dataset.select(range(100000))
     # We retrieve the dataloader by calling the `build_dataset` function.
-    dataset = build_dataset(train_dataset, tokenizer, num_proc=script_args.worker)
+    dataset = build_dataset(tokenizer, num_proc=args.worker)
 
-    def collator(data):
-        return dict((key, [d[key] for d in data]) for key in data[0])
+    model.lang_encoder_vhead = AutoModelForCausalLMWithValueHead(model.lang_encoder)
 
     # We then build the OTTERPPOTrainer, passing the model, the reference model, the tokenizer
     ppo_trainer = OTTERPPOTrainer(
@@ -298,6 +293,7 @@ def main():
     device = ppo_trainer.accelerator.device
     if ppo_trainer.accelerator.num_processes == 1:
         device = 0 if torch.cuda.is_available() else "cpu"  # to avoid a ` pipeline` bug
+        
     sentiment_pipe = pipeline(
         "sentiment-analysis",
         model=reward_model_name,
@@ -319,7 +315,7 @@ def main():
         "eos_token_id": 100_000,
     }
     output_min_length = 32
-    output_max_length = script_args.output_max_length
+    output_max_length = args.output_max_length
     output_length_sampler = LengthSampler(output_min_length, output_max_length)
 
     for epoch, batch in tqdm(enumerate(ppo_trainer.dataloader)):
@@ -327,7 +323,6 @@ def main():
             break
 
         question_tensors = batch["input_ids"]
-
         response_tensors = ppo_trainer.generate(
             question_tensors,
             return_prompt=False,
@@ -339,14 +334,14 @@ def main():
         # Compute reward score (using the sentiment analysis pipeline)
         texts = [q + r for q, r in zip(batch["query"], batch["response"])]
         pipe_outputs = sentiment_pipe(texts, **sent_kwargs)
-        rewards = [torch.tensor(output[0]["score"] - script_args.reward_baseline) for output in pipe_outputs]
+        rewards = [torch.tensor(output[0]["score"] - args.reward_baseline) for output in pipe_outputs]
 
         # Run PPO step
         stats = ppo_trainer.step(question_tensors, response_tensors, rewards)
         ppo_trainer.log_stats(stats, batch, rewards)
 
-        if script_args.save_freq and epoch and epoch % script_args.save_freq == 0:
-            ppo_trainer.save_pretrained(script_args.output_dir + f"step_{epoch}")
+        if args.save_freq and epoch and epoch % args.save_freq == 0:
+            ppo_trainer.save_pretrained(args.output_dir + f"step_{epoch}")
 
 
 if __name__ == "__main__":

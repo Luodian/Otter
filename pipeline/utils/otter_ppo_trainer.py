@@ -54,9 +54,9 @@ from trl.core import (
 from trl.import_utils import is_torch_greater_2_0
 from trl.models import PreTrainedModelWrapper, create_reference_model
 from trl.trainer import AdaptiveKLController, BaseTrainer, FixedKLController, PPOConfig
-from otter.modeling_otter import OtterForConditionalGenerationWithValueHead
+from otter.modeling_otter import OtterForConditionalGeneration
 
-SUPPORTED_ARCHITECTURES = OtterForConditionalGenerationWithValueHead
+SUPPORTED_ARCHITECTURES = OtterForConditionalGeneration
 
 
 MODEL_CARD_TEMPLATE = """---
@@ -482,7 +482,17 @@ class OTTERPPOTrainer(BaseTrainer):
                 return_tensors="pt",
             ).to(self.current_device)
 
-            generations = self.accelerator.unwrap_model(self.model).generate(**padded_inputs, **generation_kwargs)
+            # vision_x=vision_x.to(model.device),
+            # lang_x=lang_x_input_ids.to(model.device),
+            # attention_mask=lang_x_attention_mask.to(model.device),
+            vision_x = torch.zeros(batch_size, 1, 1, 3, 224, 224, dtype=next(self.model.parameters()).dtype)
+            model_inputs = {
+                "vision_x": vision_x,
+                "lang_x": padded_inputs["input_ids"],
+                "attention_mask": padded_inputs["attention_mask"],
+            }
+
+            generations = self.accelerator.unwrap_model(self.model).generate(**model_inputs, **generation_kwargs)
 
             for generation, mask in zip(generations, padded_inputs["attention_mask"]):
                 if not self.is_encoder_decoder:
