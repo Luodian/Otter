@@ -56,8 +56,16 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     num_batches_per_epoch = len(mimicit_loaders[0])
     total_training_steps = num_batches_per_epoch * args.num_epochs
 
+    # special design for Idefics Model's prompt strategy
+    fake_token_image_exists = True if "<fake_token_around_image>" in tokenizer.special_tokens_map["additional_special_tokens"] else False
+    fake_token_image_token_id = tokenizer("<fake_token_around_image>", add_special_tokens=False)["input_ids"][-1]
+
+    # normal prompt strategy
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
-    endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)["input_ids"][-1]
+    endofchunk_text = (
+        "<|endofchunk|>" if "<|endofchunk|>" in tokenizer.special_tokens_map["additional_special_tokens"] else "<end_of_utterance>"
+    )  # for different tokenizer
+    endofchunk_token_id = tokenizer(endofchunk_text, add_special_tokens=False)["input_ids"][-1]
     answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
     ens_token_id = tokenizer(tokenizer.eos_token, add_special_tokens=False)["input_ids"][-1]
 
@@ -67,8 +75,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
     data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
-    dtype = accelerator.unwrap_model(model).dtype
-    print(f"Using dtype {dtype}")
+    autocast_type = torch.bfloat16 if accelerator.mixed_precision == "bf16" else torch.float32
 
     # loop through dataloader
     for num_steps, (batch_mimicits) in tqdm(
@@ -92,15 +99,6 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             labels[labels == tokenizer.pad_token_id] = -100
             labels[:, 0] = -100
             for i in range(labels.shape[0]):
-                # remove loss for any token before the first <image> token
-                # label_idx = 0
-                # while label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id:
-                #     labels[i][label_idx] = -100
-                #     label_idx += 1
-
-                # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
-                # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
-
                 # get index of all endofchunk/media tokens in the sequence
                 endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
                 media_idxs = torch.where(labels[i] == media_token_id)[0]
@@ -123,18 +121,29 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
             labels[labels == answer_token_id] = -100
             labels[labels == media_token_id] = -100
+            if fake_token_image_exists:
+                labels[labels == fake_token_image_token_id] = -100
 
             with accelerator.autocast():
                 unwrapped_model = accelerator.unwrap_model(model)
+                if num_steps == 0:
+                    # info check
+                    accelerator.print(f"input_ids: {input_ids.shape}")
+                    accelerator.print(f"images: {images.shape}")
+                    accelerator.print(f"attention_mask: {attention_mask.shape}")
+                    accelerator.print(f"labels: {labels.shape}")
+                    accelerator.print(f"model: {unwrapped_model.__class__.__name__}")
+                    accelerator.print(f"model dtype: {unwrapped_model.dtype}")
 
                 if IdeficsForVisionText2Text is not None and isinstance(unwrapped_model, IdeficsForVisionText2Text):
                     # only for image model
                     max_num_images = images.shape[1]
-                    image_attention_mask = get_image_attention_mask(input_ids, max_num_images, tokenizer)
-                    assert images.shape[1] == 1, "The second dimension is not 1"
+                    pure_text = torch.all(images == 0)
+                    image_attention_mask = get_image_attention_mask(input_ids, max_num_images, tokenizer, include_image=not pure_text)
+                    # assert images.shape[1] == 1, "The second dimension is not 1"
 
                     loss_mimicit = model(
-                        pixel_values=images.squeeze(1).to(dtype),
+                        pixel_values=images.squeeze(1).to(autocast_type),
                         input_ids=input_ids,
                         attention_mask=attention_mask,
                         image_attention_mask=image_attention_mask,
@@ -142,7 +151,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     )[0]
                 else:
                     loss_mimicit = model(
-                        vision_x=images.to(dtype),
+                        vision_x=images.to(autocast_type),
                         lang_x=input_ids,
                         attention_mask=attention_mask,
                         labels=labels,
@@ -473,16 +482,10 @@ def parse_args():
     # YH: Training detail
     parser.add_argument("--mask_lm_head", action="store_true")
     parser.add_argument(
-        "--max-src-length",
+        "--max_seq_len",
         type=int,
-        default=256,
+        default=2048,
         help="the maximum src sequence length",
-    )
-    parser.add_argument(
-        "--max-tgt-length",
-        type=int,
-        default=256,
-        help="the maximum target sequence length",
     )
     parser.add_argument("--patch-image-size", type=int, default=224)
     parser.add_argument("--resample_frames", type=int, default=32)
@@ -494,7 +497,7 @@ def parse_args():
         type=str,
         help="path to customized additional config.json, use to modify from the original config.json in pretrained model.",
     )
-    parser.add_argument("--task_name", default="LA", type=str, help="task name, used to decide different function to load dataset.")
+    parser.add_argument("--task_name", default="", type=str, help="task name, used to decide different function to load dataset.")
     # wandb args
     parser.add_argument("--report_to_wandb", default=False, action="store_true")
     parser.add_argument(
@@ -535,18 +538,7 @@ def parse_args():
         os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
     args.local_rank, args.rank, args.world_size = world_info_from_env()
-
-    # if "COUNT_NODE" in os.environ:
-    #     args.num_machines = int(os.environ["COUNT_NODE"])
-    # else:
-    #     args.num_machines = 1
-
-    # if "THEID" in os.environ:
-    #     args.machine_rank = int(os.environ["THEID"])
-    # else:
-    #     args.machine_rank = 0
-
-    # Seed for reproducibility
+    
     random_seed(args.seed)
 
     return args
@@ -554,7 +546,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps)
+    accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps, mixed_precision="bf16")
     if accelerator.state.deepspeed_plugin is not None:
         accelerator.state.deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = args.batch_size
 
@@ -576,6 +568,7 @@ def main():
             args.tokenizer = model.text_tokenizer
             tokenizer = model.text_tokenizer
             image_processor = CLIPImageProcessor()
+
         elif "flamingo" in args.model_name.lower():
             model = FlamingoForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
@@ -614,10 +607,14 @@ def main():
                 )
             processor = AutoProcessor.from_pretrained(args.pretrained_model_name_or_path, legacy=False)
             past_special_tokens = processor.tokenizer.special_tokens_map["additional_special_tokens"]
-            processor.tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>", "<|endofchunk|>"] + past_special_tokens})
+            processor.tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"] + past_special_tokens})
             image_processor = processor.image_processor
             tokenizer = processor.tokenizer
-            model.resize_token_embeddings(len(tokenizer))
+            # make embedding size divisible by 64 for hardware compatiblity https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html#requirements-tc
+            # resize_token_embedding is not for parameter sharing in deepspeed !!!!
+            # new_embedding_size = (len(tokenizer) // 64 + 1) * 64
+            # model.resize_token_embeddings(new_embedding_size, pad_to_multiple_of=64)
+            # import pdb;pdb.set_trace()
 
     if args.trained_ckpt is not None:
         train_ckpt = torch.load(args.trained_ckpt, map_location="cpu")

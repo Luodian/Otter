@@ -9,7 +9,7 @@ import re
 import contextlib
 import os
 import orjson
-import ijson.backends.yajl2_c as ijson
+import ijson.backends.yajl2_cffi as ijson
 from PIL import ImageFile
 from torchvision import transforms
 import random
@@ -19,12 +19,6 @@ from PIL import Image, ImageFile
 
 import torch
 import numpy as np
-
-# from .transforms import *
-
-# from transforms import *
-
-# from transforms import *
 
 from torch.utils.data import Dataset
 
@@ -60,6 +54,38 @@ def random_seed(seed, *addl_seeds):
         random.setstate(random_state)
 
 
+def second_max(lst):
+    lst.remove(max(lst))
+    return max(lst)
+
+
+import numpy as np
+
+
+def resample_data(data, N):
+    # If N is equal to the length of the list, return the list
+    if N == len(data):
+        return data
+    # Upsample if N is greater than the list length
+    elif N > len(data):
+        # Calculate the number of times the list has to be repeated
+        repeat_times = N // len(data)
+        remainder = N % len(data)
+
+        # Create the new list by repeating the data
+        upsampled_data = data * repeat_times
+
+        # Add the remainder of the items by randomly sampling
+        random.seed(0)
+        upsampled_data += random.choices(data, k=remainder)
+
+        return upsampled_data
+    # Downsample if N is smaller than the list length
+    else:
+        random.seed(0)
+        return random.sample(data, N)
+
+
 class MimicitDataset(Dataset):
     def __init__(
         self,
@@ -73,18 +99,19 @@ class MimicitDataset(Dataset):
         self.args = args
         self.tokenizer = args.tokenizer
 
-        self.max_src_length = args.max_src_length
-        self.max_tgt_length = args.max_tgt_length
+        # self.max_src_length = args.max_src_length
+        # self.max_tgt_length = args.max_tgt_length
 
         self.seed = args.seed
         self.patch_image_size = args.patch_image_size
+        self.max_seq_len = args.max_seq_len
 
         self.epoch = 0
 
         self.inst_format = args.inst_format
         self.resample_frames = args.resample_frames
-        self.text_data_list = ["LIMA", "MBPP", "SHAREGPT", "AL", "CAL"]
-        self.image_data_list = ["LA", "M3IT"]
+        self.text_data_list = ["LIMA", "MBPP", "TXT_SHAREGPT", "AL", "CAL", "TEXT_ONLY", "GUANACO"]
+        self.image_data_list = ["LA", "M3IT", "PF", "SCIENCEQA", "COCO"]
         self.video_data_list = ["DC", "FunQA", "E4D", "TVC", "VideoQA"]
         self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.\n<</SYS>>\n\n"
 
@@ -112,6 +139,31 @@ class MimicitDataset(Dataset):
         self.train_config = []
         self.task_name = args.task_name
 
+        # Get the length of each dataset and use the second largest value as the length of each dataset
+        data_length_list = []
+        for (
+            cur_mimicit_path,
+            cur_train_config_path,
+        ) in zip(self.mimicit_paths, self.train_config_paths):
+            # Load the train_config
+            if cur_train_config_path != "":
+                assert os.path.exists(cur_train_config_path), f"Error: The local train_config_path {cur_train_config_path} not exists!"
+                with open(cur_train_config_path, "rb") as f:
+                    cache_train_config = orjson.loads(f.read())
+            else:
+                with open(cur_mimicit_path, "rb") as f:
+                    cache_train_config = orjson.loads(f.read())["data"]
+                    cache_train_config = {key: [] for key in cache_train_config.keys()}
+
+            cache_train_list = list(cache_train_config.keys())
+
+            data_length_list.append(len(cache_train_list))
+
+            del cache_train_config
+            del cache_train_list
+
+        second_max_length = second_max(data_length_list.copy())
+
         for (
             cur_mimicit_path,
             cur_images_path,
@@ -126,9 +178,10 @@ class MimicitDataset(Dataset):
                 else:
                     self.dataset.update(orjson.loads(f.read())["data"])
 
-            with open(cur_images_path, "rb") as f:
-                for key, value in ijson.kvitems(f, ""):
-                    self.images[key] = value
+            if cur_train_config_path != "":
+                with open(cur_images_path, "rb") as f:
+                    for key, value in ijson.kvitems(f, "", use_float=True):
+                        self.images[key] = value
 
             # Load the train_config
             if cur_train_config_path != "":
@@ -140,11 +193,15 @@ class MimicitDataset(Dataset):
                     cache_train_config = orjson.loads(f.read())["data"]
                     cache_train_config = {key: [] for key in cache_train_config.keys()}
 
+            # import pdb;pdb.set_trace()
+            resampled_train = resample_data(list(cache_train_config.keys()), second_max_length)
+            cache_train_list = resampled_train
+
             if cur_status == "new":
-                cache_train_list = list(cache_train_config.keys())
+                cache_train_config = {key: [] for key in resampled_train}
             else:
+                # Need to be modified if we use resampling stratedgy
                 random.seed(0)
-                cache_train_list = list(cache_train_config.keys())
                 random.shuffle(cache_train_list)
                 cache_train_list = cache_train_list[: int(len(cache_train_list) * args.past_subset_ration)]
             if self.train_data_list == []:
@@ -153,6 +210,7 @@ class MimicitDataset(Dataset):
             else:
                 self.train_data_list += cache_train_list
                 self.train_config.update(cache_train_config)
+
             del cache_train_config
             del cache_train_list
 
@@ -173,7 +231,7 @@ class MimicitDataset(Dataset):
 
         return first_letter + question[1:]
 
-    def pre_question(self, question, max_ques_words):
+    def pre_question(self, question):
         question = question.lower().lstrip(",.!?*#:;~").replace("-", " ").replace("/", " ")
         question = self.random_init_case(question)
 
@@ -186,14 +244,9 @@ class MimicitDataset(Dataset):
         question = question.rstrip("\n")
         question = question.strip(" ")
 
-        # truncate question
-        question_words = question.split(" ")
-        if len(question_words) > max_ques_words:
-            question = " ".join(question_words[:max_ques_words])
-
         return question
 
-    def pre_answer(self, answer, max_ans_words):
+    def pre_answer(self, answer, max_ans_words=1024):
         answer = re.sub(
             r"\s{2,}",
             " ",
@@ -258,12 +311,12 @@ class MimicitDataset(Dataset):
         all_instruction_ids = in_context_example_ids + [instruction_id]
         # random.shuffle(all_instruction_ids)
         if "CONV" in instruction_id:
-            for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
+            for idx, cur_instruction_id in enumerate(all_instruction_ids):
                 cur_instruction_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
                 cur_instruction = self.dataset[cur_instruction_id]["instruction"]
                 cur_answer = self.dataset[cur_instruction_id]["answer"]
-                cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
-                cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+                cur_instruction = self.pre_question(cur_instruction)
+                cur_answer = self.pre_answer(cur_answer)
                 if inst_format == "llama2":
                     if idx == 0:
                         cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
@@ -271,11 +324,11 @@ class MimicitDataset(Dataset):
                         cur_text = f"[INST]{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
                 elif inst_format == "idefics":
                     if idx == 0:
-                        cur_text = (
-                            f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
-                        )
-                    else:
-                        cur_text = f"User:{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
+                        cur_text = f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
+                    elif idx < len(all_instruction_ids) - 1:
+                        cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
+                    elif idx == len(all_instruction_ids) - 1:
+                        cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>"
                 elif inst_format == "simple":
                     if idx == 0:
                         cur_text = f"<image>User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
@@ -301,20 +354,15 @@ class MimicitDataset(Dataset):
                     patch_images = cur_patch_image
                 else:
                     patch_images = torch.cat((patch_images, cur_patch_image))
-                cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
-                cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+                cur_instruction = self.pre_question(cur_instruction)
+                cur_answer = self.pre_answer(cur_answer)
                 if inst_format == "llama2":
                     cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
                 elif inst_format == "idefics":
-                    cur_text = f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
-                else:
+                    cur_text = f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
+                elif inst_format == "simple":
                     cur_text = f"<image>User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
                 all_texts += cur_text
-        # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|><image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
-        # incontext_text = "<image>User: What does this image descibe? GPT:<answer>The children in the image, along with the rest of the family. They are Skiing. <|endofchunk|>"
-        # query_text = f"<image>User: What does this image descibe? GPT:<answer>"
-        # query_text = f"<image>User: {instruction} GPT:<answer>"
-        # print(instruction_id, query_text, answer)
         return patch_images, all_texts  # incontext_text, query_text
 
     def process_general_videoqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=32, inst_format="simple"):
@@ -324,9 +372,9 @@ class MimicitDataset(Dataset):
         random.shuffle(all_instruction_ids)
         for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
-            cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
+            cur_instruction = self.pre_question(cur_instruction)
             cur_answer = self.dataset[cur_instruction_id]["answer"]
-            cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+            cur_answer = self.pre_answer(cur_answer)
             if inst_format == "llama2":
                 if idx == 0:
                     cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
@@ -374,7 +422,7 @@ class MimicitDataset(Dataset):
                 patch_images = torch.cat((patch_images, cur_patch_image))
 
         patch_images = patch_images.unsqueeze(0)
-        instruction = self.pre_question(instruction, self.max_src_length)
+        instruction = self.pre_question(instruction)
         answer = self.pre_answer(answer, self.max_tgt_length)
         query_text = f"<image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>"
         all_texts = f"{incontext_text}{query_text}"
@@ -385,7 +433,7 @@ class MimicitDataset(Dataset):
         incontext_text = ""
         for cur_incontext_id in in_context_example_ids:
             cur_incontext_instruction = self.dataset[cur_incontext_id]["instruction"]
-            cur_incontext_instruction = self.pre_question(cur_incontext_instruction, self.max_src_length)
+            cur_incontext_instruction = self.pre_question(cur_incontext_instruction)
             cur_incontext_answer = self.dataset[cur_incontext_id]["answer"]
             cur_incontext_answer = self.pre_answer(cur_incontext_answer, self.max_tgt_length)
             cur_incontext_text = f"User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>"
@@ -403,7 +451,7 @@ class MimicitDataset(Dataset):
                 patch_images = torch.cat((patch_images, cur_patch_image))
 
         patch_images = patch_images.unsqueeze(0)
-        instruction = self.pre_question(instruction, self.max_src_length)
+        instruction = self.pre_question(instruction)
         answer = self.pre_answer(answer, self.max_tgt_length)
         query_text = f"User: {instruction} GPT:<answer> {answer}<|endofchunk|>"
         all_texts = f"{incontext_text}{all_texts}"
@@ -413,6 +461,7 @@ class MimicitDataset(Dataset):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
+        # the in_context_example_ids in this process_func is usually previous conversations
         for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
             cur_instruction_image_id = (
                 self.dataset[cur_instruction_id]["image_ids"][0]
@@ -432,8 +481,8 @@ class MimicitDataset(Dataset):
                 patch_images = cur_patch_image
             else:
                 patch_images = torch.cat((patch_images, cur_patch_image))
-            cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
-            cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+            cur_instruction = self.pre_question(cur_instruction)
+            cur_answer = self.pre_answer(cur_answer)
             if inst_format == "llama2":
                 if idx == 0:
                     cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
@@ -441,10 +490,12 @@ class MimicitDataset(Dataset):
                     cur_text = f"[INST]{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
             elif inst_format == "idefics":
                 if idx == 0:
-                    cur_text = f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
-                else:
-                    cur_text = f"User:{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
-            else:
+                    cur_text = f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
+                elif idx < len(all_instruction_ids) - 1:
+                    cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
+                elif idx == len(all_instruction_ids) - 1:
+                    cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>"
+            elif inst_format == "simple":
                 if idx == 0:
                     cur_text = f"<image>User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
                 else:
@@ -464,8 +515,8 @@ class MimicitDataset(Dataset):
                 patch_images = cur_patch_image
             else:
                 patch_images = torch.cat((patch_images, cur_patch_image))
-            cur_instruction = self.pre_question(cur_instruction, self.max_src_length)
-            cur_answer = self.pre_answer(cur_answer, self.max_tgt_length)
+            cur_instruction = self.pre_question(cur_instruction)
+            cur_answer = self.pre_answer(cur_answer)
             if "baize" in instruction_id:
                 cur_text = f"{cur_answer}"
             elif inst_format == "llama2":
@@ -474,8 +525,8 @@ class MimicitDataset(Dataset):
                 else:
                     cur_text = f"[INST]{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
             elif inst_format == "idefics":
-                cur_text = f"User:{cur_instruction} Assistant:<answer>{cur_answer}<|endofchunk|>"
-            else:
+                cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
+            elif inst_format == "simple":
                 cur_text = f"User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
             all_texts += cur_text
         return patch_images, all_texts
@@ -500,44 +551,49 @@ class MimicitDataset(Dataset):
         resample_frames = self.resample_frames
         # self.max_src_length = self.max_tgt_length = 256
 
-        if cur_train_id.startswith("LA"):
+        if cur_train_id.upper().startswith("LA"):
             patch_images, all_texts = self.process_llava(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
-        elif cur_train_id.startswith("SD") or cur_train_id.startswith("CGD"):
-            patch_images, all_texts = self.process_spot_the_difference(instruction_id, instruction, answer, image_ids, in_context_example_ids)
-        elif cur_train_id.startswith("SN"):
-            patch_images, all_texts = self.process_scene_navigation(instruction_id, instruction, answer, image_ids, in_context_example_ids)
-        elif any(cur_train_id.startswith(videoqa_task) for videoqa_task in self.video_data_list) or self.task_name in self.video_data_list:
-            patch_images, all_texts = self.process_general_videoqa(
-                instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=resample_frames
+        elif cur_train_id.upper().startswith("SD") or cur_train_id.startswith("CGD"):
+            patch_images, all_texts = self.process_spot_the_difference(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format
             )
-        elif any(cur_train_id.startswith(text_id) for text_id in self.text_data_list) or self.task_name in self.text_data_list:
+        elif cur_train_id.upper().startswith("SN"):
+            patch_images, all_texts = self.process_scene_navigation(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format
+            )
+        elif any(cur_train_id.upper().startswith(videoqa_task) for videoqa_task in self.video_data_list) or self.task_name in self.video_data_list:
+            patch_images, all_texts = self.process_general_videoqa(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=resample_frames, inst_format=inst_format
+            )
+        elif any(cur_train_id.upper().startswith(text_id) for text_id in self.text_data_list) or self.task_name in self.text_data_list:
             # code to execute if cur_train_id starts with an item in self.text_data_list
-            patch_images, all_texts = self.process_general_text(instruction_id, instruction, answer, image_ids, in_context_example_ids)
-        elif any(cur_train_id.startswith(image_id) for image_id in self.image_data_list) or self.task_name in self.image_data_list:
+            patch_images, all_texts = self.process_general_text(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
+        # elif any(cur_train_id.upper().startswith(image_id) for image_id in self.image_data_list) or self.task_name in self.image_data_list:
+        else:
             patch_images, all_texts = self.process_general_imageqa(
                 instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format
             )
 
-        src_text = self.tokenizer(
+        all_text = self.tokenizer(
             f"{all_texts}",
             return_tensors="pt",
             add_special_tokens=False,
             truncation=True,
-            max_length=2042,  # for current 2k mpt/llama model, setting to 2048 causes error (2042 works)
+            max_length=self.max_seq_len,  # for current 2k mpt/llama model, setting to 2048 causes error (2042 works)
         )
 
-        src_item = src_text["input_ids"].squeeze(0)
-        src_item_mask = src_text["attention_mask"].squeeze(0)
+        all_item = all_text["input_ids"].squeeze(0)
+        all_item_mask = all_text["attention_mask"].squeeze(0)
 
-        src_item = torch.cat([self.bos_item, src_item, self.eos_item])
-        src_item_mask = torch.cat([self.bos_mask, src_item_mask, self.eos_mask])
+        all_item = torch.cat([self.bos_item, all_item, self.eos_item])
+        all_item_mask = torch.cat([self.bos_mask, all_item_mask, self.eos_mask])
         # src_item = torch.cat([self.bos_item, src_item])
         # src_item_mask = torch.cat([self.bos_mask, src_item_mask])
 
         example = {
             "id": instruction_id,
-            "source": src_item,
-            "text_mask": src_item_mask,
+            "source": all_item,
+            "text_mask": all_item_mask,
             "patch_images": patch_images,
         }
 

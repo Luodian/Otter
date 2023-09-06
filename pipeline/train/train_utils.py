@@ -305,7 +305,13 @@ class DistributedProxySampler(DistributedSampler):
 
 
 # supporting idefics processing
-def get_image_attention_mask(output_input_ids, max_num_images, tokenizer):
-    image_attention_mask, _ = image_attention_mask_for_packed_input_ids(output_input_ids, tokenizer)
-    image_attention_mask = incremental_to_binary_attention_mask(image_attention_mask, num_classes=max_num_images)
+def get_image_attention_mask(output_input_ids, max_num_images, tokenizer, include_image=True):
+    # image_attention_mask, _ = image_attention_mask_for_packed_input_ids(output_input_ids, tokenizer)
+    # image_attention_mask = incremental_to_binary_attention_mask(image_attention_mask, num_classes=max_num_images)
+    if include_image:
+        image_attention_mask, _ = image_attention_mask_for_packed_input_ids(output_input_ids, tokenizer)
+        image_attention_mask = incremental_to_binary_attention_mask(image_attention_mask, num_classes=max_num_images)
+    else:
+        # in full language mode we set the image mask to all-0s
+        image_attention_mask = torch.zeros(output_input_ids.shape[0], output_input_ids.shape[1], 1, dtype=torch.bool)
     return image_attention_mask
