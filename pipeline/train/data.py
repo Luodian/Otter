@@ -694,11 +694,12 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     if args.mimicit_vt_path != "":
         all_mimicit_vt_path = args.mimicit_vt_path.split(",") + args.past_mimicit_vt_path.split(",") if args.past_mimicit_vt_path != "" else args.mimicit_vt_path.split(",")
         all_images_vt_path = args.images_vt_path.split(",") + args.past_images_vt_path.split(",") if args.past_images_vt_path != "" else args.images_vt_path.split(",")
+        all_train_config_vt_path = args.train_config_vt_path.split(",") + args.past_train_config_vt_path.split(",") if args.past_train_config_vt_path != "" else args.train_config_vt_path.split(",")
         if args.past_mimicit_vt_path != "":
             vt_status = ["new"] * len(args.mimicit_vt_path.split(",")) + ["past"] * len(args.past_mimicit_vt_path.split(","))
         else:
             vt_status = ["new"] * len(args.mimicit_vt_path.split(","))
-        unified_dataset = MimicitDataset(args, all_mimicit_vt_path, all_images_vt_path, status_list=vt_status)
+        unified_dataset = MimicitDataset(args, all_mimicit_vt_path, all_images_vt_path, all_train_config_vt_path, status_list=vt_status)
         unified_datasets.append(unified_dataset)
 
     # args.train_num_samples = sum(len(dataset) for dataset in unified_datasets) / len(unified_datasets)

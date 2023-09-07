@@ -93,7 +93,7 @@ class MimicitDataset(Dataset):
     ):
         self.args = args
         self.tokenizer = args.tokenizer
-        
+
         self.seed = args.seed
         self.patch_image_size = args.patch_image_size
         self.max_seq_len = args.max_seq_len
@@ -221,69 +221,46 @@ class MimicitDataset(Dataset):
         return first_letter + question[1:]
 
     def pre_question(self, question):
-        question = question.lower().lstrip(",.!?*#:;~").replace("-", " ").replace("/", " ")
-        question = self.random_init_case(question)
-
-        question = re.sub(
-            r"\s{2,}",
-            " ",
-            question,
-        )
-        question = question.lstrip("\n")
-        question = question.rstrip("\n")
-        question = question.strip(" ")
+        # question = question.rstrip(",.!?*#:;~").lstrip(",.!?*#:;~")
+        # question = re.sub(r"\s{2,}", " ", question)
+        # question = question.lstrip("\n")
+        # question = question.rstrip("\n")
+        # question = question.strip(" ")
 
         return question
 
-    def pre_answer(self, answer, max_ans_words=1024):
-        answer = re.sub(
-            r"\s{2,}",
-            " ",
-            answer,
-        )
-        answer = answer.rstrip("\n")
-        answer = answer.strip(" ")
+    def pre_answer(self, answer):
+        # return_answer = answer.strip(" ")
+        # answer = re.sub(
+        #     r"\s{2,}",
+        #     " ",
+        #     answer,
+        # )
+        # answer = answer.rstrip("\n")
+        # answer = answer.strip(" ")
 
-        # truncate question
-        return_answer = ""
-        answers = answer.split(".")
+        # # truncate question
+        # return_answer = ""
+        # answers = answer.split(".")
 
-        for _ in answers:
-            if return_answer == "":
-                cur_answer = _
-            else:
-                cur_answer = ".".join([return_answer, _])
-            if len(cur_answer.split(" ")) <= max_ans_words:
-                return_answer = cur_answer
-            else:
-                break
+        # for _ in answers:
+        #     if return_answer == "":
+        #         cur_answer = _
+        #     else:
+        #         cur_answer = ".".join([return_answer, _])
+        #     if len(cur_answer.split(" ")) <= max_ans_words:
+        #         return_answer = cur_answer
+        #     else:
+        #         break
 
-        if return_answer == "":
-            answer_words = answer.split(" ")
-            return_answer = " ".join(answer_words[:max_ans_words])
-        else:
-            if return_answer[-1] != "." and return_answer != answers:
-                return_answer += "."
+        # if return_answer == "":
+        #     answer_words = answer.split(" ")
+        #     return_answer = " ".join(answer_words[:max_ans_words])
+        # else:
+        #     if return_answer[-1] != "." and return_answer != answers:
+        #         return_answer += "."
 
-        return return_answer
-
-    def pre_caption(self, caption, max_words):
-        caption = caption.lower().lstrip(",.!?*#:;~").replace("-", " ").replace("/", " ").replace("<person>", "person")
-
-        caption = re.sub(
-            r"\s{2,}",
-            " ",
-            caption,
-        )
-        caption = caption.rstrip("\n")
-        caption = caption.strip(" ")
-
-        # truncate caption
-        caption_words = caption.split(" ")
-        if len(caption_words) > max_words:
-            caption = " ".join(caption_words[:max_words])
-
-        return caption
+        return answer
 
     def set_epoch(self, epoch, **unused):
         self.epoch = epoch
@@ -557,7 +534,9 @@ class MimicitDataset(Dataset):
         elif cur_train_id.upper().startswith("SN"):
             patch_images, all_texts = self.process_scene_navigation(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
         elif any(cur_train_id.upper().startswith(videoqa_task) for videoqa_task in self.video_data_list) or self.task_name in self.video_data_list:
-            patch_images, all_texts = self.process_general_videoqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=resample_frames, inst_format=inst_format)
+            patch_images, all_texts = self.process_general_videoqa(
+                instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=resample_frames, inst_format=inst_format
+            )
         elif any(cur_train_id.upper().startswith(text_id) for text_id in self.text_data_list) or self.task_name in self.text_data_list:
             patch_images, all_texts = self.process_general_text(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
         else:

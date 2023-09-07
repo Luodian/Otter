@@ -139,7 +139,6 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     pure_text = torch.all(images == 0)
                     image_attention_mask = get_image_attention_mask(input_ids, max_num_images, tokenizer, include_image=not pure_text)
                     # assert images.shape[1] == 1, "The second dimension is not 1"
-
                     loss_mimicit = model(
                         pixel_values=images.squeeze(1).to(autocast_type),
                         input_ids=input_ids,
@@ -164,7 +163,6 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         #### BACKWARD PASS ####
         total_loss_sum = sum(total_losses)
         mean_loss = total_loss_sum / len(total_losses)
-        # accelerator.backward(total_loss_sum.to(device_id))
 
         def mask_embedding(m):
             if m.weight.requires_grad:
@@ -411,6 +409,12 @@ def parse_args():
         type=str,
         default="",
         help="Path to the new images dataset (associated with video-text data). Should be in format /path/to/xx.json",
+    )
+    parser.add_argument(
+        "--train_config_vt_path",
+        type=str,
+        default="",
+        help="Path to the new video-text training config dataset. Should be in format /path/to/xx_train.json",
     )
 
     # Argument for specifying the ratio for resampling past datasets.
