@@ -702,7 +702,6 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
         unified_dataset = MimicitDataset(args, all_mimicit_vt_path, all_images_vt_path, all_train_config_vt_path, status_list=vt_status)
         unified_datasets.append(unified_dataset)
 
-    # args.train_num_samples = sum(len(dataset) for dataset in unified_datasets) / len(unified_datasets)
     if args.train_num_samples == -1:
         args.train_num_samples = statistics.median((len(dataset) for dataset in unified_datasets))
 
@@ -713,14 +712,9 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
 
     num_samples = args.train_num_samples  # 8
     num_batches = round_fn(num_samples / global_batch_size)  # 2
-    # args.workers = max(1, args.workers)  # 1
-    # num_worker_batches = round_fn(num_batches / args.workers)  # per dataloader worker #2
-    # num_batches = num_worker_batches * args.workers  # 2
     num_samples = num_batches * global_batch_size  # 8
 
     dataloaders = []
-
-    # unified_datasets = unified_old_datasets + unified_new_datasets
 
     for unified_dataset in unified_datasets:
         sampler = RandomSampler(unified_dataset, replacement=True, num_samples=num_samples)
