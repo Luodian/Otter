@@ -102,7 +102,7 @@ class MimicitDataset(Dataset):
 
         self.inst_format = args.inst_format
         self.resample_frames = args.resample_frames
-        self.text_data_list = ["LIMA", "MBPP", "TXT_SHAREGPT", "AL", "CAL", "TEXT_ONLY", "GUANACO"]
+        self.text_data_list = ["LIMA", "MBPP", "TXT_SHAREGPT", "AL", "CAL", "TEXT_ONLY", "GUANACO", "TXT_ULTRACHAT", "ORCACHAT", ""]
         self.image_data_list = ["LA", "M3IT", "PF", "SCIENCEQA", "COCO"]
         self.video_data_list = ["DC", "FunQA", "E4D", "TVC", "VideoQA", "EAI"]
         self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.\n<</SYS>>\n\n"
@@ -567,9 +567,7 @@ class MimicitDataset(Dataset):
                 inst_format=inst_format,
             )
         elif any(cur_train_id.upper().startswith(text_id) for text_id in self.text_data_list) or self.task_name in self.text_data_list:
-            # code to execute if cur_train_id starts with an item in self.text_data_list
             patch_images, all_texts = self.process_general_text(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
-        # elif any(cur_train_id.upper().startswith(image_id) for image_id in self.image_data_list) or self.task_name in self.image_data_list:
         else:
             patch_images, all_texts = self.process_general_imageqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
 
