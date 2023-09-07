@@ -154,12 +154,7 @@ class MimicitDataset(Dataset):
         else:
             max_items_per_dataset = sorted(data_length_list, reverse=True)[1]
 
-        for (
-            cur_mimicit_path,
-            cur_images_path,
-            cur_train_config_path,
-            cur_status,
-        ) in zip(self.mimicit_paths, self.images_paths, self.train_config_paths, self.status_list):
+        for (cur_mimicit_path, cur_images_path, cur_train_config_path, cur_status) in zip(self.mimicit_paths, self.images_paths, self.train_config_paths, self.status_list):
             # Load the dataset
             assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!"
             with open(cur_mimicit_path, "rb") as f:
