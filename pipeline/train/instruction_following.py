@@ -399,6 +399,12 @@ def parse_args():
         help="Path to the past images dataset (associated with video-text data). Should be in format /path/to/xx.json",
     )
     parser.add_argument(
+        "--past_train_config_vt_path",
+        type=str,
+        default="",
+        help="Path to the past video-text training config dataset. Should be in format /path/to/xx_train.json",
+    )
+    parser.add_argument(
         "--mimicit_vt_path",
         type=str,
         default="",

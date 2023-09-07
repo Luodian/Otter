@@ -186,13 +186,15 @@ class MimicitDataset(Dataset):
             resampled_train = resample_data(list(cache_train_config.keys()), max_items_per_dataset)
             cache_train_list = resampled_train
 
-            if cur_status == "new":
-                cache_train_config = {key: [] for key in resampled_train}
-            else:
+            # if cur_status == "new":
+            #     cache_train_config = {key: [] for key in resampled_train}
+            # else:
+            if cur_status == "past":
                 # Need to be modified if we use resampling stratedgy
                 random.seed(0)
                 random.shuffle(cache_train_list)
                 cache_train_list = cache_train_list[: int(len(cache_train_list) * args.past_subset_ration)]
+                
             if self.train_data_list == []:
                 self.train_data_list = cache_train_list
                 self.train_config = cache_train_config
