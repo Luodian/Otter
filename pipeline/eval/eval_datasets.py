@@ -38,11 +38,7 @@ class CaptionDataset(Dataset):
 
     def __getitem__(self, idx):
         if self.dataset_name == "coco":
-            image = Image.open(
-                os.path.join(self.image_train_dir_path, self.annotations[idx]["filename"])
-                if self.annotations[idx]["filepath"] == "train2014"
-                else os.path.join(self.image_val_dir_path, self.annotations[idx]["filename"])
-            )
+            image = Image.open(os.path.join(self.image_train_dir_path, self.annotations[idx]["filename"]) if self.annotations[idx]["filepath"] == "train2014" else os.path.join(self.image_val_dir_path, self.annotations[idx]["filename"]))
         elif self.dataset_name == "flickr":
             image = Image.open(os.path.join(self.image_train_dir_path, self.annotations[idx]["filename"]))
         image.load()

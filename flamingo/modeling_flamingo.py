@@ -422,11 +422,7 @@ class FlamingoLMMixin(nn.Module):
                 for layer_idx, _ in enumerate(self._get_decoder_layers())
             ]
         )
-        self._set_decoder_layers(
-            nn.ModuleList(
-                [FlamingoLayer(gated_cross_attn_layer, decoder_layer) for gated_cross_attn_layer, decoder_layer in zip(gated_cross_attn_layers, self._get_decoder_layers())]
-            )
-        )
+        self._set_decoder_layers(nn.ModuleList([FlamingoLayer(gated_cross_attn_layer, decoder_layer) for gated_cross_attn_layer, decoder_layer in zip(gated_cross_attn_layers, self._get_decoder_layers())]))
         self.media_token_id = media_token_id
         self.use_media_placement_augmentation = use_media_placement_augmentation
         self.initialized_flamingo = True

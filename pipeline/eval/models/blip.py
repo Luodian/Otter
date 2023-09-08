@@ -18,9 +18,7 @@ class EvalModel(BaseEvalModel):
     """
 
     def __init__(self, model_args):
-        assert (
-            "processor_path" in model_args and "lm_path" in model_args and "device" in model_args
-        ), "BLIP-2 requires processor_path, lm_path, and device arguments to be specified"
+        assert "processor_path" in model_args and "lm_path" in model_args and "device" in model_args, "BLIP-2 requires processor_path, lm_path, and device arguments to be specified"
 
         self.device = int(model_args["device"]) if ("device" in model_args and model_args["device"] >= 0) else "cpu"
         self.processor = Blip2Processor.from_pretrained(model_args["processor_path"])

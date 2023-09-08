@@ -371,9 +371,7 @@ def get_mmc4_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     if not num_samples:
         num_samples = args.train_num_samples_mmc4
         if not num_samples:
-            raise RuntimeError(
-                "Currently, number of dataset samples must be specified for training dataset. " "Please specify via `--train-num-samples` if no dataset length info present."
-            )
+            raise RuntimeError("Currently, number of dataset samples must be specified for training dataset. " "Please specify via `--train-num-samples` if no dataset length info present.")
 
     # create a shared epoch store to sync epoch to dataloader worker proc
     shared_epoch = SharedEpoch(epoch=epoch)
@@ -462,9 +460,7 @@ def get_laion_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     if not num_samples:
         num_samples = args.train_num_samples_laion
         if not num_samples:
-            raise RuntimeError(
-                "Currently, number of dataset samples must be specified for training dataset. " "Please specify via `--train-num-samples` if no dataset length info present."
-            )
+            raise RuntimeError("Currently, number of dataset samples must be specified for training dataset. " "Please specify via `--train-num-samples` if no dataset length info present.")
 
     # create a shared epoch store to sync epoch to dataloader worker proc
     shared_epoch = SharedEpoch(epoch=epoch)
@@ -552,9 +548,7 @@ def get_cc3m_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     if not num_samples:
         num_samples = args.train_num_samples_cc3m
         if not num_samples:
-            raise RuntimeError(
-                "Currently, number of dataset samples must be specified for training dataset. " "Please specify via `--train-num-samples` if no dataset length info present."
-            )
+            raise RuntimeError("Currently, number of dataset samples must be specified for training dataset. " "Please specify via `--train-num-samples` if no dataset length info present.")
 
     # create a shared epoch store to sync epoch to dataloader worker proc
     shared_epoch = SharedEpoch(epoch=epoch)
@@ -648,9 +642,7 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     if args.mimicit_ic_path != "":
         all_mimicit_ic_path = args.mimicit_ic_path.split(",") + args.past_mimicit_ic_path.split(",") if args.past_mimicit_ic_path != "" else args.mimicit_ic_path.split(",")
         all_images_ic_path = args.images_ic_path.split(",") + args.past_images_ic_path.split(",") if args.past_images_ic_path != "" else args.images_ic_path.split(",")
-        all_train_config_ic_path = (
-            args.train_config_ic_path.split(",") + args.past_train_config_ic_path.split(",") if args.past_train_config_ic_path != "" else args.train_config_ic_path.split(",")
-        )
+        all_train_config_ic_path = args.train_config_ic_path.split(",") + args.past_train_config_ic_path.split(",") if args.past_train_config_ic_path != "" else args.train_config_ic_path.split(",")
         if args.past_mimicit_ic_path != "":
             ic_status = ["new"] * len(args.mimicit_ic_path.split(",")) + ["past"] * len(args.past_mimicit_ic_path.split(","))
         else:
@@ -662,9 +654,7 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     if args.mimicit_path != "":
         all_mimicit_path = args.mimicit_path.split(",") + args.past_mimicit_path.split(",") if args.past_mimicit_path != "" else args.mimicit_path.split(",")
         all_images_path = args.images_path.split(",") + args.past_images_path.split(",") if args.past_images_path != "" else args.images_path.split(",")
-        all_train_config_path = (
-            args.train_config_path.split(",") + args.past_train_config_path.split(",") if args.past_train_config_path != "" else args.train_config_path.split(",")
-        )
+        all_train_config_path = args.train_config_path.split(",") + args.past_train_config_path.split(",") if args.past_train_config_path != "" else args.train_config_path.split(",")
         if args.past_mimicit_path != "":
             status = ["new"] * len(args.mimicit_path.split(",")) + ["past"] * len(args.past_mimicit_path.split(","))
         else:
@@ -674,14 +664,8 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
 
     # processing for text datasets
     if args.mimicit_text_path != "":
-        all_mimicit_text_path = (
-            args.mimicit_text_path.split(",") + args.past_mimicit_text_path.split(",") if args.past_mimicit_text_path != "" else args.mimicit_text_path.split(",")
-        )
-        all_train_config_text_path = (
-            args.train_config_text_path.split(",") + args.past_train_config_text_path.split(",")
-            if args.past_train_config_text_path != ""
-            else args.train_config_text_path.split(",")
-        )
+        all_mimicit_text_path = args.mimicit_text_path.split(",") + args.past_mimicit_text_path.split(",") if args.past_mimicit_text_path != "" else args.mimicit_text_path.split(",")
+        all_train_config_text_path = args.train_config_text_path.split(",") + args.past_train_config_text_path.split(",") if args.past_train_config_text_path != "" else args.train_config_text_path.split(",")
 
         if args.past_mimicit_text_path != "":
             text_status = ["new"] * len(args.mimicit_text_path.split(",")) + ["past"] * len(args.past_mimicit_text_path.split(","))

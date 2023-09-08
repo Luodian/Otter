@@ -174,9 +174,7 @@ def _convert_bloom_causal_lm_to_prefix_lm(model: BloomForCausalLM) -> BloomForCa
     assert isinstance(model, BloomForCausalLM)
     assert model.config.add_cross_attention == False, "Only supports BLOOM decoder-only models"
 
-    def _prepare_attn_mask(
-        self: BloomModel, attention_mask: torch.Tensor, bidirectional_mask: Optional[torch.Tensor], input_shape: Tuple[int, int], past_key_values_length: int
-    ) -> torch.BoolTensor:
+    def _prepare_attn_mask(self: BloomModel, attention_mask: torch.Tensor, bidirectional_mask: Optional[torch.Tensor], input_shape: Tuple[int, int], past_key_values_length: int) -> torch.BoolTensor:
         combined_attention_mask = None
         device = attention_mask.device
         (_, src_length) = input_shape
@@ -360,9 +358,7 @@ def _convert_bloom_causal_lm_to_prefix_lm(model: BloomForCausalLM) -> BloomForCa
             attentions=transformer_outputs.attentions,
         )
 
-    def prepare_inputs_for_generation(
-        self: BloomForCausalLM, input_ids: torch.LongTensor, past: Optional[torch.Tensor] = None, attention_mask: Optional[torch.Tensor] = None, **kwargs
-    ) -> dict:
+    def prepare_inputs_for_generation(self: BloomForCausalLM, input_ids: torch.LongTensor, past: Optional[torch.Tensor] = None, attention_mask: Optional[torch.Tensor] = None, **kwargs) -> dict:
         if past:
             input_ids = input_ids[:, -1].unsqueeze(-1)
             bidirectional_mask = None

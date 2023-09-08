@@ -472,9 +472,7 @@ class OtterLMMixin(nn.Module):
                 for layer_idx, _ in enumerate(self._get_decoder_layers())
             ]
         )
-        self._set_decoder_layers(
-            nn.ModuleList([OtterLayer(gated_cross_attn_layer, decoder_layer) for gated_cross_attn_layer, decoder_layer in zip(gated_cross_attn_layers, self._get_decoder_layers())])
-        )
+        self._set_decoder_layers(nn.ModuleList([OtterLayer(gated_cross_attn_layer, decoder_layer) for gated_cross_attn_layer, decoder_layer in zip(gated_cross_attn_layers, self._get_decoder_layers())]))
         self.media_token_id = media_token_id
         self.use_media_placement_augmentation = use_media_placement_augmentation
         self.initialized_otter = True
@@ -847,12 +845,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
     def init_weights(self):
         # Freeze all parameters in self.model if train_vision_encoder is False or train_lang_encoder is False
-        if (
-            "train_vision_encoder" in self.config.__dict__
-            and self.config.train_vision_encoder is False
-            or "train_lang_encoder" in self.config.__dict__
-            and self.config.train_lang_encoder is False
-        ):
+        if "train_vision_encoder" in self.config.__dict__ and self.config.train_vision_encoder is False or "train_lang_encoder" in self.config.__dict__ and self.config.train_lang_encoder is False:
             for param in self.parameters():
                 param.requires_grad = False
 

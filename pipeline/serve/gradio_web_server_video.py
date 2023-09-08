@@ -264,19 +264,11 @@ def add_text(
 
     if text_demo_answer_2 != "":
         if text.startswith(DEFAULT_IMAGE_TOKEN):
-            text = (
-                DEFAULT_IMAGE_TOKEN
-                + (human_role_label + text_demo_question_2 + bot_role_label + DEFAULT_ANSWER_TOKEN + text_demo_answer_2 + DEFAULT_DEMO_END_TOKEN)
-                + text[len(DEFAULT_IMAGE_TOKEN) :]
-            )
+            text = DEFAULT_IMAGE_TOKEN + (human_role_label + text_demo_question_2 + bot_role_label + DEFAULT_ANSWER_TOKEN + text_demo_answer_2 + DEFAULT_DEMO_END_TOKEN) + text[len(DEFAULT_IMAGE_TOKEN) :]
 
     if text_demo_answer_1 != "":
         if text.startswith(DEFAULT_IMAGE_TOKEN):
-            text = (
-                DEFAULT_IMAGE_TOKEN
-                + (human_role_label + text_demo_question_1 + bot_role_label + DEFAULT_ANSWER_TOKEN + text_demo_answer_1 + DEFAULT_DEMO_END_TOKEN)
-                + text[len(DEFAULT_IMAGE_TOKEN) :]
-            )
+            text = DEFAULT_IMAGE_TOKEN + (human_role_label + text_demo_question_1 + bot_role_label + DEFAULT_ANSWER_TOKEN + text_demo_answer_1 + DEFAULT_DEMO_END_TOKEN) + text[len(DEFAULT_IMAGE_TOKEN) :]
 
     input = (text, image_3)
     state.append_message(state.roles[0], input)
@@ -605,12 +597,8 @@ def build_demo(embed_mode):
         regenerate_btn.click(regenerate, state, common_args).then(http_bot, [state, model_selector] + prarameter_list, [state, chatbot] + btn_list)
         clear_btn.click(clear_history, None, common_args)
 
-        textbox_3.submit(add_text, [state, model_selector] + demo_list + [textbox_3, videobox_3], common_args).then(
-            http_bot, [state, model_selector] + prarameter_list, [state, chatbot] + btn_list
-        )
-        submit_btn.click(add_text, [state, model_selector] + demo_list + [textbox_3, videobox_3], common_args).then(
-            http_bot, [state, model_selector] + prarameter_list, [state, chatbot] + btn_list
-        )
+        textbox_3.submit(add_text, [state, model_selector] + demo_list + [textbox_3, videobox_3], common_args).then(http_bot, [state, model_selector] + prarameter_list, [state, chatbot] + btn_list)
+        submit_btn.click(add_text, [state, model_selector] + demo_list + [textbox_3, videobox_3], common_args).then(http_bot, [state, model_selector] + prarameter_list, [state, chatbot] + btn_list)
 
         widget_list = [state, model_selector, chatbot, textbox_3, submit_btn, button_row, parameter_row]
 
