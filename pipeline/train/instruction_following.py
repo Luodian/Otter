@@ -138,9 +138,9 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     max_num_images = images.shape[1]
                     pure_text = torch.all(images == 0)
                     image_attention_mask = get_image_attention_mask(input_ids, max_num_images, tokenizer, include_image=not pure_text)
-                    # assert images.shape[1] == 1, "The second dimension is not 1"
+                    image_attention_mask = image_attention_mask.to(device_id, non_blocking=True)
                     loss_mimicit = model(
-                        pixel_values=images.squeeze(1).to(autocast_type),
+                        pixel_values=images.squeeze(2).to(autocast_type),
                         input_ids=input_ids,
                         attention_mask=attention_mask,
                         image_attention_mask=image_attention_mask,
@@ -582,14 +582,10 @@ def main():
             if args.gradient_checkpointing:
                 model.gradient_checkpointing_enable()
 
-            # named_parameters = dict(model.named_parameters())
-            # params_to_gather = [named_parameters[k] for k in named_parameters.keys()]
-            # if len(params_to_gather) > 0:
             if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
                 params_to_gather = [p for name, p in model.named_parameters() if p.requires_grad]
                 with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
                     if torch.distributed.get_rank() == 0:
-                        # 有参数
                         print(
                             device_id,
                             f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B",
@@ -599,7 +595,11 @@ def main():
                     device_id,
                     f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B",
                 )
-            processor = AutoProcessor.from_pretrained(args.pretrained_model_name_or_path, legacy=False)
+            try:
+                processor = AutoProcessor.from_pretrained(args.pretrained_model_name_or_path, legacy=False)
+            except OSError:
+                processor = AutoProcessor.from_pretrained("HuggingfaceM4/idefics-9b-instruct", legacy=False)
+                
             if "<answer>" not in processor.tokenizer.special_tokens_map["additional_special_tokens"]:
                 past_special_tokens = processor.tokenizer.special_tokens_map["additional_special_tokens"]
                 processor.tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"] + past_special_tokens})
@@ -607,9 +607,9 @@ def main():
             tokenizer = processor.tokenizer
             # make embedding size divisible by 64 for hardware compatiblity https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html#requirements-tc
             # resize_token_embedding is not for parameter sharing in deepspeed !!!!
-            # new_embedding_size = (len(tokenizer) // 64 + 1) * 64
-            # model.resize_token_embeddings(new_embedding_size, pad_to_multiple_of=64)
-            # import pdb;pdb.set_trace()
+            if not accelerator.distributed_type == "DEEPSPEED" or not accelerator.state.deepspeed_plugin.zero_stage == 3:
+                new_embedding_size = (len(tokenizer) // 64 + 1) * 64
+                model.resize_token_embeddings(new_embedding_size, pad_to_multiple_of=64)
 
     if args.trained_ckpt is not None:
         train_ckpt = torch.load(args.trained_ckpt, map_location="cpu")
