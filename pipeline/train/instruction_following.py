@@ -601,8 +601,9 @@ def main():
                     f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B",
                 )
             processor = AutoProcessor.from_pretrained(args.pretrained_model_name_or_path, legacy=False)
-            past_special_tokens = processor.tokenizer.special_tokens_map["additional_special_tokens"]
-            processor.tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"] + past_special_tokens})
+            if "<answer>" not in processor.tokenizer.special_tokens_map["additional_special_tokens"]:
+                past_special_tokens = processor.tokenizer.special_tokens_map["additional_special_tokens"]
+                processor.tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"] + past_special_tokens})
             image_processor = processor.image_processor
             tokenizer = processor.tokenizer
             # make embedding size divisible by 64 for hardware compatiblity https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html#requirements-tc
