@@ -606,8 +606,8 @@ def main():
             tokenizer = processor.tokenizer
             # make embedding size divisible by 64 for hardware compatiblity https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html#requirements-tc
             # resize_token_embedding is not for parameter sharing in deepspeed !!!!
-            # new_embedding_size = (len(tokenizer) // 64 + 1) * 64
-            # model.resize_token_embeddings(new_embedding_size, pad_to_multiple_of=64)
+            new_embedding_size = (len(tokenizer) // 64 + 1) * 64
+            model.resize_token_embeddings(new_embedding_size, pad_to_multiple_of=64)
             # import pdb;pdb.set_trace()
 
     if args.trained_ckpt is not None:
