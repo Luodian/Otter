@@ -138,7 +138,6 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     max_num_images = images.shape[1]
                     pure_text = torch.all(images == 0)
                     image_attention_mask = get_image_attention_mask(input_ids, max_num_images, tokenizer, include_image=not pure_text)
-                    # assert images.shape[1] == 1, "The second dimension is not 1"
                     loss_mimicit = model(
                         pixel_values=images.squeeze(1).to(autocast_type),
                         input_ids=input_ids,

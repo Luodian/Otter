@@ -222,7 +222,7 @@ class MimicitDataset(Dataset):
         # question = re.sub(r"\s{2,}", " ", question)
         # question = question.lstrip("\n")
         # question = question.rstrip("\n")
-        # question = question.strip(" ")
+        question = question.strip(" ")
 
         return question
 
@@ -256,7 +256,7 @@ class MimicitDataset(Dataset):
         # else:
         #     if return_answer[-1] != "." and return_answer != answers:
         #         return_answer += "."
-
+        answer = answer.strip(" ")
         return answer
 
     def set_epoch(self, epoch, **unused):
@@ -301,8 +301,6 @@ class MimicitDataset(Dataset):
                         cur_text = f"User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
                 all_texts += cur_text
 
-            # if inst_format == "simple":
-            #     all_texts = f"<image>{all_texts}"
             cur_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
             cur_image = self.images[cur_image_id]
             cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
@@ -613,19 +611,19 @@ def collate_fn(samples, pad_idx, eos_idx):
 
     larger_size = max([s["source"].size(0) for s in samples])
 
-    id = np.array([s["id"] for s in samples])
+    ids = [s["id"] for s in samples]
     src_tokens = merge("source", pad_idx=pad_idx, pading_size=larger_size)
     src_tokens_masks = merge("text_mask", pad_idx=0, pading_size=larger_size)
 
     batch = {
-        "id": id,
+        "id": ids,
         "nsentences": len(samples),
         "net_input": {
             "input_ids": src_tokens,
             "attention_masks": src_tokens_masks,
         },
     }
-    larger_incontext_num = max([s["patch_images"].size(0) for s in samples])
+    # larger_incontext_num = max([s["patch_images"].size(0) for s in samples])
     if samples[0].get("patch_images", None) is not None:
         batch["net_input"]["patch_images"] = torch.stack([sample["patch_images"] for sample in samples], dim=0)
 
