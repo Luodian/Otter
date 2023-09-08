@@ -120,6 +120,7 @@ class MimicitDataset(Dataset):
             "LADD",
             "M3IT",
             "PF",
+            "PL",
             "SCIENCEQA",
             "SVIT",
             "IQA",
@@ -522,6 +523,8 @@ class MimicitDataset(Dataset):
             patch_images, all_texts = self.process_general_imageqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
         elif any(cur_train_id.upper().startswith(in_context_imageqa_task) for in_context_imageqa_task in self.in_context_imageqa_data_list) or self.task_name in self.in_context_imageqa_data_list:
             patch_images, all_texts = self.process_in_context_imageqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
+        else:
+            raise NotImplementedError(f"Error: The task {cur_train_id} is not supported!")
 
         all_text = self.tokenizer(
             f"{all_texts}",
