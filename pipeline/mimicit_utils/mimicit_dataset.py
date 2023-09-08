@@ -614,8 +614,13 @@ def collate_fn(samples, pad_idx, eos_idx):
         },
     }
     # larger_incontext_num = max([s["patch_images"].size(0) for s in samples])
-    if samples[0].get("patch_images", None) is not None:
-        batch["net_input"]["patch_images"] = torch.stack([sample["patch_images"] for sample in samples], dim=0)
+    try:
+        if samples[0].get("patch_images", None) is not None:
+            batch["net_input"]["patch_images"] = torch.stack([sample["patch_images"] for sample in samples], dim=0)
+    except Exception as e:
+        print(f"Error: {e}")
+        print(batch["id"])
+        exit()
 
     return batch
 
