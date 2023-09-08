@@ -575,7 +575,6 @@ def main():
             tokenizer = model.text_tokenizer
             image_processor = CLIPImageProcessor()
         elif "idefics" in args.model_name.lower():
-            # import pdb;pdb.set_trace()
             model = IdeficsForVisionText2Text.from_pretrained(
                 args.pretrained_model_name_or_path,
                 **kwargs,
