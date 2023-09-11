@@ -6,12 +6,13 @@ from transformers import IdeficsForVisionText2Text
 from pipeline.train.train_utils import get_image_attention_mask
 
 
-class OtterIdefics:
+class OtterIdefics(Model):
     def __init__(
         self,
         checkpoint: str = "/data/pufanyi/training_data/checkpoints/otter_idefics9b_0830",
         processor: str = "/data/pufanyi/training_data/checkpoints/idefics-80b-instruct",
     ) -> None:
+        super().__init__("idefics_otter", checkpoint)
         kwargs = {"device_map": "auto", "torch_dtype": torch.bfloat16}
         self.model = IdeficsForVisionText2Text.from_pretrained(checkpoint, **kwargs)
         self.processor = AutoProcessor.from_pretrained(processor)

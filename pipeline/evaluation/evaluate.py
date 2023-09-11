@@ -2,12 +2,13 @@ import sys
 
 sys.path.append("../..")
 from pipeline.evaluation.evaluator.mmbench import MMBenchEvaluator
-from pipeline.evaluation.models.idefics import Idefics
 
 if __name__ == "__main__":
-    # model = Otter("/data/pufanyi/training_data/checkpoints/OTTER-Image-MPT7B")
+    model_info = {
+        "model_path": "/data/pufanyi/training_data/checkpoints/idefics-9b-instruct",
+    }
     evaluator = MMBenchEvaluator("/data/pufanyi/training_data/MMBench/mmbench_test_20230712.tsv")
-    model = Idefics("/data/pufanyi/training_data/checkpoints/idefics-9b-instruct")
+    model = load_model("idefics", model_info)
     evaluator.evaluate(model)
 
 # pip install otter_ai

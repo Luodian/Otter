@@ -9,6 +9,7 @@ import transformers
 from PIL import Image
 
 from otter_ai import OtterForConditionalGeneration
+from .model import Model
 
 
 # Disable warnings
@@ -55,8 +56,9 @@ def get_response(image: Image.Image, prompt: str, model=None, image_processor=No
     return parsed_output
 
 
-class Otter(object):
+class Otter(Model):
     def __init__(self, model_name_or_path="luodian/OTTER-Image-MPT7B", load_bit="bf16"):
+        super().__init__("otter", model_name_or_path)
         precision = {}
         if load_bit == "bf16":
             precision["torch_dtype"] = torch.bfloat16
