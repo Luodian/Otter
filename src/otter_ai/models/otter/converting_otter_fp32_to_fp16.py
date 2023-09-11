@@ -1,6 +1,6 @@
 import argparse
 import torch
-from otter.modeling_otter import OtterForConditionalGeneration
+from otter_ai.models.otter.modeling_otter import OtterForConditionalGeneration
 
 # Define argument parser
 parser = argparse.ArgumentParser(description="Load a model with specified precision and save it to a specified path.")

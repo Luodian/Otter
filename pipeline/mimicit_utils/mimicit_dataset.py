@@ -408,7 +408,7 @@ class MimicitDataset(Dataset):
             cur_incontext_instruction = self.dataset[cur_incontext_id]["instruction"]
             cur_incontext_instruction = self.pre_question(cur_incontext_instruction)
             cur_incontext_answer = self.dataset[cur_incontext_id]["answer"]
-            cur_incontext_answer = self.pre_answer(cur_incontext_answer, self.max_tgt_length)
+            cur_incontext_answer = self.pre_answer(cur_incontext_answer)
             cur_incontext_text = f"User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>"
             incontext_text += cur_incontext_text
 

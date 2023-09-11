@@ -9,9 +9,9 @@ from accelerate.hooks import add_hook_to_module, AlignDevicesHook
 
 from .configuration_otter import OtterConfig
 
-from flamingo.falcon.modelling_RW import RWForCausalLM
-from flamingo.mpt.modeling_mpt import MPTForCausalLM
-from flamingo.mpt_redpajama.mosaic_gpt import MosaicGPT
+from otter_ai.models.flamingo.falcon.modelling_RW import RWForCausalLM
+from otter_ai.models.flamingo.mpt.modeling_mpt import MPTForCausalLM
+from otter_ai.models.flamingo.mpt_redpajama.mosaic_gpt import MosaicGPT
 
 from transformers.models.auto import AutoModel, AutoModelForCausalLM, AutoTokenizer
 from peft import get_peft_model, LoraConfig, TaskType
@@ -845,7 +845,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
     def init_weights(self):
         # Freeze all parameters in self.model if train_vision_encoder is False or train_lang_encoder is False
-        if "train_vision_encoder" in self.config.__dict__ and self.config.train_vision_encoder is False or "train_lang_encoder" in self.config.__dict__ and self.config.train_lang_encoder is False:
+        if not ("train_full_model" in self.config.__dict__ and self.config.train_full_model is False):
             for param in self.parameters():
                 param.requires_grad = False
 
