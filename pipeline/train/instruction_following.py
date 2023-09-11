@@ -1,33 +1,26 @@
 """ Main training script """
 
 import argparse
+import gc
 import glob
 import os
 import random
 import time
 
+import deepspeed
 import numpy as np
-import gc
 import torch
 import torch.nn
 from accelerate import Accelerator
+from src import FlamingoForConditionalGeneration
+from src import OtterForConditionalGeneration
 from tqdm import tqdm
-from transformers import (
-    CLIPImageProcessor,
-    get_constant_schedule_with_warmup,
-    get_cosine_schedule_with_warmup,
-    get_linear_schedule_with_warmup,
-)
+from transformers import AutoProcessor, CLIPImageProcessor, get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup, get_linear_schedule_with_warmup
 
 import wandb
-from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
-from otter.modeling_otter import OtterForConditionalGeneration
 from pipeline.train.data import get_data
 from pipeline.train.distributed import world_info_from_env
 from pipeline.train.train_utils import AverageMeter, get_checkpoint, get_image_attention_mask
-from transformers import AutoProcessor
-
-import deepspeed
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 

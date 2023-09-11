@@ -3,30 +3,24 @@
 import glob
 import os
 import random
+from dataclasses import dataclass, field
+from typing import Optional
 
+import deepspeed
 import numpy as np
 import torch
 import torch.nn
 from accelerate import Accelerator
-from tqdm import tqdm
-from transformers import (
-    CLIPImageProcessor,
-)
-
-from dataclasses import dataclass, field
-from typing import Optional
-from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
-from otter.modeling_otter import OtterForConditionalGenerationWithValueHead, OtterForConditionalGeneration
-from pipeline.train.data import get_data
-from transformers import AutoProcessor, HfArgumentParser
-
-import deepspeed
-from pipeline.utils.otter_ppo_trainer import OTTERPPOTrainer, PPOConfig, create_reference_model
-from trl.core import LengthSampler
-from trl.models.modeling_value_head import AutoModelForCausalLMWithValueHead
 from datasets import load_dataset
 from tqdm import tqdm
-from transformers import Adafactor, HfArgumentParser, pipeline
+from transformers import Adafactor, AutoProcessor, CLIPImageProcessor, HfArgumentParser, pipeline
+from trl.core import LengthSampler
+from trl.models.modeling_value_head import AutoModelForCausalLMWithValueHead
+
+from otter_ai import FlamingoForConditionalGeneration
+from pipeline.train.data import get_data
+from pipeline.utils.otter_ppo_trainer import OTTERPPOTrainer, PPOConfig, create_reference_model
+from src import OtterForConditionalGeneration
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
