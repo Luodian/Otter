@@ -1,4 +1,5 @@
 import sys
+
 sys.path.append("../..")
 from pipeline.evaluation.datasets.mmbench import MMBenchDataset
 from pipeline.evaluation.models.model import load_model

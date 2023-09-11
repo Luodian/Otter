@@ -4,10 +4,12 @@ import pandas as pd
 from PIL import Image
 from tqdm import tqdm
 
+
 def decode_base64_to_image(base64_string):
     image_data = base64.b64decode(base64_string)
     image = Image.open(io.BytesIO(image_data))
     return image
+
 
 class MMBenchDataset(object):
     def __init__(self, data_file, sys_prompt="There are several options:"):
@@ -81,7 +83,7 @@ class MMBenchDataset(object):
                 result["l2-category"] = l2_category
             result["index"] = index
             results.append(result)
-            
+
         df = pd.DataFrame(results)
         with pd.ExcelWriter(
             output_file,
