@@ -2,55 +2,44 @@ from PIL import Image
 import torch
 from transformers import AutoProcessor
 from transformers import IdeficsForVisionText2Text
-
+from .model import Model
 from pipeline.train.train_utils import get_image_attention_mask
 
 
 class OtterIdefics(Model):
     def __init__(
         self,
-        checkpoint: str = "/data/pufanyi/training_data/checkpoints/otter_idefics9b_0830",
-        processor: str = "/data/pufanyi/training_data/checkpoints/idefics-80b-instruct",
+        model_path: str = "/data/pufanyi/training_data/checkpoints/otter_idefics9b_0830",
+        processor: str = "HuggingfaceM4/idefics-9b-instruct",
     ) -> None:
-        super().__init__("idefics_otter", checkpoint)
+        super().__init__("idefics_otter", model_path)
         kwargs = {"device_map": "auto", "torch_dtype": torch.bfloat16}
-        self.model = IdeficsForVisionText2Text.from_pretrained(checkpoint, **kwargs)
+        self.model = IdeficsForVisionText2Text.from_pretrained(model_path, **kwargs)
         self.processor = AutoProcessor.from_pretrained(processor)
         self.image_processor = self.processor.image_processor
         self.tokenizer = self.processor.tokenizer
         self.tokenizer.padding_side = "left"
         self.model.eval()
 
-    def move_to_device(self, device):
-        pass
+    def get_formatted_prompt(self, question: str, no_image_flag: str) -> str:
+        if no_image_flag:
+            return f"User:{question}<end_of_utterance>\nAssistant:<answer>"
+        else:
+            return f"User:<fake_token_around_image><image><fake_token_around_image>{question}<end_of_utterance>\nAssistant:<answer>\n"
 
-    def generate(self, question, raw_image, device=None, keep_in_device=False):
-        prompts = [
-            [
-                "User:",
-                raw_image,
-                question + "<end_of_utterance>\n",
-                "Assistant:",
-            ],
-        ]
+    def generate(self, question, raw_image_data, no_image_flag=False):
+        input_data = raw_image_data
 
-        exit_condition = self.processor.tokenizer("<end_of_utterance>", add_special_tokens=False).input_ids
-        bad_words_ids = self.processor.tokenizer(["<image>", "<fake_token_around_image>"], add_special_tokens=False).input_ids
-
-        inputs = self.processor(prompts, return_tensors="pt", add_end_of_utterance_token=False, debug=True).to(self.model.device)
-        generated_ids = self.model.generate(**inputs, eos_token_id=exit_condition, bad_words_ids=bad_words_ids, max_new_tokens=128)
-        generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
-
-        return generated_text[0]
-
-    def otter_idefics_generate(self, question, raw_image, no_image_flag=False):
-        input_data = raw_image
+        # Check if the input data is an instance of PIL Image
         if isinstance(input_data, Image.Image):
+            # If no_image_flag is True, create a tensor of zeros with shape (1, 1, 3, 224, 224)
             if no_image_flag:
                 vision_x = torch.zeros(1, 1, 3, 224, 224, dtype=next(self.model.parameters()).dtype)
             else:
+                # Preprocess the input image using the image_processor and return the preprocessed tensor
                 vision_x = self.image_processor.preprocess([input_data], return_tensors="pt").unsqueeze(0)
         else:
+            # Raise a ValueError if the input data is not a PIL Image
             raise ValueError("Invalid input data. Expected PIL Image.")
 
         lang_x = self.tokenizer(
@@ -86,12 +75,6 @@ class OtterIdefics(Model):
         output = self.tokenizer.decode(generated_text[0])
 
         return output
-
-    def get_formatted_prompt(self, question: str, no_image_flag: str) -> str:
-        if no_image_flag:
-            return f"User:{question}<end_of_utterance>\nAssistant:<answer>"
-        else:
-            return f"User:<fake_token_around_image><image><fake_token_around_image>{question}<end_of_utterance>\nAssistant:<answer>\n"
 
 
 if __name__ == "__main__":
