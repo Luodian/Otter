@@ -396,7 +396,7 @@ class MimicitDataset(Dataset):
 
         patch_images = patch_images.unsqueeze(0)
         instruction = self.pre_question(instruction)
-        answer = self.pre_answer(answer, self.max_tgt_length)
+        answer = self.pre_answer(answer)
         query_text = f"<image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>"
         all_texts = f"{incontext_text}{query_text}"
         return patch_images, all_texts
@@ -425,7 +425,7 @@ class MimicitDataset(Dataset):
 
         patch_images = patch_images.unsqueeze(0)
         instruction = self.pre_question(instruction)
-        answer = self.pre_answer(answer, self.max_tgt_length)
+        answer = self.pre_answer(answer)
         query_text = f"User: {instruction} GPT:<answer> {answer}<|endofchunk|>"
         all_texts = f"{incontext_text}{all_texts}"
         return patch_images, all_texts
