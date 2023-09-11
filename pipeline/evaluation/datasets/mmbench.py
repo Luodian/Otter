@@ -17,7 +17,6 @@ def decode_base64_to_image(base64_string):
 class MMBenchDataset(Dataset):
     def __init__(self, data_file, sys_prompt="There are several options:"):
         self.df = pd.read_csv(data_file, sep="\t")
-        # self.pipeline = Compose(pipeline)
         self.sys_prompt = sys_prompt
 
     def __len__(self):

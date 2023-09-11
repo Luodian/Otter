@@ -57,6 +57,10 @@ class MMBenchEvaluator(object):
             )
 
     def evaluate(self, model, output_file=None):
+        # inside this function
+        # MMBench: generate a csv file with columns: index, prediction, xxx
+        # MME: generate the final score (probably should load the gt file) and print it out
+        # SeedBench: generate the final score (probably should load the gt file) and print it out
         if output_file is None:
             output_file = self.default_output_file
 
