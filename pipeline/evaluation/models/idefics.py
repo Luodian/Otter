@@ -2,6 +2,7 @@ import torch
 from typing import List
 from transformers import IdeficsForVisionText2Text, AutoProcessor
 from PIL import Image
+from .model import Model
 
 
 def get_formatted_prompt(prompt: str, image: Image.Image) -> List[str]:
@@ -13,10 +14,11 @@ def get_formatted_prompt(prompt: str, image: Image.Image) -> List[str]:
     ]
 
 
-class Idefics(object):
-    def __init__(self, model_name_or_path: str = "HuggingFaceM4/idefics-9b-instruct"):
+class Idefics(Model):
+    def __init__(self, model_path: str = "HuggingFaceM4/idefics-9b-instruct"):
+        super().__init__("idefics", model_path)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        checkpoint = model_name_or_path
+        checkpoint = model_path
         self.model = IdeficsForVisionText2Text.from_pretrained(checkpoint, torch_dtype=torch.bfloat16).to(self.device)
         self.processor = AutoProcessor.from_pretrained(checkpoint)
 
