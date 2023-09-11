@@ -28,7 +28,7 @@ from pipeline.serve.serving_utils import (
 )
 from huggingface_hub import hf_hub_download
 import transformers
-from otter import OtterForConditionalGeneration
+from otter_ai import OtterForConditionalGeneration
 from flamingo import FlamingoForConditionalGeneration
 
 GB = 1 << 30
