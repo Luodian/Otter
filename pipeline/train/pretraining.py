@@ -4,6 +4,7 @@ import argparse
 import glob
 import os
 import random
+import sys
 import time
 
 import numpy as np
@@ -15,6 +16,8 @@ from transformers import CLIPImageProcessor, get_constant_schedule_with_warmup, 
 
 import wandb
 from otter_ai import FlamingoForConditionalGeneration, OtterForConditionalGeneration
+
+sys.path.append("../..")
 from pipeline.train.data import get_data
 from pipeline.train.distributed import world_info_from_env
 from pipeline.train.train_utils import AverageMeter, get_checkpoint

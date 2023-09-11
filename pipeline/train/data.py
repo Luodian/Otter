@@ -7,26 +7,27 @@ import math
 import os
 import random
 import sys
-import yaml
+
+import statistics
 from dataclasses import dataclass
 from multiprocessing import Value
-import numpy as np
 
 import braceexpand
+import numpy as np
 import torch
 import torch.utils
 import torchvision
 import webdataset as wds
-from PIL import Image, ImageSequence, ImageFile
+import yaml
+from PIL import Image, ImageFile, ImageSequence
 from torch.utils.data import DataLoader, IterableDataset, RandomSampler, get_worker_info
 from torch.utils.data.distributed import DistributedSampler
 from webdataset.filters import _shuffle
 from webdataset.tariterators import base_plus_ext, tar_file_expander, url_opener, valid_sample
+
+sys.path.append("../..")
 from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
-
-from .train_utils import DistributedProxySampler
-
-import statistics
+from pipeline.train.train_utils import DistributedProxySampler
 
 Image.MAX_IMAGE_PIXELS = 1000000000
 MAX_NUM_TOKENS = 256
