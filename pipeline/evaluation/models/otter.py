@@ -18,7 +18,7 @@ requests.packages.urllib3.disable_warnings()
 
 class Otter(Model):
     def __init__(self, model_path="luodian/OTTER-Image-MPT7B", load_bit="bf16"):
-        super().__init__("otter", model_name_or_path)
+        super().__init__("otter", model_path)
         precision = {}
         if load_bit == "bf16":
             precision["torch_dtype"] = torch.bfloat16
@@ -26,7 +26,7 @@ class Otter(Model):
             precision["torch_dtype"] = torch.float16
         elif load_bit == "fp32":
             precision["torch_dtype"] = torch.float32
-        self.model = OtterForConditionalGeneration.from_pretrained(model_name_or_path, device_map="sequential", **precision)
+        self.model = OtterForConditionalGeneration.from_pretrained(model_path, device_map="sequential", **precision)
         self.model.text_tokenizer.padding_side = "left"
         self.tokenizer = self.model.text_tokenizer
         self.image_processor = transformers.CLIPImageProcessor()
