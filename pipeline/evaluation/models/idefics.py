@@ -19,7 +19,7 @@ class Idefics(Model):
         super().__init__("idefics", model_path)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         checkpoint = model_path
-        self.model = IdeficsForVisionText2Text.from_pretrained(checkpoint, torch_dtype=torch.bfloat16).to(self.device)
+        self.model = IdeficsForVisionText2Text.from_pretrained(checkpoint, device_map="auto", torch_dtype=torch.bfloat16).to(self.device)
         self.processor = AutoProcessor.from_pretrained(checkpoint)
 
     def generate(self, question: str, raw_image_data: Image.Image):

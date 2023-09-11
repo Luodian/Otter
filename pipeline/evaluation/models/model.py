@@ -24,8 +24,8 @@ class Model(ABC):
 def load_model(model_name: str, dataset_args: Dict[str, str]) -> Model:
     assert model_name in AVAILABLE_MODELS, f"{model_name} is not an available model."
     module_path = "pipeline.evaluation.models." + model_name
-    dataset_name = AVAILABLE_MODELS[model_name]
+    model_formal_name = AVAILABLE_MODELS[model_name]
     imported_module = importlib.import_module(module_path)
-    dataset_class = getattr(imported_module, dataset_name)
+    dataset_class = getattr(imported_module, model_formal_name)
     print(f"Imported class: {dataset_class}")
     return dataset_class(**dataset_args)
