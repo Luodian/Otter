@@ -4,6 +4,7 @@ from typing import List, Optional
 
 import torch
 import torch.nn as nn
+from accelerate import Accelerator
 from accelerate.hooks import AlignDevicesHook, add_hook_to_module
 from einops import rearrange, repeat
 from peft import LoraConfig, TaskType, get_peft_model
@@ -25,6 +26,9 @@ else:
     import importlib.metadata as importlib_metadata
 
 import torch.distributed as dist
+from accelerate.logging import get_logger
+
+logger = get_logger(__name__, log_level="INFO")
 
 # Add this line at the beginning of your script or in your main function
 # dist.init_process_group(backend='nccl')
@@ -858,7 +862,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
         if "lora_config" in self.config.__dict__:
             # Use another logic to unfreeze gated_cross_attn_layers and perceivers
-            print(f"LoRA trainable param: {(sum(param.numel() for name, param in self.lang_encoder.named_parameters() if 'lora' in name)) / 1e6:.3f} M")
+            logger.info(f"LoRA trainable param: {(sum(param.numel() for name, param in self.lang_encoder.named_parameters() if 'lora' in name)) / 1e6:.3f} M", main_process_only=True)
             for name, param in self.lang_encoder.named_parameters():
                 if "lora" in name:
                     param.requires_grad = True
@@ -881,8 +885,8 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         for name, param in self.named_parameters():
             if param.requires_grad:
                 total_params += param.numel()
-                print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
-        print(f"Total Trainable param: {total_params / 1e9:.6f} B")
+                logger.info(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M", main_process_only=True)
+        logger.info(f"Total Trainable param: {total_params / 1e9:.6f} B", main_process_only=True)
 
     def forward(
         self,
