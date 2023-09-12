@@ -527,7 +527,7 @@ class MimicitDataset(Dataset):
             raise NotImplementedError(f"Error: The task {cur_train_id} is not supported!")
 
         all_text = self.tokenizer(
-            f"{all_texts}",
+            all_texts,
             return_tensors="pt",
             add_special_tokens=False,
             truncation=True,
