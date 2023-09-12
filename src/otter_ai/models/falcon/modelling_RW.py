@@ -63,8 +63,8 @@ class RotaryEmbedding(torch.nn.Module):
         self.head_dim = head_dim
         self.seq_len_cached = None
         self.batch_size_cached = None
-        self.cos_cached: torch.Tensor | None = None
-        self.sin_cached: torch.Tensor | None = None
+        self.cos_cached = None  # Union[torch.Tensor, None] replaced with None
+        self.sin_cached = None  # Union[torch.Tensor, None] replaced with None
 
     def cos_sin(
         self,
