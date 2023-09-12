@@ -1,12 +1,6 @@
 import os
 import torch
 
-try:
-    import horovod.torch as hvd
-except ImportError:
-    hvd = None
-
-
 def is_global_master(args):
     return args.rank == 0
 
@@ -17,18 +11,6 @@ def is_local_master(args):
 
 def is_master(args, local=False):
     return is_local_master(args) if local else is_global_master(args)
-
-
-def is_using_horovod():
-    # NOTE w/ horovod run, OMPI vars should be set, but w/ SLURM PMI vars will be set
-    # Differentiating between horovod and DDP use via SLURM may not be possible, so horovod arg still required...
-    ompi_vars = ["OMPI_COMM_WORLD_RANK", "OMPI_COMM_WORLD_SIZE"]
-    pmi_vars = ["PMI_RANK", "PMI_SIZE"]
-    if all([var in os.environ for var in ompi_vars]) or all([var in os.environ for var in pmi_vars]):
-        return True
-    else:
-        return False
-
 
 def is_using_distributed():
     if "WORLD_SIZE" in os.environ:
@@ -64,17 +46,7 @@ def init_distributed_device(args):
     args.world_size = 1
     args.rank = 0  # global rank
     args.local_rank = 0
-    if args.horovod:
-        assert hvd is not None, "Horovod is not installed"
-        hvd.init()
-        args.local_rank = int(hvd.local_rank())
-        args.rank = hvd.rank()
-        args.world_size = hvd.size()
-        args.distributed = True
-        os.environ["LOCAL_RANK"] = str(args.local_rank)
-        os.environ["RANK"] = str(args.rank)
-        os.environ["WORLD_SIZE"] = str(args.world_size)
-    elif is_using_distributed():
+    if is_using_distributed():
         if "SLURM_PROCID" in os.environ:
             # DDP via SLURM
             args.local_rank, args.rank, args.world_size = world_info_from_env()

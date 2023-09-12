@@ -480,12 +480,6 @@ def parse_args():
     )
     parser.add_argument("--dist-backend", default="nccl", type=str, help="distributed backend")
     parser.add_argument(
-        "--horovod",
-        default=False,
-        action="store_true",
-        help="Use horovod for distributed training.",
-    )
-    parser.add_argument(
         "--no-set-device-rank",
         default=False,
         action="store_true",

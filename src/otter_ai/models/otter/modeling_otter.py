@@ -1,26 +1,22 @@
-from typing import Optional, List
+import random
+import sys
+from typing import List, Optional
 
 import torch
 import torch.nn as nn
-from transformers.modeling_utils import PreTrainedModel
-from transformers.modeling_outputs import CausalLMOutputWithPast
+from accelerate.hooks import AlignDevicesHook, add_hook_to_module
 from einops import rearrange, repeat
-from accelerate.hooks import add_hook_to_module, AlignDevicesHook
-
-from .configuration_otter import OtterConfig
-
-import sys
-from falcon.modelling_RW import RWForCausalLM
-from mpt.modeling_mpt import MPTForCausalLM
-from mpt_redpajama.mosaic_gpt import MosaicGPT
-
+from peft import LoraConfig, TaskType, get_peft_model
+from transformers.modeling_outputs import CausalLMOutputWithPast
+from transformers.modeling_utils import PreTrainedModel
 from transformers.models.auto import AutoModel, AutoModelForCausalLM, AutoTokenizer
-from peft import get_peft_model, LoraConfig, TaskType
-
-import sys
-import random
 
 from pipeline.utils.modeling_value_head import AutoModelForCausalLMWithValueHead
+
+from ..falcon.modelling_RW import RWForCausalLM
+from ..mpt.modeling_mpt import MPTForCausalLM
+from ..mpt_redpajama.mosaic_gpt import MosaicGPT
+from .configuration_otter import OtterConfig
 
 # The package importlib_metadata is in a different place, depending on the python version.
 if sys.version_info < (3, 8):
@@ -38,8 +34,9 @@ XFORMERS_MSG_PRINTED = False  # Add this global variable
 try:
     if not XFORMERS_MSG_PRINTED:  # Check if the message has been printed before
         import xformers.ops as xops
-        from xformers_model import CLIPVisionModel, LlamaForCausalLM
         from transformers import LlamaTokenizer
+
+        from xformers_model import CLIPVisionModel, LlamaForCausalLM
 
         _xformers_version = importlib_metadata.version("xformers")
         if dist.is_initialized() and dist.get_rank() == 0:  # Check if the current process rank is 0
