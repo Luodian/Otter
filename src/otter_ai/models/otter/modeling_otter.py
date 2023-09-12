@@ -879,7 +879,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         for name, param in self.named_parameters():
             if "perceiver" in name:
                 param.requires_grad = True
-                
+
         # Unfreeze LM input and output embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
