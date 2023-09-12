@@ -2,21 +2,24 @@ import copy
 
 from transformers.configuration_utils import PretrainedConfig
 from transformers.utils import logging
+
 from transformers.models.auto import CONFIG_MAPPING
 from transformers.models.clip import CLIPVisionConfig
+import sys
 
-from flamingo.falcon.configuration_RW import RWConfig
-from flamingo.mpt.configuration_mpt import MPTConfig
-from flamingo.mpt_redpajama.configuration_mosaic_gpt import MosaicGPTConfig
+from .falcon.configuration_RW import RWConfig
+from .mpt.configuration_mpt import MPTConfig
+from .mpt_redpajama.configuration_mosaic_gpt import MosaicGPTConfig
+
 
 logger = logging.get_logger(__name__)
 
 
-class OtterConfig(PretrainedConfig):
+class FlamingoConfig(PretrainedConfig):
     r"""
-    [`OtterConfig`] is the configuration class to store the configuration of a [`OtterForConditionalGeneration`]. It is
-    used to instantiate a Otter model according to the specified arguments, defining the vision model and language model configs. Instantiating a configuration with the defaults will yield a similar configuration to
-    that of the Otter architecture.
+    [`FlamingoConfig`] is the configuration class to store the configuration of a [`FlamingoForConditionalGeneration`]. It is
+    used to instantiate a Flamingo model according to the specified arguments, defining the vision model and language model configs. Instantiating a configuration with the defaults will yield a similar configuration to
+    that of the Flamingo architecture.
 
     Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
     documentation from [`PretrainedConfig`] for more information.
@@ -38,22 +41,21 @@ class OtterConfig(PretrainedConfig):
     >>> from transformers import (
     ...     PretrainedConfig,
     ...     OPTConfig,
-    ...     OtterConfig,
-    ...     OtterForConditionalGeneration,
+    ...     FlamingoConfig,
+    ...     FlamingoForConditionalGeneration,
     ... )
 
-    >>> # Initializing a OtterConfig with luodian/otter-9b-hf style configuration
-    >>> configuration = OtterConfig()
+    >>> # Initializing a FlamingoConfig with Salesforce/Flamingo-opt-2.7b style configuration
+    >>> configuration = FlamingoConfig()
 
-    >>> # Initializing a OtterForConditionalGeneration (with random weights) from the Salesforce/Otter-opt-2.7b style configuration
-    >>> model = OtterForConditionalGeneration(configuration)
+    >>> # Initializing a FlamingoForConditionalGeneration (with random weights) from the Salesforce/Flamingo-opt-2.7b style configuration
+    >>> model = FlamingoForConditionalGeneration(configuration)
     ```"""
-    model_type = "otter"
+    model_type = "flamingo"
     is_composition = True
 
     def __init__(self, vision_config=None, text_config=None, cross_attn_every_n_layers: int = 4, use_media_placement_augmentation: bool = True, **kwargs):
         super().__init__(**kwargs)
-
         if vision_config is None:
             vision_config = {}
             logger.info("vision_config is None. initializing the vision config with default values.")
@@ -78,6 +80,7 @@ class OtterConfig(PretrainedConfig):
                 pdb.set_trace()
         else:
             self.text_config = CONFIG_MAPPING[text_config.pop("model_type")](**text_config)
+
         self.cross_attn_every_n_layers = cross_attn_every_n_layers
         self.use_media_placement_augmentation = use_media_placement_augmentation
 

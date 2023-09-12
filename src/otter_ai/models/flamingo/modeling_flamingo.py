@@ -11,10 +11,10 @@ from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.auto import AutoModel, AutoModelForCausalLM, AutoTokenizer
 
-from flamingo.configuration_flamingo import FlamingoConfig
-from flamingo.falcon.modelling_RW import RWForCausalLM
-from flamingo.mpt.modeling_mpt import MPTForCausalLM
-from flamingo.mpt_redpajama.mosaic_gpt import MosaicGPT
+from .configuration_flamingo import FlamingoConfig
+from .falcon.modelling_RW import RWForCausalLM
+from .mpt.modeling_mpt import MPTForCausalLM
+from .mpt_redpajama.mosaic_gpt import MosaicGPT
 
 # from .configuration_flamingo import FlamingoConfig
 

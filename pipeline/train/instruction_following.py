@@ -18,10 +18,13 @@ from transformers import (
     get_cosine_schedule_with_warmup,
     get_linear_schedule_with_warmup,
 )
-
 import wandb
-from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
-from otter.modeling_otter import OtterForConditionalGeneration
+
+import sys
+sys.path.append("../..")
+from src.otter_ai.models.flamingo.modeling_flamingo import FlamingoForConditionalGeneration
+from src.otter_ai.models.otter.modeling_otter import OtterForConditionalGeneration
+
 from pipeline.train.data import get_data
 from pipeline.train.distributed import world_info_from_env
 from pipeline.train.train_utils import AverageMeter, get_checkpoint, get_image_attention_mask
@@ -76,12 +79,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     autocast_type = torch.bfloat16 if accelerator.mixed_precision == "bf16" else torch.float32
 
     # loop through dataloader
-    for num_steps, (batch_mimicits) in tqdm(
-        enumerate(zip(*mimicit_loaders)),
-        disable=args.rank != 0,
-        total=total_training_steps,
-        initial=(epoch * num_batches_per_epoch),
-    ):
+    for num_steps, (batch_mimicits) in tqdm(enumerate(zip(*mimicit_loaders)), disable=args.rank != 0, total=total_training_steps, initial=(epoch * num_batches_per_epoch)):
         data_time_m.update(time.time() - end)
 
         global_step = num_steps + epoch * num_batches_per_epoch
@@ -386,6 +384,12 @@ def parse_args():
     )
 
     # Arguments for video-text data.
+    parser.add_argument(
+        "--training_data_yaml",
+        type=str,
+        default="",
+        help="Path to the training data yaml file.",
+    )
     parser.add_argument(
         "--past_mimicit_vt_path",
         type=str,
