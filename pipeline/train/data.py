@@ -639,12 +639,26 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     args.tokenizer = tokenizer
     unified_datasets = []
 
-    def append_datasets(args, dataset_config_dict):
-        for name, data in dataset_config_dict.items():
-            if getattr(args, name) == "":
-                setattr(args, name, ",".join(data))
+    def flatten_dataset_config(dataset_config_dict):
+        """Recursively flatten the dictionary to extract leaf node values."""
+        items = []
+        for k, v in dataset_config_dict.items():
+            if isinstance(v, dict):
+                items.extend(flatten_dataset_config(v))
             else:
-                setattr(args, name, ",".join(data + [getattr(args, name)]))
+                items.extend(v)
+        return items
+
+    def append_datasets(args, dataset_config_dict):
+        """Append datasets from the configuration to the arguments."""
+        for name, data in dataset_config_dict.items():
+            flattened_data = flatten_dataset_config(data)
+            if getattr(args, name) == "":
+                setattr(args, name, ",".join(flattened_data))
+            else:
+                existing_data = getattr(args, name).split(',')
+                combined_data = flattened_data + existing_data
+                setattr(args, name, ",".join(combined_data))
 
     if args.training_data_yaml != "":
         with open(args.training_data_yaml, "r") as f:
