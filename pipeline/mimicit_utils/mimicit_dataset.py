@@ -323,8 +323,8 @@ class MimicitDataset(Dataset):
             elif inst_format == "simple":
                 cur_text = f"<image>User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
             all_texts += cur_text
-            
-        all_texts = all_texts.rstrip("\n") # remove the last \n
+
+        all_texts = all_texts.rstrip("\n")  # remove the last \n
         return patch_images, all_texts  # incontext_text, query_text
 
     def process_general_videoqa(
@@ -458,7 +458,7 @@ class MimicitDataset(Dataset):
                     cur_text = f"User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
             all_texts += cur_text
 
-        all_texts = all_texts.rstrip("\n") # remove the last \n
+        all_texts = all_texts.rstrip("\n")  # remove the last \n
         cur_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
         cur_image = self.images[cur_image_id]
         cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
@@ -488,7 +488,7 @@ class MimicitDataset(Dataset):
                 cur_text = f"User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
             all_texts += cur_text
 
-        all_texts = all_texts.rstrip("\n") # remove the last \n
+        all_texts = all_texts.rstrip("\n")  # remove the last \n
         return patch_images, all_texts
 
     def process_image_text_pair(self, index):

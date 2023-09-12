@@ -21,6 +21,7 @@ from transformers import (
 import wandb
 
 import sys
+
 sys.path.append("../..")
 from src.otter_ai.models.flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from src.otter_ai.models.otter.modeling_otter import OtterForConditionalGeneration
@@ -479,12 +480,6 @@ def parse_args():
         help="url used to set up distributed training",
     )
     parser.add_argument("--dist-backend", default="nccl", type=str, help="distributed backend")
-    parser.add_argument(
-        "--horovod",
-        default=False,
-        action="store_true",
-        help="Use horovod for distributed training.",
-    )
     parser.add_argument(
         "--no-set-device-rank",
         default=False,

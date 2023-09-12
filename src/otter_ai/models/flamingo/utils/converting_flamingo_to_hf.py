@@ -10,9 +10,8 @@ import torch.nn as nn
 from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 
 import sys
-from modeling_flamingo import FlamingoForConditionalGeneration
-
-from configuration_flamingo import FlamingoConfig
+from ..configuration_flamingo import FlamingoConfig
+from ..modeling_flamingo import FlamingoForConditionalGeneration
 
 
 @torch.no_grad()

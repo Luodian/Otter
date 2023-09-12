@@ -6,8 +6,8 @@ from tqdm import tqdm
 
 import sys
 
-from configuration_flamingo import FlamingoConfig
-from modeling_flamingo import FlamingoForConditionalGeneration
+from ..configuration_flamingo import FlamingoConfig
+from ..modeling_flamingo import FlamingoForConditionalGeneration
 from utils import rename_flamingo_checkpoint
 
 

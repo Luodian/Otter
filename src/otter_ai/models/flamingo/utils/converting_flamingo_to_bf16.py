@@ -3,8 +3,8 @@ import os
 
 import torch
 
-from .configuration_flamingo import FlamingoConfig
-from .modeling_flamingo import FlamingoForConditionalGeneration
+from ..configuration_flamingo import FlamingoConfig
+from ..modeling_flamingo import FlamingoForConditionalGeneration
 
 parser = argparse.ArgumentParser(description="Load model with precision")
 parser.add_argument("--load_bit", type=str, choices=["fp16", "bf16"], required=True, help="Choose either 'fp16' or 'bf16'")
