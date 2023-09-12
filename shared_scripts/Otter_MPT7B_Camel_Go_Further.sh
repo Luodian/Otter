@@ -21,4 +21,5 @@ accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_
     --learning_rate=1e-5 \
     --warmup_steps_ratio=0.01 \
     --save_hf_model \
-    --save_ckpt_each_epoch
+    --save_ckpt_each_epoch \
+    --max_seq_len=4096
