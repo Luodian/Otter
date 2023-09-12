@@ -656,7 +656,7 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
             if getattr(args, name) == "":
                 setattr(args, name, ",".join(flattened_data))
             else:
-                existing_data = getattr(args, name).split(',')
+                existing_data = getattr(args, name).split(",")
                 combined_data = flattened_data + existing_data
                 setattr(args, name, ",".join(combined_data))
 

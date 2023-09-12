@@ -1,6 +1,7 @@
 import os
 import torch
 
+
 def is_global_master(args):
     return args.rank == 0
 
@@ -11,6 +12,7 @@ def is_local_master(args):
 
 def is_master(args, local=False):
     return is_local_master(args) if local else is_global_master(args)
+
 
 def is_using_distributed():
     if "WORLD_SIZE" in os.environ:

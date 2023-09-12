@@ -21,6 +21,7 @@ from transformers import (
 import wandb
 
 import sys
+
 sys.path.append("../..")
 from src.otter_ai.models.flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from src.otter_ai.models.otter.modeling_otter import OtterForConditionalGeneration
