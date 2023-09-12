@@ -17,6 +17,8 @@ mimicit_path:
 images_path:
   LA:
     - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json
+    - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json
+    - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json
   m3it:
     reasoning:
       - /mnt/petrelfs/zhangyuanhan/data/m3it/reasoning/scienceqa/scienceqa.json
