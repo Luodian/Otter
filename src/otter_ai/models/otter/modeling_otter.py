@@ -842,7 +842,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
     def init_weights(self):
         # Freeze all parameters in self.model if train_vision_encoder is False or train_lang_encoder is False
-        if not ("train_full_model" in self.config.__dict__ and self.config.train_full_model is False):
+        if not ("train_full_model" in self.config.__dict__ and self.config.train_full_model is True):
             for param in self.parameters():
                 param.requires_grad = False
 
@@ -881,7 +881,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         for name, param in self.named_parameters():
             if param.requires_grad:
                 total_params += param.numel()
-                # print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
+                print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
         print(f"Total Trainable param: {total_params / 1e9:.6f} B")
 
     def forward(
