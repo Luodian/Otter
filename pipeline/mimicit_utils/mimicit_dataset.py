@@ -105,7 +105,7 @@ class MimicitDataset(Dataset):
         self.text_data_list = [
             "LIMA",
             "MBPP",
-            "TXT_SHAREGPT",
+            "SHAREGPT",
             "AL",
             "CAL",
             "TEXT_ONLY",

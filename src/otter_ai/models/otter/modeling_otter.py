@@ -1,8 +1,10 @@
+import builtins
 import random
 import sys
 from typing import List, Optional
 
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 from accelerate import Accelerator
 from accelerate.hooks import AlignDevicesHook, add_hook_to_module
@@ -24,11 +26,6 @@ if sys.version_info < (3, 8):
     import importlib_metadata
 else:
     import importlib.metadata as importlib_metadata
-
-import torch.distributed as dist
-from accelerate.logging import get_logger
-
-logger = get_logger(__name__, log_level="INFO")
 
 # Add this line at the beginning of your script or in your main function
 # dist.init_process_group(backend='nccl')
@@ -77,6 +74,10 @@ MODEL_CLASSES = {
     "MPTForCausalLM": "mpt",
     "MosaicGPT": "mpt",
 }
+
+# If distributed is initialized and current rank is not 0, override the print function
+if dist.is_available() and dist.is_initialized() and dist.get_rank() != 0:
+    builtins.print = lambda *args, **kwargs: None
 
 
 def _infer_decoder_layers_attr_name(model: nn.Module):
@@ -847,22 +848,25 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
     def init_weights(self):
         # Freeze all parameters in self.model if train_vision_encoder is False or train_lang_encoder is False
         if not ("train_full_model" in self.config.__dict__ and self.config.train_full_model is True):
+            print("Unfreeze all.")
             for param in self.parameters():
                 param.requires_grad = False
 
         # Freeze all parameters in vision encoder
         if "train_vision_encoder" in self.config.__dict__ and self.config.train_vision_encoder is True:
+            print("Unfreeze vision encoder.")
             for param in self.vision_encoder.parameters():
                 param.requires_grad = True
 
         # Freeze all parameters in lang encoders except gated_cross_attn_layers
         if "train_lang_encoder" in self.config.__dict__ and self.config.train_lang_encoder is True:
+            print("Unfreeze language decoder.")
             for name, param in self.lang_encoder.named_parameters():
                 param.requires_grad = True
 
         if "lora_config" in self.config.__dict__:
             # Use another logic to unfreeze gated_cross_attn_layers and perceivers
-            logger.info(f"LoRA trainable param: {(sum(param.numel() for name, param in self.lang_encoder.named_parameters() if 'lora' in name)) / 1e6:.3f} M", main_process_only=True)
+            print(f"LoRA trainable param: {(sum(param.numel() for name, param in self.lang_encoder.named_parameters() if 'lora' in name)) / 1e6:.3f} M")
             for name, param in self.lang_encoder.named_parameters():
                 if "lora" in name:
                     param.requires_grad = True
@@ -875,6 +879,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         for name, param in self.named_parameters():
             if "perceiver" in name:
                 param.requires_grad = True
+                
         # Unfreeze LM input and output embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
@@ -885,8 +890,8 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         for name, param in self.named_parameters():
             if param.requires_grad:
                 total_params += param.numel()
-                logger.info(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M", main_process_only=True)
-        logger.info(f"Total Trainable param: {total_params / 1e9:.6f} B", main_process_only=True)
+                print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
+        print(f"Total Trainable param: {total_params / 1e9:.6f} B")
 
     def forward(
         self,
