@@ -79,12 +79,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     autocast_type = torch.bfloat16 if accelerator.mixed_precision == "bf16" else torch.float32
 
     # loop through dataloader
-    for num_steps, (batch_mimicits) in tqdm(
-        enumerate(zip(*mimicit_loaders)),
-        disable=args.rank != 0,
-        total=total_training_steps,
-        initial=(epoch * num_batches_per_epoch),
-    ):
+    for num_steps, (batch_mimicits) in tqdm(enumerate(zip(*mimicit_loaders)), disable=args.rank != 0, total=total_training_steps, initial=(epoch * num_batches_per_epoch)):
         data_time_m.update(time.time() - end)
 
         global_step = num_steps + epoch * num_batches_per_epoch
