@@ -8,6 +8,7 @@ AVAILABLE_MODELS: Dict[str, str] = {
     "otter": "Otter",
     "idefics": "Idefics",
     "idefics_otter": "IdeficsOtter",
+    "llama_adapter":"LlamaAdapter"
 }
 
 
