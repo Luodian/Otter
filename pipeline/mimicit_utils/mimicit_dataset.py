@@ -105,7 +105,7 @@ class MimicitDataset(Dataset):
         self.text_data_list = [
             "LIMA",
             "MBPP",
-            "TXT_SHAREGPT",
+            "SHAREGPT",
             "AL",
             "CAL",
             "TEXT_ONLY",
@@ -533,7 +533,7 @@ class MimicitDataset(Dataset):
             truncation=True,
             max_length=self.max_seq_len,  # for current 2k mpt/llama model, setting to 2048 causes error (2042 works)
         )
-        num_tokens = all_text['input_ids'].shape[1]
+        num_tokens = all_text["input_ids"].shape[1]
         if num_tokens == self.max_seq_len:
             print("The number of tokens in all_texts reaches the max_seq_len.")
 

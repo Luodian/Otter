@@ -64,8 +64,8 @@ mimicit_text_path:
       - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/MBPP/MBPP_Instruction.json
     GUANACO:
       - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/GUANACO/guanaco_instructions.json
-    ORCACHAT:
-      - /mnt/petrelfs/share_data/libo/ORCACHAT/ORCACHAT_instructions.json
+    # ORCACHAT:
+    #   - /mnt/petrelfs/share_data/libo/ORCACHAT/ORCACHAT_instructions.json
     SHAREGPT:
       - /mnt/petrelfs/share_data/libo/SHAREGPT/SHAREGPT_instructions.json
 
@@ -81,7 +81,7 @@ train_config_text_path:
       - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/MBPP/MBPP_train.json
     GUANACO:
       - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/GUANACO/guanaco_train.json
-    ORCACHAT:
-      - /mnt/petrelfs/share_data/libo/ORCACHAT/ORCACHAT_train.json
+    # ORCACHAT:
+    #   - /mnt/petrelfs/share_data/libo/ORCACHAT/ORCACHAT_train.json
     SHAREGPT:
       - /mnt/petrelfs/share_data/libo/SHAREGPT/SHAREGPT_train.json
