@@ -24,14 +24,14 @@ train_config_path:
 
 mimicit_text_path:
   LANG_Only:
-    ORCACHAT:
-      - /home/luodian/projects/data/LANG_Only/ORCACHAT/ORCACHAT_instructions.json
+    SHAREGPT_2K:
+      - /home/luodian/projects/Otter/archived/SHAREGPT_2K_instructions.json
     LIMA:
-      - /home/luodian/projects/data/LANG_Only/LIMA/LIMA_instructions.json
+      - /home/luodian/projects/Otter/archived/LIMA_2K_instructions.json
 
 train_config_text_path:
   LANG_Only:
-    ORCACHAT:
-      - /home/luodian/projects/data/LANG_Only/ORCACHAT/ORCACHAT_train.json
+    SHAREGPT_2K:
+      - /home/luodian/projects/Otter/archived/SHAREGPT_2K_train.json
     LIMA:
-      - /home/luodian/projects/data/LANG_Only/LIMA/LIMA_train.json
+      - /home/luodian/projects/Otter/archived/LIMA_2K_train.json

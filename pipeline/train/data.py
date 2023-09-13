@@ -633,12 +633,7 @@ from PIL import Image, ImageFile
 from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
 
 
-def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
-    ImageFile.LOAD_TRUNCATED_IMAGES = True
-    args.task = "pretrain"
-    args.tokenizer = tokenizer
-    unified_datasets = []
-
+def preload_dataset(args):
     def flatten_dataset_config(dataset_config_dict):
         """Recursively flatten the dictionary to extract leaf node values."""
         items = []
@@ -653,6 +648,10 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
         """Append datasets from the configuration to the arguments."""
         for name, data in dataset_config_dict.items():
             flattened_data = flatten_dataset_config(data)
+            # check data path exists
+            for path in flattened_data:
+                if not os.path.exists(path):
+                    raise ValueError(f"Dataset path {path} does not exist.")
             if getattr(args, name) == "":
                 setattr(args, name, ",".join(flattened_data))
             else:
@@ -664,6 +663,14 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
         with open(args.training_data_yaml, "r") as f:
             dataset_config_dict = yaml.safe_load(f)
             append_datasets(args, dataset_config_dict)
+
+    return args
+
+def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
+    args.task = "pretrain"
+    args.tokenizer = tokenizer
+    unified_datasets = []
 
     # processing for image-text in-context datasets
     if args.mimicit_ic_path != "":

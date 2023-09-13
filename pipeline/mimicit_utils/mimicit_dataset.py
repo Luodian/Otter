@@ -507,7 +507,6 @@ class MimicitDataset(Dataset):
         )
         inst_format = self.inst_format
         resample_frames = self.resample_frames
-        # self.max_src_length = self.max_tgt_length = 256
 
         if cur_train_id.upper().startswith("SD") or cur_train_id.startswith("CGD"):
             patch_images, all_texts = self.process_spot_the_difference(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
