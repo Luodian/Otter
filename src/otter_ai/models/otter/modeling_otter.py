@@ -26,9 +26,6 @@ else:
     import importlib.metadata as importlib_metadata
 
 import torch.distributed as dist
-from accelerate.logging import get_logger
-
-logger = get_logger(__name__, log_level="INFO")
 
 # Add this line at the beginning of your script or in your main function
 # dist.init_process_group(backend='nccl')
