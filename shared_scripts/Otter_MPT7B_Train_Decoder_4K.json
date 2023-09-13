@@ -17,7 +17,7 @@
         "attn_config": {
             "alibi": true,
             "alibi_bias_max": 8,
-            "attn_impl": "triton",
+            "attn_impl": "torch",
             "attn_pdrop": 0,
             "attn_type": "multihead_attention",
             "attn_uses_sequence_id": false,
@@ -72,7 +72,7 @@
         "length_penalty": 1.0,
         "logit_scale": null,
         "max_length": 20,
-        "max_seq_len": 4096,
+        "max_seq_len": 2048,
         "min_length": 0,
         "model_type": "mpt",
         "n_heads": 32,

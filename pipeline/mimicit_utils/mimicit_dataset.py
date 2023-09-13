@@ -468,16 +468,14 @@ class MimicitDataset(Dataset):
     def process_general_text(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format="simple"):
         patch_images = torch.tensor([])
         all_texts = ""
-        all_instruction_ids = in_context_example_ids + [instruction_id]
+        all_instruction_ids = in_context_example_ids[-3:] + [instruction_id]
         patch_images = torch.zeros(3, 224, 224).unsqueeze(0).unsqueeze(0)
         for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_instruction = self.pre_question(cur_instruction)
             cur_answer = self.pre_answer(cur_answer)
-            if "baize" in instruction_id:
-                cur_text = f"{cur_answer}"
-            elif inst_format == "llama2":
+            if inst_format == "llama2":
                 if idx == 0:
                     cur_text = f"[INST]{self.wrap_sys} {cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
                 else:
@@ -535,7 +533,7 @@ class MimicitDataset(Dataset):
         )
         num_tokens = all_text["input_ids"].shape[1]
         if num_tokens == self.max_seq_len:
-            print("The number of tokens in all_texts reaches the max_seq_len.")
+            print(f"{cur_train_id}'s all_texts reaches the max_seq_len.")
 
         all_item = all_text["input_ids"].squeeze(0)
         all_item_mask = all_text["attention_mask"].squeeze(0)
