@@ -136,3 +136,6 @@ open_flamingo.egg-info
 llama-7b-hf/*
 cache/
 pipeline/evaluation/ckpts/*
+pipeline/evaluation/models/Ask_Anything
+pipeline/evaluation/models/FrozenBiLM
+pipeline/evaluation/models/LLaMA_Adapter
