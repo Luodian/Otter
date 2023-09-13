@@ -2,7 +2,7 @@ import torch
 from typing import List
 from transformers import IdeficsForVisionText2Text, AutoProcessor
 from PIL import Image
-from .model import Model
+from .base_model import BaseModel
 
 
 def get_formatted_prompt(prompt: str, image: Image.Image) -> List[str]:
@@ -14,7 +14,7 @@ def get_formatted_prompt(prompt: str, image: Image.Image) -> List[str]:
     ]
 
 
-class Idefics(Model):
+class Idefics(BaseModel):
     def __init__(self, model_path: str = "HuggingFaceM4/idefics-9b-instruct"):
         super().__init__("idefics", model_path)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"

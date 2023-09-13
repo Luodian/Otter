@@ -7,7 +7,8 @@ import transformers
 
 if __name__ == "__main__":
     evaluator = load_dataset("mhbench", {"dataset_path": "ZhangYuanhan/multi-hop-reasoning"})
-    model = load_model("llama_adapter", {"model_path": "/mnt/petrelfs/zhangyuanhan/Otter/pipeline/evaluation/ckpts/7B.pth"})
+    # model = load_model("llama_adapter", {"model_path": "/mnt/petrelfs/zhangyuanhan/Otter/pipeline/evaluation/ckpts/7B.pth"})
+    model = load_model("video_chat", {"model_path": ""})
     evaluator.evaluate(model)
 
 # pip install otter_ai

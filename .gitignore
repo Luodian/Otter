@@ -135,4 +135,4 @@ USE_POLICY.md
 open_flamingo.egg-info
 llama-7b-hf/*
 cache/
-pipeline/evaluation/ckpts/7B.pth
+pipeline/evaluation/ckpts/*
