@@ -61,7 +61,7 @@ mimicit_text_path:
     CAL:
       - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/CAL/CAL_instructions.json
     MBPP:
-      - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/MBPP/MBPP_2K_Instruction.json
+      - /mnt/petrelfs/share_data/libo/MBPP/MBPP_2K_instructions.json
     GUANACO:
       - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/GUANACO/guanaco_instructions.json
     # ORCACHAT:
@@ -78,7 +78,7 @@ train_config_text_path:
     CAL:
       - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/CAL/CAL_train.json
     MBPP:
-      - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/MBPP/MBPP_2K_train.json
+      - /mnt/petrelfs/share_data/libo/MBPP/MBPP_2K_train.json
     GUANACO:
       - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/GUANACO/guanaco_train.json
     # ORCACHAT:
