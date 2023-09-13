@@ -468,7 +468,7 @@ class MimicitDataset(Dataset):
     def process_general_text(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format="simple"):
         patch_images = torch.tensor([])
         all_texts = ""
-        all_instruction_ids = in_context_example_ids[-3:] + [instruction_id]
+        all_instruction_ids = in_context_example_ids + [instruction_id]
         patch_images = torch.zeros(3, 224, 224).unsqueeze(0).unsqueeze(0)
         for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
