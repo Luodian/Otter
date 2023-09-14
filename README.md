@@ -57,8 +57,9 @@ For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.
 
 **Contact: Leave issue or `drluodian@gmail.com/YUANHAN002@e.ntu.edu.sg`. We are on call to respond.**
 
-**[2023-08]**
-1. Added Support for using Azure, Anthropic, Palm, Cohere models, for information on usage modify [this line](https://github.com/Luodian/Otter/blob/16d73b399fac6352ebff7504b1acb1f228fbf3f4/mimic-it/syphus/file_utils.py#L53) with your selected model and set your API keys in the environment. For more information see [LiteLLM](https://github.com/BerriAI/litellm/)
+**[2023-08/09]**
+1. Added Support for using Azure, Anthropic, Palm, Cohere models, for information on usage modify [this line](https://github.com/Luodian/Otter/blob/16d73b399fac6352ebff7504b1acb1f228fbf3f4/mimic-it/syphus/file_utils.py#L53). 
+2. We update MIMIC-IT [Raw Data](https://docs.google.com/forms/d/e/1FAIpQLSfZOxo8ML5wwGWJzGuIG4qlcj2rsw4sRjT929V-fBWVU7SIcQ/viewform) (including all xx.json files) and MIMIC-IT [MultiLingual] ((https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/Eo9bgNV5cjtEswfA-HfjNNABiKsjDzSWAl5QYAlRZPiuZA?e=M9isDT)).
 
 **[2023-07]**
 1. 🧨 Feature Updates:
@@ -79,13 +80,6 @@ For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.
 4. 🤗 Introducing Project Otter's brand new homepage: https://otter-ntu.github.io/. Check it out now!
 5. 🤗 Check our [paper](https://arxiv.org/abs/2306.05425) introducing MIMIC-IT in details. Meet MIMIC-IT, the first multimodal in-context instruction tuning dataset with 2.8M instructions! From general scene understanding to spotting subtle differences and enhancing egocentric view comprehension for AR headsets, our MIMIC-IT dataset has it all.
 <!-- 6. 🤗 Stay tuned for our upcoming Otter Model v0.2, trained on the MIMIC-IT dataset! With the ability to understand daily scenes, reason in context, spot differences in observations, and act as an egocentric assistant. Checkout conceptual demo video at [Youtube](https://www.youtube.com/watch?v=K8o_LKGQJhs) or [Bilibili](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)! -->
-
-<!-- **[2023-05-14]**
-1. Otter battles with Owl? the Pokémon Arena is here! Our model is selected into [Multi-Modal Arena](http://vlarena.opengvlab.com/). This is an interesting Multi-Modal Foundation Models competition arena that let you see different models reaction to the same question.
-
-**[2023-05-08]**
-1. Check our Arxiv release paper at [Otter: A Multi-Modal Model with In-Context Instruction Tuning](https://arxiv.org/abs/2305.03726) !
-2. We support `xformers` for memory efficient attention. -->
 
 <div style="text-align:center">
 <img src="https://i.postimg.cc/Tw1Z0BCW/otterv0-2-demo.png"  width="100%" height="100%">
