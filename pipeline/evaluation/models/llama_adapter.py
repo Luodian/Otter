@@ -8,8 +8,6 @@ import os
 
 llama_dir = "/mnt/petrelfs/share_data/zhangyuanhan/llama_adapter_v2_multimodal"
 
-video_dir = "data_source/multi_hop_reasoning"
-
 
 class LlamaAdapter(BaseModel):
     # checkpoint will be automatically downloaded
@@ -19,6 +17,7 @@ class LlamaAdapter(BaseModel):
 
     def generate(self, input_data):
         inputs = {}
+        video_dir = input_data.get("video_root", "")
         image = data_utils.load_and_transform_video_data([os.path.join(video_dir, input_data["video_idx"] + ".mp4")], device="cuda")
         inputs["Image"] = [image, 1]
 

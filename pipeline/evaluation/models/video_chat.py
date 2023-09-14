@@ -16,8 +16,6 @@ from torchvision.transforms.functional import InterpolationMode
 config_file = "models/Ask_Anything/video_chat/configs/config.json"
 cfg = Config.from_file(config_file)
 
-video_dir = "data_source/multi_hop_reasoning"
-
 
 class StoppingCriteriaSub(StoppingCriteria):
     def __init__(self, stops=[], encounters=1):
@@ -140,6 +138,7 @@ class VideoChat(BaseModel):
 
     def generate(self, input_data):
         inputs = {}
+        video_dir = input_data.get("video_root", "")
         vid, msg = self.load_video(os.path.join(video_dir, input_data["video_idx"] + ".mp4"), num_segments=8, return_msg=True)
         # print(msg)
         self.chat.messages.append([self.chat.roles[0], f"<Video><VideoHere></Video> {msg}\n"])
