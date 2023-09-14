@@ -666,6 +666,7 @@ def preload_dataset(args):
 
     return args
 
+
 def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     args.task = "pretrain"
