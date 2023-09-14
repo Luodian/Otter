@@ -46,9 +46,6 @@
 For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.org.cn/header/openxlab_models.svg)](https://openxlab.org.cn/models/detail/YuanhanZhang/OTTER-Image-MPT7B) | [![Open in OpenXLab](https://cdn-static.openxlab.org.cn/header/openxlab_models.svg)](https://openxlab.org.cn/models/detail/YuanhanZhang/OTTER-Video-LLaMA7B-DenseCaption))
 > **Otter-Image** supports multiple images input as in-context examples, which is **the first multi-modal instruction tuned model** that supports to organize inputs this way.
 
-
-
-
 > **Otter-Video** supports videos inputs (frames are arranged as original Flamingo's implementation) and multiple images inputs (they serve as in-context examples for each other).
 
 **Eval Results:** [Multi-Modal Arena](http://vlarena.opengvlab.com/) | [MLLM Evaluation Benchmark](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation) | [OpenCompass-MMBench](https://opencompass.org.cn/leaderboard-multimodal)
@@ -59,7 +56,7 @@ For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.
 
 **[2023-08/09]**
 1. Added Support for using Azure, Anthropic, Palm, Cohere models, for information on usage modify [this line](https://github.com/Luodian/Otter/blob/16d73b399fac6352ebff7504b1acb1f228fbf3f4/mimic-it/syphus/file_utils.py#L53). 
-2. We update MIMIC-IT [Raw Data](https://docs.google.com/forms/d/e/1FAIpQLSfZOxo8ML5wwGWJzGuIG4qlcj2rsw4sRjT929V-fBWVU7SIcQ/viewform) (including all xx.json files) and MIMIC-IT [MultiLingual] (https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/Eo9bgNV5cjtEswfA-HfjNNABiKsjDzSWAl5QYAlRZPiuZA?e=M9isDT).
+2. We update MIMIC-IT [Raw Data](https://docs.google.com/forms/d/e/1FAIpQLSfZOxo8ML5wwGWJzGuIG4qlcj2rsw4sRjT929V-fBWVU7SIcQ/viewform) (including all xx.json for images/videos) and MIMIC-IT [MultiLingual](https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/Eo9bgNV5cjtEswfA-HfjNNABiKsjDzSWAl5QYAlRZPiuZA?e=M9isDT).
 
 **[2023-07]**
 1. 🧨 Feature Updates:
