@@ -59,7 +59,7 @@ For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.
 
 **[2023-08/09]**
 1. Added Support for using Azure, Anthropic, Palm, Cohere models, for information on usage modify [this line](https://github.com/Luodian/Otter/blob/16d73b399fac6352ebff7504b1acb1f228fbf3f4/mimic-it/syphus/file_utils.py#L53). 
-2. We update MIMIC-IT [Raw Data](https://docs.google.com/forms/d/e/1FAIpQLSfZOxo8ML5wwGWJzGuIG4qlcj2rsw4sRjT929V-fBWVU7SIcQ/viewform) (including all xx.json files) and MIMIC-IT [MultiLingual] ((https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/Eo9bgNV5cjtEswfA-HfjNNABiKsjDzSWAl5QYAlRZPiuZA?e=M9isDT)).
+2. We update MIMIC-IT [Raw Data](https://docs.google.com/forms/d/e/1FAIpQLSfZOxo8ML5wwGWJzGuIG4qlcj2rsw4sRjT929V-fBWVU7SIcQ/viewform) (including all xx.json files) and MIMIC-IT [MultiLingual] (https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/Eo9bgNV5cjtEswfA-HfjNNABiKsjDzSWAl5QYAlRZPiuZA?e=M9isDT).
 
 **[2023-07]**
 1. 🧨 Feature Updates:
