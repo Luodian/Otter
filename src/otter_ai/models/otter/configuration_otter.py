@@ -6,6 +6,7 @@ from transformers.models.auto import CONFIG_MAPPING
 from transformers.models.clip import CLIPVisionConfig
 
 import sys
+
 sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/src")
 from otter_ai.models.flamingo.falcon.configuration_RW import RWConfig
 from otter_ai.models.flamingo.mpt.configuration_mpt import MPTConfig
