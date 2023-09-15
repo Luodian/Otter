@@ -3,6 +3,7 @@ import io
 import pandas as pd
 from PIL import Image
 from tqdm import tqdm
+from datasets import load_dataset
 
 
 def decode_base64_to_image(base64_string):
@@ -12,9 +13,9 @@ def decode_base64_to_image(base64_string):
 
 
 class MMBenchDataset(object):
-    def __init__(self, data_file, sys_prompt="There are several options:"):
-        self.df = pd.read_csv(data_file, sep="\t")
-        self.default_output_file = data_file.replace(".tsv", "_eval_result.xlsx")
+    def __init__(self, data_file, sys_prompt="There are several options:", version="20230712", split="train", cache_dir=None):
+        self.df = load_dataset("Otter-AI/mmbench", version, split=split, cache_dir=cache_dir).to_pandas()
+        self.default_output_file = data_file.replace("./mmbench_eval_results.xlsx")
         self.sys_prompt = sys_prompt
 
     def load_from_df(self, idx, key):

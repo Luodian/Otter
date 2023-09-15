@@ -1,0 +1,3 @@
+datasets:
+  mhbench: 
+    dataset_path: ZhangYuanhan/multi-hop-reasoning
