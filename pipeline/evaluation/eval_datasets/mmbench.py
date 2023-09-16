@@ -7,12 +7,6 @@ from datasets import load_dataset
 from .base_evel_dataset import BaseEvalDataset
 
 
-def decode_base64_to_image(base64_string):
-    image_data = base64.b64decode(base64_string)
-    image = Image.open(io.BytesIO(image_data))
-    return image
-
-
 class MMBenchDataset(BaseEvalDataset):
     def __init__(self, data_path="Otter-AI/mmbench", *, sys_prompt="There are several options:", version="20230712", split="train", cache_dir=None, default_output_file="mmbench_eval_results.xlsx"):
         super().__init__(data_path)
@@ -29,7 +23,6 @@ class MMBenchDataset(BaseEvalDataset):
     def get_data(self, idx):
         index = self.df.iloc[idx]["index"]
         image = self.df.iloc[idx]["image"]
-        image = decode_base64_to_image(image)
         question = self.df.iloc[idx]["question"]
         answer = self.df.iloc[idx]["answer"] if "answer" in self.df.iloc[0].keys() else None
         catetory = self.df.iloc[idx]["category"]

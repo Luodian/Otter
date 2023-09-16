@@ -4,7 +4,16 @@ from typing import Dict
 
 import importlib
 
-AVAILABLE_MODELS: Dict[str, str] = {"video_chat": "VideoChat", "otter_video": "OtterVideo", "llama_adapter": "LlamaAdapter", "mplug_owl": "mPlug_owl", "video_chatgpt": "Video_ChatGPT"}
+AVAILABLE_MODELS: Dict[str, str] = {
+    "video_chat": "VideoChat",
+    "otter_video": "OtterVideo",
+    "llama_adapter": "LlamaAdapter",
+    "mplug_owl": "mPlug_owl",
+    "video_chatgpt": "Video_ChatGPT",
+    "otter_image": "OtterImage",
+    "idefics": "Idefics",
+    "idefics_otter": "IdeficsOtter",
+}
 
 
 class BaseModel(ABC):

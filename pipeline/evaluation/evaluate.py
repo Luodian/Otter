@@ -9,7 +9,7 @@ if __name__ == "__main__":
     evaluator = load_dataset("mmbench")
     # model = load_model("llama_adapter", {"model_path": "/mnt/petrelfs/zhangyuanhan/Otter/pipeline/evaluation/ckpts/7B.pth"})
     # model = load_model("otter_video", {"model_path": "/mnt/petrelfs/zhangyuanhan/Otter/checkpoint/OTTER-9B-DenseCaption"})
-    model = load_model("")
+    model = load_model("otter_image", {"model_path": "/data/pufanyi/training_data/checkpoints/OTTER-Image-MPT7B"})
     evaluator.evaluate(model)
 
 # pip install otter_ai

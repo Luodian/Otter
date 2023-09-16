@@ -15,8 +15,11 @@ from .base_model import BaseModel
 # Disable warnings
 requests.packages.urllib3.disable_warnings()
 
+def get_pil_image(raw_image_data) -> Image.Image:
+    return Image.open(BytesIO(raw_image_data["bytes"]))
 
-class Otter(BaseModel):
+
+class OtterImage(BaseModel):
     def __init__(self, model_path="luodian/OTTER-Image-MPT7B", load_bit="bf16"):
         super().__init__("otter", model_path)
         precision = {}
@@ -35,8 +38,8 @@ class Otter(BaseModel):
     def get_formatted_prompt(prompt: str) -> str:
         return f"<image>User: {prompt} GPT:<answer>"
 
-    def generate(self, question: str, raw_image_data: Image.Image, no_image_flag=False):
-        input_data = image
+    def generate(self, question: str, raw_image_data):
+        input_data = get_pil_image(raw_image_data)
         if isinstance(input_data, Image.Image):
             if input_data.size == (224, 224) and not any(input_data.getdata()):  # Check if image is blank 224x224 image
                 vision_x = torch.zeros(1, 1, 1, 3, 224, 224, dtype=next(self.model.parameters()).dtype)
@@ -70,7 +73,7 @@ class Otter(BaseModel):
 
 
 if __name__ == "__main__":
-    model = Otter("/data/pufanyi/training_data/checkpoints/OTTER-Image-MPT7B")
+    model = OtterImage("/data/pufanyi/training_data/checkpoints/OTTER-Image-MPT7B")
     image = Image.open("/data/pufanyi/project/Otter-2/pipeline/evaluation/test_data/test.jpg")
     response = model.generate("What is this?", image)
     print(response)

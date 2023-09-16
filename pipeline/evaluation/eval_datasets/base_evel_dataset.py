@@ -6,6 +6,7 @@ import importlib
 
 AVAILABLE_EVAL_DATASETS: Dict[str, str] = {
     "mhbench": "MultiHopBenchDataset",
+    "mmbench": "MMBenchDataset",
 }
 
 
