@@ -20,6 +20,10 @@ def get_pil_image(raw_image_data) -> Image.Image:
     return Image.open(BytesIO(raw_image_data["bytes"]))
 
 
+def get_formatted_prompt(prompt: str) -> str:
+    return f"<image>User: {prompt} GPT:<answer>"
+
+
 class OtterImage(BaseModel):
     def __init__(self, model_path="luodian/OTTER-Image-MPT7B", load_bit="bf16"):
         super().__init__("otter", model_path)
@@ -36,9 +40,6 @@ class OtterImage(BaseModel):
         self.image_processor = transformers.CLIPImageProcessor()
         self.model.eval()
 
-    def get_formatted_prompt(prompt: str) -> str:
-        return f"<image>User: {prompt} GPT:<answer>"
-
     def generate(self, question: str, raw_image_data):
         input_data = get_pil_image(raw_image_data)
         if isinstance(input_data, Image.Image):
@@ -51,7 +52,7 @@ class OtterImage(BaseModel):
 
         lang_x = self.model.text_tokenizer(
             [
-                self.get_formatted_prompt(question),
+                get_formatted_prompt(question),
             ],
             return_tensors="pt",
         )
@@ -61,15 +62,15 @@ class OtterImage(BaseModel):
         lang_x_input_ids = lang_x["input_ids"]
         lang_x_attention_mask = lang_x["attention_mask"]
 
-        generated_text = model.generate(
-            vision_x=vision_x.to(model.device),
-            lang_x=lang_x_input_ids.to(model.device),
-            attention_mask=lang_x_attention_mask.to(model.device),
+        generated_text = self.model.generate(
+            vision_x=vision_x.to(self.model.device),
+            lang_x=lang_x_input_ids.to(self.model.device),
+            attention_mask=lang_x_attention_mask.to(self.model.device),
             max_new_tokens=512,
             num_beams=3,
             no_repeat_ngram_size=3,
         )
-        parsed_output = model.text_tokenizer.decode(generated_text[0]).split("<answer>")[-1].split("<|endofchunk|>")[0].strip()
+        parsed_output = self.model.text_tokenizer.decode(generated_text[0]).split("<answer>")[-1].split("<|endofchunk|>")[0].strip()
         return parsed_output
 
 
