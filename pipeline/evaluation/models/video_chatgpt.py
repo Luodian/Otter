@@ -10,7 +10,7 @@ projection_path = "/mnt/lustre/yhzhang/kaichen/video_ChatGPT/video_chatgpt-7B.bi
 
 class Video_ChatGPT(BaseModel):
     def __init__(self, model_path: str):
-        super().__init__(model_path)
+        super().__init__("video_chatgpt", model_path)
         self.model, self.vision_tower, self.tokenizer, self.image_processor, self.video_token_len = initialize_model(model_name, projection_path)
 
     def generate(self, input_data: dict):

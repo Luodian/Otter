@@ -12,6 +12,7 @@ llama_dir = "/mnt/petrelfs/share_data/zhangyuanhan/llama_adapter_v2_multimodal"
 class LlamaAdapter(BaseModel):
     # checkpoint will be automatically downloaded
     def __init__(self, model_path: str):
+        super().__init__("llama_adapter", model_path)
         self.model = llama.load(model_path, llama_dir)
         self.model.eval()
 

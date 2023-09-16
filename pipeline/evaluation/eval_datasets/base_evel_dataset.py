@@ -18,7 +18,7 @@ class BaseEvalDataset(ABC):
         pass
 
 
-def load_dataset(dataset_name: str, dataset_args: Dict[str, str]) -> BaseEvalDataset:
+def load_dataset(dataset_name: str, dataset_args: Dict[str, str] = {}) -> BaseEvalDataset:
     assert dataset_name in AVAILABLE_EVAL_DATASETS, f"{dataset_name} is not an available eval dataset."
     module_path = "pipeline.evaluation.eval_datasets." + dataset_name
     dataset_formal_name = AVAILABLE_EVAL_DATASETS[dataset_name]

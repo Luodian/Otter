@@ -8,7 +8,7 @@ AVAILABLE_MODELS: Dict[str, str] = {"video_chat": "VideoChat", "otter_video": "O
 
 
 class BaseModel(ABC):
-    def __init__(self, model_path: str):
+    def __init__(self, model_name: str, model_path: str):
         self.model_path = model_path
 
     @abstractmethod

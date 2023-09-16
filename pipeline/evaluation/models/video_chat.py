@@ -32,6 +32,7 @@ class StoppingCriteriaSub(StoppingCriteria):
 class VideoChat(BaseModel):
     # checkpoint will be automatically downloaded
     def __init__(self, model_path: str):
+        super().__init__("video_chat", model_path)
         self.model = VideoChatModel(config=cfg.model)
 
         self.model = self.model.to(torch.device(cfg.device))

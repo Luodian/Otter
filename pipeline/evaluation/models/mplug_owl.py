@@ -12,6 +12,7 @@ pretrained_ckpt = "MAGAer13/mplug-owl-llama-7b-video"
 
 class mPlug_owl(BaseModel):
     def __init__(self, model_path: str):
+        super().__init__("mplug_owl", model_path)
         self.model = MplugOwlForConditionalGeneration.from_pretrained(
             pretrained_ckpt,
             torch_dtype=torch.bfloat16,

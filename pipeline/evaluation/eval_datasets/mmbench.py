@@ -4,6 +4,7 @@ import pandas as pd
 from PIL import Image
 from tqdm import tqdm
 from datasets import load_dataset
+from .base_evel_dataset import BaseEvalDataset
 
 
 def decode_base64_to_image(base64_string):
@@ -12,10 +13,11 @@ def decode_base64_to_image(base64_string):
     return image
 
 
-class MMBenchDataset(object):
-    def __init__(self, data_file, sys_prompt="There are several options:", version="20230712", split="train", cache_dir=None):
+class MMBenchDataset(BaseEvalDataset):
+    def __init__(self, data_path="Otter-AI/mmbench", *, sys_prompt="There are several options:", version="20230712", split="train", cache_dir=None, default_output_file="mmbench_eval_results.xlsx"):
+        super().__init__(data_path)
         self.df = load_dataset("Otter-AI/mmbench", version, split=split, cache_dir=cache_dir).to_pandas()
-        self.default_output_file = data_file.replace("./mmbench_eval_results.xlsx")
+        self.default_output_file = default_output_file
         self.sys_prompt = sys_prompt
 
     def load_from_df(self, idx, key):

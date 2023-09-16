@@ -19,7 +19,7 @@ requests.packages.urllib3.disable_warnings()
 
 class OtterVideo(BaseModel):
     def __init__(self, model_path="luodian/OTTER-Video-LLaMA7B-DenseCaption", load_bit="bf16"):
-        super().__init__(model_path)
+        super().__init__("otter_video", model_path)
         precision = {}
         if load_bit == "bf16":
             precision["torch_dtype"] = torch.bfloat16
