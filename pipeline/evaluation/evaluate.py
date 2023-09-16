@@ -9,7 +9,7 @@ if __name__ == "__main__":
     evaluator = load_dataset("mmbench")
     # model = load_model("llama_adapter", {"model_path": "/mnt/petrelfs/zhangyuanhan/Otter/pipeline/evaluation/ckpts/7B.pth"})
     # model = load_model("otter_video", {"model_path": "/mnt/petrelfs/zhangyuanhan/Otter/checkpoint/OTTER-9B-DenseCaption"})
-    model = load_model("idefics", {"model_path": "/data/pufanyi/training_data/checkpoints/idefics-9b-instruct"})
+    model = load_model("idefics_otter", {"model_path": "/data/pufanyi/training_data/checkpoints/otter_idefics9b_0830", "processor": "/data/pufanyi/training_data/checkpoints/idefics-9b-instruct"})
 
     evaluator.evaluate(model)
 

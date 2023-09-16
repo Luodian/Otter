@@ -1,4 +1,5 @@
 from PIL import Image
+import io
 import torch
 from transformers import AutoProcessor
 from transformers import IdeficsForVisionText2Text
@@ -6,7 +7,11 @@ from .base_model import BaseModel
 from pipeline.train.train_utils import get_image_attention_mask
 
 
-class OtterIdefics(BaseModel):
+def get_pil_image(raw_image_data) -> Image.Image:
+    return Image.open(io.BytesIO(raw_image_data["bytes"]))
+
+
+class IdeficsOtter(BaseModel):
     def __init__(
         self,
         model_path: str,
@@ -28,7 +33,7 @@ class OtterIdefics(BaseModel):
             return f"User:<fake_token_around_image><image><fake_token_around_image>{question}<end_of_utterance>\nAssistant:<answer>\n"
 
     def generate(self, question, raw_image_data, no_image_flag=False):
-        input_data = raw_image_data
+        input_data = get_pil_image(raw_image_data)
 
         # Check if the input data is an instance of PIL Image
         if isinstance(input_data, Image.Image):
