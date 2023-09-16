@@ -15,6 +15,7 @@ from .base_model import BaseModel
 # Disable warnings
 requests.packages.urllib3.disable_warnings()
 
+
 def get_pil_image(raw_image_data) -> Image.Image:
     return Image.open(BytesIO(raw_image_data["bytes"]))
 
