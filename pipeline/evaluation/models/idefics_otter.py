@@ -2,14 +2,14 @@ from PIL import Image
 import torch
 from transformers import AutoProcessor
 from transformers import IdeficsForVisionText2Text
-from .model import Model
+from .base_model import BaseModel
 from pipeline.train.train_utils import get_image_attention_mask
 
 
-class OtterIdefics(Model):
+class OtterIdefics(BaseModel):
     def __init__(
         self,
-        model_path: str = "/data/pufanyi/training_data/checkpoints/otter_idefics9b_0830",
+        model_path: str,
         processor: str = "HuggingfaceM4/idefics-9b-instruct",
     ) -> None:
         super().__init__("idefics_otter", model_path)

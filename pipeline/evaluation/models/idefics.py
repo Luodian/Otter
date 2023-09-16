@@ -1,3 +1,4 @@
+import io
 import torch
 from typing import List
 from transformers import IdeficsForVisionText2Text, AutoProcessor
@@ -5,10 +6,14 @@ from PIL import Image
 from .base_model import BaseModel
 
 
-def get_formatted_prompt(prompt: str, image: Image.Image) -> List[str]:
+def get_pil_image(raw_image_data) -> Image.Image:
+    return Image.open(io.BytesIO(raw_image_data["bytes"]))
+
+
+def get_formatted_prompt(prompt: str, image) -> List[str]:
     return [
         f"User: {prompt}",
-        image,
+        get_pil_image(image),
         "<end_of_utterance>",
         "\nAssistant:",
     ]
@@ -28,7 +33,7 @@ class Idefics(BaseModel):
         inputs = self.processor(formatted_prompt, return_tensors="pt").to(self.device)
         exit_condition = self.processor.tokenizer("<end_of_utterance>", add_special_tokens=False).input_ids
         bad_words_ids = self.processor.tokenizer(["<image>", "<fake_token_around_image>"], add_special_tokens=False).input_ids
-        generated_ids = self.model.generate(**inputs, eos_token_id=exit_condition, bad_words_ids=bad_words_ids, max_length=100)
+        generated_ids = self.model.generate(**inputs, eos_token_id=exit_condition, bad_words_ids=bad_words_ids, max_length=500)
         generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
         return generated_text[0][len_formatted_prompt:].strip()
 
