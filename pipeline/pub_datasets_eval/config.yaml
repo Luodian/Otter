@@ -1,0 +1,57 @@
+model: 
+  name: otter
+  path: /data/bli/checkpoints/OTTER-Image-MPT7B
+  checkpoint: /data/bli/checkpoints/OTTER-Image-MPT7B/final_weights.pt
+  device_map: auto
+  precision: fp32
+  batch_size: 8
+
+dataset:
+  coco:
+    test: true
+    train_image: /path/to/mscoco_karpathy/train2014
+    val_image: /path/to/mscoco_karpathy/val2014
+    karpathy: /path/to/mscoco_karpathy/dataset_coco.json
+    annotations: /path/to/mscoco_karpathy/annotations/captions_val2014.json
+  vqav2:
+    test: false
+    train_image: /path/to/vqav2/train2014
+    train_annotations: /path/to/vqav2/v2_mscoco_train2014_annotations.json
+    train_questions: /path/to/vqav2/v2_OpenEnded_mscoco_train2014_questions.json
+    test_image: /path/to/vqav2/val2014
+    test_annotations: /path/to/vqav2/v2_mscoco_val2014_annotations.json
+    test_questions: /path/to/vqav2/v2_OpenEnded_mscoco_val2014_questions.json
+  flickr:
+    test: false
+    image: /path/to/flickr30k/flickr30k-images
+    karpathy: /path/to/flickr30k/dataset_flickr30k.json
+    annotations: /path/to/flickr30k/dataset_flickr30k_coco_style.json
+  ok_vqa:
+    test: false
+    train_image: /path/to/okvqa/train2014
+    train_annotations: /path/to/okvqa/mscoco_train2014_annotations.json
+    train_questions: /path/to/okvqa/OpenEnded_mscoco_train2014_questions.json
+    test_image: /path/to/okvqa/val2014
+    test_annotations: /path/to/okvqa/mscoco_val2014_annotations.json
+    test_questions: /path/to/okvqa/OpenEnded_mscoco_val2014_questions.json
+  textvqa:
+    test: false
+    train_image: /path/to/textvqa/train_images
+    train_annotations: /path/to/textvqa/train_annotations_vqa_format.json
+    train_questions: /path/to/textvqa/train_questions_vqa_format.json
+    test_image: /path/to/textvqa/val_images
+    test_annotations: /path/to/textvqa/val_annotations_vqa_format.json
+    test_questions: /path/to/textvqa/val_questions_vqa_format.json
+  vizwiz:
+    test: false
+    train_image: /path/to/vizwiz/train
+    train_annotations: /path/to/vizwiz/train_annotations_vqa_format.json
+    train_questions: /path/to/vizwiz/train_questions_vqa_format.json
+    test_image: /path/to/vizwiz/val
+    test_annotations: /path/to/vizwiz/val_annotations_vqa_format.json
+    test_questions: /path/to/vizwiz/val_questions_vqa_format.json
+  hateful_memes:
+    test: false
+    image: /path/to/hateful_memes/img
+    train_annotations: /path/to/hateful_memes/train.json
+    test_annotations: /path/to/hateful_memes/dev.json
