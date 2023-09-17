@@ -29,6 +29,7 @@ else:
 
 import torch.distributed as dist
 
+
 def master_print(*args, **kwargs):
     if dist.is_available() and dist.is_initialized():
         rank = dist.get_rank()
@@ -36,6 +37,7 @@ def master_print(*args, **kwargs):
             print(*args, **kwargs)
     else:
         print(*args, **kwargs)
+
 
 # Add this line at the beginning of your script or in your main function
 # dist.init_process_group(backend='nccl')
@@ -84,6 +86,7 @@ MODEL_CLASSES = {
     "MPTForCausalLM": "mpt",
     "MosaicGPT": "mpt",
 }
+
 
 def _infer_decoder_layers_attr_name(model: nn.Module):
     for k in __KNOWN_DECODER_LAYERS_ATTR_NAMES:
