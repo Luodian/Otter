@@ -116,7 +116,7 @@ logs/
 ofa_compress/
 train_*.sh
 gpt_playground/
-evaluation/
+./evaluation/
 data/
 azure/
 .deepspeed_env
@@ -135,3 +135,7 @@ USE_POLICY.md
 open_flamingo.egg-info
 llama-7b-hf/*
 cache/
+pipeline/evaluation/ckpts/*
+pipeline/evaluation/models/Ask_Anything
+pipeline/evaluation/models/FrozenBiLM
+pipeline/evaluation/models/LLaMA_Adapter

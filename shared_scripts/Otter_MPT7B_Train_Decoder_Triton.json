@@ -17,7 +17,7 @@
         "attn_config": {
             "alibi": true,
             "alibi_bias_max": 8,
-            "attn_impl": "torch",
+            "attn_impl": "triton",
             "attn_pdrop": 0,
             "attn_type": "multihead_attention",
             "attn_uses_sequence_id": false,
