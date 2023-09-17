@@ -128,15 +128,11 @@ def get_image_attention_mask(output_input_ids, max_num_images, tokenizer, includ
         image_attention_mask = torch.zeros(output_input_ids.shape[0], output_input_ids.shape[1], 1, dtype=torch.bool)
     return image_attention_mask
 
+
 def verify_yaml(args):
     # Run pytest with the necessary arguments.
-    result = subprocess.run([
-        'pytest', 
-        '-m', 
-        'prerun', 
-        f'--yaml-path={args.training_data_yaml}'
-    ])
-    
+    result = subprocess.run(["pytest", "-m", "prerun", f"--yaml-path={args.training_data_yaml}"])
+
     if result.returncode != 0:
         print("YAML verification failed!")
         sys.exit(1)
