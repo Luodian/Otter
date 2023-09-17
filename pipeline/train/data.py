@@ -670,7 +670,7 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     unified_datasets = []
 
     # processing for image-text in-context datasets
-    if args.mimicit_ic_path != "":
+    if hasattr(args, "mimicit_ic_path") and args.mimicit_ic_path != "":
         all_mimicit_ic_path = args.mimicit_ic_path.split(",") + args.past_mimicit_ic_path.split(",") if args.past_mimicit_ic_path != "" else args.mimicit_ic_path.split(",")
         all_images_ic_path = args.images_ic_path.split(",") + args.past_images_ic_path.split(",") if args.past_images_ic_path != "" else args.images_ic_path.split(",")
         all_train_config_ic_path = args.train_config_ic_path.split(",") + args.past_train_config_ic_path.split(",") if args.past_train_config_ic_path != "" else args.train_config_ic_path.split(",")
