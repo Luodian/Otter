@@ -675,8 +675,9 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
 
     # Converting multiple types of mimic-it datasets into a unified format dataset
     for key, item in dataset_info.items():
-        unified_dataset = MimicitDataset(args, dataset_info=dataset_info[key], status_list=["new"] * len(dataset_info[key]))
-        unified_datasets.append(unified_dataset)
+        if item != {}: # if the category is not empty
+            unified_dataset = MimicitDataset(args, dataset_info=dataset_info[key], status_list=["new"] * len(dataset_info[key]))
+            unified_datasets.append(unified_dataset)
 
     # # processing for image-text in-context datasets
     # if hasattr(args, "mimicit_ic_path") and args.mimicit_ic_path != "":
@@ -751,7 +752,7 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     dataloaders = []
 
     for unified_dataset in unified_datasets:
-        sampler = RandomSampler(unified_dataset, replacement=True)
+        sampler = RandomSampler(unified_dataset, replacement=True, num_samples=len(unified_dataset))
         if args.distributed_type == "DEEPSPEED" or args.distributed_type == "MULTI_GPU":
             sampler = DistributedProxySampler(sampler, num_replicas=args.world_size, rank=args.rank)
         dataloader = torch.utils.data.DataLoader(

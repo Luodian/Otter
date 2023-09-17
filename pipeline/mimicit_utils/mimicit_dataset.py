@@ -491,7 +491,7 @@ class MimicitDataset(Dataset):
             instruction,
             answer,
             image_ids,
-            in_context_example_ids,
+            in_context_example_ids
         ) = (
             cur_train_id,
             self.dataset[cur_train_id]["instruction"],
@@ -506,13 +506,13 @@ class MimicitDataset(Dataset):
             patch_images, all_texts = self.process_spot_the_difference(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
         elif cur_train_id.upper().startswith("SN"):
             patch_images, all_texts = self.process_scene_navigation(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
-        elif any(cur_train_id.upper().startswith(videoqa_task) for videoqa_task in self.video_data_list) or self.task_name in self.video_data_list:
+        elif any(cur_train_id.upper().startswith(videoqa_task) for videoqa_task in self.video_data_list):
             patch_images, all_texts = self.process_general_videoqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=resample_frames, instruction_format=instruction_format)
-        elif any(cur_train_id.upper().startswith(text_id) for text_id in self.text_data_list) or self.task_name in self.text_data_list:
+        elif any(cur_train_id.upper().startswith(text_id) for text_id in self.text_data_list):
             patch_images, all_texts = self.process_general_text(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
-        elif any(cur_train_id.upper().startswith(imageqa_task) for imageqa_task in self.imageqa_data_list) or self.task_name in self.imageqa_data_list:
+        elif any(cur_train_id.upper().startswith(imageqa_task) for imageqa_task in self.imageqa_data_list):
             patch_images, all_texts = self.process_general_imageqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
-        elif any(cur_train_id.upper().startswith(in_context_imageqa_task) for in_context_imageqa_task in self.in_context_imageqa_data_list) or self.task_name in self.in_context_imageqa_data_list:
+        elif any(cur_train_id.upper().startswith(in_context_imageqa_task) for in_context_imageqa_task in self.in_context_imageqa_data_list):
             patch_images, all_texts = self.process_in_context_imageqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
         else:
             raise NotImplementedError(f"Error: The task {cur_train_id} is not supported!")
