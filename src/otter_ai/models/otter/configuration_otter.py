@@ -1,15 +1,13 @@
 import copy
 
 from transformers.configuration_utils import PretrainedConfig
-from transformers.utils import logging
 from transformers.models.auto import CONFIG_MAPPING
 from transformers.models.clip import CLIPVisionConfig
+from transformers.utils import logging
 
-import sys
-
-from otter_ai.models.flamingo.falcon.configuration_RW import RWConfig
-from otter_ai.models.flamingo.mpt.configuration_mpt import MPTConfig
-from otter_ai.models.flamingo.mpt_redpajama.configuration_mosaic_gpt import MosaicGPTConfig
+from ..falcon.configuration_RW import RWConfig
+from ..mpt.configuration_mpt import MPTConfig
+from ..mpt_redpajama.configuration_mosaic_gpt import MosaicGPTConfig
 
 logger = logging.get_logger(__name__)
 

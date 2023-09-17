@@ -14,12 +14,21 @@ import torch
 import torch.nn
 from accelerate import Accelerator
 from tqdm import tqdm
-from transformers import AutoProcessor, CLIPImageProcessor, get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup, get_linear_schedule_with_warmup
+from transformers import (
+    CLIPImageProcessor,
+    get_constant_schedule_with_warmup,
+    get_cosine_schedule_with_warmup,
+    get_linear_schedule_with_warmup,
+)
+import wandb
+
+import sys
 
 sys.path.append("../..")
+from src.otter_ai.models.flamingo.modeling_flamingo import FlamingoForConditionalGeneration
+from src.otter_ai.models.otter.modeling_otter import OtterForConditionalGeneration
 
-import wandb
-from pipeline.mimicit_utils.data import get_data
+from pipeline.train.data import get_data, preload_dataset
 from pipeline.train.distributed import world_info_from_env
 from pipeline.train.train_utils import AverageMeter, get_checkpoint, get_image_attention_mask
 
@@ -74,12 +83,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     autocast_type = torch.bfloat16 if accelerator.mixed_precision == "bf16" else torch.float32
 
     # loop through dataloader
-    for num_steps, (batch_mimicits) in tqdm(
-        enumerate(zip(*mimicit_loaders)),
-        disable=args.rank != 0,
-        total=total_training_steps,
-        initial=(epoch * num_batches_per_epoch),
-    ):
+    for num_steps, (batch_mimicits) in tqdm(enumerate(zip(*mimicit_loaders)), disable=args.rank != 0, total=total_training_steps, initial=(epoch * num_batches_per_epoch)):
         data_time_m.update(time.time() - end)
 
         global_step = num_steps + epoch * num_batches_per_epoch
@@ -124,10 +128,10 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 unwrapped_model = accelerator.unwrap_model(model)
                 if num_steps == 0:
                     # info check
-                    accelerator.print(f"input_ids: {input_ids.shape}")
-                    accelerator.print(f"images: {images.shape}")
-                    accelerator.print(f"attention_mask: {attention_mask.shape}")
-                    accelerator.print(f"labels: {labels.shape}")
+                    accelerator.print(f"Device: {device_id}, input_ids: {input_ids.shape}")
+                    accelerator.print(f"Device: {device_id}, images: {images.shape}")
+                    accelerator.print(f"Device: {device_id}, attention_mask: {attention_mask.shape}")
+                    accelerator.print(f"Device: {device_id}, labels: {labels.shape}")
                     accelerator.print(f"model: {unwrapped_model.__class__.__name__}")
                     accelerator.print(f"model dtype: {unwrapped_model.dtype}")
 
@@ -161,6 +165,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         #### BACKWARD PASS ####
         total_loss_sum = sum(total_losses)
         mean_loss = total_loss_sum / len(total_losses)
+        cur_batch_max_tokens = input_ids.shape[1]
 
         def mask_embedding(m):
             if m.weight.requires_grad:
@@ -202,6 +207,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     {
                         "data_time": data_time_m.avg,
                         "step_time": step_time_m.avg,
+                        "max_tokens": cur_batch_max_tokens,
                         "mimicit_samples_per_second": mimicit_samples_per_second,
                         "mimicit_samples_per_second_per_gpu": mimicit_samples_per_second_per_gpu,
                         "lr": optimizer.param_groups[0]["lr"],
@@ -247,10 +253,6 @@ def parse_args():
     :return: Parsed arguments
     """
     parser = argparse.ArgumentParser(description="Main training script for the model")
-
-    # Add arguments to the parser
-    # TODO: Add help messages to clarify the purpose of each argument
-
     # Model configuration arguments
     parser.add_argument(
         "--external_save_dir",
@@ -272,161 +274,18 @@ def parse_args():
         help="otters or flamingo",
     )
     parser.add_argument(
-        "--inst_format",
+        "--instruction_format",
         type=str,
         default="simple",
         choices=["simple", "llama2", "idefics"],
         help="simple is for mpt/llama1, rest are in different instruction templates.",
     )
-    # Prepare the arguments for different types of data sources.
-    # Arguments are grouped by data types and whether the data is from past or new sources.
-    # Arguments for image-text data, including multi-run conversations.
-    parser.add_argument(
-        "--past_mimicit_path",
-        type=str,
-        default="",
-        help="Path to the past image-text dataset (including multi-run conversations). Should be in format /path/to/xx_instruction.json",
-    )
-    parser.add_argument(
-        "--past_images_path",
-        type=str,
-        default="",
-        help="Path to the past images dataset (including base64 format images). Should be in format /path/to/xx.json",
-    )
-    parser.add_argument(
-        "--past_train_config_path",
-        type=str,
-        default="",
-        help="Path to the past images dataset (including current ids and related in-context ids). Should be in format /path/to/xx_train.json",
-    )
-
-    parser.add_argument(
-        "--mimicit_path",
-        type=str,
-        default="",
-        help="Path to the new image-text dataset (including multi-run conversations). Should be in format /path/to/xx_instruction.json",
-    )
-    parser.add_argument(
-        "--images_path",
-        type=str,
-        default="",
-        help="Path to the new images dataset (including base64 format images). Should be in format /path/to/xx.json",
-    )
-    parser.add_argument(
-        "--train_config_path",
-        type=str,
-        default="",
-        help="Path to the new images dataset (including current ids and related in-context ids). Should be in format /path/to/xx_train.json",
-    )
-
-    # Arguments for image-text in-context data.
-    parser.add_argument(
-        "--past_mimicit_ic_path",
-        type=str,
-        default="",
-        help="Path to the past in-context image-text dataset. Should be in format /path/to/xx_instruction.json",
-    )
-    parser.add_argument(
-        "--past_images_ic_path",
-        type=str,
-        default="",
-        help="Path to the past in-context images dataset. Should be in format /path/to/xx.json",
-    )
-    parser.add_argument(
-        "--past_train_config_ic_path",
-        type=str,
-        default="",
-        help="Path to the past in-context training config dataset. Should be in format /path/to/xx_train.json",
-    )
-    parser.add_argument(
-        "--mimicit_ic_path",
-        type=str,
-        default="",
-        help="Path to the new in-context image-text dataset. Should be in format /path/to/xx_instruction.json",
-    )
-    parser.add_argument(
-        "--images_ic_path",
-        type=str,
-        default="",
-        help="Path to the new in-context images dataset. Should be in format /path/to/xx.json",
-    )
-    parser.add_argument(
-        "--train_config_ic_path",
-        type=str,
-        default="",
-        help="Path to the new in-context training config dataset. Should be in format /path/to/xx_train.json",
-    )
-
-    # Arguments for text data, including multi-run conversations.
-    parser.add_argument(
-        "--mimicit_text_path",
-        type=str,
-        default="",
-        help="Path to the new text dataset (including multi-run conversations). Should be in format /path/to/xx_instruction.json",
-    )
-    parser.add_argument(
-        "--train_config_text_path",
-        type=str,
-        default="",
-        help="Path to the new text dataset (including multi-run conversations). Should be in format /path/to/xx_train.json",
-    )
-    parser.add_argument(
-        "--past_mimicit_text_path",
-        type=str,
-        default="",
-        help="Path to the past text dataset (including multi-run conversations). Should be in format /path/to/xx_instruction.json",
-    )
-    parser.add_argument(
-        "--past_train_config_text_path",
-        type=str,
-        default="",
-        help="Path to the past text dataset (including multi-run conversations). Should be in format /path/to/xx_train.json",
-    )
-
-    # Arguments for video-text data.
     parser.add_argument(
         "--training_data_yaml",
         type=str,
         default="",
         help="Path to the training data yaml file.",
     )
-    parser.add_argument(
-        "--past_mimicit_vt_path",
-        type=str,
-        default="",
-        help="Path to the past video-text dataset. Should be in format /path/to/xx_instruction.json",
-    )
-    parser.add_argument(
-        "--past_images_vt_path",
-        type=str,
-        default="",
-        help="Path to the past images dataset (associated with video-text data). Should be in format /path/to/xx.json",
-    )
-    parser.add_argument(
-        "--past_train_config_vt_path",
-        type=str,
-        default="",
-        help="Path to the past video-text training config dataset. Should be in format /path/to/xx_train.json",
-    )
-    parser.add_argument(
-        "--mimicit_vt_path",
-        type=str,
-        default="",
-        help="Path to the new video-text dataset. Should be in format /path/to/xx_instruction.json",
-    )
-    parser.add_argument(
-        "--images_vt_path",
-        type=str,
-        default="",
-        help="Path to the new images dataset (associated with video-text data). Should be in format /path/to/xx.json",
-    )
-    parser.add_argument(
-        "--train_config_vt_path",
-        type=str,
-        default="",
-        help="Path to the new video-text training config dataset. Should be in format /path/to/xx_train.json",
-    )
-
     # Argument for specifying the ratio for resampling past datasets.
     parser.add_argument(
         "--past_subset_ration",
@@ -479,12 +338,6 @@ def parse_args():
         help="url used to set up distributed training",
     )
     parser.add_argument("--dist-backend", default="nccl", type=str, help="distributed backend")
-    parser.add_argument(
-        "--horovod",
-        default=False,
-        action="store_true",
-        help="Use horovod for distributed training.",
-    )
     parser.add_argument(
         "--no-set-device-rank",
         default=False,
@@ -545,6 +398,7 @@ def parse_args():
 
 def main():
     args = parse_args()
+    args = preload_dataset(args)
     accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps, mixed_precision="bf16")
     if accelerator.state.deepspeed_plugin is not None:
         accelerator.state.deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = args.batch_size
@@ -585,20 +439,6 @@ def main():
             )
             if args.gradient_checkpointing:
                 model.gradient_checkpointing_enable()
-
-            if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
-                params_to_gather = [p for name, p in model.named_parameters() if p.requires_grad]
-                with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
-                    if torch.distributed.get_rank() == 0:
-                        print(
-                            device_id,
-                            f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B",
-                        )
-            else:
-                print(
-                    device_id,
-                    f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B",
-                )
             try:
                 processor = AutoProcessor.from_pretrained(args.pretrained_model_name_or_path, legacy=False)
             except OSError:
@@ -614,6 +454,12 @@ def main():
             if not accelerator.distributed_type == "DEEPSPEED" or not accelerator.state.deepspeed_plugin.zero_stage == 3:
                 new_embedding_size = (len(tokenizer) // 64 + 1) * 64
                 model.resize_token_embeddings(new_embedding_size, pad_to_multiple_of=64)
+
+    if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
+        params_to_gather = [p for name, p in model.named_parameters() if p.requires_grad]
+        with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
+            if torch.distributed.get_rank() == 0:
+                print(device_id, f"Zero3: Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
     if args.trained_ckpt is not None:
         train_ckpt = torch.load(args.trained_ckpt, map_location="cpu")

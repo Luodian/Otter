@@ -93,6 +93,8 @@ class MimicitDataset(Dataset):
     ):
         self.args = args
         self.tokenizer = args.tokenizer
+        self.remove_symbols = args.remove_symbols if hasattr(args, "remove_symbols") else True
+        # remove more symbols in the question and answer, make the question and answer more clean and training loss more stable.
 
         self.seed = args.seed
         self.patch_image_size = args.patch_image_size
@@ -100,12 +102,12 @@ class MimicitDataset(Dataset):
 
         self.epoch = 0
 
-        self.inst_format = args.inst_format
+        self.instruction_format = args.instruction_format
         self.resample_frames = args.resample_frames
         self.text_data_list = [
             "LIMA",
             "MBPP",
-            "TXT_SHAREGPT",
+            "SHAREGPT",
             "AL",
             "CAL",
             "TEXT_ONLY",
@@ -248,24 +250,24 @@ class MimicitDataset(Dataset):
 
         return first_letter + question[1:]
 
-    def pre_question(self, question):
-        # question = question.rstrip(",.!?*#:;~").lstrip(",.!?*#:;~")
-        # question = re.sub(r"\s{2,}", " ", question)
-        # question = question.lstrip("\n")
-        # question = question.rstrip("\n")
+    def pre_question(self, question, remove_symbols=True):
+        if remove_symbols:
+            # question = question.rstrip(",.!?*#:;~").lstrip(",.!?*#:;~")
+            question = question.strip(" ")
+            question = re.sub(r"\s{2,}", " ", question)
+            question = question.lstrip("\n")
+            question = question.rstrip("\n")
         question = question.strip(" ")
 
         return question
 
-    def pre_answer(self, answer):
-        # return_answer = answer.strip(" ")
-        # answer = re.sub(
-        #     r"\s{2,}",
-        #     " ",
-        #     answer,
-        # )
-        # answer = answer.rstrip("\n")
-        # answer = answer.strip(" ")
+    def pre_answer(self, answer, remove_symbols=True):
+        if remove_symbols:
+            answer = answer.strip(" ")
+            answer = re.sub(r"\s{2,}", " ", answer)
+            answer = answer.lstrip("\n")
+            answer = answer.rstrip("\n")
+        answer = answer.strip(" ")
 
         # # truncate question
         # return_answer = ""
@@ -287,7 +289,6 @@ class MimicitDataset(Dataset):
         # else:
         #     if return_answer[-1] != "." and return_answer != answers:
         #         return_answer += "."
-        answer = answer.strip(" ")
         return answer
 
     def set_epoch(self, epoch, **unused):
@@ -299,7 +300,7 @@ class MimicitDataset(Dataset):
         assert len(image_ids) == resample_frames
         return image_ids
 
-    def process_in_context_imageqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format="simple"):
+    def process_in_context_imageqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format="simple"):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -316,11 +317,11 @@ class MimicitDataset(Dataset):
                 patch_images = torch.cat((patch_images, cur_patch_image))
             cur_instruction = self.pre_question(cur_instruction)
             cur_answer = self.pre_answer(cur_answer)
-            if inst_format == "llama2":
+            if instruction_format == "llama2":
                 cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
-            elif inst_format == "idefics":
+            elif instruction_format == "idefics":
                 cur_text = f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
-            elif inst_format == "simple":
+            elif instruction_format == "simple":
                 cur_text = f"<image>User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
             all_texts += cur_text
 
@@ -335,7 +336,7 @@ class MimicitDataset(Dataset):
         image_ids,
         in_context_example_ids,
         resample_frames=32,
-        inst_format="simple",
+        instruction_format="simple",
     ):
         patch_images = torch.tensor([])
         all_texts = ""
@@ -343,22 +344,22 @@ class MimicitDataset(Dataset):
         random.shuffle(all_instruction_ids)
         for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
-            cur_instruction = self.pre_question(cur_instruction)
+            cur_instruction = self.pre_question(cur_instruction, remove_symbols=self.remove_symbols)
             cur_answer = self.dataset[cur_instruction_id]["answer"]
-            cur_answer = self.pre_answer(cur_answer)
-            if inst_format == "llama2":
+            cur_answer = self.pre_answer(cur_answer, remove_symbols=self.remove_symbols)
+            if instruction_format == "llama2":
                 if idx == 0:
                     cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
                 else:
                     cur_text = f"[INST]{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
-            elif inst_format == "idefics":
+            elif instruction_format == "idefics":
                 if idx == 0:
                     cur_text = f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
                 elif idx < len(all_instruction_ids) - 1:
                     cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
                 elif idx == len(all_instruction_ids) - 1:
                     cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>"
-            elif inst_format == "simple":
+            elif instruction_format == "simple":
                 if idx == 0:
                     cur_text = f"<image>User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
                 else:
@@ -430,7 +431,7 @@ class MimicitDataset(Dataset):
         all_texts = f"{incontext_text}{all_texts}"
         return patch_images, all_texts
 
-    def process_general_imageqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format="simple"):
+    def process_general_imageqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format="simple"):
         # including multi-round conv for single image
         all_texts = ""
         for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
@@ -438,17 +439,17 @@ class MimicitDataset(Dataset):
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_instruction = self.pre_question(cur_instruction)
             cur_answer = self.pre_answer(cur_answer)
-            if inst_format == "llama2":
+            if instruction_format == "llama2":
                 if idx == 0:
                     cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
                 else:
                     cur_text = f"[INST]{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
-            elif inst_format == "idefics":
+            elif instruction_format == "idefics":
                 if idx == 0:
                     cur_text = f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
                 else:
                     cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
-            elif inst_format == "simple":
+            elif instruction_format == "simple":
                 if idx == 0:
                     cur_text = f"<image>User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
                 else:
@@ -462,7 +463,7 @@ class MimicitDataset(Dataset):
         patch_images = self.patch_resize_transform(cur_image).unsqueeze(0).unsqueeze(0)
         return patch_images, all_texts
 
-    def process_general_text(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format="simple"):
+    def process_general_text(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format="simple"):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -472,16 +473,14 @@ class MimicitDataset(Dataset):
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_instruction = self.pre_question(cur_instruction)
             cur_answer = self.pre_answer(cur_answer)
-            if "baize" in instruction_id:
-                cur_text = f"{cur_answer}"
-            elif inst_format == "llama2":
+            if instruction_format == "llama2":
                 if idx == 0:
                     cur_text = f"[INST]{self.wrap_sys} {cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
                 else:
                     cur_text = f"[INST]{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
-            elif inst_format == "idefics":
+            elif instruction_format == "idefics":
                 cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
-            elif inst_format == "simple":
+            elif instruction_format == "simple":
                 cur_text = f"User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
             all_texts += cur_text
 
@@ -504,32 +503,34 @@ class MimicitDataset(Dataset):
             self.dataset[cur_train_id]["image_ids"],
             self.train_config[cur_train_id],
         )
-        inst_format = self.inst_format
+        instruction_format = self.instruction_format
         resample_frames = self.resample_frames
-        # self.max_src_length = self.max_tgt_length = 256
 
         if cur_train_id.upper().startswith("SD") or cur_train_id.startswith("CGD"):
-            patch_images, all_texts = self.process_spot_the_difference(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
+            patch_images, all_texts = self.process_spot_the_difference(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
         elif cur_train_id.upper().startswith("SN"):
-            patch_images, all_texts = self.process_scene_navigation(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
+            patch_images, all_texts = self.process_scene_navigation(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
         elif any(cur_train_id.upper().startswith(videoqa_task) for videoqa_task in self.video_data_list) or self.task_name in self.video_data_list:
-            patch_images, all_texts = self.process_general_videoqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=resample_frames, inst_format=inst_format)
+            patch_images, all_texts = self.process_general_videoqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=resample_frames, instruction_format=instruction_format)
         elif any(cur_train_id.upper().startswith(text_id) for text_id in self.text_data_list) or self.task_name in self.text_data_list:
-            patch_images, all_texts = self.process_general_text(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
+            patch_images, all_texts = self.process_general_text(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
         elif any(cur_train_id.upper().startswith(imageqa_task) for imageqa_task in self.imageqa_data_list) or self.task_name in self.imageqa_data_list:
-            patch_images, all_texts = self.process_general_imageqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
+            patch_images, all_texts = self.process_general_imageqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
         elif any(cur_train_id.upper().startswith(in_context_imageqa_task) for in_context_imageqa_task in self.in_context_imageqa_data_list) or self.task_name in self.in_context_imageqa_data_list:
-            patch_images, all_texts = self.process_in_context_imageqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format=inst_format)
+            patch_images, all_texts = self.process_in_context_imageqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
         else:
             raise NotImplementedError(f"Error: The task {cur_train_id} is not supported!")
 
         all_text = self.tokenizer(
-            f"{all_texts}",
+            all_texts,
             return_tensors="pt",
             add_special_tokens=False,
             truncation=True,
             max_length=self.max_seq_len,  # for current 2k mpt/llama model, setting to 2048 causes error (2042 works)
         )
+        num_tokens = all_text["input_ids"].shape[1]
+        if num_tokens == self.max_seq_len:
+            print(f"{cur_train_id}'s all_texts reaches the max_seq_len.")
 
         all_item = all_text["input_ids"].squeeze(0)
         all_item_mask = all_text["attention_mask"].squeeze(0)
