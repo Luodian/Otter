@@ -25,16 +25,14 @@ import wandb
 import sys
 
 sys.path.append("../..")
-from src.otter_ai.models.flamingo.modeling_flamingo import FlamingoForConditionalGeneration
-from src.otter_ai.models.otter.modeling_otter import OtterForConditionalGeneration
-
-from pipeline.train.data import get_data, preload_dataset
+from pipeline.mimicit_utils.data import get_data, preload_dataset
 from pipeline.train.distributed import world_info_from_env
 from pipeline.train.train_utils import AverageMeter, get_checkpoint, get_image_attention_mask
 
 # import from src, not from pip package for training & debugging
 from src.otter_ai.models.otter.modeling_otter import OtterForConditionalGeneration
 from src.otter_ai.models.flamingo.modeling_flamingo import FlamingoForConditionalGeneration
+from transformers import AutoProcessor
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -459,7 +457,7 @@ def main():
         params_to_gather = [p for name, p in model.named_parameters() if p.requires_grad]
         with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
             if torch.distributed.get_rank() == 0:
-                print(device_id, f"Zero3: Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
+                print(device_id, f"Zero3 Optimization: Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
     if args.trained_ckpt is not None:
         train_ckpt = torch.load(args.trained_ckpt, map_location="cpu")

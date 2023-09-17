@@ -434,6 +434,7 @@ class MimicitDataset(Dataset):
     def process_general_imageqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format="simple"):
         # including multi-round conv for single image
         all_texts = ""
+        all_instruction_ids = in_context_example_ids + [instruction_id]
         for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
