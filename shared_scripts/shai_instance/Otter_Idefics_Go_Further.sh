@@ -5,7 +5,7 @@ export PYTHONPATH=.
 accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_zero3.yaml \
     pipeline/train/instruction_following.py \
     --pretrained_model_name_or_path=/mnt/petrelfs/share_data/zhangyuanhan/otter/otter_idefics9b_instruct_init/ \
-    --training_data_yaml=/home/luodian/projects/Otter/shared_scripts/shai_instance/shai_data_recipe.yaml \
+    --training_data_yaml=/mnt/petrelfs/libo.p/Otter/shared_scripts/shai_instance/shai_data_recipe.yaml \
     --model_name=idefics \
     --instruction_format=idefics \
     --batch_size=1 \
@@ -20,4 +20,5 @@ accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_
     --learning_rate=1e-5 \
     --warmup_steps_ratio=0.01 \
     --save_hf_model \
-    --save_ckpt_each_epoch
+    --save_ckpt_each_epoch \
+    --max_seq_len=2048

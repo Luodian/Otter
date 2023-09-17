@@ -195,6 +195,7 @@ class MimicitDataset(Dataset):
                 else:
                     self.dataset.update(orjson.loads(f.read())["data"])
 
+            print(cur_images_path)
             if cur_images_path != "":
                 with open(cur_images_path, "rb") as f:
                     for key, value in ijson.kvitems(f, "", use_float=True):
