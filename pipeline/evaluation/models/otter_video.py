@@ -9,8 +9,7 @@ import transformers
 from PIL import Image
 import sys
 
-sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/src/otter_ai/models/")
-from otter.modeling_otter import OtterForConditionalGeneration
+from otter_ai import OtterForConditionalGeneration
 from .base_model import BaseModel
 
 # Disable warnings
