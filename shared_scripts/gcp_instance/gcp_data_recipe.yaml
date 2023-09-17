@@ -2,7 +2,7 @@ IMAGE_TEXT:
   LADD:
     mimicit_path: /home/luodian/projects/data/LA/LADD_instructions.json
     images_path: /home/luodian/projects/data/LA/LA.json
-    num_samples: 1000  # Example value
+    num_samples: 10000  # Example value
 
 TEXT_ONLY:
   LIMA:

@@ -744,6 +744,7 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     global_batch_size = args.batch_size * args.world_size
 
     # num_samples = args.train_num_samples  # 8
+    num_samples = sum([len(dataset) for dataset in unified_datasets])
     num_batches = round_fn(num_samples / global_batch_size)  # 2
     num_samples = num_batches * global_batch_size  # 8
 
