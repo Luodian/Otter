@@ -44,4 +44,12 @@ TEXT_ONLY:
   LIMA:
     mimicit_path: /home/luodian/projects/Otter/archived/training_files/LIMA_2K_instructions.json
     train_config_path: /home/luodian/projects/Otter/archived/training_files/LIMA_2K_train.json
-    num_samples: 2000  # Example value
+    num_samples: 2000 # Example value
+  SHAREGPT:
+    mimicit_path: /home/luodian/projects/Otter/archived/training_files/SHAREGPT_2K_instructions.json
+    train_config_path: /home/luodian/projects/Otter/archived/training_files/SHAREGPT_2K_train.json
+    num_samples: 2000 # Example value
+  AL:
+    mimicit_path: /home/luodian/projects/data/LANG_Only/AL/AL_instructions.json
+    train_config_path: /home/luodian/projects/data/LANG_Only/AL/AL_train.json
+    num_samples: 2000 # Example value
