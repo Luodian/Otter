@@ -92,8 +92,9 @@ class MimicitDataset(Dataset):
         task_name="DC",
     ):
         self.args = args
-        self.tokenizer = args.tokenizer
-        self.remove_symbols = args.remove_symbols  # remove more symbols in the question and answer, make the question and answer more clean and training loss more stable.
+        self.tokenizer = args.tokenizer 
+        self.remove_symbols = args.remove_symbols if hasattr(args, "remove_symbols") else True
+        # remove more symbols in the question and answer, make the question and answer more clean and training loss more stable.
 
         self.seed = args.seed
         self.patch_image_size = args.patch_image_size
