@@ -27,13 +27,23 @@ if sys.version_info < (3, 8):
 else:
     import importlib.metadata as importlib_metadata
 
+import torch.distributed as dist
+
+def master_print(*args, **kwargs):
+    if dist.is_available() and dist.is_initialized():
+        rank = dist.get_rank()
+        if rank == 0:
+            print(*args, **kwargs)
+    else:
+        print(*args, **kwargs)
+
 # Add this line at the beginning of your script or in your main function
 # dist.init_process_group(backend='nccl')
 
 XFORMERS_AVAIL = False
 XFORMERS_MSG_PRINTED = False  # Add this global variable
 try:
-    if not XFORMERS_MSG_PRINTED:  # Check if the message has been printed before
+    if not XFORMERS_MSG_PRINTED:  # Check if the message has been master_printed before
         import xformers.ops as xops
         from transformers import LlamaTokenizer
 
@@ -41,16 +51,16 @@ try:
 
         _xformers_version = importlib_metadata.version("xformers")
         if dist.is_initialized() and dist.get_rank() == 0:  # Check if the current process rank is 0
-            print(f"Successfully imported xformers version {_xformers_version}")
+            master_print(f"Successfully imported xformers version {_xformers_version}")
 except ImportError as e:
-    if not XFORMERS_MSG_PRINTED:  # Check if the message has been printed before
+    if not XFORMERS_MSG_PRINTED:  # Check if the message has been master_printed before
         from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 
         if dist.is_initialized() and dist.get_rank() == 0:  # Check if the current process rank is 0
-            print(f"Failed to import xformers: {e}")
+            master_print(f"Failed to import xformers: {e}")
             XFORMERS_AVAIL = False
-            print("No xformers found. You are recommended to install xformers via `pip install xformers` or `conda install -c xformers xformers`")
-            XFORMERS_MSG_PRINTED = True  # Set the variable to True after printing the message
+            master_print("No xformers found. You are recommended to install xformers via `pip install xformers` or `conda install -c xformers xformers`")
+            XFORMERS_MSG_PRINTED = True  # Set the variable to True after master_printing the message
 
 # from transformers import CLIPVisionModel, LlamaForCausalLM, LlamaTokenizer
 
@@ -74,11 +84,6 @@ MODEL_CLASSES = {
     "MPTForCausalLM": "mpt",
     "MosaicGPT": "mpt",
 }
-
-# If distributed is initialized and current rank is not 0, override the print function
-if dist.is_available() and dist.is_initialized() and dist.get_rank() != 0:
-    builtins.print = lambda *args, **kwargs: None
-
 
 def _infer_decoder_layers_attr_name(model: nn.Module):
     for k in __KNOWN_DECODER_LAYERS_ATTR_NAMES:
@@ -503,7 +508,7 @@ class OtterLMMixin(nn.Module):
                 layer.condition_media_locations(media_locations)
                 layer.condition_attend_previous(attend_previous)
         else:
-            print("inavaliable text encoder")
+            master_print("inavaliable text encoder")
         return super().forward(*input, **kwargs)  # Call the other parent's forward method
 
     def is_conditioned(self) -> bool:
@@ -590,7 +595,7 @@ class OtterModel(OtterPreTrainedModel):
         )
 
         if "lora_config" in config.__dict__:
-            print(f"Using LoRA with config:{config.lora_config}")
+            master_print(f"Using LoRA with config:{config.lora_config}")
             standard_modules = ["q_proj", "v_proj"]
             lang_encoder_short_name = MODEL_CLASSES[config.text_config.architectures[0]]
             model_to_lora_modules = {
@@ -608,7 +613,7 @@ class OtterModel(OtterPreTrainedModel):
                 target_modules=model_to_lora_modules[lang_encoder_short_name],
             )
             self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
-            self.lang_encoder.print_trainable_parameters()
+            self.lang_encoder.master_print_trainable_parameters()
 
         self.post_init()
 
@@ -647,8 +652,8 @@ class OtterModel(OtterPreTrainedModel):
         if self.lang_encoder.__class__.__name__ == "LlamaForCausalLM":
             self.lang_encoder.lm_head.requires_grad_(True)
         # assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
-        # print model size in billions of parameters in 2 decimal places
-        print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
+        # master_print model size in billions of parameters in 2 decimal places
+        master_print(f"Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.2f} B")
 
     def forward(
         self,
@@ -784,11 +789,11 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         self.use_media_placement_augmentation = False  # config.use_media_placement_augmentation
         self.max_num_frames = config.max_num_frames if hasattr(config, "max_num_frames") else None
 
-        # Informative print statement
+        # Informative master_print statement
         if self.max_num_frames is None or self.max_num_frames == 1:
-            print(f"The current model version is configured for Otter-Image with max_num_frames set to {self.max_num_frames}.")
+            master_print(f"The current model version is configured for Otter-Image with max_num_frames set to {self.max_num_frames}.")
         else:
-            print(f"The current model version is configured for Otter-Video with a maximum of {self.max_num_frames} frames.")
+            master_print(f"The current model version is configured for Otter-Video with a maximum of {self.max_num_frames} frames.")
 
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder
@@ -805,7 +810,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
         if "lora_config" in config.__dict__:
             original_architecture_name = self.lang_encoder.__class__.__name__
-            print(f"Using LoRA with config:{config.lora_config}")
+            master_print(f"Using LoRA with config:{config.lora_config}")
             standard_modules = ["q_proj", "v_proj"]
             lang_encoder_short_name = MODEL_CLASSES[config.text_config.architectures[0]]
             model_to_lora_modules = {
@@ -823,7 +828,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
                 target_modules=model_to_lora_modules[lang_encoder_short_name],
             )
             self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
-            self.lang_encoder.print_trainable_parameters()
+            self.lang_encoder.master_print_trainable_parameters()
             self.lang_encoder.__class__.__name__ = f"{original_architecture_name}LoRA"
 
         self.post_init()
@@ -854,19 +859,19 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
         # Freeze all parameters in vision encoder
         if "train_vision_encoder" in self.config.__dict__ and self.config.train_vision_encoder is True:
-            print("Unfreeze vision encoder.")
+            master_print("Unfreeze vision encoder.")
             for param in self.vision_encoder.parameters():
                 param.requires_grad = True
 
         # Freeze all parameters in lang encoders except gated_cross_attn_layers
         if "train_lang_encoder" in self.config.__dict__ and self.config.train_lang_encoder is True:
-            print("Unfreeze language decoder.")
+            master_print("Unfreeze language decoder.")
             for name, param in self.lang_encoder.named_parameters():
                 param.requires_grad = True
 
         if "lora_config" in self.config.__dict__:
             # Use another logic to unfreeze gated_cross_attn_layers and perceivers
-            print(f"LoRA trainable param: {(sum(param.numel() for name, param in self.lang_encoder.named_parameters() if 'lora' in name)) / 1e6:.3f} M")
+            master_print(f"LoRA trainable param: {(sum(param.numel() for name, param in self.lang_encoder.named_parameters() if 'lora' in name)) / 1e6:.3f} M")
             for name, param in self.lang_encoder.named_parameters():
                 if "lora" in name:
                     param.requires_grad = True
@@ -890,8 +895,8 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         for name, param in self.named_parameters():
             if param.requires_grad:
                 total_params += param.numel()
-                print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
-        print(f"Total Trainable param: {total_params / 1e9:.6f} B")
+                master_print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
+        master_print(f"Total Trainable param: {total_params / 1e9:.6f} B")
 
     def forward(
         self,
@@ -1066,11 +1071,11 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
         self.use_media_placement_augmentation = False  # config.use_media_placement_augmentation
         self.max_num_frames = config.max_num_frames if hasattr(config, "max_num_frames") else None
 
-        # Informative print statement
+        # Informative master_print statement
         if self.max_num_frames is None or self.max_num_frames == 1:
-            print(f"The current model version is configured for Otter-Image with max_num_frames set to {self.max_num_frames}.")
+            master_print(f"The current model version is configured for Otter-Image with max_num_frames set to {self.max_num_frames}.")
         else:
-            print(f"The current model version is configured for Otter-Video with a maximum of {self.max_num_frames} frames.")
+            master_print(f"The current model version is configured for Otter-Video with a maximum of {self.max_num_frames} frames.")
 
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder
@@ -1087,7 +1092,7 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
 
         if "lora_config" in config.__dict__:
             original_architecture_name = self.lang_encoder_with_vhead.pretrained_model.__class__.__name__
-            print(f"Using LoRA with config:{config.lora_config}")
+            master_print(f"Using LoRA with config:{config.lora_config}")
             standard_modules = ["q_proj", "v_proj"]
             lang_encoder_short_name = MODEL_CLASSES[config.text_config.architectures[0]]
             model_to_lora_modules = {
@@ -1105,7 +1110,7 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
                 target_modules=model_to_lora_modules[lang_encoder_short_name],
             )
             self.lang_encoder_with_vhead.pretrained_model = get_peft_model(self.lang_encoder_with_vhead.pretrained_model, lora_config)
-            self.lang_encoder_with_vhead.pretrained_model.print_trainable_parameters()
+            self.lang_encoder_with_vhead.pretrained_model.master_print_trainable_parameters()
             self.lang_encoder_with_vhead.pretrained_model.__class__.__name__ = f"{original_architecture_name}LoRA"
 
         self.post_init()
@@ -1154,20 +1159,20 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
 
         if "lora_config" in self.config.__dict__:
             # Use another logic to unfreeze gated_cross_attn_layers and perceivers
-            print(f"LoRA trainable param: {(sum(p.numel() for p in self.lang_encoder_with_vhead.pretrained_model.parameters() if p.requires_grad)) / 1e9:.3f} B")
+            master_print(f"LoRA trainable param: {(sum(p.numel() for p in self.lang_encoder_with_vhead.pretrained_model.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
         # Unfreeze LM input and output embeddings
         self.lang_encoder_with_vhead.pretrained_model.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
         if "LlamaForCausalLM" in self.lang_encoder_with_vhead.__class__.__name__:
             self.lang_encoder_with_vhead.lm_head.requires_grad_(True)
-        # print("====================Model Grad Part====================")
+        # master_print("====================Model Grad Part====================")
         total_params = 0
         for name, param in self.named_parameters():
             if param.requires_grad:
                 total_params += param.numel()
-                print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
-        print(f"Total Trainable param: {total_params / 1e9:.6f} B")
+                master_print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
+        master_print(f"Total Trainable param: {total_params / 1e9:.6f} B")
 
     def forward(
         self,
