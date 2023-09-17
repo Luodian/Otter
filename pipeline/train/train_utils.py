@@ -130,7 +130,7 @@ def get_image_attention_mask(output_input_ids, max_num_images, tokenizer, includ
 
 
 def verify_yaml(args):
-    if torch.distributed.get_rank() != 0:
+    if args.rank != 0:
         return
     
     # Run pytest with the necessary arguments.
