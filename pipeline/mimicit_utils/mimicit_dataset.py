@@ -252,7 +252,8 @@ class MimicitDataset(Dataset):
 
     def pre_question(self, question, remove_symbols=True):
         if remove_symbols:
-            question = question.rstrip(",.!?*#:;~").lstrip(",.!?*#:;~")
+            # question = question.rstrip(",.!?*#:;~").lstrip(",.!?*#:;~")
+            question = question.strip(" ")
             question = re.sub(r"\s{2,}", " ", question)
             question = question.lstrip("\n")
             question = question.rstrip("\n")
