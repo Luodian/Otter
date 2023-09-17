@@ -432,10 +432,7 @@ class MimicitDataset(Dataset):
 
     def process_general_imageqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, inst_format="simple"):
         # including multi-round conv for single image
-        patch_images = torch.tensor([])
         all_texts = ""
-        all_instruction_ids = in_context_example_ids + [instruction_id]
-        # the in_context_example_ids in this process_func is usually previous conversations
         for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
