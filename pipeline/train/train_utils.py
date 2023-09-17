@@ -31,6 +31,7 @@ def get_autocast(precision):
     else:
         return suppress
 
+
 def get_checkpoint(model):
     state_dict = model.state_dict()
 

@@ -93,6 +93,7 @@ class MimicitDataset(Dataset):
     ):
         self.args = args
         self.tokenizer = args.tokenizer
+        self.remove_symbols = args.remove_symbols  # remove more symbols in the question and answer, make the question and answer more clean and training loss more stable.
 
         self.seed = args.seed
         self.patch_image_size = args.patch_image_size
@@ -248,24 +249,23 @@ class MimicitDataset(Dataset):
 
         return first_letter + question[1:]
 
-    def pre_question(self, question):
-        # question = question.rstrip(",.!?*#:;~").lstrip(",.!?*#:;~")
-        # question = re.sub(r"\s{2,}", " ", question)
-        # question = question.lstrip("\n")
-        # question = question.rstrip("\n")
+    def pre_question(self, question, remove_symbols=True):
+        if remove_symbols:
+            question = question.rstrip(",.!?*#:;~").lstrip(",.!?*#:;~")
+            question = re.sub(r"\s{2,}", " ", question)
+            question = question.lstrip("\n")
+            question = question.rstrip("\n")
         question = question.strip(" ")
 
         return question
 
-    def pre_answer(self, answer):
-        # return_answer = answer.strip(" ")
-        # answer = re.sub(
-        #     r"\s{2,}",
-        #     " ",
-        #     answer,
-        # )
-        # answer = answer.rstrip("\n")
-        # answer = answer.strip(" ")
+    def pre_answer(self, answer, remove_symbols=True):
+        if remove_symbols:
+            answer = answer.strip(" ")
+            answer = re.sub(r"\s{2,}", " ", answer)
+            answer = answer.lstrip("\n")
+            answer = answer.rstrip("\n")
+        answer = answer.strip(" ")
 
         # # truncate question
         # return_answer = ""
@@ -287,7 +287,6 @@ class MimicitDataset(Dataset):
         # else:
         #     if return_answer[-1] != "." and return_answer != answers:
         #         return_answer += "."
-        answer = answer.strip(" ")
         return answer
 
     def set_epoch(self, epoch, **unused):
@@ -343,9 +342,9 @@ class MimicitDataset(Dataset):
         random.shuffle(all_instruction_ids)
         for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
-            cur_instruction = self.pre_question(cur_instruction)
+            cur_instruction = self.pre_question(cur_instruction, remove_symbols=self.remove_symbols)
             cur_answer = self.dataset[cur_instruction_id]["answer"]
-            cur_answer = self.pre_answer(cur_answer)
+            cur_answer = self.pre_answer(cur_answer, remove_symbols=self.remove_symbols)
             if instruction_format == "llama2":
                 if idx == 0:
                     cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"

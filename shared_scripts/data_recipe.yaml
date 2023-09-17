@@ -58,12 +58,12 @@ mimicit_text_path:
       - /mnt/petrelfs/share_data/libo/LIMA/LIMA_2K_instructions.json
     AL:
       - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/AL/AL_instructions.json
-    CAL:
-      - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/CAL/CAL_instructions.json
-    MBPP:
-      - /mnt/petrelfs/share_data/libo/MBPP/MBPP_2K_instructions.json
-    GUANACO:
-      - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/GUANACO/guanaco_instructions.json
+    # CAL:
+    #   - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/CAL/CAL_instructions.json
+    # MBPP:
+    #   - /mnt/petrelfs/share_data/libo/MBPP/MBPP_2K_instructions.json
+    # GUANACO:
+    #   - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/GUANACO/guanaco_instructions.json
     # ORCACHAT:
     #   - /mnt/petrelfs/share_data/libo/ORCACHAT/ORCACHAT_instructions.json
     # SHAREGPT:
@@ -75,12 +75,12 @@ train_config_text_path:
       - /mnt/petrelfs/share_data/libo/LIMA/LIMA_2K_train.json
     AL:
       - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/AL/AL_train.json
-    CAL:
-      - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/CAL/CAL_train.json
-    MBPP:
-      - /mnt/petrelfs/share_data/libo/MBPP/MBPP_2K_train.json
-    GUANACO:
-      - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/GUANACO/guanaco_train.json
+    # CAL:
+    #   - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/CAL/CAL_train.json
+    # MBPP:
+    #   - /mnt/petrelfs/share_data/libo/MBPP/MBPP_2K_train.json
+    # GUANACO:
+    #   - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/GUANACO/guanaco_train.json
     # ORCACHAT:
     #   - /mnt/petrelfs/share_data/libo/ORCACHAT/ORCACHAT_train.json
     # SHAREGPT:

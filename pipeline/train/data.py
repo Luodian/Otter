@@ -652,12 +652,8 @@ def preload_dataset(args):
             for path in flattened_data:
                 if not os.path.exists(path):
                     raise ValueError(f"Dataset path {path} does not exist.")
-            if getattr(args, name) == "":
-                setattr(args, name, ",".join(flattened_data))
-            else:
-                existing_data = getattr(args, name).split(",")
-                combined_data = flattened_data + existing_data
-                setattr(args, name, ",".join(combined_data))
+            setattr(args, name, ",".join(flattened_data))
+            setattr(args, "past_" + name, ",".join(flattened_data))  # mirroing, compatible for past datasets
 
     if args.training_data_yaml != "":
         with open(args.training_data_yaml, "r") as f:
@@ -686,7 +682,7 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
         unified_datasets.append(unified_dataset)
 
     # processing for image-text datasets
-    if args.mimicit_path != "":
+    if hasattr(args, "mimicit_path") and args.mimicit_path != "":
         all_mimicit_path = args.mimicit_path.split(",") + args.past_mimicit_path.split(",") if args.past_mimicit_path != "" else args.mimicit_path.split(",")
         all_images_path = args.images_path.split(",") + args.past_images_path.split(",") if args.past_images_path != "" else args.images_path.split(",")
         all_train_config_path = args.train_config_path.split(",") + args.past_train_config_path.split(",") if args.past_train_config_path != "" else args.train_config_path.split(",")
@@ -698,7 +694,7 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
         unified_datasets.append(unified_dataset)
 
     # processing for text datasets
-    if args.mimicit_text_path != "":
+    if hasattr(args, "mimicit_text_path") and args.mimicit_text_path != "":
         all_mimicit_text_path = args.mimicit_text_path.split(",") + args.past_mimicit_text_path.split(",") if args.past_mimicit_text_path != "" else args.mimicit_text_path.split(",")
         all_train_config_text_path = args.train_config_text_path.split(",") + args.past_train_config_text_path.split(",") if args.past_train_config_text_path != "" else args.train_config_text_path.split(",")
 
@@ -710,7 +706,7 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
         unified_datasets.append(unified_dataset)
 
     # processing for video-text datasets
-    if args.mimicit_vt_path != "":
+    if hasattr(args, "mimicit_vt_path") and args.mimicit_vt_path != "":
         all_mimicit_vt_path = args.mimicit_vt_path.split(",") + args.past_mimicit_vt_path.split(",") if args.past_mimicit_vt_path != "" else args.mimicit_vt_path.split(",")
         all_images_vt_path = args.images_vt_path.split(",") + args.past_images_vt_path.split(",") if args.past_images_vt_path != "" else args.images_vt_path.split(",")
         all_train_config_vt_path = args.train_config_vt_path.split(",") + args.past_train_config_vt_path.split(",") if args.past_train_config_vt_path != "" else args.train_config_vt_path.split(",")
