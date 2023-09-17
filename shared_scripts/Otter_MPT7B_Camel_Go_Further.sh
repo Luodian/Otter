@@ -4,13 +4,13 @@ export PYTHONPATH=.
 
 accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_zero3.yaml \
     pipeline/train/instruction_following.py \
-    --pretrained_model_name_or_path=/mnt/petrelfs/libo.p/Otter/checkpoints/OTTER-MPT7B-Instruct0710 \
+    --pretrained_model_name_or_path=/mnt/petrelfs/share_data/zhangyuanhan/otter/OTTER-MPT7B-Instruct-0725 \
     --customized_config=/mnt/petrelfs/libo.p/Otter/shared_scripts/Otter_MPT7B_Train_Decoder_4K.json \
     --model_name=otter \
     --instruction_format=simple \
-    --training_data_yaml=/mnt/petrelfs/libo.p/Otter/shared_scripts/data_recipe.yaml \
-    --batch_size=2 \
-    --num_epochs=1 \
+    --training_data_yaml=/mnt/petrelfs/libo.p/Otter/shared_scripts/shai_data_recipe.yaml \
+    --batch_size=1 \
+    --num_epochs=3 \
     --report_to_wandb \
     --wandb_entity=ntu-slab \
     --external_save_dir=/mnt/petrelfs/libo.p/Otter/checkpoints \
@@ -22,4 +22,5 @@ accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_
     --warmup_steps_ratio=0.01 \
     --save_hf_model \
     --save_ckpt_each_epoch \
-    --max_seq_len=2040
+    --max_seq_len=2048 \
+    --train_num_examples=10000
