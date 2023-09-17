@@ -31,10 +31,6 @@ IMAGE_TEXT:
     mimicit_path: /home/luodian/projects/data/M3IT/vqa/a-okvqa/a-okvqa_instructions.json
     images_path: /home/luodian/projects/data/M3IT/vqa/a-okvqa/a-okvqa.json
     num_samples: 5000
-  PF:
-    mimicit_path: /home/luodian/projects/data/PF/PF_instructions_full.json
-    images_path: /home/luodian/projects/data/PF/PF.json
-    num_samples: 5000
   SVIT:
     mimicit_path: /home/luodian/projects/data/SVIT/SVIT_instructions.json
     images_path: /home/luodian/projects/data/SVIT/SVIT.json
@@ -44,4 +40,12 @@ TEXT_ONLY:
   LIMA:
     mimicit_path: /home/luodian/projects/Otter/archived/training_files/LIMA_2K_instructions.json
     train_config_path: /home/luodian/projects/Otter/archived/training_files/LIMA_2K_train.json
-    num_samples: 2000  # Example value
+    num_samples: 2000 # Example value
+  SHAREGPT:
+    mimicit_path: /home/luodian/projects/Otter/archived/training_files/SHAREGPT_2K_instructions.json
+    train_config_path: /home/luodian/projects/Otter/archived/training_files/SHAREGPT_2K_train.json
+    num_samples: 2000 # Example value
+  AL:
+    mimicit_path: /home/luodian/projects/data/LANG_Only/AL/AL_instructions.json
+    train_config_path: /home/luodian/projects/data/LANG_Only/AL/AL_train.json
+    num_samples: 2000 # Example value

@@ -132,7 +132,7 @@ def get_image_attention_mask(output_input_ids, max_num_images, tokenizer, includ
 def verify_yaml(args):
     if args.rank != 0:
         return
-    
+
     # Run pytest with the necessary arguments.
     result = subprocess.run(["pytest", "-m", "prerun", f"--yaml-path={args.training_data_yaml}"])
 
