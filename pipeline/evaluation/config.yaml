@@ -1,3 +1,12 @@
 datasets:
-  mhbench: 
-    dataset_path: ZhangYuanhan/multi-hop-reasoning
+  - name: mmbench
+    version: 20230712
+    split: train
+    cache_dir: /data/pufanyi/cache
+
+models:
+  - name: idefics
+    model_path: /data/pufanyi/training_data/checkpoints/idefics-9b-instruct
+  - name: idefics_otter
+    model_path: /data/pufanyi/training_data/checkpoints/otter_idefics9b_0830
+    processor: /data/pufanyi/training_data/checkpoints/idefics-9b-instruct

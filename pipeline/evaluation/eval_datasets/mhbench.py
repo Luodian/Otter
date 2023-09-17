@@ -17,6 +17,7 @@ video_dir = "data_source/multi_hop_reasoning/"
 
 class MultiHopBenchDataset(BaseEvalDataset):
     def __init__(self, dataset_path):
+        super().__init__("MultiHopBenchDataset", dataset_path)
         cache_path = snapshot_download(repo_id=dataset_path, repo_type="dataset")
         self.df = load_dataset(os.path.join(cache_path, "multi-hop-reasoning.py"))
         if not os.path.exists(video_dir):

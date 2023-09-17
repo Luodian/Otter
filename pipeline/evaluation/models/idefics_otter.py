@@ -83,7 +83,7 @@ class IdeficsOtter(BaseModel):
 
 
 if __name__ == "__main__":
-    model = OtterIdefics("/data/pufanyi/training_data/checkpoints/otter_idefics9b_0830")
+    model = IdeficsOtter("/data/pufanyi/training_data/checkpoints/otter_idefics9b_0830")
     image = Image.open("/data/pufanyi/project/Otter-2/pipeline/evaluation/test_data/test.jpg")
     response = model.generate("What is this?", image)
     print(response)

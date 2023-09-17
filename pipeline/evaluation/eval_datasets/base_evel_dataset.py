@@ -11,7 +11,8 @@ AVAILABLE_EVAL_DATASETS: Dict[str, str] = {
 
 
 class BaseEvalDataset(ABC):
-    def __init__(self, dataset_path: str):
+    def __init__(self, name: str, dataset_path: str):
+        self.name = name
         self.dataset_path = dataset_path
 
     @abstractmethod

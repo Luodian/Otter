@@ -18,6 +18,7 @@ AVAILABLE_MODELS: Dict[str, str] = {
 
 class BaseModel(ABC):
     def __init__(self, model_name: str, model_path: str):
+        self.name = model_name
         self.model_path = model_path
 
     @abstractmethod

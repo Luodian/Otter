@@ -1,5 +1,5 @@
 import base64
-import io
+import os
 import pandas as pd
 from PIL import Image
 from tqdm import tqdm
@@ -8,10 +8,11 @@ from .base_evel_dataset import BaseEvalDataset
 
 
 class MMBenchDataset(BaseEvalDataset):
-    def __init__(self, data_path="Otter-AI/mmbench", *, sys_prompt="There are several options:", version="20230712", split="train", cache_dir=None, default_output_file="mmbench_eval_results.xlsx"):
-        super().__init__(data_path)
+    def __init__(self, data_path="Otter-AI/mmbench", *, sys_prompt="There are several options:", version="20230712", split="train", cache_dir=None, default_output_path="."):
+        super().__init__("MMBenchDataset", data_path)
+        version = str(version)
         self.df = load_dataset("Otter-AI/mmbench", version, split=split, cache_dir=cache_dir).to_pandas()
-        self.default_output_file = default_output_file
+        self.default_output_path = default_output_path
         self.sys_prompt = sys_prompt
 
     def load_from_df(self, idx, key):
@@ -48,9 +49,8 @@ class MMBenchDataset(BaseEvalDataset):
         }
         return data
 
-    def evaluate(self, model, output_file=None):
-        if output_file is None:
-            output_file = self.default_output_file
+    def evaluate(self, model):
+        output_file = os.path.join(self.default_output_path, f"{model.name}_mmbench_eval_result.xlsx")
 
         results = []
 

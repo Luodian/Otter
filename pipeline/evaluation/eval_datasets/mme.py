@@ -18,7 +18,7 @@ class MMEDataset(Dataset):
         return data
 
     def __init__(self, instruction_file, train_file, image_file):
-        super().__init__()
+        super().__init__("mme_dataset", instruction_file)
         self.instruction_file = instruction_file
         self.train_file = train_file
         self.image_file = image_file

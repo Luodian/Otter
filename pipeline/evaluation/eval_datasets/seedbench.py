@@ -13,6 +13,7 @@ def get_image(image_folder, image_id):
 
 class SEEDBench(Dataset):
     def __init__(self, data_file, image_folder, sys_prompt="There are several options:"):
+        super().__init__("SEEDBench", data_file)
         with open(data_file, "rb") as f:
             data = orjson.loads(f.read())["questions"]
         self.data = []
