@@ -1,39 +1,31 @@
-# unit_tests/test_preload.py
-import pytest
+# Inside tests/unit_tests/test_prerun.py
 import os
 import yaml
+import pytest
 
-# Define a custom pytest marker
-pytestmark = pytest.mark.prerun
-
-
-def validate_dataset_structure(yaml_data):
-    """
-    Validate the dataset info structure
-    """
-    dataset_info
-    expected_keys = {"IMAGE_TEXT", "TEXT_ONLY", "VIDEO_TEXT", "IMAGE_TEXT_IN_CONTEXT"}
-    assert set(dataset_info.keys()) == expected_keys, f"Expected keys {expected_keys}, but got {set(dataset_info.keys())}"
-
-    for key, value in dataset_info.items():
-        for dataset_name, data in value.items():
-            # Ensure all paths with '_path' suffix exist
-            for path_key, path_value in data.items():
-                assert os.path.exists(path_value), f"Dataset path {path_value} specified under {key} -> {dataset_name} does not exist."
-
-
+# Define the pytest fixture
 @pytest.fixture
 def yaml_data(request):
     yaml_path = request.config.getoption("--yaml-path")
-    with open(yaml_path, "r") as f:
-        return yaml.safe_load(f)
+    if not yaml_path or not os.path.exists(yaml_path):
+        pytest.fail(f"YAML file path '{yaml_path}' does not exist.")
+    with open(yaml_path, 'r') as f:
+        data = yaml.safe_load(f)
+    return data
 
-
-def test_preload_dataset(yaml_data):
-    dataset_info = preload_dataset(yaml_data)
-    validate_dataset_structure(dataset_info)
-
-
-# Add CLI option for pytest
-def pytest_addoption(parser):
-    parser.addoption("--yaml-path", action="store", default="", help="Path to the training data YAML.")
+# Your test function
+@pytest.mark.prerun
+def test_yaml_structure(yaml_data):
+    required_categories = [
+        "IMAGE_TEXT", "TEXT_ONLY", "VIDEO_TEXT", "IMAGE_TEXT_IN_CONTEXT"
+    ]
+    
+    for category, datasets in yaml_data.items():
+        assert category in required_categories, f"Unexpected category '{category}' in YAML. Expected categories are {required_categories}."
+        
+        for dataset_name, data in datasets.items():
+            for path_key, path_value in data.items():
+                if path_key.endswith('_path'):
+                    assert os.path.exists(path_value), f"Dataset path {path_value} specified under {category} -> {dataset_name} does not exist."
+                elif path_key == 'num_samples':
+                    assert isinstance(path_value, int), f"'num_samples' should be an integer but got {type(path_value)} under {category} -> {dataset_name}."
