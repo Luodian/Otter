@@ -1,15 +1,8 @@
 mimicit_path:
-<<<<<<< HEAD
   # LA:
   #   - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACR_T2T_instructions.json
   #   - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACONV_instructions.json
   #   - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LADD_instructions.json
-=======
-  LA:
-    - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACR_T2T_instructions.json
-    - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACONV_instructions.json
-    - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LADD_instructions.json
->>>>>>> bbc00ddcd25c130373e2adcf5a1809e4d211ca6d
   m3it:
     reasoning:
       - /mnt/petrelfs/zhangyuanhan/data/m3it/reasoning/scienceqa/scienceqa_instructions.json
@@ -20,7 +13,6 @@ mimicit_path:
       - /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/text-vqa/text-vqa_instructions.json
       - /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/okvqa/okvqa_instructions.json
       - /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/a-okvqa/a-okvqa_instructions.json
-<<<<<<< HEAD
   # PF:
   #   - /mnt/petrelfs/share_data/libo/PF/PF_instructions_full.json
 
@@ -29,16 +21,6 @@ images_path:
   #   - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json
   #   - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json
   #   - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json
-=======
-  PF:
-    - /mnt/petrelfs/share_data/libo/PF/PF_instructions_full.json
-
-images_path:
-  LA:
-    - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json
-    - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json
-    - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json
->>>>>>> bbc00ddcd25c130373e2adcf5a1809e4d211ca6d
   m3it:
     reasoning:
       - /mnt/petrelfs/zhangyuanhan/data/m3it/reasoning/scienceqa/scienceqa.json
@@ -49,7 +31,6 @@ images_path:
       - /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/text-vqa/text-vqa.json
       - /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/okvqa/okvqa.json
       - /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/a-okvqa/a-okvqa.json
-<<<<<<< HEAD
   # PF:
   #   - /mnt/petrelfs/share_data/libo/PF/PF.json
 
@@ -58,16 +39,6 @@ train_config_path:
   #   - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACR_T2T_train_basic.json
   #   - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LADD_train.json
   #   - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACONV_train.json
-=======
-  PF:
-    - /mnt/petrelfs/share_data/libo/PF/PF.json
-
-train_config_path:
-  LA:
-    - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACR_T2T_train_basic.json
-    - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LADD_train.json
-    - /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACONV_train.json
->>>>>>> bbc00ddcd25c130373e2adcf5a1809e4d211ca6d
   m3it:
     reasoning:
       - /mnt/petrelfs/zhangyuanhan/data/m3it/reasoning/scienceqa/scienceqa_train.json
@@ -78,19 +49,13 @@ train_config_path:
       - /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/text-vqa/text-vqa_train.json
       - /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/okvqa/okvqa_train.json
       - /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/a-okvqa/a-okvqa_train.json
-<<<<<<< HEAD
   # PF:
   #   - /mnt/petrelfs/share_data/libo/PF/PF_train.json
-=======
-  PF:
-    - /mnt/petrelfs/share_data/libo/PF/PF_train.json
->>>>>>> bbc00ddcd25c130373e2adcf5a1809e4d211ca6d
 
 mimicit_text_path:
   LANG_Only:
     LIMA:
       - /mnt/petrelfs/share_data/libo/LIMA/LIMA_2K_instructions.json
-<<<<<<< HEAD
     # AL:
     #   - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/AL/AL_instructions.json
     # CAL:
@@ -99,16 +64,6 @@ mimicit_text_path:
     #   - /mnt/petrelfs/share_data/libo/MBPP/MBPP_2K_instructions.json
     # GUANACO:
     #   - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/GUANACO/guanaco_instructions.json
-=======
-    AL:
-      - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/AL/AL_instructions.json
-    CAL:
-      - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/CAL/CAL_instructions.json
-    MBPP:
-      - /mnt/petrelfs/share_data/libo/MBPP/MBPP_2K_instructions.json
-    GUANACO:
-      - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/GUANACO/guanaco_instructions.json
->>>>>>> bbc00ddcd25c130373e2adcf5a1809e4d211ca6d
     # ORCACHAT:
     #   - /mnt/petrelfs/share_data/libo/ORCACHAT/ORCACHAT_instructions.json
     # SHAREGPT:
@@ -118,7 +73,6 @@ train_config_text_path:
   LANG_Only:
     LIMA:
       - /mnt/petrelfs/share_data/libo/LIMA/LIMA_2K_train.json
-<<<<<<< HEAD
     # AL:
     #   - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/AL/AL_train.json
     # CAL:
@@ -127,16 +81,6 @@ train_config_text_path:
     #   - /mnt/petrelfs/share_data/libo/MBPP/MBPP_2K_train.json
     # GUANACO:
     #   - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/GUANACO/guanaco_train.json
-=======
-    AL:
-      - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/AL/AL_train.json
-    CAL:
-      - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/CAL/CAL_train.json
-    MBPP:
-      - /mnt/petrelfs/share_data/libo/MBPP/MBPP_2K_train.json
-    GUANACO:
-      - /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/GUANACO/guanaco_train.json
->>>>>>> bbc00ddcd25c130373e2adcf5a1809e4d211ca6d
     # ORCACHAT:
     #   - /mnt/petrelfs/share_data/libo/ORCACHAT/ORCACHAT_train.json
     # SHAREGPT:
