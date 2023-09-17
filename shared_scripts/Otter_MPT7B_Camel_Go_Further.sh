@@ -9,7 +9,7 @@ accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_
     --model_name=otter \
     --instruction_format=simple \
     --training_data_yaml=/mnt/petrelfs/libo.p/Otter/shared_scripts/data_recipe.yaml \
-    --batch_size=1 \
+    --batch_size=2 \
     --num_epochs=1 \
     --report_to_wandb \
     --wandb_entity=ntu-slab \
