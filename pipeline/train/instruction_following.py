@@ -434,20 +434,6 @@ def main():
             )
             if args.gradient_checkpointing:
                 model.gradient_checkpointing_enable()
-
-            if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
-                params_to_gather = [p for name, p in model.named_parameters() if p.requires_grad]
-                with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
-                    if torch.distributed.get_rank() == 0:
-                        print(
-                            device_id,
-                            f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B",
-                        )
-            else:
-                print(
-                    device_id,
-                    f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B",
-                )
             try:
                 processor = AutoProcessor.from_pretrained(args.pretrained_model_name_or_path, legacy=False)
             except OSError:
@@ -463,6 +449,12 @@ def main():
             if not accelerator.distributed_type == "DEEPSPEED" or not accelerator.state.deepspeed_plugin.zero_stage == 3:
                 new_embedding_size = (len(tokenizer) // 64 + 1) * 64
                 model.resize_token_embeddings(new_embedding_size, pad_to_multiple_of=64)
+
+    if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
+        params_to_gather = [p for name, p in model.named_parameters() if p.requires_grad]
+        with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
+            if torch.distributed.get_rank() == 0:
+                print(device_id, f"Zero3: Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
     if args.trained_ckpt is not None:
         train_ckpt = torch.load(args.trained_ckpt, map_location="cpu")
