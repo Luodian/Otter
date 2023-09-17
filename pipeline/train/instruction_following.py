@@ -125,10 +125,10 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 unwrapped_model = accelerator.unwrap_model(model)
                 if num_steps == 0:
                     # info check
-                    accelerator.print(f"input_ids: {input_ids.shape}")
-                    accelerator.print(f"images: {images.shape}")
-                    accelerator.print(f"attention_mask: {attention_mask.shape}")
-                    accelerator.print(f"labels: {labels.shape}")
+                    accelerator.print(f"Device: {device_id}, input_ids: {input_ids.shape}")
+                    accelerator.print(f"Device: {device_id}, images: {images.shape}")
+                    accelerator.print(f"Device: {device_id}, attention_mask: {attention_mask.shape}")
+                    accelerator.print(f"Device: {device_id}, labels: {labels.shape}")
                     accelerator.print(f"model: {unwrapped_model.__class__.__name__}")
                     accelerator.print(f"model dtype: {unwrapped_model.dtype}")
 
