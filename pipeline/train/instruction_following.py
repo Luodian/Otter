@@ -162,6 +162,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         #### BACKWARD PASS ####
         total_loss_sum = sum(total_losses)
         mean_loss = total_loss_sum / len(total_losses)
+        cur_batch_max_tokens = input_ids.shape[1]
 
         def mask_embedding(m):
             if m.weight.requires_grad:
@@ -203,6 +204,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     {
                         "data_time": data_time_m.avg,
                         "step_time": step_time_m.avg,
+                        "max_tokens": cur_batch_max_tokens,
                         "mimicit_samples_per_second": mimicit_samples_per_second,
                         "mimicit_samples_per_second_per_gpu": mimicit_samples_per_second_per_gpu,
                         "lr": optimizer.param_groups[0]["lr"],

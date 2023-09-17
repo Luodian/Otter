@@ -849,7 +849,6 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
     def init_weights(self):
         # Freeze all parameters in self.model if train_vision_encoder is False or train_lang_encoder is False
         if not ("train_full_model" in self.config.__dict__ and self.config.train_full_model is True):
-            print("Unfreeze all.")
             for param in self.parameters():
                 param.requires_grad = False
 
