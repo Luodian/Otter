@@ -1,9 +1,11 @@
+import subprocess
+import sys
 import time
 from contextlib import suppress
 
 import torch
-from tqdm import tqdm
 from torch.utils.data.distributed import DistributedSampler
+from tqdm import tqdm
 
 try:
     from transformers.models.idefics.processing_idefics import image_attention_mask_for_packed_input_ids, incremental_to_binary_attention_mask
@@ -125,3 +127,16 @@ def get_image_attention_mask(output_input_ids, max_num_images, tokenizer, includ
         # in full language mode we set the image mask to all-0s
         image_attention_mask = torch.zeros(output_input_ids.shape[0], output_input_ids.shape[1], 1, dtype=torch.bool)
     return image_attention_mask
+
+def verify_yaml(args):
+    # Run pytest with the necessary arguments.
+    result = subprocess.run([
+        'pytest', 
+        '-m', 
+        'prerun', 
+        f'--yaml-path={args.training_data_yaml}'
+    ])
+    
+    if result.returncode != 0:
+        print("YAML verification failed!")
+        sys.exit(1)

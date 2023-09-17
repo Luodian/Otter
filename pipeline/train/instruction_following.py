@@ -27,7 +27,7 @@ import sys
 sys.path.append("../..")
 from pipeline.mimicit_utils.data import get_data, preload_dataset
 from pipeline.train.distributed import world_info_from_env
-from pipeline.train.train_utils import AverageMeter, get_checkpoint, get_image_attention_mask
+from pipeline.train.train_utils import AverageMeter, get_checkpoint, get_image_attention_mask, verify_yaml
 
 # import from src, not from pip package for training & debugging
 from src.otter_ai.models.otter.modeling_otter import OtterForConditionalGeneration
@@ -396,7 +396,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    preload_dataset(args)
+    verify_yaml(args)
     accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps, mixed_precision="bf16")
     if accelerator.state.deepspeed_plugin is not None:
         accelerator.state.deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = args.batch_size
