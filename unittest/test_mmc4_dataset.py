@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import Mock
-from otter_ai.pipeline.mimicit_utils.mmc4_dataset import get_mmc4_dataset
+from ..pipeline.mimicit_utils.mmc4_dataset import get_mmc4_dataset
 
 
 class TestGetMMC4Dataset(unittest.TestCase):

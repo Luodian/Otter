@@ -397,7 +397,7 @@ class MimicitDataset(Dataset):
 
         patch_images = patch_images.unsqueeze(0)
         instruction = self.pre_question(instruction)
-        answer = self.pre_answer(answer, self.max_tgt_length)
+        answer = self.pre_answer(answer)
         query_text = f"<image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>"
         all_texts = f"{incontext_text}{query_text}"
         return patch_images, all_texts
@@ -426,17 +426,15 @@ class MimicitDataset(Dataset):
 
         patch_images = patch_images.unsqueeze(0)
         instruction = self.pre_question(instruction)
-        answer = self.pre_answer(answer, self.max_tgt_length)
+        answer = self.pre_answer(answer)
         query_text = f"User: {instruction} GPT:<answer> {answer}<|endofchunk|>"
         all_texts = f"{incontext_text}{all_texts}"
         return patch_images, all_texts
 
     def process_general_imageqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format="simple"):
         # including multi-round conv for single image
-        patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
-        # the in_context_example_ids in this process_func is usually previous conversations
         for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
