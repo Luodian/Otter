@@ -92,12 +92,14 @@ class MimicitDataset(Dataset):
         self.num_samples_list = []
         self.train_config_paths = []
         self.images_paths = []
+        self.task_names = []
 
         for key, value in dataset_info.items():
-            self.mimicit_paths.extend([info['path'] for info in value.get('mimicit_path', [])])
-            self.num_samples_list.extend([info['num_samples'] for info in value.get('mimicit_path', [])])
-            self.train_config_paths.extend([info['path'] for info in value.get('train_config_path', [""] * len(self.mimicit_paths))])
-            self.images_paths.extend([info['path'] for info in value.get('images_path', [])])
+            self.task_names.append(key)
+            self.mimicit_paths.append(value.get("mimicit_path", ""))
+            self.num_samples_list.append(value.get("num_samples", 0))
+            self.train_config_paths.append(value.get("train_config_path", ""))
+            self.images_paths.append(value.get("images_path", ""))
 
         self.seed = args.seed
         self.patch_image_size = args.patch_image_size
@@ -158,7 +160,6 @@ class MimicitDataset(Dataset):
         self.images = {}
         self.train_data_list = []
         self.train_config = []
-        self.task_name = args.task_name
 
         # Get the length of each dataset and use the second largest value as the length of each dataset
         data_length_list = []
@@ -185,7 +186,7 @@ class MimicitDataset(Dataset):
         else:
             max_items_per_dataset = sorted(data_length_list, reverse=True)[1]
 
-        for cur_mimicit_path, cur_images_path, cur_train_config_path, cur_status in zip(self.mimicit_paths, self.images_paths, self.train_config_paths, self.status_list):
+        for cur_mimicit_path, cur_images_path, cur_train_config_path, cur_status, sampled_examples in zip(self.mimicit_paths, self.images_paths, self.train_config_paths, self.status_list, self.num_samples_list):
             # Load the dataset
             assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!"
             with open(cur_mimicit_path, "rb") as f:
@@ -207,14 +208,11 @@ class MimicitDataset(Dataset):
             else:
                 with open(cur_mimicit_path, "rb") as f:
                     cache_train_config = orjson.loads(f.read())["data"]
-                    cache_train_config = {key: [] for key in cache_train_config.keys()}
+                    cache_train_config = {key: cache_train_config["rel_ins_ids"] for key in cache_train_config.keys()}
 
-            resampled_train = resample_data(list(cache_train_config.keys()), max_items_per_dataset)
+            resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
             cache_train_list = resampled_train
 
-            # if cur_status == "new":
-            #     cache_train_config = {key: [] for key in resampled_train}
-            # else:
             if cur_status == "past":
                 # Need to be modified if we use resampling stratedgy
                 random.seed(0)
