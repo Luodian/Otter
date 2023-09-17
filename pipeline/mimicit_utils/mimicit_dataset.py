@@ -9,7 +9,7 @@ import re
 import contextlib
 import os
 import orjson
-import ijson.backends.yajl2_cffi as ijson
+import ijson.backends.yajl2_c as ijson
 from PIL import ImageFile
 from torchvision import transforms
 import random
