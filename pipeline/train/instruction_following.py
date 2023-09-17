@@ -248,10 +248,6 @@ def parse_args():
     :return: Parsed arguments
     """
     parser = argparse.ArgumentParser(description="Main training script for the model")
-
-    # Add arguments to the parser
-    # TODO: Add help messages to clarify the purpose of each argument
-
     # Model configuration arguments
     parser.add_argument(
         "--external_save_dir",
@@ -273,161 +269,18 @@ def parse_args():
         help="otters or flamingo",
     )
     parser.add_argument(
-        "--inst_format",
+        "--instruction_format",
         type=str,
         default="simple",
         choices=["simple", "llama2", "idefics"],
         help="simple is for mpt/llama1, rest are in different instruction templates.",
     )
-    # Prepare the arguments for different types of data sources.
-    # Arguments are grouped by data types and whether the data is from past or new sources.
-    # Arguments for image-text data, including multi-run conversations.
-    parser.add_argument(
-        "--past_mimicit_path",
-        type=str,
-        default="",
-        help="Path to the past image-text dataset (including multi-run conversations). Should be in format /path/to/xx_instruction.json",
-    )
-    parser.add_argument(
-        "--past_images_path",
-        type=str,
-        default="",
-        help="Path to the past images dataset (including base64 format images). Should be in format /path/to/xx.json",
-    )
-    parser.add_argument(
-        "--past_train_config_path",
-        type=str,
-        default="",
-        help="Path to the past images dataset (including current ids and related in-context ids). Should be in format /path/to/xx_train.json",
-    )
-
-    parser.add_argument(
-        "--mimicit_path",
-        type=str,
-        default="",
-        help="Path to the new image-text dataset (including multi-run conversations). Should be in format /path/to/xx_instruction.json",
-    )
-    parser.add_argument(
-        "--images_path",
-        type=str,
-        default="",
-        help="Path to the new images dataset (including base64 format images). Should be in format /path/to/xx.json",
-    )
-    parser.add_argument(
-        "--train_config_path",
-        type=str,
-        default="",
-        help="Path to the new images dataset (including current ids and related in-context ids). Should be in format /path/to/xx_train.json",
-    )
-
-    # Arguments for image-text in-context data.
-    parser.add_argument(
-        "--past_mimicit_ic_path",
-        type=str,
-        default="",
-        help="Path to the past in-context image-text dataset. Should be in format /path/to/xx_instruction.json",
-    )
-    parser.add_argument(
-        "--past_images_ic_path",
-        type=str,
-        default="",
-        help="Path to the past in-context images dataset. Should be in format /path/to/xx.json",
-    )
-    parser.add_argument(
-        "--past_train_config_ic_path",
-        type=str,
-        default="",
-        help="Path to the past in-context training config dataset. Should be in format /path/to/xx_train.json",
-    )
-    parser.add_argument(
-        "--mimicit_ic_path",
-        type=str,
-        default="",
-        help="Path to the new in-context image-text dataset. Should be in format /path/to/xx_instruction.json",
-    )
-    parser.add_argument(
-        "--images_ic_path",
-        type=str,
-        default="",
-        help="Path to the new in-context images dataset. Should be in format /path/to/xx.json",
-    )
-    parser.add_argument(
-        "--train_config_ic_path",
-        type=str,
-        default="",
-        help="Path to the new in-context training config dataset. Should be in format /path/to/xx_train.json",
-    )
-
-    # Arguments for text data, including multi-run conversations.
-    parser.add_argument(
-        "--mimicit_text_path",
-        type=str,
-        default="",
-        help="Path to the new text dataset (including multi-run conversations). Should be in format /path/to/xx_instruction.json",
-    )
-    parser.add_argument(
-        "--train_config_text_path",
-        type=str,
-        default="",
-        help="Path to the new text dataset (including multi-run conversations). Should be in format /path/to/xx_train.json",
-    )
-    parser.add_argument(
-        "--past_mimicit_text_path",
-        type=str,
-        default="",
-        help="Path to the past text dataset (including multi-run conversations). Should be in format /path/to/xx_instruction.json",
-    )
-    parser.add_argument(
-        "--past_train_config_text_path",
-        type=str,
-        default="",
-        help="Path to the past text dataset (including multi-run conversations). Should be in format /path/to/xx_train.json",
-    )
-
-    # Arguments for video-text data.
     parser.add_argument(
         "--training_data_yaml",
         type=str,
         default="",
         help="Path to the training data yaml file.",
     )
-    parser.add_argument(
-        "--past_mimicit_vt_path",
-        type=str,
-        default="",
-        help="Path to the past video-text dataset. Should be in format /path/to/xx_instruction.json",
-    )
-    parser.add_argument(
-        "--past_images_vt_path",
-        type=str,
-        default="",
-        help="Path to the past images dataset (associated with video-text data). Should be in format /path/to/xx.json",
-    )
-    parser.add_argument(
-        "--past_train_config_vt_path",
-        type=str,
-        default="",
-        help="Path to the past video-text training config dataset. Should be in format /path/to/xx_train.json",
-    )
-    parser.add_argument(
-        "--mimicit_vt_path",
-        type=str,
-        default="",
-        help="Path to the new video-text dataset. Should be in format /path/to/xx_instruction.json",
-    )
-    parser.add_argument(
-        "--images_vt_path",
-        type=str,
-        default="",
-        help="Path to the new images dataset (associated with video-text data). Should be in format /path/to/xx.json",
-    )
-    parser.add_argument(
-        "--train_config_vt_path",
-        type=str,
-        default="",
-        help="Path to the new video-text training config dataset. Should be in format /path/to/xx_train.json",
-    )
-
     # Argument for specifying the ratio for resampling past datasets.
     parser.add_argument(
         "--past_subset_ration",
