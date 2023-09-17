@@ -300,8 +300,6 @@ def parse_args():
     parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
     # Sum of gradient optimization batch size
     parser.add_argument("--batch_size", type=int, default=128)
-    parser.add_argument("--train_num_samples", type=int, default=-1)
-
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
     parser.add_argument("--save_steps_interval", type=int, default=-1)
     parser.add_argument(

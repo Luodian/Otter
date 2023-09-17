@@ -181,10 +181,10 @@ class MimicitDataset(Dataset):
             del cache_train_config
             del cache_train_list
 
-        if len(data_length_list) == 1:
-            max_items_per_dataset = max(data_length_list)
-        else:
-            max_items_per_dataset = sorted(data_length_list, reverse=True)[1]
+        # if len(data_length_list) == 1:
+        #     max_items_per_dataset = max(data_length_list)
+        # else:
+        #     max_items_per_dataset = sorted(data_length_list, reverse=True)[1]
 
         for cur_mimicit_path, cur_images_path, cur_train_config_path, cur_status, sampled_examples in zip(self.mimicit_paths, self.images_paths, self.train_config_paths, self.status_list, self.num_samples_list):
             # Load the dataset
@@ -208,16 +208,15 @@ class MimicitDataset(Dataset):
             else:
                 with open(cur_mimicit_path, "rb") as f:
                     cache_train_config = orjson.loads(f.read())["data"]
-                    cache_train_config = {key: cache_train_config["rel_ins_ids"] for key in cache_train_config.keys()}
+                    cache_train_config = {key: value["rel_ins_ids"] for key, value in cache_train_config.items()}
 
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
             cache_train_list = resampled_train
 
-            if cur_status == "past":
-                # Need to be modified if we use resampling stratedgy
-                random.seed(0)
-                random.shuffle(cache_train_list)
-                cache_train_list = cache_train_list[: int(len(cache_train_list) * args.past_subset_ration)]
+            # if cur_status == "past":
+            #     random.seed(0)
+            #     random.shuffle(cache_train_list)
+            #     cache_train_list = cache_train_list[: int(len(cache_train_list) * args.past_subset_ration)]
 
             if self.train_data_list == []:
                 self.train_data_list = cache_train_list

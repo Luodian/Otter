@@ -735,22 +735,22 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     #     unified_dataset = MimicitDataset(args=args, mimicit_paths=all_mimicit_vt_path, images_paths=all_images_vt_path, train_config_paths=all_train_config_vt_path, status_list=vt_status)
     #     unified_datasets.append(unified_dataset)
 
-    if args.train_num_samples == -1:
-        args.train_num_samples = statistics.median((len(dataset) for dataset in unified_datasets))
+    # if args.train_num_samples == -1:
+    #     args.train_num_samples = statistics.median((len(dataset) for dataset in unified_datasets))
 
     # assert args.train_num_samples <= max([len(dataset) for dataset in unified_datasets]), "your train_num_samples is larger than dataset"
 
     round_fn = math.floor if floor else math.ceil
     global_batch_size = args.batch_size * args.world_size
 
-    num_samples = args.train_num_samples  # 8
+    # num_samples = args.train_num_samples  # 8
     num_batches = round_fn(num_samples / global_batch_size)  # 2
     num_samples = num_batches * global_batch_size  # 8
 
     dataloaders = []
 
     for unified_dataset in unified_datasets:
-        sampler = RandomSampler(unified_dataset, replacement=True, num_samples=num_samples)
+        sampler = RandomSampler(unified_dataset, replacement=True)
         if args.distributed_type == "DEEPSPEED" or args.distributed_type == "MULTI_GPU":
             sampler = DistributedProxySampler(sampler, num_replicas=args.world_size, rank=args.rank)
         dataloader = torch.utils.data.DataLoader(
