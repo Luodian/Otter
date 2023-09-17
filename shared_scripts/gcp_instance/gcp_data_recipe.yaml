@@ -31,10 +31,6 @@ IMAGE_TEXT:
     mimicit_path: /home/luodian/projects/data/M3IT/vqa/a-okvqa/a-okvqa_instructions.json
     images_path: /home/luodian/projects/data/M3IT/vqa/a-okvqa/a-okvqa.json
     num_samples: 5000
-  PF:
-    mimicit_path: /home/luodian/projects/data/PF/PF_instructions_full.json
-    images_path: /home/luodian/projects/data/PF/PF.json
-    num_samples: 5000
   SVIT:
     mimicit_path: /home/luodian/projects/data/SVIT/SVIT_instructions.json
     images_path: /home/luodian/projects/data/SVIT/SVIT.json

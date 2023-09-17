@@ -675,7 +675,7 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
 
     # Converting multiple types of mimic-it datasets into a unified format dataset
     for key, item in dataset_info.items():
-        if item != {}: # if the category is not empty
+        if item != {}:  # if the category is not empty
             unified_dataset = MimicitDataset(args, dataset_info=dataset_info[key], status_list=["new"] * len(dataset_info[key]))
             unified_datasets.append(unified_dataset)
 
