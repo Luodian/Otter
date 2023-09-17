@@ -1,55 +1,55 @@
 IMAGE_TEXT:
-  LADD:
-    mimicit_path: /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LADD_instructions.json
-    images_path: /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json
-    num_samples: 5000
-  LACONV:
-    mimicit_path: /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACONV_instructions.json
-    images_path: /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json
-    num_samples: 5000
-  LACR_T2T:
-    mimicit_path: /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACR_T2T_instructions.json
-    images_path: /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json
-    num_samples: 5000
+  # LADD:
+  #   mimicit_path: /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LADD_instructions.json
+  #   images_path: /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json
+  #   num_samples: 5000
+  # LACONV:
+  #   mimicit_path: /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACONV_instructions.json
+  #   images_path: /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json
+  #   num_samples: 5000
+  # LACR_T2T:
+  #   mimicit_path: /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LACR_T2T_instructions.json
+  #   images_path: /mnt/petrelfs/zhangyuanhan/data/mimicit/LA/release_format/LA.json
+  #   num_samples: 5000
   M3IT_CAPTIONING:
     mimicit_path: /mnt/petrelfs/zhangyuanhan/data/m3it/captioning/coco/coco_instructions.json
     images_path: /mnt/petrelfs/zhangyuanhan/data/m3it/captioning/coco/coco.json
     num_samples: 5000
-  M3IT_VQA:
-    mimicit_path: /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/vqav2/vqav2_instructions.json
-    images_path: /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/vqav2/vqav2.json
-    num_samples: 5000
-  M3IT_TEXT_VQA:
-    mimicit_path: /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/text-vqa/text-vqa_instructions.json
-    images_path: /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/text-vqa/text-vqa.json
-    num_samples: 5000
-  M3IT_OKVQA:
-    mimicit_path: /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/okvqa/okvqa_instructions.json
-    images_path: /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/okvqa/okvqa.json
-    num_samples: 5000
-  M3IT_A_OKVQA:
-    mimicit_path: /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/a-okvqa/a-okvqa_instructions.json
-    images_path: /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/a-okvqa/a-okvqa.json
-    num_samples: 5000
-  PF:
-    mimicit_path: /mnt/petrelfs/share_data/libo/PF/PF_instructions_full.json
-    images_path: /mnt/petrelfs/share_data/libo/PF/PF.json
-    num_samples: 5000
-  SVIT:
-    mimicit_path: /mnt/petrelfs/share_data/zhangyuanhan/mimicit/SVIT/SVIT_instructions.json
-    images_path: /mnt/petrelfs/share_data/zhangyuanhan/mimicit/SVIT/SVIT.json
-    num_samples: 5000
+  # M3IT_VQA:
+  #   mimicit_path: /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/vqav2/vqav2_instructions.json
+  #   images_path: /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/vqav2/vqav2.json
+  #   num_samples: 5000
+  # M3IT_TEXT_VQA:
+  #   mimicit_path: /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/text-vqa/text-vqa_instructions.json
+  #   images_path: /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/text-vqa/text-vqa.json
+  #   num_samples: 5000
+  # M3IT_OKVQA:
+  #   mimicit_path: /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/okvqa/okvqa_instructions.json
+  #   images_path: /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/okvqa/okvqa.json
+  #   num_samples: 5000
+  # M3IT_A_OKVQA:
+  #   mimicit_path: /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/a-okvqa/a-okvqa_instructions.json
+  #   images_path: /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/a-okvqa/a-okvqa.json
+  #   num_samples: 5000
+  # PF:
+  #   mimicit_path: /mnt/petrelfs/share_data/libo/PF/PF_instructions_full.json
+  #   images_path: /mnt/petrelfs/share_data/libo/PF/PF.json
+  #   num_samples: 5000
+  # SVIT:
+  #   mimicit_path: /mnt/petrelfs/share_data/zhangyuanhan/mimicit/SVIT/SVIT_instructions.json
+  #   images_path: /mnt/petrelfs/share_data/zhangyuanhan/mimicit/SVIT/SVIT.json
+  #   num_samples: 5000
 
 TEXT_ONLY:
   LIMA:
     mimicit_path: /mnt/petrelfs/zhangyuanhan/data/m3it/captioning/coco/coco_instructions.json
     train_config_path: /mnt/petrelfs/zhangyuanhan/data/m3it/captioning/coco/coco_train.json
     num_samples: 2000
-  AL:
-    mimicit_path: /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/AL/AL_instructions.json
-    train_config_path: /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/AL/AL_train.json
-    num_samples: 2000
-  SHAREGPT:
-    mimicit_path: /mnt/petrelfs/share_data/libo/SHAREGPT/SHAREGPT_instructions_max_2K_tokens.json
-    train_config_path: /mnt/petrelfs/share_data/libo/SHAREGPT/SHAREGPT_2K_train.json
-    num_samples: 2000
+  # AL:
+  #   mimicit_path: /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/AL/AL_instructions.json
+  #   train_config_path: /mnt/petrelfs/zhangyuanhan/data/mimicit/LANG_Only/AL/AL_train.json
+  #   num_samples: 2000
+  # SHAREGPT:
+  #   mimicit_path: /mnt/petrelfs/share_data/libo/SHAREGPT/SHAREGPT_instructions_max_2K_tokens.json
+  #   train_config_path: /mnt/petrelfs/share_data/libo/SHAREGPT/SHAREGPT_2K_train.json
+  #   num_samples: 2000

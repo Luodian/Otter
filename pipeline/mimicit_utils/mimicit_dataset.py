@@ -195,7 +195,9 @@ class MimicitDataset(Dataset):
                 else:
                     self.dataset.update(orjson.loads(f.read())["data"])
 
-            print(cur_images_path)
+            if args.rank == 0:
+                print(cur_images_path)
+                
             if cur_images_path != "":
                 with open(cur_images_path, "rb") as f:
                     for key, value in ijson.kvitems(f, "", use_float=True):
@@ -527,7 +529,9 @@ class MimicitDataset(Dataset):
         )
         num_tokens = all_text["input_ids"].shape[1]
         if num_tokens == self.max_seq_len:
-            print(f"{cur_train_id}'s all_texts reaches the max_seq_len.")
+            if self.args.rank == 0:
+                print(f"{cur_train_id}'s all_texts reaches the max_seq_len.")
+                print(all_texts)
 
         all_item = all_text["input_ids"].squeeze(0)
         all_item_mask = all_text["attention_mask"].squeeze(0)
