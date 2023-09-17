@@ -88,10 +88,16 @@ class MimicitDataset(Dataset):
         self.remove_symbols = args.remove_symbols if hasattr(args, "remove_symbols") else True
         # remove more symbols in the question and answer, make the question and answer more clean and training loss more stable.
 
-        self.mimicit_paths = [info['path'] for info in dataset_info.get('mimicit_path', [])]
-        self.num_samples_list = [info['num_samples'] for info in dataset_info.get('mimicit_path', [])]
-        self.train_config_paths = [info['path'] for info in dataset_info.get('train_config_path', [""] * len(self.mimicit_paths))]
-        self.images_paths = [info['path'] for info in dataset_info.get('images_path', [])]
+        self.mimicit_paths = []
+        self.num_samples_list = []
+        self.train_config_paths = []
+        self.images_paths = []
+
+        for key, value in dataset_info.items():
+            self.mimicit_paths.extend([info['path'] for info in value.get('mimicit_path', [])])
+            self.num_samples_list.extend([info['num_samples'] for info in value.get('mimicit_path', [])])
+            self.train_config_paths.extend([info['path'] for info in value.get('train_config_path', [""] * len(self.mimicit_paths))])
+            self.images_paths.extend([info['path'] for info in value.get('images_path', [])])
 
         self.seed = args.seed
         self.patch_image_size = args.patch_image_size
