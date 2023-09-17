@@ -1,37 +1,11 @@
-# mimicit_ic_path:
-#   LA:
-#     - /home/luodian/projects/data/LA/LACR_T2T_instructions.json
+IMAGE_TEXT:
+  LA:
+    mimicit_path: /home/luodian/projects/data/LA/LADD_instructions.json
+    images_path: /home/luodian/projects/data/LA/LA.json
+    num_samples: 1000  # Example value
 
-# images_ic_path:
-#   LA:
-#     - /home/luodian/projects/data/LA/LA.json
-
-# train_config_ic_path:
-#   LA:
-#     - /home/luodian/projects/data/LA/LACR_T2T_train.json
-
-# mimicit_path:
-#   LA:
-#     - /home/luodian/projects/data/LA/LADD_instructions.json
-
-# images_path:
-#   LA:
-#     - /home/luodian/projects/data/LA/LA.json
-
-# train_config_path:
-#   LA:
-#     - /home/luodian/projects/data/LA/LADD_train.json
-
-mimicit_text_path:
-  LANG_Only:
-    # SHAREGPT_2K:
-    #   - /home/luodian/projects/Otter/archived/training_files/SHAREGPT_2K_instructions.json
-    LIMA:
-      - /home/luodian/projects/Otter/archived/training_files/LIMA_2K_instructions.json
-
-train_config_text_path:
-  LANG_Only:
-    # SHAREGPT_2K:
-    #   - /home/luodian/projects/Otter/archived/training_files/SHAREGPT_2K_train.json
-    LIMA:
-      - /home/luodian/projects/Otter/archived/training_files/LIMA_2K_train.json
+TEXT_ONLY:
+  LIMA:
+    mimicit_path: /home/luodian/projects/Otter/archived/training_files/LIMA_2K_instructions.json
+    train_config_path: /home/luodian/projects/Otter/archived/training_files/LIMA_2K_train.json
+    num_samples: 2000  # Example value

@@ -396,7 +396,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    args = preload_dataset(args)
+    preload_dataset(args)
     accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps, mixed_precision="bf16")
     if accelerator.state.deepspeed_plugin is not None:
         accelerator.state.deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = args.batch_size

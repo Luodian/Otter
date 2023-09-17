@@ -82,19 +82,16 @@ def resample_data(data, N):
 
 
 class MimicitDataset(Dataset):
-    def __init__(
-        self,
-        args,
-        mimicit_paths="",
-        images_paths="",
-        train_config_paths="",
-        status_list=["past", "new"],
-        task_name="DC",
-    ):
+    def __init__(self, args, dataset_info, status_list=["past", "new"], task_name="DC"):
         self.args = args
         self.tokenizer = args.tokenizer
         self.remove_symbols = args.remove_symbols if hasattr(args, "remove_symbols") else True
         # remove more symbols in the question and answer, make the question and answer more clean and training loss more stable.
+
+        self.mimicit_paths = [info["path"] for info in dataset_info.get("mimicit_path", [])]
+        self.num_samples_list = [info["num_samples"] for info in dataset_info.get("mimicit_path", [])]
+        self.train_config_paths = [info["path"] for info in dataset_info.get("train_config_path", [""] * len(self.mimicit_paths))]
+        self.images_paths = [info["path"] for info in dataset_info.get("images_path", [])]
 
         self.seed = args.seed
         self.patch_image_size = args.patch_image_size
@@ -147,11 +144,6 @@ class MimicitDataset(Dataset):
                 transforms.Normalize(mean=FLAMINGO_MEAN, std=FLAMINGO_STD),
             ]
         )
-        assert mimicit_paths != "", f"Error: The mimicit_paths do not get!"
-
-        self.mimicit_paths = mimicit_paths
-        self.images_paths = images_paths if images_paths != "" else [""] * len(mimicit_paths)
-        self.train_config_paths = train_config_paths if train_config_paths != "" else [""] * len(mimicit_paths)
         self.status_list = status_list
 
         assert len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths) == len(self.status_list), f"metas do not have same number"
