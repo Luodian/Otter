@@ -159,27 +159,27 @@ class MimicitDataset(Dataset):
         self.dataset = {}
         self.images = {}
         self.train_data_list = []
-        self.train_config = []
+        self.train_config = {}
 
         # Get the length of each dataset and use the second largest value as the length of each dataset
-        data_length_list = []
-        for cur_mimicit_path, cur_train_config_path in zip(self.mimicit_paths, self.train_config_paths):
-            # Load the train_config
-            if cur_train_config_path != "":
-                assert os.path.exists(cur_train_config_path), f"Error: The local train_config_path {cur_train_config_path} not exists!"
-                with open(cur_train_config_path, "rb") as f:
-                    cache_train_config = orjson.loads(f.read())
-            else:
-                with open(cur_mimicit_path, "rb") as f:
-                    cache_train_config = orjson.loads(f.read())["data"]
-                    cache_train_config = {key: [] for key in cache_train_config.keys()}
+        # data_length_list = []
+        # for cur_mimicit_path, cur_train_config_path in zip(self.mimicit_paths, self.train_config_paths):
+        #     # Load the train_config
+        #     if cur_train_config_path != "":
+        #         assert os.path.exists(cur_train_config_path), f"Error: The local train_config_path {cur_train_config_path} not exists!"
+        #         with open(cur_train_config_path, "rb") as f:
+        #             cache_train_config = orjson.loads(f.read())
+        #     else:
+        #         with open(cur_mimicit_path, "rb") as f:
+        #             cache_train_config = orjson.loads(f.read())["data"]
+        #             cache_train_config = {key: [] for key in cache_train_config.keys()}
 
-            cache_train_list = list(cache_train_config.keys())
+        #     cache_train_list = list(cache_train_config.keys())
 
-            data_length_list.append(len(cache_train_list))
+        #     data_length_list.append(len(cache_train_list))
 
-            del cache_train_config
-            del cache_train_list
+        #     del cache_train_config
+        #     del cache_train_list
 
         # if len(data_length_list) == 1:
         #     max_items_per_dataset = max(data_length_list)
@@ -195,42 +195,31 @@ class MimicitDataset(Dataset):
                 else:
                     self.dataset.update(orjson.loads(f.read())["data"])
 
-            if args.rank == 0:
-                print(cur_images_path)
-                
-            if cur_images_path != "":
-                with open(cur_images_path, "rb") as f:
-                    for key, value in ijson.kvitems(f, "", use_float=True):
-                        self.images[key] = value
-
             # Load the train_config
             if cur_train_config_path != "":
-                assert os.path.exists(cur_train_config_path), f"Error: The local train_config_path {cur_train_config_path} not exists!"
                 with open(cur_train_config_path, "rb") as f:
                     cache_train_config = orjson.loads(f.read())
             else:
-                with open(cur_mimicit_path, "rb") as f:
-                    cache_train_config = orjson.loads(f.read())["data"]
-                    cache_train_config = {key: value["rel_ins_ids"] for key, value in cache_train_config.items()}
+                cache_train_config = {key: value["rel_ins_ids"] for key, value in self.dataset.items()}
 
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
-            cache_train_list = resampled_train
 
-            # if cur_status == "past":
-            #     random.seed(0)
-            #     random.shuffle(cache_train_list)
-            #     cache_train_list = cache_train_list[: int(len(cache_train_list) * args.past_subset_ration)]
+            if args.rank == 0:
+                print(cur_images_path)
 
-            if self.train_data_list == []:
-                self.train_data_list = cache_train_list
-                self.train_config = cache_train_config
-            else:
-                self.train_data_list += cache_train_list
-                self.train_config.update(cache_train_config)
+            if cur_images_path:
+                with open(cur_images_path, "rb") as f:
+                    images_data = orjson.loads(f.read())
+                    self.images.update(images_data)
 
-            del cache_train_config
-            del cache_train_list
+            self.train_data_list.extend(resampled_train)
+            self.train_config.update(cache_train_config)
 
+        if args.rank == 0:
+            print(f"Total number of trainable examples: {len(self.train_data_list)}")
+            print(f"Total number of images: {len(self.images)}")
+            print(f"Total number of dataset: {len(self.dataset)}")
+            
         self.bos_item = torch.LongTensor([args.tokenizer.bos_token_id])
         self.eos_item = torch.LongTensor([args.tokenizer.eos_token_id])
         self.bos_mask = torch.LongTensor([1])

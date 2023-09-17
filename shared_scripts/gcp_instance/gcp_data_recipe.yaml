@@ -2,39 +2,35 @@ IMAGE_TEXT:
   LADD:
     mimicit_path: /home/luodian/projects/data/LA/LADD_instructions.json
     images_path: /home/luodian/projects/data/LA/LA.json
-    num_samples: 5000
+    num_samples: 10
   LACONV:
     mimicit_path: /home/luodian/projects/data/LA/LACONV_instructions.json
     images_path: /home/luodian/projects/data/LA/LA.json
-    num_samples: 5000
-  LACR_T2T:
-    mimicit_path: /home/luodian/projects/data/LA/LACR_T2T_instructions.json
-    images_path: /home/luodian/projects/data/LA/LA.json
-    num_samples: 5000
+    num_samples: 10
   M3IT_CAPTIONING:
     mimicit_path: /home/luodian/projects/data/M3IT/captioning/coco/coco_instructions.json
     images_path: /home/luodian/projects/data/M3IT/captioning/coco/coco.json
-    num_samples: 5000
+    num_samples: 50
   M3IT_VQA:
     mimicit_path: /home/luodian/projects/data/M3IT/vqa/vqav2/vqav2_instructions.json
     images_path: /home/luodian/projects/data/M3IT/vqa/vqav2/vqav2.json
-    num_samples: 5000
+    num_samples: 50
   M3IT_TEXT_VQA:
     mimicit_path: /home/luodian/projects/data/M3IT/vqa/text-vqa/text-vqa_instructions.json
     images_path: /home/luodian/projects/data/M3IT/vqa/text-vqa/text-vqa.json
-    num_samples: 5000
+    num_samples: 50
   M3IT_OKVQA:
     mimicit_path: /home/luodian/projects/data/M3IT/vqa/okvqa/okvqa_instructions.json
     images_path: /home/luodian/projects/data/M3IT/vqa/okvqa/okvqa.json
-    num_samples: 5000
+    num_samples: 50
   M3IT_A_OKVQA:
     mimicit_path: /home/luodian/projects/data/M3IT/vqa/a-okvqa/a-okvqa_instructions.json
     images_path: /home/luodian/projects/data/M3IT/vqa/a-okvqa/a-okvqa.json
-    num_samples: 5000
-  SVIT:
-    mimicit_path: /home/luodian/projects/data/SVIT/SVIT_instructions.json
-    images_path: /home/luodian/projects/data/SVIT/SVIT.json
-    num_samples: 5000
+    num_samples: 50
+  # SVIT:
+  #   mimicit_path: /home/luodian/projects/data/SVIT/SVIT_instructions.json
+  #   images_path: /home/luodian/projects/data/SVIT/SVIT.json
+  #   num_samples: 5000
 
 TEXT_ONLY:
   LIMA:
