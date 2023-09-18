@@ -29,3 +29,10 @@ def test_yaml_structure(yaml_data):
                     assert os.path.exists(path_value), f"Dataset path {path_value} specified under {category} -> {dataset_name} does not exist."
                 elif path_key == "num_samples":
                     assert isinstance(path_value, int), f"'num_samples' should be an integer but got {type(path_value)} under {category} -> {dataset_name}."
+
+                if path_key == "mimicit_path":
+                    import json
+                    with open(path_key, 'r') as f:
+                        data = json.load(f)
+
+                    assert "data" in data

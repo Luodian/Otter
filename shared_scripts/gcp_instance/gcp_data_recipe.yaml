@@ -29,7 +29,7 @@ IMAGE_TEXT:
     images_path: /home/luodian/projects/data/M3IT/captioning/coco/coco.json
     num_samples: 50
   M3IT_IMAGENET:
-    mimicit_path: /home/luodian/projects/data/M3IT/classification/imagenet/instructions.json
+    mimicit_path: /home/luodian/projects/data/M3IT/classification/imagenet/imagenet_instructions.json
     images_path: /home/luodian/projects/data/M3IT/classification/imagenet/imagenet.json
     num_samples: 50
   M3IT_IQA:
