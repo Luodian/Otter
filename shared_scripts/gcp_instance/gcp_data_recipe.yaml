@@ -20,6 +20,34 @@ IMAGE_TEXT:
     mimicit_path: /home/luodian/projects/data/M3IT/vqa/vqav2/vqav2_instructions.json
     images_path: /home/luodian/projects/data/M3IT/vqa/vqav2/vqav2.json
     num_samples: 50
+  M3IT_COCOGOI:
+    mimicit_path: /home/luodian/projects/data/M3IT/classification/coco-goi/coco-goi_instructions.json
+    images_path: /home/luodian/projects/data/M3IT/captioning/coco/coco.json
+    num_samples: 50
+  M3IT_COCOITM:
+    mimicit_path: /home/luodian/projects/data/M3IT/classification/coco-itm/coco-itm_instructions.json
+    images_path: /home/luodian/projects/data/M3IT/captioning/coco/coco.json
+    num_samples: 50
+  M3IT_COCOTEXT:
+    mimicit_path: /home/luodian/projects/data/M3IT/classification/coco-text/instructions.json
+    images_path: /home/luodian/projects/data/M3IT/captioning/coco/coco.json
+    num_samples: 50
+  M3IT_IMAGENET:
+    mimicit_path: /home/luodian/projects/data/M3IT/classification/imagenet/instructions.json
+    images_path: /home/luodian/projects/data/M3IT/classification/imagenet/imagenet.json
+    num_samples: 50
+  M3IT_IQA:
+    mimicit_path: /home/luodian/projects/data/M3IT/classification/iqa/iqa_instructions.json
+    images_path: /home/luodian/projects/data/M3IT/classification/iqa/iqa.json
+    num_samples: 50
+  M3IT_REFCOCO:
+    mimicit_path: /home/luodian/projects/data/M3IT/classification/refcoco/refcoco_instructions.json
+    images_path: /home/luodian/projects/data/M3IT/classification/refcoco/refcoco.json
+    num_samples: 50
+  M3IT_VSR:
+    mimicit_path: /home/luodian/projects/data/M3IT/classification/vsr/vsr_instructions.json
+    images_path: /home/luodian/projects/data/M3IT/classification/vsr/vsr.json
+    num_samples: 50
   M3IT_TEXT_VQA:
     mimicit_path: /home/luodian/projects/data/M3IT/vqa/text-vqa/text-vqa_instructions.json
     images_path: /home/luodian/projects/data/M3IT/vqa/text-vqa/text-vqa.json
@@ -31,6 +59,18 @@ IMAGE_TEXT:
   M3IT_A_OKVQA:
     mimicit_path: /home/luodian/projects/data/M3IT/vqa/a-okvqa/a-okvqa_instructions.json
     images_path: /home/luodian/projects/data/M3IT/vqa/a-okvqa/a-okvqa.json
+    num_samples: 50
+  M3IT_SIENCEQA:
+    mimicit_path: /home/luodian/projects/data/M3IT/reasoning/scienceqa/scienceqa_instructions.json
+    images_path: /home/luodian/projects/data/M3IT/reasoning/scienceqa/scienceqa.json
+    num_samples: 50
+  M3IT_GQA:
+    mimicit_path: /home/luodian/projects/data/M3IT/vqa/gqa/gqa_instructions.json
+    images_path: /home/luodian/projects/data/M3IT/vqa/gqa/gqa.json
+    num_samples: 50
+  M3IT_STVQA:
+    mimicit_path: /home/luodian/projects/data/M3IT/vqa/st-vqa/st-vqa_instructions.json
+    images_path: /home/luodian/projects/data/M3IT/vqa/st-vqa/st-vqa.json
     num_samples: 50
   SVIT:
     mimicit_path: /home/luodian/projects/data/SVIT/SVIT_instructions.json
