@@ -82,7 +82,7 @@ def resample_data(data, N):
 
 
 class MimicitDataset(Dataset):
-    def __init__(self, args, dataset_info, status_list=["past", "new"], task_name="DC"):
+    def __init__(self, args, dataset_info):
         self.args = args
         self.tokenizer = args.tokenizer
         self.remove_symbols = args.remove_symbols if hasattr(args, "remove_symbols") else True
@@ -189,45 +189,43 @@ class MimicitDataset(Dataset):
         # else:
         #     max_items_per_dataset = sorted(data_length_list, reverse=True)[1]
 
-        for (
-            cur_mimicit_path,
-            cur_images_path,
-            cur_train_config_path,
-            cur_status,
-            sampled_examples,
-        ) in zip(
+        for cur_mimicit_path, cur_images_path, cur_train_config_path, cur_status, sampled_examples, task_name in zip(
             self.mimicit_paths,
             self.images_paths,
             self.train_config_paths,
             self.status_list,
             self.num_samples_list,
+            self.task_names,
         ):
             # Load the dataset
             assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!"
             with open(cur_mimicit_path, "rb") as f:
-                if self.dataset == {}:
-                    self.dataset = orjson.loads(f.read())["data"]
-                else:
-                    self.dataset.update(orjson.loads(f.read())["data"])
+                cur_mimicit_data = orjson.loads(f.read())["data"]
+                self.dataset.update(cur_mimicit_data)
 
             # Load the train_config
             if cur_train_config_path != "":
                 with open(cur_train_config_path, "rb") as f:
                     cache_train_config = orjson.loads(f.read())
             else:
-                cache_train_config = {key: value["rel_ins_ids"] for key, value in self.dataset.items()}
+                cache_train_config = {key: value["rel_ins_ids"] for key, value in cur_mimicit_data.items()}
 
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
 
             if args.rank == 0:
-                print(cur_mimicit_path)
-                print(cur_train_config_path)
-                print(cur_images_path)
+                print(f"Task: {task_name}, Status: Num_samples: {sampled_examples}")
+                print(f"MIMICIT_PATH: {cur_mimicit_path}")
+                print(f"TRAIN_CONFIG_PATH: {cur_train_config_path}")
+                print(f"IMAGES_PATH: {cur_images_path}")
 
             if cur_images_path:
                 with open(cur_images_path, "rb") as f:
                     images_data = orjson.loads(f.read())
-                    self.images.update(images_data)
+                    for ins_key in resampled_train:
+                        img_keys = self.dataset[ins_key]["image_ids"]
+                        for img_key in img_keys:
+                            self.images[img_key] = images_data[img_key]
+                    # self.images.update(images_data)
 
             self.train_data_list.extend(resampled_train)
             self.train_config.update(cache_train_config)
