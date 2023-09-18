@@ -4,24 +4,21 @@
 # found in the LICENSE file in the root directory.
 
 import base64
-from io import BytesIO
-import re
 import contextlib
 import os
-import orjson
-import ijson.backends.yajl2_c as ijson
-from PIL import ImageFile
-from torchvision import transforms
 import random
-
+import re
 import sys
-from PIL import Image, ImageFile
+from io import BytesIO
 
-import torch
+import ijson.backends.yajl2_c as ijson
 import numpy as np
-
+import orjson
+import torch
+from PIL import Image, ImageFile
+from prettytable import PrettyTable
 from torch.utils.data import Dataset
-
+from torchvision import transforms
 
 IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
@@ -155,9 +152,7 @@ class MimicitDataset(Dataset):
                 transforms.Normalize(mean=FLAMINGO_MEAN, std=FLAMINGO_STD),
             ]
         )
-        self.status_list = status_list
-
-        assert len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths) == len(self.status_list), f"metas do not have same number"
+        assert len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths), f"metas do not have same number"
 
         self.dataset = {}
         self.images = {}
@@ -188,15 +183,11 @@ class MimicitDataset(Dataset):
         #     max_items_per_dataset = max(data_length_list)
         # else:
         #     max_items_per_dataset = sorted(data_length_list, reverse=True)[1]
-
-        for cur_mimicit_path, cur_images_path, cur_train_config_path, cur_status, sampled_examples, task_name in zip(
-            self.mimicit_paths,
-            self.images_paths,
-            self.train_config_paths,
-            self.status_list,
-            self.num_samples_list,
-            self.task_names,
-        ):
+        
+        table = PrettyTable()
+        # Set column names for the table
+        table.field_names = ["Task Name", "MIMICIT_PATH", "TRAIN_CONFIG_PATH", "IMAGES_PATH", "Num_samples"]
+        for cur_mimicit_path, cur_images_path, cur_train_config_path, sampled_examples, task_name in zip(self.mimicit_paths, self.images_paths, self.train_config_paths, self.num_samples_list, self.task_names):
             # Load the dataset
             assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!"
             with open(cur_mimicit_path, "rb") as f:
@@ -211,13 +202,13 @@ class MimicitDataset(Dataset):
                 cache_train_config = {key: value["rel_ins_ids"] for key, value in cur_mimicit_data.items()}
 
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
-
-            if args.rank == 0:
-                print(f"Task: {task_name}, Status: Num_samples: {sampled_examples}")
-                print(f"MIMICIT_PATH: {cur_mimicit_path}")
-                print(f"TRAIN_CONFIG_PATH: {cur_train_config_path}")
-                print(f"IMAGES_PATH: {cur_images_path}")
-
+            table.add_row([
+                task_name,
+                cur_mimicit_path,
+                cur_train_config_path if cur_train_config_path != '' else 'None',
+                cur_images_path if cur_images_path != '' else 'None',
+                sampled_examples
+            ])
             if cur_images_path:
                 with open(cur_images_path, "rb") as f:
                     images_data = orjson.loads(f.read())
@@ -225,15 +216,13 @@ class MimicitDataset(Dataset):
                         img_keys = self.dataset[ins_key]["image_ids"]
                         for img_key in img_keys:
                             self.images[img_key] = images_data[img_key]
-                    # self.images.update(images_data)
 
             self.train_data_list.extend(resampled_train)
             self.train_config.update(cache_train_config)
 
         if args.rank == 0:
-            print(f"Total number of trainable examples: {len(self.train_data_list)}")
-            print(f"Total number of images: {len(self.images)}")
-            print(f"Total number of dataset: {len(self.dataset)}")
+            print("----------------MIMICIT INFO----------------")
+            print(table)
 
         self.bos_item = torch.LongTensor([args.tokenizer.bos_token_id])
         self.eos_item = torch.LongTensor([args.tokenizer.eos_token_id])
