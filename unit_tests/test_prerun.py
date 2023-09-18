@@ -32,7 +32,7 @@ def test_yaml_structure(yaml_data):
 
                 if path_key == "mimicit_path":
                     import json
-                    with open(path_key, 'r') as f:
+                    with open(path_value, 'r') as f:
                         data = json.load(f)
 
                     assert "data" in data
