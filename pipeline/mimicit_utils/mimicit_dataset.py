@@ -121,29 +121,7 @@ class MimicitDataset(Dataset):
         ]
         self.in_context_imageqa_data_list = ["LACR_T2T", "LACR_I2I"]
         # image data list (including multi-round conv)
-        self.imageqa_data_list = [
-            "LACONV",
-            "LADD",
-            "M3IT",
-            "PF",
-            "PL",
-            "SCIENCEQA",
-            "SVIT",
-            "IQA",
-            "REFCOCO",
-            "VQAV2",
-            "OKVQA",
-            "A-OKVQA",
-            "GQA",
-            "TEXT-VQA",
-            "IMAGENET",
-            "COCO",
-            "COCO-GOI",
-            "VSR",
-            "ST-VQA",
-            "IQA",
-            "COCOITM"
-        ]
+        self.imageqa_data_list = ["LACONV", "LADD", "M3IT", "PF", "PL", "SCIENCEQA", "SVIT", "IQA", "REFCOCO", "VQAV2", "OKVQA", "A-OKVQA", "GQA", "TEXT-VQA", "IMAGENET", "COCO", "COCO-GOI", "VSR", "ST-VQA", "IQA", "COCOITM"]
         self.video_data_list = ["DC", "FunQA", "E4D", "TVC", "VideoQA", "EAI"]
         self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.\n<</SYS>>\n\n"
 
@@ -188,7 +166,7 @@ class MimicitDataset(Dataset):
         #     max_items_per_dataset = max(data_length_list)
         # else:
         #     max_items_per_dataset = sorted(data_length_list, reverse=True)[1]
-        
+
         table = PrettyTable()
         # Set column names for the table
         table.field_names = ["Task Name", "MIMICIT_PATH", "TRAIN_CONFIG_PATH", "IMAGES_PATH", "Num_samples"]
@@ -207,13 +185,7 @@ class MimicitDataset(Dataset):
                 cache_train_config = {key: value["rel_ins_ids"] for key, value in cur_mimicit_data.items()}
 
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
-            table.add_row([
-                task_name,
-                cur_mimicit_path,
-                cur_train_config_path if cur_train_config_path != '' else 'None',
-                cur_images_path if cur_images_path != '' else 'None',
-                len(resampled_train)
-            ])
+            table.add_row([task_name, cur_mimicit_path, cur_train_config_path if cur_train_config_path != "" else "None", cur_images_path if cur_images_path != "" else "None", len(resampled_train)])
             if cur_images_path:
                 with open(cur_images_path, "rb") as f:
                     images_data = orjson.loads(f.read())
