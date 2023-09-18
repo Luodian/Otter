@@ -7,6 +7,11 @@ IMAGE_TEXT:
     mimicit_path: /home/luodian/projects/data/LA/LACONV_instructions.json
     images_path: /home/luodian/projects/data/LA/LA.json
     num_samples: 10
+  LACR_T2T:
+    mimicit_path: /home/luodian/projects/data/LA/LACR_T2T_instructions.json
+    images_path: /home/luodian/projects/data/LA/LA.json
+    train_config_path: /home/luodian/projects/data/LA/LACR_T2T_train_basic.json
+    num_samples: 10
   M3IT_CAPTIONING:
     mimicit_path: /home/luodian/projects/data/M3IT/captioning/coco/coco_instructions.json
     images_path: /home/luodian/projects/data/M3IT/captioning/coco/coco.json
@@ -27,10 +32,14 @@ IMAGE_TEXT:
     mimicit_path: /home/luodian/projects/data/M3IT/vqa/a-okvqa/a-okvqa_instructions.json
     images_path: /home/luodian/projects/data/M3IT/vqa/a-okvqa/a-okvqa.json
     num_samples: 50
-  # SVIT:
-  #   mimicit_path: /home/luodian/projects/data/SVIT/SVIT_instructions.json
-  #   images_path: /home/luodian/projects/data/SVIT/SVIT.json
-  #   num_samples: 5000
+  SVIT:
+    mimicit_path: /home/luodian/projects/data/SVIT/SVIT_instructions.json
+    images_path: /home/luodian/projects/data/SVIT/SVIT.json
+    num_samples: 50
+  PF:
+    mimicit_path: /home/luodian/projects/data/PF/PF_instructions.json
+    images_path: /home/luodian/projects/data/PF/PF.json
+    num_samples: 50
 
 TEXT_ONLY:
   LIMA:

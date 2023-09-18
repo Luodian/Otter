@@ -19,7 +19,10 @@ def main(input_file, output_file):
         if key not in seen_keys:
             try:
                 # Check if rel_ins_ids are in the original JSON
-                valid_rel_ins_ids = [rel_ins_id for rel_ins_id in value["rel_ins_ids"] if rel_ins_id in data["data"]]
+                if args.remove_rel_ins_ids:
+                    valid_rel_ins_ids = []
+                else:
+                    valid_rel_ins_ids = [rel_ins_id for rel_ins_id in value["rel_ins_ids"] if rel_ins_id in data["data"]]
 
                 # Add the valid rel_ins_ids to the new_dict
                 new_dict[key] = valid_rel_ins_ids
@@ -37,7 +40,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process a JSON file.")
     parser.add_argument("--input_file", type=str, help="Path to the input JSON file")
     parser.add_argument("--output_file", type=str, help="Path to the output JSON file")
-
+    parser.add_argument("--remove_rel_ins_ids", action="store_true", help="Remove rel_ins_ids from the output JSON file")
+        
     args = parser.parse_args()
 
     # Run the main function with the provided arguments
