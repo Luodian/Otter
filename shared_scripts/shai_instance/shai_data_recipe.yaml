@@ -32,10 +32,10 @@ IMAGE_TEXT:
     mimicit_path: /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/a-okvqa/a-okvqa_instructions.json
     images_path: /mnt/petrelfs/zhangyuanhan/data/m3it/vqa/a-okvqa/a-okvqa.json
     num_samples: 5000
-  PF:
-    mimicit_path: /mnt/petrelfs/share_data/libo/PF/PF_instructions_full.json
-    images_path: /mnt/petrelfs/share_data/libo/PF/PF.json
-    num_samples: 5000
+  # PF:
+  #   mimicit_path: /mnt/petrelfs/share_data/libo/PF/PF_instructions_full.json
+  #   images_path: /mnt/petrelfs/share_data/libo/PF/PF.json
+  #   num_samples: 5000
   SVIT:
     mimicit_path: /mnt/petrelfs/share_data/zhangyuanhan/mimicit/SVIT/SVIT_instructions.json
     images_path: /mnt/petrelfs/share_data/zhangyuanhan/mimicit/SVIT/SVIT.json

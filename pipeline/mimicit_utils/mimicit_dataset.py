@@ -205,6 +205,8 @@ class MimicitDataset(Dataset):
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
 
             if args.rank == 0:
+                print(cur_mimicit_path)
+                print(cur_train_config_path)
                 print(cur_images_path)
 
             if cur_images_path:
