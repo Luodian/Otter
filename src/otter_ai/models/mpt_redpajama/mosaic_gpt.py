@@ -258,10 +258,18 @@ class MosaicGPT(PreTrainedModel):
 
             if S + past_position > self.config.max_seq_len:
                 raise ValueError(f"Cannot forward input with past sequence length {past_position} and current sequence length " f"{S + 1}, this model only supports total sequence length <= {self.config.max_seq_len}.")
-            pos = torch.arange(past_position, S + past_position, dtype=torch.long, device=input_ids.device).unsqueeze(0)
+            pos = torch.arange(
+                past_position,
+                S + past_position,
+                dtype=torch.long,
+                device=input_ids.device,
+            ).unsqueeze(0)
             if attention_mask is not None:
                 # adjust the position indices to account for padding tokens
-                pos = torch.clamp(pos - torch.cumsum((~attention_mask).to(torch.int32), dim=1)[:, past_position:], min=0)
+                pos = torch.clamp(
+                    pos - torch.cumsum((~attention_mask).to(torch.int32), dim=1)[:, past_position:],
+                    min=0,
+                )
 
             pos_emb = self.transformer.wpe(pos)  # type: ignore
             x = tok_emb + pos_emb
@@ -274,7 +282,13 @@ class MosaicGPT(PreTrainedModel):
             assert isinstance(self.transformer.emb_drop, nn.Module)  # pyright
             x = self.transformer.emb_drop(x_shrunk)
 
-        attn_bias, attention_mask = self._attn_bias(device=x.device, dtype=x.dtype, attention_mask=attention_mask, prefix_mask=prefix_mask, sequence_id=sequence_id)
+        attn_bias, attention_mask = self._attn_bias(
+            device=x.device,
+            dtype=x.dtype,
+            attention_mask=attention_mask,
+            prefix_mask=prefix_mask,
+            sequence_id=sequence_id,
+        )
 
         # initialize the past key values cache if it should be used
         if use_cache and past_key_values is None:
@@ -286,7 +300,13 @@ class MosaicGPT(PreTrainedModel):
                 assert all_hidden_states is not None  # pyright
                 all_hidden_states = all_hidden_states + (x,)
             past_key_value = past_key_values[b_idx] if past_key_values is not None else None
-            x, past_key_value = block(x, past_key_value=past_key_value, attn_bias=attn_bias, attention_mask=attention_mask, is_causal=self.is_causal)
+            x, past_key_value = block(
+                x,
+                past_key_value=past_key_value,
+                attn_bias=attn_bias,
+                attention_mask=attention_mask,
+                is_causal=self.is_causal,
+            )
             if past_key_values is not None:
                 past_key_values[b_idx] = past_key_value
 
@@ -313,7 +333,12 @@ class MosaicGPT(PreTrainedModel):
                 _labels.to(logits.device).view(-1),
             )
 
-        return CausalLMOutputWithPast(loss=loss, logits=logits, past_key_values=past_key_values, hidden_states=all_hidden_states)
+        return CausalLMOutputWithPast(
+            loss=loss,
+            logits=logits,
+            past_key_values=past_key_values,
+            hidden_states=all_hidden_states,
+        )
 
     # Param Initialization, needed for device='meta' fast initialization
     def param_init_fn(self, module):

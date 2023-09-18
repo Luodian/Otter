@@ -47,11 +47,41 @@ class DualOutput:
 
 if __name__ == "__main__":
     args = argparse.ArgumentParser()
-    args.add_argument("--config", "-c", type=str, help="Path to the config file, suppors more specific configurations.", default=None)
-    args.add_argument("--models", type=str, nargs="?", help="Specify model names as comma separated values.", default=None)
-    args.add_argument("--model_paths", type=str, nargs="?", help="Specify model paths as comma separated values.", default=None)
-    args.add_argument("--datasets", type=str, nargs="?", help="Specify dataset names as comma separated values.", default=None)
-    args.add_argument("--output", "-o", type=str, help="Output file path for logging results.", default="evaluation.txt")
+    args.add_argument(
+        "--config",
+        "-c",
+        type=str,
+        help="Path to the config file, suppors more specific configurations.",
+        default=None,
+    )
+    args.add_argument(
+        "--models",
+        type=str,
+        nargs="?",
+        help="Specify model names as comma separated values.",
+        default=None,
+    )
+    args.add_argument(
+        "--model_paths",
+        type=str,
+        nargs="?",
+        help="Specify model paths as comma separated values.",
+        default=None,
+    )
+    args.add_argument(
+        "--datasets",
+        type=str,
+        nargs="?",
+        help="Specify dataset names as comma separated values.",
+        default=None,
+    )
+    args.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        help="Output file path for logging results.",
+        default="evaluation.txt",
+    )
 
     phrased_args = args.parse_args()
 

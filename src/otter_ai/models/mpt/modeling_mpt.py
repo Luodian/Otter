@@ -10,7 +10,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from transformers import PreTrainedModel, PreTrainedTokenizer, PreTrainedTokenizerFast
-from transformers.modeling_outputs import BaseModelOutputWithPast, CausalLMOutputWithPast
+from transformers.modeling_outputs import (
+    BaseModelOutputWithPast,
+    CausalLMOutputWithPast,
+)
 
 from .attention import attn_bias_shape, build_attn_bias
 from .blocks import MPTBlock
@@ -350,7 +353,11 @@ class MPTForCausalLM(MPTPreTrainedModel):
 
     def set_input_embeddings(self, value):
         # self.transformer.wte = value
-        peudo_wte = SharedEmbedding(value.weight.shape[0], value.weight.shape[1], device=self.transformer.wte.weight.device)
+        peudo_wte = SharedEmbedding(
+            value.weight.shape[0],
+            value.weight.shape[1],
+            device=self.transformer.wte.weight.device,
+        )
         peudo_wte.weight = value.weight
         self.transformer.wte = peudo_wte
 
@@ -359,7 +366,11 @@ class MPTForCausalLM(MPTPreTrainedModel):
 
     def set_output_embeddings(self, new_embeddings):
         # self.transformer.wte = new_embeddings
-        peudo_wte = SharedEmbedding(new_embeddings.weight.shape[0], new_embeddings.weight.shape[1], device=self.transformer.wte.weight.device)
+        peudo_wte = SharedEmbedding(
+            new_embeddings.weight.shape[0],
+            new_embeddings.weight.shape[1],
+            device=self.transformer.wte.weight.device,
+        )
         peudo_wte.weight = new_embeddings.weight
         self.transformer.wte = peudo_wte
 
@@ -433,7 +444,12 @@ class MPTForCausalLM(MPTPreTrainedModel):
 
     def param_init_fn(self, module):
         init_fn_name = self.config.init_config["name"]
-        MODEL_INIT_REGISTRY[init_fn_name](module=module, n_layers=self.config.n_layers, d_model=self.config.d_model, **self.config.init_config)
+        MODEL_INIT_REGISTRY[init_fn_name](
+            module=module,
+            n_layers=self.config.n_layers,
+            d_model=self.config.d_model,
+            **self.config.init_config,
+        )
 
     def fsdp_wrap_fn(self, module):
         return isinstance(module, MPTBlock)
@@ -441,7 +457,14 @@ class MPTForCausalLM(MPTPreTrainedModel):
     def activation_checkpointing_fn(self, module):
         return isinstance(module, MPTBlock)
 
-    def prepare_inputs_for_generation(self, input_ids, past_key_values=None, inputs_embeds=None, attention_mask=None, **kwargs):
+    def prepare_inputs_for_generation(
+        self,
+        input_ids,
+        past_key_values=None,
+        inputs_embeds=None,
+        attention_mask=None,
+        **kwargs,
+    ):
         if inputs_embeds is not None:
             raise NotImplementedError("inputs_embeds is not implemented for MPT yet")
         attention_mask = attention_mask.bool()

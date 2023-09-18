@@ -8,7 +8,16 @@ from .base_eval_dataset import BaseEvalDataset
 
 
 class MMBenchDataset(BaseEvalDataset):
-    def __init__(self, data_path="Otter-AI/MMBench", *, sys_prompt="There are several options:", version="20230712", split="validation", cache_dir=None, default_output_path="."):
+    def __init__(
+        self,
+        data_path="Otter-AI/MMBench",
+        *,
+        sys_prompt="There are several options:",
+        version="20230712",
+        split="validation",
+        cache_dir=None,
+        default_output_path=".",
+    ):
         super().__init__("MMBenchDataset", data_path)
         version = str(version)
         self.df = load_dataset("Otter-AI/MMBench", version, split=split, cache_dir=cache_dir).to_pandas()

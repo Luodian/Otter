@@ -307,7 +307,12 @@ def kaiming_uniform_param_init_fn_(
     if verbose > 1:
         warnings.warn(f"Using nn.init.kaiming_uniform_ init fn with parameters: " + f"a={init_gain}, mode={fan_mode}, nonlinearity={init_nonlinearity}")
 
-    kaiming_uniform_ = partial(nn.init.kaiming_uniform_, a=init_gain, mode=fan_mode, nonlinearity=init_nonlinearity)
+    kaiming_uniform_ = partial(
+        nn.init.kaiming_uniform_,
+        a=init_gain,
+        mode=fan_mode,
+        nonlinearity=init_nonlinearity,
+    )
 
     generic_param_init_fn_(
         module=module,
@@ -339,7 +344,12 @@ def kaiming_normal_param_init_fn_(
     if verbose > 1:
         warnings.warn(f"Using nn.init.kaiming_normal_ init fn with parameters: " + f"a={init_gain}, mode={fan_mode}, nonlinearity={init_nonlinearity}")
 
-    kaiming_normal_ = partial(torch.nn.init.kaiming_normal_, a=init_gain, mode=fan_mode, nonlinearity=init_nonlinearity)
+    kaiming_normal_ = partial(
+        torch.nn.init.kaiming_normal_,
+        a=init_gain,
+        mode=fan_mode,
+        nonlinearity=init_nonlinearity,
+    )
 
     generic_param_init_fn_(
         module=module,

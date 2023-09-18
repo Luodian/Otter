@@ -1153,7 +1153,10 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
 
         # Freeze all parameters in lang encoders except gated_cross_attn_layers
         if "train_connector" in self.config.__dict__ and self.config.train_connector is True:
-            for name, param in self.lang_encoder_with_vhead.pretrained_model.named_parameters():
+            for (
+                name,
+                param,
+            ) in self.lang_encoder_with_vhead.pretrained_model.named_parameters():
                 if "gated_cross_attn_layer" in name:
                     param.requires_grad = True
             for name, param in self.named_parameters():

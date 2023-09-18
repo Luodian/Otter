@@ -27,11 +27,18 @@ import sys
 sys.path.append("../..")
 from pipeline.mimicit_utils.data import get_data, preload_dataset
 from pipeline.train.distributed import world_info_from_env
-from pipeline.train.train_utils import AverageMeter, get_checkpoint, get_image_attention_mask
+from pipeline.train.train_utils import (
+    AverageMeter,
+    get_checkpoint,
+    get_image_attention_mask,
+    verify_yaml,
+)
 
 # import from src, not from pip package for training & debugging
 from src.otter_ai.models.otter.modeling_otter import OtterForConditionalGeneration
-from src.otter_ai.models.flamingo.modeling_flamingo import FlamingoForConditionalGeneration
+from src.otter_ai.models.flamingo.modeling_flamingo import (
+    FlamingoForConditionalGeneration,
+)
 from transformers import AutoProcessor
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -57,7 +64,18 @@ def random_seed(seed=42, rank=0):
     random.seed(seed + rank)
 
 
-def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
+def train_one_epoch(
+    args,
+    model,
+    epoch,
+    mimicit_loaders,
+    tokenizer,
+    optimizer,
+    lr_scheduler,
+    device_id,
+    accelerator,
+    wandb,
+):
     num_batches_per_epoch = len(mimicit_loaders[0])
     total_training_steps = num_batches_per_epoch * args.num_epochs
 
@@ -81,7 +99,12 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     autocast_type = torch.bfloat16 if accelerator.mixed_precision == "bf16" else torch.float32
 
     # loop through dataloader
-    for num_steps, (batch_mimicits) in tqdm(enumerate(zip(*mimicit_loaders)), disable=args.rank != 0, total=total_training_steps, initial=(epoch * num_batches_per_epoch)):
+    for num_steps, (batch_mimicits) in tqdm(
+        enumerate(zip(*mimicit_loaders)),
+        disable=args.rank != 0,
+        total=total_training_steps,
+        initial=(epoch * num_batches_per_epoch),
+    ):
         data_time_m.update(time.time() - end)
 
         global_step = num_steps + epoch * num_batches_per_epoch
@@ -137,7 +160,12 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     # only for image model
                     max_num_images = images.shape[1]
                     pure_text = torch.all(images == 0)
-                    image_attention_mask = get_image_attention_mask(input_ids, max_num_images, tokenizer, include_image=not pure_text)
+                    image_attention_mask = get_image_attention_mask(
+                        input_ids,
+                        max_num_images,
+                        tokenizer,
+                        include_image=not pure_text,
+                    )
                     image_attention_mask = image_attention_mask.to(device_id, non_blocking=True)
                     loss_mimicit = model(
                         pixel_values=images.squeeze(2).to(autocast_type),
@@ -178,7 +206,10 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             if isinstance(unwrapped_model, IdeficsForVisionText2Text):
                 # This code need to be refined.
                 unwrapped_model.lm_head.apply(mask_embedding)
-            elif unwrapped_model.lang_encoder.__class__.__name__ in ["MPTForCausalLM", "MosaicGPT"]:
+            elif unwrapped_model.lang_encoder.__class__.__name__ in [
+                "MPTForCausalLM",
+                "MosaicGPT",
+            ]:
                 unwrapped_model.lang_encoder.transformer.wte.apply(mask_embedding)
             elif "LlamaForCausalLM" in unwrapped_model.lang_encoder.__class__.__name__:
                 unwrapped_model.lang_encoder.model.embed_tokens.apply(mask_embedding)
@@ -235,7 +266,10 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     "model_state_dict": get_checkpoint(unwrapped_model),
                 }
                 print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_steps_{global_step}.pt")
-                accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_steps_{global_step}.pt")
+                accelerator.save(
+                    checkpoint_dict,
+                    f"{args.external_save_dir}/checkpoint_steps_{global_step}.pt",
+                )
                 if args.delete_previous_checkpoint:
                     if epoch > 0 and os.path.exists(f"{args.external_save_dir}/checkpoint_step_{global_step-args.save_steps_interval}.pt"):
                         os.remove(f"{args.external_save_dir}/checkpoint_step_{global_step-args.save_steps_interval}.pt")
@@ -300,8 +334,6 @@ def parse_args():
     parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
     # Sum of gradient optimization batch size
     parser.add_argument("--batch_size", type=int, default=128)
-    parser.add_argument("--train_num_samples", type=int, default=-1)
-
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
     parser.add_argument("--save_steps_interval", type=int, default=-1)
     parser.add_argument(
@@ -360,11 +392,21 @@ def parse_args():
         type=str,
         help="path to customized additional config.json, use to modify from the original config.json in pretrained model.",
     )
-    parser.add_argument("--task_name", default="", type=str, help="task name, used to decide different function to load dataset.")
+    parser.add_argument(
+        "--task_name",
+        default="",
+        type=str,
+        help="task name, used to decide different function to load dataset.",
+    )
     parser.add_argument("--report_to_wandb", default=False, action="store_true")
     parser.add_argument("--wandb_project", type=str)
     parser.add_argument("--wandb_entity", type=str)
-    parser.add_argument("--save_checkpoints_to_wandb", default=False, action="store_true", help="save checkpoints to wandb")
+    parser.add_argument(
+        "--save_checkpoints_to_wandb",
+        default=False,
+        action="store_true",
+        help="save checkpoints to wandb",
+    )
     parser.add_argument(
         "--resume_from_checkpoint",
         default=False,
@@ -396,8 +438,11 @@ def parse_args():
 
 def main():
     args = parse_args()
-    args = preload_dataset(args)
-    accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps, mixed_precision="bf16")
+    verify_yaml(args)
+    accelerator = Accelerator(
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
+        mixed_precision="bf16",
+    )
     if accelerator.state.deepspeed_plugin is not None:
         accelerator.state.deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = args.batch_size
 
@@ -457,7 +502,10 @@ def main():
         params_to_gather = [p for name, p in model.named_parameters() if p.requires_grad]
         with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
             if torch.distributed.get_rank() == 0:
-                print(device_id, f"Zero3 Optimization: Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
+                print(
+                    device_id,
+                    f"Zero3 Optimization: Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B",
+                )
 
     if args.trained_ckpt is not None:
         train_ckpt = torch.load(args.trained_ckpt, map_location="cpu")

@@ -11,6 +11,6 @@ distributed_type: DEEPSPEED
 fsdp_config: {}
 main_training_function: main
 mixed_precision: bf16
-num_machines: 3
-num_processes: 24
+num_machines: 4
+num_processes: 32
 use_cpu: false

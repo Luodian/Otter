@@ -56,7 +56,11 @@ class EGO4D(AbstractDataset):
         final_images_dict = {}
 
         with ThreadPoolExecutor(max_workers=num_thread) as executor:
-            process_bar = tqdm(total=len(video_paths), unit="video", desc="Processing videos into images")
+            process_bar = tqdm(
+                total=len(video_paths),
+                unit="video",
+                desc="Processing videos into images",
+            )
             for images_dict in executor.map(get_image, video_paths):
                 final_images_dict.update(images_dict)
                 process_bar.update()

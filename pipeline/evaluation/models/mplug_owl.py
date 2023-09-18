@@ -3,7 +3,10 @@ import os
 import torch
 from transformers import AutoTokenizer
 from mplug_owl_video.modeling_mplug_owl import MplugOwlForConditionalGeneration
-from mplug_owl_video.processing_mplug_owl import MplugOwlImageProcessor, MplugOwlProcessor
+from mplug_owl_video.processing_mplug_owl import (
+    MplugOwlImageProcessor,
+    MplugOwlProcessor,
+)
 
 from .base_model import BaseModel
 
@@ -45,5 +48,8 @@ if __name__ == "__main__":
     model = mPlug_owl("")
     device = torch.device("cuda")
     model.model = model.model.to(device)
-    data = {"video_idx": ["./data_source/multi_hop_reasoning/03f2ed96-1719-427d-acf4-8bf504f1d66d.mp4"], "question": "What is in this image?"}
+    data = {
+        "video_idx": ["./data_source/multi_hop_reasoning/03f2ed96-1719-427d-acf4-8bf504f1d66d.mp4"],
+        "question": "What is in this image?",
+    }
     print(model.generate(data))

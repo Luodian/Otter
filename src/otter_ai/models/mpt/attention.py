@@ -279,7 +279,15 @@ class MultiheadAttention(nn.Module):
         self.out_proj = nn.Linear(self.d_model, self.d_model, device=device)
         self.out_proj._is_residual = True
 
-    def forward(self, x, past_key_value=None, attn_bias=None, attention_mask=None, is_causal=True, needs_weights=False):
+    def forward(
+        self,
+        x,
+        past_key_value=None,
+        attn_bias=None,
+        attention_mask=None,
+        is_causal=True,
+        needs_weights=False,
+    ):
         qkv = self.Wqkv(x)
         if self.clip_qkv:
             qkv.clamp_(min=-self.clip_qkv, max=self.clip_qkv)
@@ -364,7 +372,15 @@ class MultiQueryAttention(nn.Module):
         self.out_proj = nn.Linear(self.d_model, self.d_model, device=device)
         self.out_proj._is_residual = True
 
-    def forward(self, x, past_key_value=None, attn_bias=None, attention_mask=None, is_causal=True, needs_weights=False):
+    def forward(
+        self,
+        x,
+        past_key_value=None,
+        attn_bias=None,
+        attention_mask=None,
+        is_causal=True,
+        needs_weights=False,
+    ):
         qkv = self.Wqkv(x)
         if self.clip_qkv:
             qkv.clamp_(min=-self.clip_qkv, max=self.clip_qkv)
@@ -413,7 +429,16 @@ def build_attn_bias(attn_impl, attn_bias, n_heads, seq_len, causal=False, alibi=
     elif attn_impl in ["torch", "triton"]:
         if alibi:
             (device, dtype) = (attn_bias.device, attn_bias.dtype)
-            attn_bias = attn_bias.add(build_alibi_bias(n_heads, seq_len, full=not causal, alibi_bias_max=alibi_bias_max, device=device, dtype=dtype))
+            attn_bias = attn_bias.add(
+                build_alibi_bias(
+                    n_heads,
+                    seq_len,
+                    full=not causal,
+                    alibi_bias_max=alibi_bias_max,
+                    device=device,
+                    dtype=dtype,
+                )
+            )
         return attn_bias
     else:
         raise ValueError(f"attn_impl={attn_impl!r} is an invalid setting.")
@@ -439,4 +464,7 @@ def build_alibi_bias(n_heads, seq_len, full=False, alibi_bias_max=8, device=None
     return alibi_bias.to(dtype=dtype)
 
 
-ATTN_CLASS_REGISTRY = {"multihead_attention": MultiheadAttention, "multiquery_attention": MultiQueryAttention}
+ATTN_CLASS_REGISTRY = {
+    "multihead_attention": MultiheadAttention,
+    "multiquery_attention": MultiQueryAttention,
+}

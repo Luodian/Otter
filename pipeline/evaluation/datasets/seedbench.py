@@ -34,7 +34,12 @@ class SEEDBench(Dataset):
         question = self.data[idx]["question"]
         answer = self.data[idx]["answer"]
 
-        option_candidate = {"A": "choice_a", "B": "choice_b", "C": "choice_c", "D": "choice_d"}
+        option_candidate = {
+            "A": "choice_a",
+            "B": "choice_b",
+            "C": "choice_c",
+            "D": "choice_d",
+        }
         options = "\n".join([f"{key}. {self.data[idx][item]}" for key, item in option_candidate.items()])
 
         cur_prompt = question + "\n" + self.sys_prompt + "\n" + options
@@ -54,7 +59,10 @@ class SEEDBench(Dataset):
 
 
 if __name__ == "__main__":
-    dataset = SEEDBench("/data/pufanyi/training_data/SEEDBench/SEED-Bench.json", "/data/pufanyi/training_data/SEEDBench/SEED-Bench-image")
+    dataset = SEEDBench(
+        "/data/pufanyi/training_data/SEEDBench/SEED-Bench.json",
+        "/data/pufanyi/training_data/SEEDBench/SEED-Bench-image",
+    )
     for item in dataset:
         print(item)
         break

@@ -30,5 +30,8 @@ class LlamaAdapter(BaseModel):
 
 if __name__ == "__main__":
     model = LlamaAdapter("", "")
-    data = {"video_idx": "03f2ed96-1719-427d-acf4-8bf504f1d66d.mp4", "question": "What is in this image?"}
+    data = {
+        "video_idx": "03f2ed96-1719-427d-acf4-8bf504f1d66d.mp4",
+        "question": "What is in this image?",
+    }
     print(model.generate(data))
