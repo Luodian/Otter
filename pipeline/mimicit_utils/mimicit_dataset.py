@@ -221,7 +221,6 @@ class MimicitDataset(Dataset):
             self.train_config.update(cache_train_config)
 
         if args.rank == 0:
-            print("----------------MIMICIT INFO----------------")
             print(table)
 
         self.bos_item = torch.LongTensor([args.tokenizer.bos_token_id])
