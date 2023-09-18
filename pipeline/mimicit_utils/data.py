@@ -681,74 +681,8 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     # Converting multiple types of mimic-it datasets into a unified format dataset
     for key, item in dataset_info.items():
         if item != {}:  # if the category is not empty
-            unified_dataset = MimicitDataset(
-                args,
-                dataset_info=dataset_info[key],
-                status_list=["new"] * len(dataset_info[key]),
-            )
+            unified_dataset = MimicitDataset(args, dataset_info=dataset_info[key])
             unified_datasets.append(unified_dataset)
-
-    # # processing for image-text in-context datasets
-    # if hasattr(args, "mimicit_ic_path") and args.mimicit_ic_path != "":
-    #     all_mimicit_ic_path = args.mimicit_ic_path.split(",")
-    #     # + args.past_mimicit_ic_path.split(",") if args.past_mimicit_ic_path != "" else args.mimicit_ic_path.split(",")
-    #     all_images_ic_path = args.images_ic_path.split(",")
-    #     # + args.past_images_ic_path.split(",") if args.past_images_ic_path != "" else args.images_ic_path.split(",")
-    #     all_train_config_ic_path = args.train_config_ic_path.split(",")
-    #     # + args.past_train_config_ic_path.split(",") if args.past_train_config_ic_path != "" else args.train_config_ic_path.split(",")
-    #     # if args.past_mimicit_ic_path != "":
-    #     #     ic_status = ["new"] * len(args.mimicit_ic_path.split(",")) + ["past"] * len(args.past_mimicit_ic_path.split(","))
-    #     # else:
-    #     ic_status = ["new"] * len(args.mimicit_ic_path.split(","))
-    #     unified_dataset = MimicitDataset(args, all_mimicit_ic_path, all_images_ic_path, all_train_config_ic_path, status_list=ic_status)
-    #     unified_datasets.append(unified_dataset)
-
-    # # processing for image-text datasets
-    # if hasattr(args, "mimicit_path") and args.mimicit_path != "":
-    #     all_mimicit_path = args.mimicit_path.split(",")
-    #     # + args.past_mimicit_path.split(",") if args.past_mimicit_path != "" else args.mimicit_path.split(",")
-    #     all_images_path = args.images_path.split(",")
-    #     # + args.past_images_path.split(",") if args.past_images_path != "" else args.images_path.split(",")
-    #     # all_train_config_path = args.train_config_path.split(",") + args.past_train_config_path.split(",") if args.past_train_config_path != "" else args.train_config_path.split(",")
-    #     # if args.past_mimicit_path != "":
-    #     #     status = ["new"] * len(args.mimicit_path.split(",")) + ["past"] * len(args.past_mimicit_path.split(","))
-    #     # else:
-    #     status = ["new"] * len(args.mimicit_path.split(","))
-    #     unified_dataset = MimicitDataset(args=args, mimicit_paths=all_mimicit_path, images_paths=all_images_path, status_list=status)
-    #     unified_datasets.append(unified_dataset)
-
-    # # processing for text datasets
-    # if hasattr(args, "mimicit_text_path") and args.mimicit_text_path != "":
-    #     all_mimicit_text_path = args.mimicit_text_path.split(",")
-    #     # + args.past_mimicit_text_path.split(",") if args.past_mimicit_text_path != "" else args.mimicit_text_path.split(",")
-    #     all_train_config_text_path = args.train_config_text_path.split(",")
-    #     # + args.past_train_config_text_path.split(",") if args.past_train_config_text_path != "" else args.train_config_text_path.split(",")
-    #     # if args.past_mimicit_text_path != "":
-    #     #     text_status = ["new"] * len(args.mimicit_text_path.split(",")) + ["past"] * len(args.past_mimicit_text_path.split(","))
-    #     # else:
-    #     text_status = ["new"] * len(args.mimicit_text_path.split(","))
-    #     unified_dataset = MimicitDataset(args=args, mimicit_paths=all_mimicit_text_path, train_config_paths=all_train_config_text_path, status_list=text_status)
-    #     unified_datasets.append(unified_dataset)
-
-    # # processing for video-text datasets
-    # if hasattr(args, "mimicit_vt_path") and args.mimicit_vt_path != "":
-    #     all_mimicit_vt_path = args.mimicit_vt_path.split(",")
-    #     # + args.past_mimicit_vt_path.split(",") if args.past_mimicit_vt_path != "" else args.mimicit_vt_path.split(",")
-    #     all_images_vt_path = args.images_vt_path.split(",")
-    #     # + args.past_images_vt_path.split(",") if args.past_images_vt_path != "" else args.images_vt_path.split(",")
-    #     all_train_config_vt_path = args.train_config_vt_path.split(",")
-    #     # + args.past_train_config_vt_path.split(",") if args.past_train_config_vt_path != "" else args.train_config_vt_path.split(",")
-    #     # if args.past_mimicit_vt_path != "":
-    #     #     vt_status = ["new"] * len(args.mimicit_vt_path.split(",")) + ["past"] * len(args.past_mimicit_vt_path.split(","))
-    #     # else:
-    #     vt_status = ["new"] * len(args.mimicit_vt_path.split(","))
-    #     unified_dataset = MimicitDataset(args=args, mimicit_paths=all_mimicit_vt_path, images_paths=all_images_vt_path, train_config_paths=all_train_config_vt_path, status_list=vt_status)
-    #     unified_datasets.append(unified_dataset)
-
-    # if args.train_num_samples == -1:
-    #     args.train_num_samples = statistics.median((len(dataset) for dataset in unified_datasets))
-
-    # assert args.train_num_samples <= max([len(dataset) for dataset in unified_datasets]), "your train_num_samples is larger than dataset"
 
     round_fn = math.floor if floor else math.ceil
     global_batch_size = args.batch_size * args.world_size
