@@ -12,7 +12,12 @@ import torch
 import torch.nn
 from accelerate import Accelerator, load_checkpoint_and_dispatch
 from tqdm import tqdm
-from transformers import CLIPImageProcessor, get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup, get_linear_schedule_with_warmup
+from transformers import (
+    CLIPImageProcessor,
+    get_constant_schedule_with_warmup,
+    get_cosine_schedule_with_warmup,
+    get_linear_schedule_with_warmup,
+)
 
 import wandb
 from otter_ai import FlamingoForConditionalGeneration, OtterForConditionalGeneration
@@ -70,7 +75,12 @@ def parse_args():
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--num_epochs", type=int, default=1)
     parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
-    parser.add_argument("--checkpointing_steps", type=int, default=10000, help="checkpointing every n steps")
+    parser.add_argument(
+        "--checkpointing_steps",
+        type=int,
+        default=10000,
+        help="checkpointing every n steps",
+    )
     # Sum of gradient optimization batch size
 
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
@@ -148,7 +158,18 @@ def random_seed(seed=42, rank=0):
     random.seed(seed + rank)
 
 
-def train_one_epoch(args, model, epoch, cc3m_loader, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
+def train_one_epoch(
+    args,
+    model,
+    epoch,
+    cc3m_loader,
+    tokenizer,
+    optimizer,
+    lr_scheduler,
+    device_id,
+    accelerator,
+    wandb,
+):
     num_batches_per_epoch_cc3m = cc3m_loader.num_batches
 
     num_batches_per_epoch = num_batches_per_epoch_cc3m
@@ -277,7 +298,10 @@ def train_one_epoch(args, model, epoch, cc3m_loader, tokenizer, optimizer, lr_sc
                 "lr_scheduler_state_dict": lr_scheduler.state_dict(),
             }
             print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_steps{num_steps + 1}.pt")
-            accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_steps{num_steps + 1}.pt")
+            accelerator.save(
+                checkpoint_dict,
+                f"{args.external_save_dir}/checkpoint_steps{num_steps + 1}.pt",
+            )
             # save the config
             print(f"Saving config to {args.external_save_dir}/config.json")
             unwrapped_model.config.save_pretrained(args.external_save_dir)
@@ -397,7 +421,10 @@ def main():
         if len(checkpoint_list) == 0:
             print(f"Found no checkpoints for run {args.external_save_dir}.")
         else:
-            resume_from_checkpoint_path = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split("steps")[1].split(".")[0]))[-1]
+            resume_from_checkpoint_path = sorted(
+                checkpoint_list,
+                key=lambda x: int(x.split("_")[-1].split("steps")[1].split(".")[0]),
+            )[-1]
             # resume_from_checkpoint_path = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
             print(f"Found checkpoint {resume_from_checkpoint_path} for run {args.external_save_dir}.")
 

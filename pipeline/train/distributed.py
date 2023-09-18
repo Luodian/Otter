@@ -24,7 +24,12 @@ def is_using_distributed():
 
 def world_info_from_env():
     local_rank = 0
-    for v in ("LOCAL_RANK", "MPI_LOCALRANKID", "SLURM_LOCALID", "OMPI_COMM_WORLD_LOCAL_RANK"):
+    for v in (
+        "LOCAL_RANK",
+        "MPI_LOCALRANKID",
+        "SLURM_LOCALID",
+        "OMPI_COMM_WORLD_LOCAL_RANK",
+    ):
         if v in os.environ:
             local_rank = int(os.environ[v])
             break

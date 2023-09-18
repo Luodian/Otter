@@ -4,6 +4,7 @@ import yaml
 import pytest
 import orjson
 
+
 # Define the pytest fixture
 @pytest.fixture
 def yaml_data(request):
@@ -18,7 +19,12 @@ def yaml_data(request):
 # Your test function
 @pytest.mark.prerun
 def test_yaml_structure(yaml_data):
-    required_categories = ["IMAGE_TEXT", "TEXT_ONLY", "VIDEO_TEXT", "IMAGE_TEXT_IN_CONTEXT"]
+    required_categories = [
+        "IMAGE_TEXT",
+        "TEXT_ONLY",
+        "VIDEO_TEXT",
+        "IMAGE_TEXT_IN_CONTEXT",
+    ]
 
     for category, datasets in yaml_data.items():
         assert category in required_categories, f"Unexpected category '{category}' in YAML. Expected categories are {required_categories}."
@@ -33,7 +39,7 @@ def test_yaml_structure(yaml_data):
                 # checking mimicit path aligns with corresponding format.
                 if path_key == "mimicit_path":
                     print(f"Checking -> {path_value} in MIMICIT format.")
-                    with open(path_value, 'rb') as f:
+                    with open(path_value, "rb") as f:
                         data = orjson.loads(f.read())
 
                     assert "data" in data

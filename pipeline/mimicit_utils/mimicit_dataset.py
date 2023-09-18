@@ -147,7 +147,10 @@ class MimicitDataset(Dataset):
 
         self.patch_resize_transform = transforms.Compose(
             [
-                transforms.Resize((args.patch_image_size, args.patch_image_size), interpolation=transforms.InterpolationMode.BICUBIC),
+                transforms.Resize(
+                    (args.patch_image_size, args.patch_image_size),
+                    interpolation=transforms.InterpolationMode.BICUBIC,
+                ),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=FLAMINGO_MEAN, std=FLAMINGO_STD),
             ]
@@ -186,7 +189,19 @@ class MimicitDataset(Dataset):
         # else:
         #     max_items_per_dataset = sorted(data_length_list, reverse=True)[1]
 
-        for cur_mimicit_path, cur_images_path, cur_train_config_path, cur_status, sampled_examples in zip(self.mimicit_paths, self.images_paths, self.train_config_paths, self.status_list, self.num_samples_list):
+        for (
+            cur_mimicit_path,
+            cur_images_path,
+            cur_train_config_path,
+            cur_status,
+            sampled_examples,
+        ) in zip(
+            self.mimicit_paths,
+            self.images_paths,
+            self.train_config_paths,
+            self.status_list,
+            self.num_samples_list,
+        ):
             # Load the dataset
             assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!"
             with open(cur_mimicit_path, "rb") as f:
@@ -221,7 +236,7 @@ class MimicitDataset(Dataset):
             print(f"Total number of trainable examples: {len(self.train_data_list)}")
             print(f"Total number of images: {len(self.images)}")
             print(f"Total number of dataset: {len(self.dataset)}")
-            
+
         self.bos_item = torch.LongTensor([args.tokenizer.bos_token_id])
         self.eos_item = torch.LongTensor([args.tokenizer.eos_token_id])
         self.bos_mask = torch.LongTensor([1])
@@ -289,7 +304,15 @@ class MimicitDataset(Dataset):
         assert len(image_ids) == resample_frames
         return image_ids
 
-    def process_in_context_imageqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format="simple"):
+    def process_in_context_imageqa(
+        self,
+        instruction_id,
+        instruction,
+        answer,
+        image_ids,
+        in_context_example_ids,
+        instruction_format="simple",
+    ):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -420,7 +443,15 @@ class MimicitDataset(Dataset):
         all_texts = f"{incontext_text}{all_texts}"
         return patch_images, all_texts
 
-    def process_general_imageqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format="simple"):
+    def process_general_imageqa(
+        self,
+        instruction_id,
+        instruction,
+        answer,
+        image_ids,
+        in_context_example_ids,
+        instruction_format="simple",
+    ):
         # including multi-round conv for single image
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -453,7 +484,15 @@ class MimicitDataset(Dataset):
         patch_images = self.patch_resize_transform(cur_image).unsqueeze(0).unsqueeze(0)
         return patch_images, all_texts
 
-    def process_general_text(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format="simple"):
+    def process_general_text(
+        self,
+        instruction_id,
+        instruction,
+        answer,
+        image_ids,
+        in_context_example_ids,
+        instruction_format="simple",
+    ):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -491,17 +530,60 @@ class MimicitDataset(Dataset):
         resample_frames = self.resample_frames
 
         if cur_train_id.upper().startswith("SD") or cur_train_id.startswith("CGD"):
-            patch_images, all_texts = self.process_spot_the_difference(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
+            patch_images, all_texts = self.process_spot_the_difference(
+                instruction_id,
+                instruction,
+                answer,
+                image_ids,
+                in_context_example_ids,
+                instruction_format=instruction_format,
+            )
         elif cur_train_id.upper().startswith("SN"):
-            patch_images, all_texts = self.process_scene_navigation(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
+            patch_images, all_texts = self.process_scene_navigation(
+                instruction_id,
+                instruction,
+                answer,
+                image_ids,
+                in_context_example_ids,
+                instruction_format=instruction_format,
+            )
         elif any(cur_train_id.upper().startswith(videoqa_task) for videoqa_task in self.video_data_list):
-            patch_images, all_texts = self.process_general_videoqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=resample_frames, instruction_format=instruction_format)
+            patch_images, all_texts = self.process_general_videoqa(
+                instruction_id,
+                instruction,
+                answer,
+                image_ids,
+                in_context_example_ids,
+                resample_frames=resample_frames,
+                instruction_format=instruction_format,
+            )
         elif any(cur_train_id.upper().startswith(text_id) for text_id in self.text_data_list):
-            patch_images, all_texts = self.process_general_text(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
+            patch_images, all_texts = self.process_general_text(
+                instruction_id,
+                instruction,
+                answer,
+                image_ids,
+                in_context_example_ids,
+                instruction_format=instruction_format,
+            )
         elif any(cur_train_id.upper().startswith(imageqa_task) for imageqa_task in self.imageqa_data_list):
-            patch_images, all_texts = self.process_general_imageqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
+            patch_images, all_texts = self.process_general_imageqa(
+                instruction_id,
+                instruction,
+                answer,
+                image_ids,
+                in_context_example_ids,
+                instruction_format=instruction_format,
+            )
         elif any(cur_train_id.upper().startswith(in_context_imageqa_task) for in_context_imageqa_task in self.in_context_imageqa_data_list):
-            patch_images, all_texts = self.process_in_context_imageqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
+            patch_images, all_texts = self.process_in_context_imageqa(
+                instruction_id,
+                instruction,
+                answer,
+                image_ids,
+                in_context_example_ids,
+                instruction_format=instruction_format,
+            )
         else:
             raise NotImplementedError(f"Error: The task {cur_train_id} is not supported!")
 

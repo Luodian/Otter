@@ -11,10 +11,21 @@ from ..modeling_flamingo import FlamingoForConditionalGeneration
 from utils import rename_flamingo_checkpoint
 
 parser = argparse.ArgumentParser(description="Convert MPT model")
-parser.add_argument("--model_choice", type=str, choices=["7B", "30B"], required=True, help="Choose either '7B' or '30B'")
+parser.add_argument(
+    "--model_choice",
+    type=str,
+    choices=["7B", "30B"],
+    required=True,
+    help="Choose either '7B' or '30B'",
+)
 parser.add_argument("--mpt_root_dir", type=str, default="/home/luodian/projects/checkpoints")
 parser.add_argument("--save_root_dir", type=str, default="/home/luodian/projects/checkpoints")
-parser.add_argument("--flamingo_dir", type=str, default=None, help="If the pretrained flamingo weights also need to be injected")
+parser.add_argument(
+    "--flamingo_dir",
+    type=str,
+    default=None,
+    help="If the pretrained flamingo weights also need to be injected",
+)
 args = parser.parse_args()
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -55,7 +66,10 @@ model = FlamingoForConditionalGeneration(config=config)
 # load flamingo's vision encoder from last checkpoint.
 # you can visit https://huggingface.co/luodian/openflamingo-9b-hf/tree/main to download the checkpoint.
 AZP = os.environ["AZP"]
-state_dict_3 = torch.load(f"{AZP}/otter/checkpoints/flamingo_9b_hf/pytorch_model-00004-of-00004.bin", map_location="cpu")
+state_dict_3 = torch.load(
+    f"{AZP}/otter/checkpoints/flamingo_9b_hf/pytorch_model-00004-of-00004.bin",
+    map_location="cpu",
+)
 for cur_key in list(state_dict_3.keys()):
     if "vision_encoder" not in cur_key:
         del state_dict_3[cur_key]

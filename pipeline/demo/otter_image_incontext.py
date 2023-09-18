@@ -55,7 +55,13 @@ def get_formatted_prompt(prompt: str, in_context_prompts: list = []) -> str:
     return f"{in_context_string}<image>User: {prompt} GPT:<answer>"
 
 
-def get_response(image_list, prompt: str, model=None, image_processor=None, in_context_prompts: list = []) -> str:
+def get_response(
+    image_list,
+    prompt: str,
+    model=None,
+    image_processor=None,
+    in_context_prompts: list = [],
+) -> str:
     input_data = image_list
 
     if isinstance(input_data, Image.Image):
@@ -131,7 +137,13 @@ if __name__ == "__main__":
         prompts_input = input("Enter the prompts (or type 'quit' to exit): ")
 
         print(f"\nPrompt: {prompts_input}")
-        response = get_response(encoded_frames_list, prompts_input, model, image_processor, in_context_prompts)
+        response = get_response(
+            encoded_frames_list,
+            prompts_input,
+            model,
+            image_processor,
+            in_context_prompts,
+        )
         print(f"Response: {response}")
 
         if prompts_input.lower() == "quit":

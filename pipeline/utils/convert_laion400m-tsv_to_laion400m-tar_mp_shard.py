@@ -171,7 +171,11 @@ class TSVFile(object):
 
 
 def convert_tsv(tsv_id, tsv_root, output_dir):
-    with wds.ShardWriter(output_dir + f"/{tsv_id.replace('.tsv','.').split('-')[-1]}%03d.tar", maxcount=500000, maxsize=2e10) as sink:
+    with wds.ShardWriter(
+        output_dir + f"/{tsv_id.replace('.tsv','.').split('-')[-1]}%03d.tar",
+        maxcount=500000,
+        maxsize=2e10,
+    ) as sink:
         cur_tsv_image = TSVFile(tsv_root=tsv_root, tsv_file=tsv_id)
         cur_tsv_caption = TSVFile(tsv_root=tsv_root, tsv_file=tsv_id.replace("image", "text"))
         for _ in tqdm(range(cur_tsv_image.__len__()), desc="Converting image"):
@@ -189,7 +193,13 @@ def convert_tsv(tsv_id, tsv_root, output_dir):
                     print(e)
                     print(f"the caption of index {_} have problem, continue")
                     continue
-                sink.write({"__key__": key_str, "png": cur_image[1], "txt": caption.encode("utf-8", "replace").decode()})
+                sink.write(
+                    {
+                        "__key__": key_str,
+                        "png": cur_image[1],
+                        "txt": caption.encode("utf-8", "replace").decode(),
+                    }
+                )
             except Exception as e:
                 print(f"Error at index {_}: {e}")
 

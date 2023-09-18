@@ -141,13 +141,28 @@ class MPTConfig(PretrainedConfig):
         self.init_config = self._set_config_defaults(self.init_config, init_config_defaults)
         if self.d_model % self.n_heads != 0:
             raise ValueError("d_model must be divisible by n_heads")
-        if any((prob < 0 or prob > 1 for prob in [self.attn_config["attn_pdrop"], self.resid_pdrop, self.emb_pdrop])):
+        if any(
+            (
+                prob < 0 or prob > 1
+                for prob in [
+                    self.attn_config["attn_pdrop"],
+                    self.resid_pdrop,
+                    self.emb_pdrop,
+                ]
+            )
+        ):
             raise ValueError("self.attn_config['attn_pdrop'], resid_pdrop, emb_pdrop are probabilities and must be between 0 and 1")
         if self.attn_config["attn_impl"] not in ["torch", "flash", "triton"]:
             raise ValueError(f"Unknown attn_impl={self.attn_config['attn_impl']}")
-        if self.attn_config["prefix_lm"] and self.attn_config["attn_impl"] not in ["torch", "triton"]:
+        if self.attn_config["prefix_lm"] and self.attn_config["attn_impl"] not in [
+            "torch",
+            "triton",
+        ]:
             raise NotImplementedError("prefix_lm only implemented with torch and triton attention.")
-        if self.attn_config["alibi"] and self.attn_config["attn_impl"] not in ["torch", "triton"]:
+        if self.attn_config["alibi"] and self.attn_config["attn_impl"] not in [
+            "torch",
+            "triton",
+        ]:
             raise NotImplementedError("alibi only implemented with torch and triton attention.")
         if self.attn_config["attn_uses_sequence_id"] and self.attn_config["attn_impl"] not in ["torch", "triton"]:
             raise NotImplementedError("attn_uses_sequence_id only implemented with torch and triton attention.")

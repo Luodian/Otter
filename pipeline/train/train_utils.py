@@ -8,7 +8,10 @@ from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm
 
 try:
-    from transformers.models.idefics.processing_idefics import image_attention_mask_for_packed_input_ids, incremental_to_binary_attention_mask
+    from transformers.models.idefics.processing_idefics import (
+        image_attention_mask_for_packed_input_ids,
+        incremental_to_binary_attention_mask,
+    )
 except ImportError:
     print("Failed to import Idefics processing module.")
 

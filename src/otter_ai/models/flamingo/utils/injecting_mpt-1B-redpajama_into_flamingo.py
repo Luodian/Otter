@@ -14,7 +14,12 @@ from utils import rename_flamingo_checkpoint
 parser = argparse.ArgumentParser(description="Convert MPT model")
 parser.add_argument("--mpt_root_dir", type=str, default="/home/luodian/projects/checkpoints")
 parser.add_argument("--save_root_dir", type=str, default="/home/luodian/projects/checkpoints")
-parser.add_argument("--flamingo_dir", type=str, default=None, help="If the pretrained flamingo weights also need to be injected")
+parser.add_argument(
+    "--flamingo_dir",
+    type=str,
+    default=None,
+    help="If the pretrained flamingo weights also need to be injected",
+)
 args = parser.parse_args()
 
 

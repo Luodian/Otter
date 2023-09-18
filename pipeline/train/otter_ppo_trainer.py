@@ -52,7 +52,11 @@ from trl.core import (
     stats_to_np,
 )
 from trl.import_utils import is_torch_greater_2_0
-from trl.models import SUPPORTED_ARCHITECTURES, PreTrainedModelWrapper, create_reference_model
+from trl.models import (
+    SUPPORTED_ARCHITECTURES,
+    PreTrainedModelWrapper,
+    create_reference_model,
+)
 from trl.trainer import AdaptiveKLController, BaseTrainer, FixedKLController, PPOConfig
 
 
@@ -611,7 +615,13 @@ class PPOTrainer(BaseTrainer):
         full_kl_penalty = self.config.kl_penalty == "full"
 
         with torch.no_grad():
-            all_logprobs, logits_or_none, values, masks = self.batched_forward_pass(self.model, queries, responses, model_inputs, return_logits=full_kl_penalty)
+            all_logprobs, logits_or_none, values, masks = self.batched_forward_pass(
+                self.model,
+                queries,
+                responses,
+                model_inputs,
+                return_logits=full_kl_penalty,
+            )
 
             # for when the model is a peft model
             if self.is_peft_model and hasattr(
@@ -619,12 +629,24 @@ class PPOTrainer(BaseTrainer):
                 "disable_adapter",
             ):
                 with self.accelerator.unwrap_model(self.model).pretrained_model.disable_adapter():
-                    ref_logprobs, ref_logits_or_none, _, _ = self.batched_forward_pass(self.model, queries, responses, model_inputs, return_logits=full_kl_penalty)
+                    ref_logprobs, ref_logits_or_none, _, _ = self.batched_forward_pass(
+                        self.model,
+                        queries,
+                        responses,
+                        model_inputs,
+                        return_logits=full_kl_penalty,
+                    )
             elif self.is_peft_model and not hasattr(self.model.pretrained_model, "disable_adapter"):
                 raise ValueError("You are using a `peft` version that does not support `disable_adapter`. Please update your `peft` version to the latest version.")
 
             else:
-                ref_logprobs, ref_logits_or_none, _, _ = self.batched_forward_pass(self.ref_model, queries, responses, model_inputs, return_logits=full_kl_penalty)
+                ref_logprobs, ref_logits_or_none, _, _ = self.batched_forward_pass(
+                    self.ref_model,
+                    queries,
+                    responses,
+                    model_inputs,
+                    return_logits=full_kl_penalty,
+                )
 
         timing["time/ppo/forward_pass"] = time.time() - t
 

@@ -22,7 +22,12 @@ from PIL import Image, ImageFile, ImageSequence
 from torch.utils.data import DataLoader, IterableDataset, RandomSampler, get_worker_info
 from torch.utils.data.distributed import DistributedSampler
 from webdataset.filters import _shuffle
-from webdataset.tariterators import base_plus_ext, tar_file_expander, url_opener, valid_sample
+from webdataset.tariterators import (
+    base_plus_ext,
+    tar_file_expander,
+    url_opener,
+    valid_sample,
+)
 
 sys.path.append("../..")
 import json
@@ -676,7 +681,11 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     # Converting multiple types of mimic-it datasets into a unified format dataset
     for key, item in dataset_info.items():
         if item != {}:  # if the category is not empty
-            unified_dataset = MimicitDataset(args, dataset_info=dataset_info[key], status_list=["new"] * len(dataset_info[key]))
+            unified_dataset = MimicitDataset(
+                args,
+                dataset_info=dataset_info[key],
+                status_list=["new"] * len(dataset_info[key]),
+            )
             unified_datasets.append(unified_dataset)
 
     # # processing for image-text in-context datasets

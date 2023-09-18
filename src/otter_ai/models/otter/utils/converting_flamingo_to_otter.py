@@ -9,8 +9,18 @@ from otter_ai.models.flamingo.modeling_flamingo import FlamingoForConditionalGen
 parser = argparse.ArgumentParser(description="Load a model with specified precision and save it to a specified path.")
 
 # Add arguments
-parser.add_argument("--checkpoint_path", type=str, required=True, help="Path to the pre-trained Open-Flamingo model checkpoint.")
-parser.add_argument("--save_path", type=str, default=None, help="Path to the converted Otter model checkpoint.")
+parser.add_argument(
+    "--checkpoint_path",
+    type=str,
+    required=True,
+    help="Path to the pre-trained Open-Flamingo model checkpoint.",
+)
+parser.add_argument(
+    "--save_path",
+    type=str,
+    default=None,
+    help="Path to the converted Otter model checkpoint.",
+)
 
 # Parse the input arguments
 args = parser.parse_args()

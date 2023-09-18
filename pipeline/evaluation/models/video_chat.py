@@ -2,7 +2,13 @@ from .base_model import BaseModel
 from .Ask_Anything.video_chat.utils.config import Config
 from .Ask_Anything.video_chat.models.videochat import VideoChat as VideoChatModel
 from .Ask_Anything.video_chat.utils.easydict import EasyDict
-from .Ask_Anything.video_chat.models.video_transformers import GroupNormalize, GroupScale, GroupCenterCrop, Stack, ToTorchFormatTensor
+from .Ask_Anything.video_chat.models.video_transformers import (
+    GroupNormalize,
+    GroupScale,
+    GroupCenterCrop,
+    Stack,
+    ToTorchFormatTensor,
+)
 
 import os
 import torch
@@ -65,7 +71,15 @@ class VideoChat(BaseModel):
         input_mean = [0.48145466, 0.4578275, 0.40821073]
         input_std = [0.26862954, 0.26130258, 0.27577711]
 
-        transform = T.Compose([GroupScale(int(scale_size), interpolation=InterpolationMode.BICUBIC), GroupCenterCrop(crop_size), Stack(), ToTorchFormatTensor(), GroupNormalize(input_mean, input_std)])
+        transform = T.Compose(
+            [
+                GroupScale(int(scale_size), interpolation=InterpolationMode.BICUBIC),
+                GroupCenterCrop(crop_size),
+                Stack(),
+                ToTorchFormatTensor(),
+                GroupNormalize(input_mean, input_std),
+            ]
+        )
 
         images_group = list()
         for frame_index in frame_indices:
@@ -108,8 +122,23 @@ class VideoChat(BaseModel):
         mixed_embs = torch.cat(mixed_embs, dim=1)
         return mixed_embs
 
-    def answer(self, conv, model, img_list, max_new_tokens=200, num_beams=1, min_length=1, top_p=0.9, repetition_penalty=1.0, length_penalty=1, temperature=1.0):
-        stop_words_ids = [torch.tensor([835]).to("cuda:0"), torch.tensor([2277, 29937]).to("cuda:0")]  # '###' can be encoded in two different ways.
+    def answer(
+        self,
+        conv,
+        model,
+        img_list,
+        max_new_tokens=200,
+        num_beams=1,
+        min_length=1,
+        top_p=0.9,
+        repetition_penalty=1.0,
+        length_penalty=1,
+        temperature=1.0,
+    ):
+        stop_words_ids = [
+            torch.tensor([835]).to("cuda:0"),
+            torch.tensor([2277, 29937]).to("cuda:0"),
+        ]  # '###' can be encoded in two different ways.
         stopping_criteria = StoppingCriteriaList([StoppingCriteriaSub(stops=stop_words_ids)])
 
         conv.messages.append([conv.roles[1], None])
@@ -140,7 +169,11 @@ class VideoChat(BaseModel):
     def generate(self, input_data):
         inputs = {}
         video_dir = input_data.get("video_root", "")
-        vid, msg = self.load_video(os.path.join(video_dir, input_data["video_idx"] + ".mp4"), num_segments=8, return_msg=True)
+        vid, msg = self.load_video(
+            os.path.join(video_dir, input_data["video_idx"] + ".mp4"),
+            num_segments=8,
+            return_msg=True,
+        )
         # print(msg)
         self.chat.messages.append([self.chat.roles[0], f"<Video><VideoHere></Video> {msg}\n"])
         self.chat.messages.append([self.chat.roles[0], input_data["question"] + "\n"])
@@ -159,5 +192,8 @@ class VideoChat(BaseModel):
 
 if __name__ == "__main__":
     model = VideoChat("")
-    data = {"video_idx": "03f2ed96-1719-427d-acf4-8bf504f1d66d.mp4", "question": "What is in this image?"}
+    data = {
+        "video_idx": "03f2ed96-1719-427d-acf4-8bf504f1d66d.mp4",
+        "question": "What is in this image?",
+    }
     print(model.generate(data))
