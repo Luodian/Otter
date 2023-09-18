@@ -138,6 +138,9 @@ class MimicitDataset(Dataset):
             "COCO",
             "COCO-GOI",
             "VSR",
+            "ST-VQA",
+            "IQA",
+            "COCOITM"
         ]
         self.video_data_list = ["DC", "FunQA", "E4D", "TVC", "VideoQA", "EAI"]
         self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.\n<</SYS>>\n\n"
