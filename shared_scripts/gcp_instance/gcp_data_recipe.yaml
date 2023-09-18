@@ -22,11 +22,11 @@ IMAGE_TEXT:
     num_samples: 50
   M3IT_COCOGOI:
     mimicit_path: /home/luodian/projects/data/M3IT/classification/coco-goi/coco-goi_instructions.json
-    images_path: /home/luodian/projects/data/M3IT/captioning/coco/coco.json
+    images_path: /home/luodian/projects/data/M3IT/classification/coco-goi/coco-goi.json
     num_samples: 50
   M3IT_COCOITM:
     mimicit_path: /home/luodian/projects/data/M3IT/classification/coco-itm/coco-itm_instructions.json
-    images_path: /home/luodian/projects/data/M3IT/captioning/coco/coco.json
+    images_path: /home/luodian/projects/data/M3IT/classification/coco-itm/coco-itm.json
     num_samples: 50
   M3IT_IMAGENET:
     mimicit_path: /home/luodian/projects/data/M3IT/classification/imagenet/imagenet_instructions.json

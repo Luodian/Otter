@@ -2,7 +2,7 @@
 import os
 import yaml
 import pytest
-
+import orjson
 
 # Define the pytest fixture
 @pytest.fixture
@@ -30,9 +30,10 @@ def test_yaml_structure(yaml_data):
                 elif path_key == "num_samples":
                     assert isinstance(path_value, int), f"'num_samples' should be an integer but got {type(path_value)} under {category} -> {dataset_name}."
 
+                # checking mimicit path aligns with corresponding format.
                 if path_key == "mimicit_path":
-                    import json
-                    with open(path_value, 'r') as f:
-                        data = json.load(f)
+                    print(f"Checking -> {path_value} in MIMICIT format.")
+                    with open(path_value, 'rb') as f:
+                        data = orjson.loads(f.read())
 
                     assert "data" in data
