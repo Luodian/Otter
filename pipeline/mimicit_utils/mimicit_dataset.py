@@ -56,6 +56,8 @@ import numpy as np
 
 def resample_data(data, N):
     # If N is equal to the length of the list, return the list
+    if N == -1:
+        return data
     if N == len(data):
         return data
     # Upsample if N is greater than the list length
@@ -207,7 +209,7 @@ class MimicitDataset(Dataset):
                 cur_mimicit_path,
                 cur_train_config_path if cur_train_config_path != '' else 'None',
                 cur_images_path if cur_images_path != '' else 'None',
-                sampled_examples
+                len(resampled_train)
             ])
             if cur_images_path:
                 with open(cur_images_path, "rb") as f:
