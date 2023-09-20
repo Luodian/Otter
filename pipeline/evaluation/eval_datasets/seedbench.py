@@ -1,68 +1,98 @@
 import os
-import orjson
-import pandas as pd
+import json
 from PIL import Image
-from torch.utils.data import Dataset
+import numpy as np
+import torch
+from otter_ai import OtterForConditionalGeneration
+
+Image.MAX_IMAGE_PIXELS = 100_000_000
 
 
-def get_image(image_folder, image_id):
-    image_path = os.path.join(image_folder, image_id)
-    image = Image.open(image_path)
-    return image
-
-
-class SEEDBench(Dataset):
-    def __init__(self, data_file, image_folder, sys_prompt="There are several options:"):
-        super().__init__("SEEDBench", data_file)
-        with open(data_file, "rb") as f:
-            data = orjson.loads(f.read())["questions"]
-        self.data = []
-        for item in data:
-            if item["data_type"] == "image" and os.path.exists(os.path.join(image_folder, item["data_id"])):
-                self.data.append(item)
-        if len(self.data) == 0:
-            raise ValueError("No valid data found!")
-        self.sys_prompt = sys_prompt
-        self.image_folder = image_folder
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        image = get_image(self.image_folder, self.data[idx]["data_id"])
-
-        question = self.data[idx]["question"]
-        answer = self.data[idx]["answer"]
-
-        option_candidate = {
-            "A": "choice_a",
-            "B": "choice_b",
-            "C": "choice_c",
-            "D": "choice_d",
-        }
-        options = "\n".join([f"{key}. {self.data[idx][item]}" for key, item in option_candidate.items()])
-
-        cur_prompt = question + "\n" + self.sys_prompt + "\n" + options
-
-        data = {
-            "question": cur_prompt,
-            "answer": answer,
-            "image": image,
-        }
+class SEEDBenchDataset(object):
+    def load_json(self, json_file):
+        with open(json_file) as f:
+            data = json.load(f)
         return data
 
-    def load_from_df(self, idx, key):
-        if key in self.df.iloc[idx] and not pd.isna(self.df.iloc[idx][key]):
-            return self.df.iloc[idx][key]
-        else:
-            return None
+    def filter_image_only(self, data):
+        filtered_data = []
+        for d in data:
+            if d["data_type"] == "image":
+                filtered_data.append(d)
+        return filtered_data
 
+    def __init__(self, data_file, image_folder):
+        json_data = self.load_json(data_file)
+        self.data = self.filter_image_only(json_data["questions"])
+        self.question_type = json_data["question_type"]
+        self.question_type = {v: k for k, v in self.question_type.items()}
+        self.image_folder = image_folder
+
+    def get_image(self, image_id):
+        path = os.path.join(self.image_folder, image_id + ".jpg")
+        return Image.open(path).convert("RGB")
+
+    def __getitem__(self, idx):
+        data = self.data[idx]
+        question = data["question"]
+        image_id = data["data_id"]
+        image = self.get_image(image_id)
+        answer = data["answer"]
+        options = [data["choice_a"], data["choice_b"], data["choice_c"], data["choice_d"]]
+
+        data_dict = {
+            "image": image,
+            "question": question,
+            "answer": answer,
+            "options": options,
+        }
+        return data_dict
+
+    def evaluate(self, model, tokenizer):
+        print("Evaluating...")
+        num_correct = 0
+        for data_dict in self:
+            image = data_dict["image"]
+            question = data_dict["question"]
+            answer = data_dict["answer"]
+            options = data_dict["options"]
+
+            print(type(image))
+
+            option_losses = []
+            for option in options:
+                query = f"<image>User:{question} GPT:<answer> {option}."
+                label = query
+                tokens = tokenizer(query, return_tensors="pt")
+                input_ids = tokens["input_ids"]
+                attention_mask = tokens["attention_mask"]
+                with torch.no_grad():
+                    loss = model(vision_x=image, lang_x=input_ids, attention_mask=attention_mask, label=label)
+                option_losses.append(loss)
+
+            prediction_idx = np.argmin(option_losses)
+            prediction = ["A", "B", "C", "D"][prediction_idx]
+            if prediction == answer:
+                num_correct += 1
+
+        accuracy = num_correct / len(self.data) * 100
+        print(f"Accuracy: {accuracy:.2f}%")
+        return accuracy
+
+
+from transformers import IdeficsForVisionText2Text, AutoProcessor
 
 if __name__ == "__main__":
-    dataset = SEEDBench(
-        "/data/pufanyi/training_data/SEEDBench/SEED-Bench.json",
-        "/data/pufanyi/training_data/SEEDBench/SEED-Bench-image",
-    )
-    for item in dataset:
-        print(item)
+    dataset = SEEDBenchDataset("/data/joshua/datasets/SEEDBench/SEED-Bench.json", "/data/joshua/datasets/SEEDBench/SEED-Bench-image")
+    for data in dataset:
+        print(data)
         break
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Using device: {device}")
+    # checkpoint = "/data/pufanyi/training_data/checkpoints/idefics-9b-instruct"
+    checkpoint = "/data/pufanyi/training_data/checkpoints/OTTER-Image-MPT7B"
+    model =  OtterForConditionalGeneration.from_pretrained(checkpoint, torch_dtype=torch.bfloat16).to(device)
+    model.text_tokenizer.padding_side = "left"
+    tokenizer = model.text_tokenizer
+    dataset.evaluate(model, tokenizer)

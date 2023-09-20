@@ -4,9 +4,13 @@ datasets:
     split: train
     cache_dir: /path/to/hf/cache
 
+
 models:
-  - name: idefics
-    model_path: /path/to/checkpoints/idefics-9b-instruct
-  - name: idefics_otter
-    model_path: /path/to/checkpoints/otter_idefics9b_0830
-    processor: /path/to/checkpoints/idefics-9b-instruct
+  # - name: idefics
+  #   model_path: /path/to/checkpoints/idefics-9b-instruct
+  # - name: idefics_otter
+  #   model_path: /path/to/checkpoints/otter_idefics9b_0830
+  #   processor: /path/to/checkpoints/idefics-9b-instruct
+  - name: otter_image
+    model_path: /data/pufanyi/training_data/checkpoints/OTTER-Image-MPT7B
+
