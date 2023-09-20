@@ -6,9 +6,8 @@ import logging
 import math
 import os
 import random
-import sys
-
 import statistics
+import sys
 from dataclasses import dataclass
 from multiprocessing import Value
 
@@ -23,9 +22,20 @@ from PIL import Image, ImageFile, ImageSequence
 from torch.utils.data import DataLoader, IterableDataset, RandomSampler, get_worker_info
 from torch.utils.data.distributed import DistributedSampler
 from webdataset.filters import _shuffle
-from webdataset.tariterators import base_plus_ext, tar_file_expander, url_opener, valid_sample
+from webdataset.tariterators import (
+    base_plus_ext,
+    tar_file_expander,
+    url_opener,
+    valid_sample,
+)
 
 sys.path.append("../..")
+import json
+import os
+
+import yaml
+from PIL import Image, ImageFile
+
 from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
 from pipeline.train.train_utils import DistributedProxySampler
 
@@ -627,41 +637,38 @@ def get_cc3m_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     return DataInfo(dataloader=dataloader, shared_epoch=shared_epoch)
 
 
-import json
-
-from PIL import Image, ImageFile
-
-from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
-
-
 def preload_dataset(args):
-    def flatten_dataset_config(dataset_config_dict):
-        """Recursively flatten the dictionary to extract leaf node values."""
-        items = []
-        for k, v in dataset_config_dict.items():
-            if isinstance(v, dict):
-                items.extend(flatten_dataset_config(v))
-            else:
-                items.extend(v)
-        return items
+    dataset_info = {
+        "IMAGE_TEXT": {},
+        "TEXT_ONLY": {},
+        "VIDEO_TEXT": {},
+        "IMAGE_TEXT_IN_CONTEXT": {},
+    }
 
-    def append_datasets(args, dataset_config_dict):
-        """Append datasets from the configuration to the arguments."""
-        for name, data in dataset_config_dict.items():
-            flattened_data = flatten_dataset_config(data)
-            # check data path exists
-            for path in flattened_data:
-                if not os.path.exists(path):
-                    raise ValueError(f"Dataset path {path} does not exist.")
-            setattr(args, name, ",".join(flattened_data))
-            setattr(args, "past_" + name, ",".join(flattened_data))  # mirroing, compatible for past datasets
+    if args.training_data_yaml and os.path.exists(args.training_data_yaml):
+        try:
+            with open(args.training_data_yaml, "r") as f:
+                yaml_data = yaml.safe_load(f)
+        except Exception as e:
+            raise ValueError(f"Error loading or parsing the YAML file: {e}")
 
-    if args.training_data_yaml != "":
-        with open(args.training_data_yaml, "r") as f:
-            dataset_config_dict = yaml.safe_load(f)
-            append_datasets(args, dataset_config_dict)
+        for category, datasets in yaml_data.items():
+            if category not in dataset_info:
+                raise ValueError(f"Unexpected category '{category}' in the YAML data. Expected categories are {list(dataset_info.keys())}.")
 
-    return args
+            for dataset_name, data in datasets.items():
+                # Check if paths exist
+                for path_key, path_value in data.items():
+                    if path_key.endswith("_path") and not os.path.exists(path_value):
+                        raise ValueError(f"Dataset path {path_value} specified under {category} -> {dataset_name} does not exist.")
+
+                # Populate dataset_info based on the category
+                dataset_info[category][dataset_name] = data
+    elif not os.path.exists(args.training_data_yaml):
+        raise ValueError(f"YAML file path '{args.training_data_yaml}' does not exist.")
+
+    return dataset_info
+
 
 def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -669,70 +676,26 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     args.tokenizer = tokenizer
     unified_datasets = []
 
-    # processing for image-text in-context datasets
-    if hasattr(args, "mimicit_ic_path") and args.mimicit_ic_path != "":
-        all_mimicit_ic_path = args.mimicit_ic_path.split(",") + args.past_mimicit_ic_path.split(",") if args.past_mimicit_ic_path != "" else args.mimicit_ic_path.split(",")
-        all_images_ic_path = args.images_ic_path.split(",") + args.past_images_ic_path.split(",") if args.past_images_ic_path != "" else args.images_ic_path.split(",")
-        all_train_config_ic_path = args.train_config_ic_path.split(",") + args.past_train_config_ic_path.split(",") if args.past_train_config_ic_path != "" else args.train_config_ic_path.split(",")
-        if args.past_mimicit_ic_path != "":
-            ic_status = ["new"] * len(args.mimicit_ic_path.split(",")) + ["past"] * len(args.past_mimicit_ic_path.split(","))
-        else:
-            ic_status = ["new"] * len(args.mimicit_ic_path.split(","))
-        unified_dataset = MimicitDataset(args, all_mimicit_ic_path, all_images_ic_path, all_train_config_ic_path, status_list=ic_status)
-        unified_datasets.append(unified_dataset)
+    dataset_info = preload_dataset(args)
 
-    # processing for image-text datasets
-    if hasattr(args, "mimicit_path") and args.mimicit_path != "":
-        all_mimicit_path = args.mimicit_path.split(",") + args.past_mimicit_path.split(",") if args.past_mimicit_path != "" else args.mimicit_path.split(",")
-        all_images_path = args.images_path.split(",") + args.past_images_path.split(",") if args.past_images_path != "" else args.images_path.split(",")
-        all_train_config_path = args.train_config_path.split(",") + args.past_train_config_path.split(",") if args.past_train_config_path != "" else args.train_config_path.split(",")
-        if args.past_mimicit_path != "":
-            status = ["new"] * len(args.mimicit_path.split(",")) + ["past"] * len(args.past_mimicit_path.split(","))
-        else:
-            status = ["new"] * len(args.mimicit_path.split(","))
-        unified_dataset = MimicitDataset(args, all_mimicit_path, all_images_path, all_train_config_path, status_list=status)
-        unified_datasets.append(unified_dataset)
-
-    # processing for text datasets
-    if hasattr(args, "mimicit_text_path") and args.mimicit_text_path != "":
-        all_mimicit_text_path = args.mimicit_text_path.split(",") + args.past_mimicit_text_path.split(",") if args.past_mimicit_text_path != "" else args.mimicit_text_path.split(",")
-        all_train_config_text_path = args.train_config_text_path.split(",") + args.past_train_config_text_path.split(",") if args.past_train_config_text_path != "" else args.train_config_text_path.split(",")
-
-        if args.past_mimicit_text_path != "":
-            text_status = ["new"] * len(args.mimicit_text_path.split(",")) + ["past"] * len(args.past_mimicit_text_path.split(","))
-        else:
-            text_status = ["new"] * len(args.mimicit_text_path.split(","))
-        unified_dataset = MimicitDataset(args=args, mimicit_paths=all_mimicit_text_path, train_config_paths=all_train_config_text_path, status_list=text_status)
-        unified_datasets.append(unified_dataset)
-
-    # processing for video-text datasets
-    if hasattr(args, "mimicit_vt_path") and args.mimicit_vt_path != "":
-        all_mimicit_vt_path = args.mimicit_vt_path.split(",") + args.past_mimicit_vt_path.split(",") if args.past_mimicit_vt_path != "" else args.mimicit_vt_path.split(",")
-        all_images_vt_path = args.images_vt_path.split(",") + args.past_images_vt_path.split(",") if args.past_images_vt_path != "" else args.images_vt_path.split(",")
-        all_train_config_vt_path = args.train_config_vt_path.split(",") + args.past_train_config_vt_path.split(",") if args.past_train_config_vt_path != "" else args.train_config_vt_path.split(",")
-        if args.past_mimicit_vt_path != "":
-            vt_status = ["new"] * len(args.mimicit_vt_path.split(",")) + ["past"] * len(args.past_mimicit_vt_path.split(","))
-        else:
-            vt_status = ["new"] * len(args.mimicit_vt_path.split(","))
-        unified_dataset = MimicitDataset(args, all_mimicit_vt_path, all_images_vt_path, all_train_config_vt_path, status_list=vt_status)
-        unified_datasets.append(unified_dataset)
-
-    if args.train_num_samples == -1:
-        args.train_num_samples = statistics.median((len(dataset) for dataset in unified_datasets))
-
-    assert args.train_num_samples <= max([len(dataset) for dataset in unified_datasets]), "your train_num_samples is larger than dataset"
+    # Converting multiple types of mimic-it datasets into a unified format dataset
+    for key, item in dataset_info.items():
+        if item != {}:  # if the category is not empty
+            unified_dataset = MimicitDataset(args, dataset_info=dataset_info[key])
+            unified_datasets.append(unified_dataset)
 
     round_fn = math.floor if floor else math.ceil
     global_batch_size = args.batch_size * args.world_size
 
-    num_samples = args.train_num_samples  # 8
+    # num_samples = args.train_num_samples  # 8
+    num_samples = sum([len(dataset) for dataset in unified_datasets])
     num_batches = round_fn(num_samples / global_batch_size)  # 2
     num_samples = num_batches * global_batch_size  # 8
 
     dataloaders = []
 
     for unified_dataset in unified_datasets:
-        sampler = RandomSampler(unified_dataset, replacement=True, num_samples=num_samples)
+        sampler = RandomSampler(unified_dataset, replacement=True, num_samples=len(unified_dataset))
         if args.distributed_type == "DEEPSPEED" or args.distributed_type == "MULTI_GPU":
             sampler = DistributedProxySampler(sampler, num_replicas=args.world_size, rank=args.rank)
         dataloader = torch.utils.data.DataLoader(

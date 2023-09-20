@@ -22,7 +22,10 @@ for file in state_dict_files:
     state_dict.update(state_dict_part)
 
 
-state_dict_3 = torch.load("{root_dir}/otter/checkpoints/flamingo_9b_hf/pytorch_model-00004-of-00004.bin", map_location="cpu")
+state_dict_3 = torch.load(
+    "{root_dir}/otter/checkpoints/flamingo_9b_hf/pytorch_model-00004-of-00004.bin",
+    map_location="cpu",
+)
 for cur_key in list(state_dict_3.keys()):
     if "vision_encoder" not in cur_key:
         del state_dict_3[cur_key]

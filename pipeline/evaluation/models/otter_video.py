@@ -27,7 +27,11 @@ class OtterVideo(BaseModel):
         elif load_bit == "fp32":
             precision["torch_dtype"] = torch.float32
         self.model = OtterForConditionalGeneration.from_pretrained(model_path, device_map="sequential", **precision)
-        self.tensor_dtype = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}[load_bit]
+        self.tensor_dtype = {
+            "fp16": torch.float16,
+            "bf16": torch.bfloat16,
+            "fp32": torch.float32,
+        }[load_bit]
         self.model.text_tokenizer.padding_side = "left"
         self.tokenizer = self.model.text_tokenizer
         self.image_processor = transformers.CLIPImageProcessor()
@@ -53,7 +57,14 @@ class OtterVideo(BaseModel):
         video.release()
         return frames
 
-    def get_response(self, input_data, prompt: str, model=None, image_processor=None, tensor_dtype=None) -> str:
+    def get_response(
+        self,
+        input_data,
+        prompt: str,
+        model=None,
+        image_processor=None,
+        tensor_dtype=None,
+    ) -> str:
         if isinstance(input_data, Image.Image):
             vision_x = image_processor.preprocess([input_data], return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)
         elif isinstance(input_data, list):  # list of video frames
@@ -87,7 +98,13 @@ class OtterVideo(BaseModel):
 
         prompts_input = input_data["question"]
 
-        response = self.get_response(frames_list, prompts_input, self.model, self.image_processor, self.tensor_dtype)
+        response = self.get_response(
+            frames_list,
+            prompts_input,
+            self.model,
+            self.image_processor,
+            self.tensor_dtype,
+        )
 
         return response
 

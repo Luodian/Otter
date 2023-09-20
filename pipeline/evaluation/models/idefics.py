@@ -33,11 +33,21 @@ class Idefics(BaseModel):
         inputs = self.processor(formatted_prompt, return_tensors="pt").to(self.device)
         exit_condition = self.processor.tokenizer("<end_of_utterance>", add_special_tokens=False).input_ids
         bad_words_ids = self.processor.tokenizer(["<image>", "<fake_token_around_image>"], add_special_tokens=False).input_ids
-        generated_ids = self.model.generate(**inputs, eos_token_id=exit_condition, bad_words_ids=bad_words_ids, max_length=512)
+        generated_ids = self.model.generate(
+            **inputs,
+            eos_token_id=exit_condition,
+            bad_words_ids=bad_words_ids,
+            max_length=512,
+        )
         generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
         return generated_text[0][len_formatted_prompt:].strip()
 
 
 if __name__ == "__main__":
     model = Idefics("/data/pufanyi/training_data/checkpoints/idefics-9b-instruct")
-    print(model.generate("What is in this image?", Image.open("/data/pufanyi/project/Otter-2/pipeline/evaluation/test_data/test.jpg")))
+    print(
+        model.generate(
+            "What is in this image?",
+            Image.open("/data/pufanyi/project/Otter-2/pipeline/evaluation/test_data/test.jpg"),
+        )
+    )

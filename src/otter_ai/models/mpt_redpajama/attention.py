@@ -272,7 +272,15 @@ class MultiheadAttention(nn.Module):
         self.out_proj = nn.Linear(self.d_model, self.d_model, device=device)
         self.out_proj._is_residual = True  # type: ignore
 
-    def forward(self, x, past_key_value=None, attn_bias=None, attention_mask=None, is_causal=True, needs_weights=False):
+    def forward(
+        self,
+        x,
+        past_key_value=None,
+        attn_bias=None,
+        attention_mask=None,
+        is_causal=True,
+        needs_weights=False,
+    ):
         qkv = self.Wqkv(x)
 
         if self.clip_qkv:
@@ -337,7 +345,16 @@ def attn_bias(attn_impl, attn_bias, n_heads, seq_len, causal=False, alibi=False,
         if alibi:
             # in place add alibi to attn bias
             device, dtype = attn_bias.device, attn_bias.dtype
-            attn_bias = attn_bias.add(alibi_bias(n_heads, seq_len, full=not causal, alibi_bias_max=alibi_bias_max, device=device, dtype=dtype))
+            attn_bias = attn_bias.add(
+                alibi_bias(
+                    n_heads,
+                    seq_len,
+                    full=not causal,
+                    alibi_bias_max=alibi_bias_max,
+                    device=device,
+                    dtype=dtype,
+                )
+            )
         return attn_bias
     else:
         raise ValueError(f"{attn_impl=} is an invalid setting.")

@@ -116,7 +116,6 @@ logs/
 ofa_compress/
 train_*.sh
 gpt_playground/
-./evaluation/
 data/
 azure/
 .deepspeed_env

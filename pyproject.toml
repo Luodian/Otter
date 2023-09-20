@@ -1,8 +1,6 @@
 [tool.black]
 line-length = 240
 
-[tool.isort]
-atomic = true
-profile = "black"
-line_length = 240
-skip_gitignore = true
+[build-system]
+requires = ["setuptools>=42", "wheel", "setuptools_scm[tomli]>=6.3"]
+build-backend = "setuptools.build_meta"

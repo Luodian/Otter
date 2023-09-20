@@ -19,7 +19,9 @@ from transformers.models.bloom.modeling_bloom import (
     CrossEntropyLoss,
 )
 from transformers.models.bloom.modeling_bloom import _expand_mask as _expand_mask_bloom
-from transformers.models.bloom.modeling_bloom import _make_causal_mask as _make_causal_mask_bloom
+from transformers.models.bloom.modeling_bloom import (
+    _make_causal_mask as _make_causal_mask_bloom,
+)
 from transformers.models.bloom.modeling_bloom import logging
 from transformers.models.gpt2.modeling_gpt2 import GPT2LMHeadModel
 from transformers.models.gpt_neo.modeling_gpt_neo import GPTNeoForCausalLM
@@ -27,10 +29,17 @@ from transformers.models.gpt_neox.modeling_gpt_neox import GPTNeoXForCausalLM
 from transformers.models.gptj.modeling_gptj import GPTJForCausalLM
 from transformers.models.opt.modeling_opt import OPTForCausalLM
 from transformers.models.opt.modeling_opt import _expand_mask as _expand_mask_opt
-from transformers.models.opt.modeling_opt import _make_causal_mask as _make_causal_mask_opt
+from transformers.models.opt.modeling_opt import (
+    _make_causal_mask as _make_causal_mask_opt,
+)
 
 logger = logging.get_logger(__name__)
-_SUPPORTED_GPT_MODELS = (GPT2LMHeadModel, GPTJForCausalLM, GPTNeoForCausalLM, GPTNeoXForCausalLM)
+_SUPPORTED_GPT_MODELS = (
+    GPT2LMHeadModel,
+    GPTJForCausalLM,
+    GPTNeoForCausalLM,
+    GPTNeoXForCausalLM,
+)
 CAUSAL_GPT_TYPES = Union[GPT2LMHeadModel, GPTJForCausalLM, GPTNeoForCausalLM, GPTNeoXForCausalLM]
 
 
@@ -135,7 +144,11 @@ def _convert_gpt_causal_lm_to_prefix_lm(model: CAUSAL_GPT_TYPES) -> CAUSAL_GPT_T
             raise ValueError(f"bidirectional_mask sequence length (={s}) exceeds the " + f"max length allowed by the model ({max_length}).")
         assert s <= max_length
         if s < max_length:
-            pad = torch.zeros((int(b), int(max_length - s)), dtype=bidirectional_mask.dtype, device=bidirectional_mask.device)
+            pad = torch.zeros(
+                (int(b), int(max_length - s)),
+                dtype=bidirectional_mask.dtype,
+                device=bidirectional_mask.device,
+            )
             bidirectional_mask = torch.cat([bidirectional_mask, pad], dim=1)
         bidirectional = bidirectional_mask.unsqueeze(1).unsqueeze(1)
         for attn_module in attn_modules:
@@ -174,12 +187,22 @@ def _convert_bloom_causal_lm_to_prefix_lm(model: BloomForCausalLM) -> BloomForCa
     assert isinstance(model, BloomForCausalLM)
     assert model.config.add_cross_attention == False, "Only supports BLOOM decoder-only models"
 
-    def _prepare_attn_mask(self: BloomModel, attention_mask: torch.Tensor, bidirectional_mask: Optional[torch.Tensor], input_shape: Tuple[int, int], past_key_values_length: int) -> torch.BoolTensor:
+    def _prepare_attn_mask(
+        self: BloomModel,
+        attention_mask: torch.Tensor,
+        bidirectional_mask: Optional[torch.Tensor],
+        input_shape: Tuple[int, int],
+        past_key_values_length: int,
+    ) -> torch.BoolTensor:
         combined_attention_mask = None
         device = attention_mask.device
         (_, src_length) = input_shape
         if src_length > 1:
-            combined_attention_mask = _make_causal_mask_bloom(input_shape, device=device, past_key_values_length=past_key_values_length)
+            combined_attention_mask = _make_causal_mask_bloom(
+                input_shape,
+                device=device,
+                past_key_values_length=past_key_values_length,
+            )
             if bidirectional_mask is not None:
                 assert attention_mask.shape == bidirectional_mask.shape
                 expanded_bidirectional_mask = _expand_mask_bloom(bidirectional_mask, tgt_length=src_length)
@@ -188,14 +211,29 @@ def _convert_bloom_causal_lm_to_prefix_lm(model: BloomForCausalLM) -> BloomForCa
         combined_attention_mask = expanded_attn_mask if combined_attention_mask is None else expanded_attn_mask | combined_attention_mask
         return combined_attention_mask
 
-    def _build_alibi_tensor(self: BloomModel, batch_size: int, query_length: int, key_length: int, dtype: torch.dtype, device: torch.device) -> torch.Tensor:
+    def _build_alibi_tensor(
+        self: BloomModel,
+        batch_size: int,
+        query_length: int,
+        key_length: int,
+        dtype: torch.dtype,
+        device: torch.device,
+    ) -> torch.Tensor:
         num_heads = self.config.n_head
         closest_power_of_2 = 2 ** math.floor(math.log2(num_heads))
-        base = torch.tensor(2 ** (-(2 ** (-(math.log2(closest_power_of_2) - 3)))), device=device, dtype=torch.float32)
+        base = torch.tensor(
+            2 ** (-(2 ** (-(math.log2(closest_power_of_2) - 3)))),
+            device=device,
+            dtype=torch.float32,
+        )
         powers = torch.arange(1, 1 + closest_power_of_2, device=device, dtype=torch.int32)
         slopes = torch.pow(base, powers)
         if closest_power_of_2 != num_heads:
-            extra_base = torch.tensor(2 ** (-(2 ** (-(math.log2(2 * closest_power_of_2) - 3)))), device=device, dtype=torch.float32)
+            extra_base = torch.tensor(
+                2 ** (-(2 ** (-(math.log2(2 * closest_power_of_2) - 3)))),
+                device=device,
+                dtype=torch.float32,
+            )
             num_remaining_heads = min(closest_power_of_2, num_heads - closest_power_of_2)
             extra_powers = torch.arange(1, 1 + 2 * num_remaining_heads, 2, device=device, dtype=torch.int32)
             slopes = torch.cat([slopes, torch.pow(extra_base, extra_powers)], dim=0)
@@ -224,7 +262,10 @@ def _convert_bloom_causal_lm_to_prefix_lm(model: BloomForCausalLM) -> BloomForCa
         **deprecated_arguments,
     ) -> Union[Tuple[torch.Tensor, ...], BaseModelOutputWithPastAndCrossAttentions]:
         if deprecated_arguments.pop("position_ids", False) is not False:
-            warnings.warn("`position_ids` have no functionality in BLOOM and will be removed in v5.0.0. " + "You can safely ignore passing `position_ids`.", FutureWarning)
+            warnings.warn(
+                "`position_ids` have no functionality in BLOOM and will be removed in v5.0.0. " + "You can safely ignore passing `position_ids`.",
+                FutureWarning,
+            )
         if len(deprecated_arguments) > 0:
             raise ValueError(f"Got unexpected arguments: {deprecated_arguments}")
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
@@ -258,8 +299,19 @@ def _convert_bloom_causal_lm_to_prefix_lm(model: BloomForCausalLM) -> BloomForCa
             attention_mask = torch.ones((batch_size, seq_length_with_past), device=hidden_states.device)
         else:
             attention_mask = attention_mask.to(hidden_states.device)
-        alibi = self._build_alibi_tensor(batch_size=batch_size, query_length=seq_length, key_length=seq_length_with_past, dtype=hidden_states.dtype, device=hidden_states.device)
-        causal_mask = self._prepare_attn_mask(attention_mask, bidirectional_mask, input_shape=(batch_size, seq_length), past_key_values_length=past_key_values_length)
+        alibi = self._build_alibi_tensor(
+            batch_size=batch_size,
+            query_length=seq_length,
+            key_length=seq_length_with_past,
+            dtype=hidden_states.dtype,
+            device=hidden_states.device,
+        )
+        causal_mask = self._prepare_attn_mask(
+            attention_mask,
+            bidirectional_mask,
+            input_shape=(batch_size, seq_length),
+            past_key_values_length=past_key_values_length,
+        )
         for i, (block, layer_past) in enumerate(zip(self.h, past_key_values)):
             if output_hidden_states:
                 hst = (hidden_states,)
@@ -271,11 +323,21 @@ def _convert_bloom_causal_lm_to_prefix_lm(model: BloomForCausalLM) -> BloomForCa
 
                 def create_custom_forward(module):
                     def custom_forward(*inputs):
-                        return module(*inputs, use_cache=use_cache, output_attentions=output_attentions)
+                        return module(
+                            *inputs,
+                            use_cache=use_cache,
+                            output_attentions=output_attentions,
+                        )
 
                     return custom_forward
 
-                outputs = torch.utils.checkpoint.checkpoint(create_custom_forward(block), hidden_states, alibi, causal_mask, head_mask[i])
+                outputs = torch.utils.checkpoint.checkpoint(
+                    create_custom_forward(block),
+                    hidden_states,
+                    alibi,
+                    causal_mask,
+                    head_mask[i],
+                )
             else:
                 outputs = block(
                     hidden_states,
@@ -297,11 +359,35 @@ def _convert_bloom_causal_lm_to_prefix_lm(model: BloomForCausalLM) -> BloomForCa
             hst = (hidden_states,)
             all_hidden_states = all_hidden_states + hst
         if not return_dict:
-            return tuple((v for v in [hidden_states, presents, all_hidden_states, all_self_attentions] if v is not None))
-        return BaseModelOutputWithPastAndCrossAttentions(last_hidden_state=hidden_states, past_key_values=presents, hidden_states=all_hidden_states, attentions=all_self_attentions)
+            return tuple(
+                (
+                    v
+                    for v in [
+                        hidden_states,
+                        presents,
+                        all_hidden_states,
+                        all_self_attentions,
+                    ]
+                    if v is not None
+                )
+            )
+        return BaseModelOutputWithPastAndCrossAttentions(
+            last_hidden_state=hidden_states,
+            past_key_values=presents,
+            hidden_states=all_hidden_states,
+            attentions=all_self_attentions,
+        )
 
-    setattr(model.transformer, "_prepare_attn_mask", MethodType(_prepare_attn_mask, model.transformer))
-    setattr(model.transformer, "_build_alibi_tensor", MethodType(_build_alibi_tensor, model.transformer))
+    setattr(
+        model.transformer,
+        "_prepare_attn_mask",
+        MethodType(_prepare_attn_mask, model.transformer),
+    )
+    setattr(
+        model.transformer,
+        "_build_alibi_tensor",
+        MethodType(_build_alibi_tensor, model.transformer),
+    )
     setattr(model.transformer, "forward", MethodType(forward, model.transformer))
     KeyValueT = Tuple[torch.Tensor, torch.Tensor]
 
@@ -322,7 +408,10 @@ def _convert_bloom_causal_lm_to_prefix_lm(model: BloomForCausalLM) -> BloomForCa
     ) -> Union[Tuple[torch.Tensor], CausalLMOutputWithCrossAttentions]:
         """Replacement forward method for BloomCausalLM."""
         if deprecated_arguments.pop("position_ids", False) is not False:
-            warnings.warn("`position_ids` have no functionality in BLOOM and will be removed " + "in v5.0.0. You can safely ignore passing `position_ids`.", FutureWarning)
+            warnings.warn(
+                "`position_ids` have no functionality in BLOOM and will be removed " + "in v5.0.0. You can safely ignore passing `position_ids`.",
+                FutureWarning,
+            )
         if len(deprecated_arguments) > 0:
             raise ValueError(f"Got unexpected arguments: {deprecated_arguments}")
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
@@ -346,7 +435,10 @@ def _convert_bloom_causal_lm_to_prefix_lm(model: BloomForCausalLM) -> BloomForCa
             shift_labels = labels[..., 1:].contiguous()
             (batch_size, seq_length, vocab_size) = shift_logits.shape
             loss_fct = CrossEntropyLoss()
-            loss = loss_fct(shift_logits.view(batch_size * seq_length, vocab_size), shift_labels.view(batch_size * seq_length))
+            loss = loss_fct(
+                shift_logits.view(batch_size * seq_length, vocab_size),
+                shift_labels.view(batch_size * seq_length),
+            )
         if not return_dict:
             output = (lm_logits,) + transformer_outputs[1:]
             return (loss,) + output if loss is not None else output
@@ -358,7 +450,13 @@ def _convert_bloom_causal_lm_to_prefix_lm(model: BloomForCausalLM) -> BloomForCa
             attentions=transformer_outputs.attentions,
         )
 
-    def prepare_inputs_for_generation(self: BloomForCausalLM, input_ids: torch.LongTensor, past: Optional[torch.Tensor] = None, attention_mask: Optional[torch.Tensor] = None, **kwargs) -> dict:
+    def prepare_inputs_for_generation(
+        self: BloomForCausalLM,
+        input_ids: torch.LongTensor,
+        past: Optional[torch.Tensor] = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        **kwargs,
+    ) -> dict:
         if past:
             input_ids = input_ids[:, -1].unsqueeze(-1)
             bidirectional_mask = None
@@ -366,10 +464,20 @@ def _convert_bloom_causal_lm_to_prefix_lm(model: BloomForCausalLM) -> BloomForCa
                 past = self._convert_to_bloom_cache(past)
         else:
             bidirectional_mask = torch.ones_like(input_ids)
-        return {"input_ids": input_ids, "past_key_values": past, "use_cache": True, "attention_mask": attention_mask, "bidirectional_mask": bidirectional_mask}
+        return {
+            "input_ids": input_ids,
+            "past_key_values": past,
+            "use_cache": True,
+            "attention_mask": attention_mask,
+            "bidirectional_mask": bidirectional_mask,
+        }
 
     setattr(model, "forward", MethodType(forward, model))
-    setattr(model, "prepare_inputs_for_generation", MethodType(prepare_inputs_for_generation, model))
+    setattr(
+        model,
+        "prepare_inputs_for_generation",
+        MethodType(prepare_inputs_for_generation, model),
+    )
     setattr(model, "_prefix_lm_converted", True)
     return model
 
@@ -395,19 +503,35 @@ def _convert_opt_causal_lm_to_prefix_lm(model: OPTForCausalLM) -> OPTForCausalLM
         if input_shape[-1] > 1:
             if self.bidirectional_mask == "g":
                 (bsz, src_length) = input_shape
-                combined_attention_mask = torch.zeros((bsz, 1, src_length, src_length + past_key_values_length), dtype=inputs_embeds.dtype, device=inputs_embeds.device)
+                combined_attention_mask = torch.zeros(
+                    (bsz, 1, src_length, src_length + past_key_values_length),
+                    dtype=inputs_embeds.dtype,
+                    device=inputs_embeds.device,
+                )
             else:
-                combined_attention_mask = _make_causal_mask_opt(input_shape, inputs_embeds.dtype, past_key_values_length=past_key_values_length).to(inputs_embeds.device)
+                combined_attention_mask = _make_causal_mask_opt(
+                    input_shape,
+                    inputs_embeds.dtype,
+                    past_key_values_length=past_key_values_length,
+                ).to(inputs_embeds.device)
                 if self.bidirectional_mask is not None:
                     assert attention_mask.shape == self.bidirectional_mask.shape
-                    expanded_bidirectional_mask = _expand_mask_opt(self.bidirectional_mask, inputs_embeds.dtype, tgt_len=input_shape[-1]).to(inputs_embeds.device)
+                    expanded_bidirectional_mask = _expand_mask_opt(
+                        self.bidirectional_mask,
+                        inputs_embeds.dtype,
+                        tgt_len=input_shape[-1],
+                    ).to(inputs_embeds.device)
                     combined_attention_mask = torch.maximum(expanded_bidirectional_mask, combined_attention_mask)
         if attention_mask is not None:
             expanded_attn_mask = _expand_mask_opt(attention_mask, inputs_embeds.dtype, tgt_len=input_shape[-1]).to(inputs_embeds.device)
             combined_attention_mask = expanded_attn_mask if combined_attention_mask is None else expanded_attn_mask + combined_attention_mask
         return combined_attention_mask
 
-    setattr(model.model.decoder, "_prepare_decoder_attention_mask", MethodType(_prepare_decoder_attention_mask, model.model.decoder))
+    setattr(
+        model.model.decoder,
+        "_prepare_decoder_attention_mask",
+        MethodType(_prepare_decoder_attention_mask, model.model.decoder),
+    )
 
     def forward(
         self: OPTForCausalLM,
@@ -466,7 +590,14 @@ def _convert_opt_causal_lm_to_prefix_lm(model: OPTForCausalLM) -> OPTForCausalLM
 
 
 _SUPPORTED_HF_MODELS = _SUPPORTED_GPT_MODELS + (BloomForCausalLM, OPTForCausalLM)
-CAUSAL_LM_TYPES = Union[GPT2LMHeadModel, GPTJForCausalLM, GPTNeoForCausalLM, GPTNeoXForCausalLM, BloomForCausalLM, OPTForCausalLM]
+CAUSAL_LM_TYPES = Union[
+    GPT2LMHeadModel,
+    GPTJForCausalLM,
+    GPTNeoForCausalLM,
+    GPTNeoXForCausalLM,
+    BloomForCausalLM,
+    OPTForCausalLM,
+]
 
 
 def convert_hf_causal_lm_to_prefix_lm(model: CAUSAL_LM_TYPES) -> CAUSAL_LM_TYPES:
