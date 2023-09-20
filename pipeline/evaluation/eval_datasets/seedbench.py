@@ -92,7 +92,7 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
     # checkpoint = "/data/pufanyi/training_data/checkpoints/idefics-9b-instruct"
     checkpoint = "/data/pufanyi/training_data/checkpoints/OTTER-Image-MPT7B"
-    model =  OtterForConditionalGeneration.from_pretrained(checkpoint, torch_dtype=torch.bfloat16).to(device)
+    model = OtterForConditionalGeneration.from_pretrained(checkpoint, torch_dtype=torch.bfloat16).to(device)
     model.text_tokenizer.padding_side = "left"
     tokenizer = model.text_tokenizer
     dataset.evaluate(model, tokenizer)
