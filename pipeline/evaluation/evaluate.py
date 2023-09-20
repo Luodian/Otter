@@ -6,7 +6,7 @@ import contextlib
 
 sys.path.append("../..")
 from .models.base_model import load_model
-from .datasets.base_eval_dataset import load_dataset
+from .eval_datasets.base_eval_dataset import load_dataset
 
 
 def get_info(info):

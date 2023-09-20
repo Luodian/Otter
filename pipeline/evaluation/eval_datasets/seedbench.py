@@ -6,24 +6,13 @@ import torch
 from otter_ai import OtterForConditionalGeneration
 import transformers
 from tqdm import tqdm
+from .base_eval_dataset import BaseEvalDataset
 
 
 Image.MAX_IMAGE_PIXELS = 100_000_000
 
 
-def get_vision_x(input_data, model):
-    if isinstance(input_data, Image.Image):
-        if input_data.size == (224, 224) and not any(input_data.getdata()):  # Check if image is blank 224x224 image
-            vision_x = torch.zeros(1, 1, 1, 3, 224, 224, dtype=next(model.parameters()).dtype)
-        else:
-            image_processor = transformers.CLIPImageProcessor()
-            vision_x = image_processor.preprocess([input_data], return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)
-    else:
-        raise ValueError("Invalid input data. Expected PIL Image.")
-    return vision_x
-
-
-class SEEDBenchDataset(object):
+class SEEDBenchDataset(BaseEvalDataset):
     def load_json(self, json_file):
         with open(json_file) as f:
             data = json.load(f)
@@ -63,7 +52,7 @@ class SEEDBenchDataset(object):
         }
         return data_dict
 
-    def evaluate(self, model, tokenizer):
+    def evaluate(self, model):
         # print("Evaluating...")
         num_correct = 0
         for data_dict in tqdm(self, total=len(self.data), desc="Evaluating"):
@@ -72,19 +61,11 @@ class SEEDBenchDataset(object):
             answer = data_dict["answer"]
             options = data_dict["options"]
 
-            # print(type(image))
-
             option_losses = []
             for option in options:
-                query = f"<image>User:{question} GPT:<answer> {option}."
-                label = query
-                tokens = tokenizer(query, return_tensors="pt")
-                input_ids = tokens["input_ids"]
-                attention_mask = tokens["attention_mask"]
-                with torch.no_grad():
-                    vision_x = get_vision_x(image, model)
-                    loss = model(vision_x=vision_x.to(model.device), lang_x=input_ids.to(model.device), attention_mask=attention_mask.to(model.device))
-                option_losses.append(loss.items())
+                option_losses.append(
+                    model.forward(question, option, image).items()
+                )
 
             prediction_idx = np.argmin(option_losses)
             prediction = ["A", "B", "C", "D"][prediction_idx]

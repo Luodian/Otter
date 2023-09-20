@@ -4,7 +4,7 @@ import pandas as pd
 from PIL import Image
 from tqdm import tqdm
 from datasets import load_dataset
-from .base_evel_dataset import BaseEvalDataset
+from .base_eval_dataset import BaseEvalDataset
 
 
 class MMBenchDataset(BaseEvalDataset):
