@@ -4,8 +4,22 @@ from PIL import Image
 import numpy as np
 import torch
 from otter_ai import OtterForConditionalGeneration
+import transformers
+
 
 Image.MAX_IMAGE_PIXELS = 100_000_000
+
+
+def get_vision_x(input_data, model):
+    if isinstance(input_data, Image.Image):
+        if input_data.size == (224, 224) and not any(input_data.getdata()):  # Check if image is blank 224x224 image
+            vision_x = torch.zeros(1, 1, 1, 3, 224, 224, dtype=next(model.parameters()).dtype)
+        else:
+            image_processor = transformers.CLIPImageProcessor()
+            vision_x = image_processor.preprocess([input_data], return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)
+    else:
+        raise ValueError("Invalid input data. Expected PIL Image.")
+    return vision_x
 
 
 class SEEDBenchDataset(object):
@@ -67,7 +81,8 @@ class SEEDBenchDataset(object):
                 input_ids = tokens["input_ids"]
                 attention_mask = tokens["attention_mask"]
                 with torch.no_grad():
-                    loss = model(vision_x=image, lang_x=input_ids, attention_mask=attention_mask, label=label)
+                    vision_x = get_vision_x(image, model)
+                    loss = model(vision_x=vision_x.to(model.device), lang_x=input_ids.to(model.device), attention_mask=attention_mask.to(model.device))
                 option_losses.append(loss)
 
             prediction_idx = np.argmin(option_losses)
