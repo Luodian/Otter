@@ -6,8 +6,8 @@ import torch
 
 Image.MAX_IMAGE_PIXELS = 100_000_000
 
-class SEEDBenchDataset(object):
 
+class SEEDBenchDataset(object):
     def load_json(self, json_file):
         with open(json_file) as f:
             data = json.load(f)
@@ -57,7 +57,7 @@ class SEEDBenchDataset(object):
             options = data_dict["options"]
 
             print(type(image))
-            
+
             option_losses = []
             for option in options:
                 query = f"<image>User:{question} GPT:<answer> {option}."
@@ -66,21 +66,19 @@ class SEEDBenchDataset(object):
                 input_ids = tokens["input_ids"]
                 attention_mask = tokens["attention_mask"]
                 with torch.no_grad():
-                    loss = model(vision_x=image, 
-                                 lang_x=input_ids,
-                                 attention_mask=attention_mask,
-                                 label=label)
+                    loss = model(vision_x=image, lang_x=input_ids, attention_mask=attention_mask, label=label)
                 option_losses.append(loss)
-            
+
             prediction_idx = np.argmin(option_losses)
-            prediction = ['A', 'B', 'C', 'D'][prediction_idx]
+            prediction = ["A", "B", "C", "D"][prediction_idx]
             if prediction == answer:
                 num_correct += 1
-        
+
         accuracy = num_correct / len(self.data) * 100
         print(f"Accuracy: {accuracy:.2f}%")
         return accuracy
-    
+
+
 # from transformers import IdeficsForVisionText2Text, AutoProcessor
 # if __name__ == "__main__":
 #     dataset = "https://huggingface.co/datasets/Otter-AI/SEEDBench/tree/main/data"

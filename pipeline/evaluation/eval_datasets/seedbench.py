@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from otter_ai import OtterForConditionalGeneration
 import transformers
+from tqdm import tqdm
 
 
 Image.MAX_IMAGE_PIXELS = 100_000_000
@@ -63,15 +64,15 @@ class SEEDBenchDataset(object):
         return data_dict
 
     def evaluate(self, model, tokenizer):
-        print("Evaluating...")
+        # print("Evaluating...")
         num_correct = 0
-        for data_dict in self:
+        for data_dict in tqdm(self, total=len(self.data), desc="Evaluating"):
             image = data_dict["image"]
             question = data_dict["question"]
             answer = data_dict["answer"]
             options = data_dict["options"]
 
-            print(type(image))
+            # print(type(image))
 
             option_losses = []
             for option in options:
@@ -83,7 +84,7 @@ class SEEDBenchDataset(object):
                 with torch.no_grad():
                     vision_x = get_vision_x(image, model)
                     loss = model(vision_x=vision_x.to(model.device), lang_x=input_ids.to(model.device), attention_mask=attention_mask.to(model.device))
-                option_losses.append(loss)
+                option_losses.append(loss.items())
 
             prediction_idx = np.argmin(option_losses)
             prediction = ["A", "B", "C", "D"][prediction_idx]
