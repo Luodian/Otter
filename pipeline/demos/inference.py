@@ -16,7 +16,7 @@ import pytz
 # Initialize the time zone
 utc_plus_8 = pytz.timezone("Asia/Singapore")  # You can also use 'Asia/Shanghai', 'Asia/Taipei', etc.
 # Get the current time in UTC
-utc_now = pytz.utc.localize(datetime.utcnow())
+utc_now = pytz.utc.localize(datetime.datetime.utcnow())
 # Convert to UTC+8
 utc_plus_8_time = utc_now.astimezone(utc_plus_8)
 
@@ -25,7 +25,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, default="otter", required=True, help="The model name.")
     parser.add_argument("--checkpoint", type=str, help="The path to the checkpoint.")
-    parser.add_argument("--output_dir", type=str, help="The dir path to the output file.")
+    parser.add_argument("--output_dir", type=str, help="The dir path to the output file.", default="./logs")
     args = parser.parse_args()
     return args
 
