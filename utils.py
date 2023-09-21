@@ -8,8 +8,8 @@ def accuracy():
 
 
 # TODO：出力ファイルの指定をなくす
-def remove_background(input_video_path, output_video_path):
-    # 動画ファイルを読み込み
+def remove_background(input_video_path):
+    output_video_path = "output_temp.MP4"
     cap = cv2.VideoCapture(input_video_path)
 
     # 動画のフレームサイズを取得
@@ -19,7 +19,6 @@ def remove_background(input_video_path, output_video_path):
 
     video_frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
     video_fps = cap.get(cv2.CAP_PROP_FPS)
-    # TODO：ログを出す
     video_len_sec = video_frame_count / video_fps
 
     # 出力動画ファイルの設定

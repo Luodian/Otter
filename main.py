@@ -19,6 +19,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--input_video_path", type=str, required=True, help="path for input mp4 video")
 args = parser.parse_args()
 
+# TODO: loggingを導入する
+
 load_bit = "fp32"
 if load_bit == "fp16":
     precision = {"torch_dtype": torch.float16}
@@ -36,6 +38,7 @@ image_processor = transformers.CLIPImageProcessor()
 model.eval()
 
 video_url = args.input_video_path
+print(video_url)
 
 frames_list = get_image(video_url)
 
