@@ -51,12 +51,11 @@ def main():
     # read mp4
     video_url = args.input_video_path
 
-    if video_url[-3] != "MP4" or video_url[-3] != "mp4":
+    if video_url[-3:] != "MP4" and video_url[-3:] != "mp4":
         # TODO: logging
         print("mp4ファイルを指定してください。")
         return
 
-    print(video_url)
     frames_list = get_image(video_url)
 
     # TODO: プロンプトのファイル数だけ繰り返す

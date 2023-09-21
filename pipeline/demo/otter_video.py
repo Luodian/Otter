@@ -32,29 +32,32 @@ def extract_frames(video_path, num_frames=16):
     frame_step = total_frames // num_frames
     frames = []
 
-    subtractor = cv2.createBackgroundSubtractorMOG2(detectShadows=False)
+    # subtractor = cv2.createBackgroundSubtractorMOG2(detectShadows=False)
     for i in range(num_frames):
         video.set(cv2.CAP_PROP_POS_FRAMES, i * frame_step)
         ret, frame = video.read()
         if ret:
+            # frame = remove_background(frame, subtractor)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = Image.fromarray(frame).convert("RGB")
-            frame = remove_background(frame, subtractor)
             frames.append(frame)
+            # TODO: 試しに表示する
+
 
     video.release()
     return frames
 
 
 def remove_background(frame, subtractor):
-    # 背景差分法を適用して前景を取得
+    # get foreground
     fg_mask = subtractor.apply(frame)
 
-    # 前景と背景の差分を反転させて背景を取得
+    # exchange foreground and background
     bg_mask = cv2.bitwise_not(fg_mask)
 
-    # 背景をマスクする
+    # mask background
     result = cv2.bitwise_and(frame, frame, mask=fg_mask)
+    return result
 
 
 def get_image(url: str) -> Union[Image.Image, list]:
