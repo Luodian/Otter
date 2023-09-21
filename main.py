@@ -21,6 +21,7 @@ args = parser.parse_args()
 
 # TODO: loggingを導入する
 
+# model settings
 load_bit = "fp32"
 if load_bit == "fp16":
     precision = {"torch_dtype": torch.float16}
@@ -37,12 +38,13 @@ tokenizer = model.text_tokenizer
 image_processor = transformers.CLIPImageProcessor()
 model.eval()
 
+# read mp4
 video_url = args.input_video_path
 print(video_url)
-
 frames_list = get_image(video_url)
 
 # TODO: プロンプトのファイル数だけ繰り返す
+# otter model input and output
 prompts_input = input("Enter prompts: ")
 response = get_response(frames_list, prompts_input, model, image_processor, tensor_dtype)
 print(f"Response: {response}")
