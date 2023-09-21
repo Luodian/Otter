@@ -15,6 +15,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, default="otter", required=True, help="The model name.")
     parser.add_argument("--checkpoint", type=str, help="The path to the checkpoint.")
+    parser.add_argument("--output_file", type=str, help="The path to the output file.")
     args = parser.parse_args()
     return args
 
@@ -35,7 +36,7 @@ def main():
         with open(yaml_file, "r") as file:
             test_data_list = yaml.safe_load(file)
 
-        log_json_path = yaml_file.replace(".yaml", "_log.json")
+        log_json_path = args.output_file if args.output_file else yaml_file.replace(".yaml", ".json")
         log_json = {}
         for test_id, test_data in enumerate(test_data_list):
             image_path = test_data.get("image_path", "")
