@@ -76,8 +76,6 @@ class SEEDBenchDataset(BaseEvalDataset):
         return accuracy
 
 
-from transformers import IdeficsForVisionText2Text, AutoProcessor
-
 if __name__ == "__main__":
     dataset = SEEDBenchDataset("/data/joshua/datasets/SEEDBench/SEED-Bench.json", "/data/joshua/datasets/SEEDBench/SEED-Bench-image")
     for data in dataset:
