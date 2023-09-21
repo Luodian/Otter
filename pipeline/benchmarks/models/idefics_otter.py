@@ -93,12 +93,7 @@ class IdeficsOtter(BaseModel):
         # attention_mask = tokens["attention_mask"]
         with torch.no_grad():
             vision_x = self.get_vision_x(image)
-            loss = self.model(
-                pixel_values=vision_x.to(self.model.device), 
-                lang_x=input_ids.to(self.model.device), 
-                attention_mask=attention_mask.to(self.model.device),
-                image_attention_mask=image_attention_mask.to(self.model.device)
-            )[0]
+            loss = self.model(pixel_values=vision_x.to(self.model.device), lang_x=input_ids.to(self.model.device), attention_mask=attention_mask.to(self.model.device), image_attention_mask=image_attention_mask.to(self.model.device))[0]
         return loss
 
 

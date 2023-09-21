@@ -7,12 +7,10 @@ import pandas as pd
 from datasets import load_dataset
 from PIL import Image
 from tqdm import tqdm
-
-sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/pipeline/evaluation/eval_datasets/")
 import shutil
 
 # from .base_evel_dataset import BaseEvalDataset
-from base_eval_dataset import BaseEvalDataset
+from .base_eval_dataset import BaseEvalDataset
 from huggingface_hub import snapshot_download
 
 current_file_path = os.path.abspath(__file__)
