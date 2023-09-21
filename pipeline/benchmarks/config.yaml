@@ -13,3 +13,16 @@ models:
   - name: otter_image
     model_path: /data/pufanyi/training_data/checkpoints/OTTER-Image-MPT7B
 
+# datasets:
+#   - name: mhbench
+#     dataset_path: ZhangYuanhan/multi-hop-reasoning
+#     task: Generation
+#     output_root: /mnt/petrelfs/zhangyuanhan/Otter/pipeline/evaluation/evaluation_result/mhbench
+
+# models:
+#   - name: llama_adapter
+#     model_path: /mnt/petrelfs/zhangyuanhan/Otter/pipeline/evaluation/ckpts/7B.pth
+#   # - name: video_chat
+#   #   model_path: ""
+#   # - name: otter_video
+#   #   model_path: /mnt/petrelfs/zhangyuanhan/Otter/checkpoint/OTTER-9B-DenseCaption
