@@ -7,60 +7,30 @@ from otter_ai import OtterForConditionalGeneration
 import transformers
 from tqdm import tqdm
 from .base_eval_dataset import BaseEvalDataset
+from datasets import load_dataset
 
 
 Image.MAX_IMAGE_PIXELS = 100_000_000
 
 
 class SEEDBenchDataset(BaseEvalDataset):
-    def load_json(self, json_file):
-        with open(json_file) as f:
-            data = json.load(f)
-        return data
-
-    def filter_image_only(self, data):
-        filtered_data = []
-        for d in data:
-            if d["data_type"] == "image":
-                filtered_data.append(d)
-        return filtered_data
-
-    def __init__(self, data_file, image_folder):
-        super().__init__("seedbench", data_file)
-        json_data = self.load_json(data_file)
-        self.data = self.filter_image_only(json_data["questions"])
-        self.question_type = json_data["question_type"]
-        self.question_type = {v: k for k, v in self.question_type.items()}
-        self.image_folder = image_folder
-
-    def get_image(self, image_id):
-        path = os.path.join(self.image_folder, image_id + ".jpg")
-        return Image.open(path).convert("RGB")
-
-    def __getitem__(self, idx):
-        data = self.data[idx]
-        question = data["question"]
-        image_id = data["data_id"]
-        image = self.get_image(image_id)
-        answer = data["answer"]
-        options = [data["choice_a"], data["choice_b"], data["choice_c"], data["choice_d"]]
-
-        data_dict = {
-            "image": image,
-            "question": question,
-            "answer": answer,
-            "options": options,
-        }
-        return data_dict
+    def __init__(self, data_path="Otter-AI/SEEDBench", *, split="train", cache_dir=None):
+        super().__init__("SEEDBenchDataset", data_path)
+        self.data = load_dataset("Otter-AI/SEEDBench", split=split, cache_dir=cache_dir)
 
     def evaluate(self, model):
         # print("Evaluating...")
         num_correct = 0
-        for data_dict in tqdm(self, total=len(self.data), desc="Evaluating"):
+        for data_dict in tqdm(self.data, total=len(self.data), desc="Evaluating"):
             image = data_dict["image"]
             question = data_dict["question"]
             answer = data_dict["answer"]
-            options = data_dict["options"]
+            options = [
+                data_dict["choice_a"],
+                data_dict["choice_b"],
+                data_dict["choice_c"],
+                data_dict["choice_d"],
+            ]
 
             option_losses = []
             for option in options:
