@@ -5,24 +5,8 @@ datasets:
     cache_dir: /path/to/hf/cache
 
 models:
-  # - name: idefics
-  #   model_path: /path/to/checkpoints/idefics-9b-instruct
-  # - name: idefics_otter
-  #   model_path: /path/to/checkpoints/otter_idefics9b_0830
-  #   processor: /path/to/checkpoints/idefics-9b-instruct
-  - name: otter_image
-    model_path: /data/pufanyi/training_data/checkpoints/OTTER-Image-MPT7B
-
-# datasets:
-#   - name: mhbench
-#     dataset_path: ZhangYuanhan/multi-hop-reasoning
-#     task: Generation
-#     output_root: /mnt/petrelfs/zhangyuanhan/Otter/pipeline/evaluation/evaluation_result/mhbench
-
-# models:
-#   - name: llama_adapter
-#     model_path: /mnt/petrelfs/zhangyuanhan/Otter/pipeline/evaluation/ckpts/7B.pth
-#   # - name: video_chat
-#   #   model_path: ""
-#   # - name: otter_video
-#   #   model_path: /mnt/petrelfs/zhangyuanhan/Otter/checkpoint/OTTER-9B-DenseCaption
+  - name: idefics
+    model_path: /path/to/checkpoints/idefics-9b-instruct
+  - name: idefics_otter
+    model_path: /path/to/checkpoints/otter_idefics9b_0830
+    processor: /path/to/checkpoints/idefics-9b-instruct
