@@ -345,7 +345,6 @@ def main():
             tokenizer = processor.tokenizer
             # make embedding size divisible by 64 for hardware compatiblity https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html#requirements-tc
             # resize_token_embedding is not for parameter sharing in deepspeed !!!!
-            
 
     if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
         params_to_gather = [p for name, p in model.named_parameters() if p.requires_grad]

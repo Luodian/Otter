@@ -36,7 +36,7 @@ def main():
         with open(yaml_file, "r") as file:
             test_data_list = yaml.safe_load(file)
 
-        cur_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        cur_date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         log_json_path = f"{args.output_dir}/inference_log_{cur_date}.json"
         log_json = {
             "model_name": args.model_name,
