@@ -1,7 +1,8 @@
 import argparse
+import datetime
 import json
 import sys
-import datetime
+
 import requests
 import yaml
 
@@ -13,11 +14,12 @@ requests.packages.urllib3.disable_warnings()
 import pytz
 
 # Initialize the time zone
-utc_plus_8 = pytz.timezone('Asia/Singapore')  # You can also use 'Asia/Shanghai', 'Asia/Taipei', etc.
+utc_plus_8 = pytz.timezone("Asia/Singapore")  # You can also use 'Asia/Shanghai', 'Asia/Taipei', etc.
 # Get the current time in UTC
 utc_now = pytz.utc.localize(datetime.utcnow())
 # Convert to UTC+8
 utc_plus_8_time = utc_now.astimezone(utc_plus_8)
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -66,7 +68,7 @@ def main():
             print_colored(f"answer: {response}", color_code="\033[94m")
             print("-" * 150)
 
-            log_json['results'].update(
+            log_json["results"].update(
                 {
                     str(test_id).zfill(3): {
                         "image_path": image_path,
