@@ -4,7 +4,7 @@ import sys
 import requests
 import yaml
 
-from .demo_models import TestOtter, TestOtterIdefics
+from .demo_models import TestOtter, TestOtterIdefics, TestIdefics
 from .demo_utils import get_image, print_colored
 
 requests.packages.urllib3.disable_warnings()
@@ -14,8 +14,8 @@ def parse_args():
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_name", type=str, default="otter", help="The model name.")
-    parser.add_argument("--checkpoint", type=str, required=True, help="The path to the checkpoint.")
+    parser.add_argument("--model_name", type=str, default="otter", required=True, help="The model name.")
+    parser.add_argument("--checkpoint", type=str, help="The path to the checkpoint.")
     args = parser.parse_args()
     return args
 
@@ -26,6 +26,8 @@ def main():
         model = TestOtter(checkpoint=args.checkpoint)
     elif args.model_name == "otter_idefics":
         model = TestOtterIdefics(checkpoint=args.checkpoint)
+    elif args.model_name == "idefics":
+        model = TestIdefics(checkpoint=args.checkpoint)
 
     while True:
         yaml_file = input("Enter the path to the yaml file: (or 'q' to quit): ")
@@ -63,6 +65,7 @@ def main():
 
         with open(log_json_path, "w") as file:
             json.dump(log_json, file, indent=4, sort_keys=False)
+
 
 if __name__ == "__main__":
     main()
