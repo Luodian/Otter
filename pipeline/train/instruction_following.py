@@ -4,7 +4,7 @@ import argparse
 import gc
 import glob
 import os
-import random
+
 import sys
 import time
 
@@ -12,6 +12,7 @@ import deepspeed
 import numpy as np
 import torch
 import torch.nn
+from torch.utils.data import ConcatDataset, DataLoader
 from accelerate import Accelerator
 from tqdm import tqdm
 from transformers import (
@@ -21,24 +22,26 @@ from transformers import (
     get_linear_schedule_with_warmup,
 )
 import wandb
-
+from itertools import cycle
 import sys
 
 sys.path.append("../..")
-from pipeline.mimicit_utils.data import get_data, preload_dataset
-from pipeline.train.distributed import world_info_from_env
+from pipeline.mimicit_utils.data import get_data
 from pipeline.train.train_utils import (
     AverageMeter,
-    get_checkpoint,
     get_image_attention_mask,
     verify_yaml,
+    get_grouped_params,
+    random_seed,
+    save_checkpoint,
+    save_final_weights,
+    master_print,
 )
+from pipeline.train.train_args import parse_args
 
 # import from src, not from pip package for training & debugging
 from src.otter_ai.models.otter.modeling_otter import OtterForConditionalGeneration
-from src.otter_ai.models.flamingo.modeling_flamingo import (
-    FlamingoForConditionalGeneration,
-)
+from src.otter_ai.models.flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from transformers import AutoProcessor
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -58,26 +61,22 @@ except ImportError:
     IdeficsForVisionText2Text = type(None)
 
 
-def random_seed(seed=42, rank=0):
-    torch.manual_seed(seed + rank)
-    np.random.seed(seed + rank)
-    random.seed(seed + rank)
+def get_weights_for_dataloaders(dataloaders):
+    total_samples = sum(len(dataloader.dataset) for dataloader in dataloaders)
+    weights = [len(dataloader.dataset) / total_samples for dataloader in dataloaders]
+    return weights
 
 
-def train_one_epoch(
-    args,
-    model,
-    epoch,
-    mimicit_loaders,
-    tokenizer,
-    optimizer,
-    lr_scheduler,
-    device_id,
-    accelerator,
-    wandb,
-):
-    num_batches_per_epoch = len(mimicit_loaders[0])
-    total_training_steps = num_batches_per_epoch * args.num_epochs
+def get_next_dataloader(dataloader_iterators, weights):
+    chosen_dataloader_index = np.random.choice(len(dataloader_iterators), p=weights)
+    return dataloader_iterators[chosen_dataloader_index]
+
+
+def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
+    dataloader_iterators = [cycle(dataloader) for dataloader in mimicit_loaders]
+    weights = get_weights_for_dataloaders(mimicit_loaders)
+    num_batches_per_epoch = sum(len(dataloader) for dataloader in mimicit_loaders)
+    total_training_steps = args.num_epochs * num_batches_per_epoch
 
     # special design for Idefics Model's prompt strategy
     fake_token_image_exists = True if "<fake_token_around_image>" in tokenizer.special_tokens_map["additional_special_tokens"] else False
@@ -98,99 +97,92 @@ def train_one_epoch(
     end = time.time()
     autocast_type = torch.bfloat16 if accelerator.mixed_precision == "bf16" else torch.float32
 
-    # loop through dataloader
-    for num_steps, (batch_mimicits) in tqdm(
-        enumerate(zip(*mimicit_loaders)),
-        disable=args.rank != 0,
-        total=total_training_steps,
-        initial=(epoch * num_batches_per_epoch),
-    ):
+    # loop through different groups of dataloader
+    for num_steps in tqdm(range(total_training_steps), disable=args.rank != 0, initial=(epoch * num_batches_per_epoch)):
+        if num_steps + 1 == num_batches_per_epoch:
+            break
         data_time_m.update(time.time() - end)
-
+        dataloader_iterator = get_next_dataloader(dataloader_iterators, weights)
+        batch_mimicit = next(dataloader_iterator)  # Fetch a batch from the chosen dataloader
         global_step = num_steps + epoch * num_batches_per_epoch
         #### MIMIC-IT FORWARD PASS ####
+        images = batch_mimicit["net_input"]["patch_images"].to(device_id, non_blocking=True)
+        input_ids = batch_mimicit["net_input"]["input_ids"].to(device_id, non_blocking=True)
+        attention_mask = batch_mimicit["net_input"]["attention_masks"].to(device_id, non_blocking=True)
 
-        total_losses = []
-        for batch_mimicit in batch_mimicits:
-            images = batch_mimicit["net_input"]["patch_images"].to(device_id, non_blocking=True)
-            input_ids = batch_mimicit["net_input"]["input_ids"].to(device_id, non_blocking=True)
-            attention_mask = batch_mimicit["net_input"]["attention_masks"].to(device_id, non_blocking=True)
+        labels = input_ids.clone()
+        labels[labels == tokenizer.pad_token_id] = -100
+        labels[:, 0] = -100
+        for i in range(labels.shape[0]):
+            # get index of all endofchunk/media tokens in the sequence
+            endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
+            media_idxs = torch.where(labels[i] == media_token_id)[0]
 
-            labels = input_ids.clone()
-            labels[labels == tokenizer.pad_token_id] = -100
-            labels[:, 0] = -100
-            for i in range(labels.shape[0]):
-                # get index of all endofchunk/media tokens in the sequence
-                endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
-                media_idxs = torch.where(labels[i] == media_token_id)[0]
+            # remove loss for any token the before the first <answer>
+            token_idx = 0
+            while token_idx < labels.shape[1] and labels[i][token_idx] != answer_token_id:
+                labels[i][token_idx] = -100
+                token_idx += 1
 
-                # remove loss for any token the before the first <answer>
-                token_idx = 0
+            # remove loss for any token between <|endofchunk|> and <answer>, except <image>
+            for endofchunk_idx in endofchunk_idxs[:-1]:
+                token_idx = endofchunk_idx + 1
                 while token_idx < labels.shape[1] and labels[i][token_idx] != answer_token_id:
-                    labels[i][token_idx] = -100
+                    if labels[i][token_idx] == media_token_id:
+                        pass
+                    else:
+                        labels[i][token_idx] = -100
                     token_idx += 1
 
-                # remove loss for any token between <|endofchunk|> and <answer>, except <image>
-                for endofchunk_idx in endofchunk_idxs[:-1]:
-                    token_idx = endofchunk_idx + 1
-                    while token_idx < labels.shape[1] and labels[i][token_idx] != answer_token_id:
-                        if labels[i][token_idx] == media_token_id:
-                            pass
-                        else:
-                            labels[i][token_idx] = -100
-                        token_idx += 1
+        labels[labels == answer_token_id] = -100
+        labels[labels == media_token_id] = -100
+        if fake_token_image_exists:
+            labels[labels == fake_token_image_token_id] = -100
 
-            labels[labels == answer_token_id] = -100
-            labels[labels == media_token_id] = -100
-            if fake_token_image_exists:
-                labels[labels == fake_token_image_token_id] = -100
+        with accelerator.autocast():
+            unwrapped_model = accelerator.unwrap_model(model)
+            if num_steps == 0:
+                # info check
+                master_print(f"Device: {device_id}, input_ids: {input_ids.shape}")
+                master_print(f"Device: {device_id}, images: {images.shape}")
+                master_print(f"Device: {device_id}, attention_mask: {attention_mask.shape}")
+                master_print(f"Device: {device_id}, labels: {labels.shape}")
+                master_print(f"model: {unwrapped_model.__class__.__name__}")
+                master_print(f"model dtype: {unwrapped_model.dtype}")
 
-            with accelerator.autocast():
-                unwrapped_model = accelerator.unwrap_model(model)
-                if num_steps == 0:
-                    # info check
-                    accelerator.print(f"Device: {device_id}, input_ids: {input_ids.shape}")
-                    accelerator.print(f"Device: {device_id}, images: {images.shape}")
-                    accelerator.print(f"Device: {device_id}, attention_mask: {attention_mask.shape}")
-                    accelerator.print(f"Device: {device_id}, labels: {labels.shape}")
-                    accelerator.print(f"model: {unwrapped_model.__class__.__name__}")
-                    accelerator.print(f"model dtype: {unwrapped_model.dtype}")
-
-                if IdeficsForVisionText2Text is not None and isinstance(unwrapped_model, IdeficsForVisionText2Text):
-                    # only for image model
-                    max_num_images = images.shape[1]
-                    pure_text = torch.all(images == 0)
-                    image_attention_mask = get_image_attention_mask(
-                        input_ids,
-                        max_num_images,
-                        tokenizer,
-                        include_image=not pure_text,
-                    )
-                    image_attention_mask = image_attention_mask.to(device_id, non_blocking=True)
-                    loss_mimicit = model(
-                        pixel_values=images.squeeze(2).to(autocast_type),
-                        input_ids=input_ids,
-                        attention_mask=attention_mask,
-                        image_attention_mask=image_attention_mask,
-                        labels=labels,
-                    )[0]
-                else:
-                    loss_mimicit = model(
-                        vision_x=images.to(autocast_type),
-                        lang_x=input_ids,
-                        attention_mask=attention_mask,
-                        labels=labels,
-                    )[0]
-
-            if accelerator.mixed_precision == "fp16":
-                accelerator.backward(loss_mimicit.to(device_id))
+            if IdeficsForVisionText2Text is not None and isinstance(unwrapped_model, IdeficsForVisionText2Text):
+                # only for image model
+                max_num_images = images.shape[1]
+                pure_text = torch.all(images == 0)
+                image_attention_mask = get_image_attention_mask(
+                    input_ids,
+                    max_num_images,
+                    tokenizer,
+                    include_image=not pure_text,
+                )
+                image_attention_mask = image_attention_mask.to(device_id, non_blocking=True)
+                loss_mimicit = model(
+                    pixel_values=images.squeeze(2).to(autocast_type),
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    image_attention_mask=image_attention_mask,
+                    labels=labels,
+                )[0]
             else:
-                accelerator.backward(loss_mimicit)
+                loss_mimicit = model(
+                    vision_x=images.to(autocast_type),
+                    lang_x=input_ids,
+                    attention_mask=attention_mask,
+                    labels=labels,
+                )[0]
 
-            total_losses.append(loss_mimicit)
+        if accelerator.mixed_precision == "fp16":
+            accelerator.backward(loss_mimicit.to(device_id))
+        else:
+            accelerator.backward(loss_mimicit)
+
         #### BACKWARD PASS ####
-        total_loss_sum = sum(total_losses)
-        mean_loss = total_loss_sum / len(total_losses)
+        mean_loss = loss_mimicit.detach().mean()
         cur_batch_max_tokens = input_ids.shape[1]
 
         def mask_embedding(m):
@@ -246,194 +238,25 @@ def train_one_epoch(
                 step_time_m.reset()
                 data_time_m.reset()
 
+                group_name = batch_mimicit["task_group"][0]
+                assert all(item == group_name for item in batch_mimicit["task_group"]), "Not all items in the list are the same"
                 wandb.log(
                     {
-                        "loss_mimicit": mean_loss.item(),
+                        "loss_mimicit": mean_loss,
                         "global_step": global_step // args.gradient_accumulation_steps,
+                        group_name: mean_loss,
                     },
                     commit=True,
                 )
                 # torch.cuda.empty_cache()
                 # gc.collect()  # forces garbage collection
 
-            if args.rank == 0 and global_step != 0 and (args.save_steps_interval != -1) and (global_step % args.save_steps_interval == 0):
-                if not os.path.exists(args.external_save_dir):
-                    os.makedirs(args.external_save_dir)
-
-                unwrapped_model = accelerator.unwrap_model(model)
-                checkpoint_dict = {
-                    "steps": global_step,
-                    "model_state_dict": get_checkpoint(unwrapped_model),
-                }
-                print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_steps_{global_step}.pt")
-                accelerator.save(
-                    checkpoint_dict,
-                    f"{args.external_save_dir}/checkpoint_steps_{global_step}.pt",
-                )
-                if args.delete_previous_checkpoint:
-                    if epoch > 0 and os.path.exists(f"{args.external_save_dir}/checkpoint_step_{global_step-args.save_steps_interval}.pt"):
-                        os.remove(f"{args.external_save_dir}/checkpoint_step_{global_step-args.save_steps_interval}.pt")
+        if args.rank == 0 and global_step != 0 and (args.save_steps_interval != -1) and (global_step % args.save_steps_interval == 0):
+            save_checkpoint(epoch=None, global_step=global_step, model=model, args=args, accelerator=accelerator)
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
             print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss MIMIC-IT: {mean_loss.item():.3f}")
-
-
-def parse_args():
-    """
-    Parse the command line arguments and perform the initial setup.
-    :return: Parsed arguments
-    """
-    parser = argparse.ArgumentParser(description="Main training script for the model")
-    # Model configuration arguments
-    parser.add_argument(
-        "--external_save_dir",
-        type=str,
-        default=None,
-        help="set to save model to external path",
-    )
-    parser.add_argument(
-        "--run_name",
-        type=str,
-        default="otter-9b",
-        help="used to name saving directory and wandb run",
-    )
-    parser.add_argument(
-        "--model_name",
-        type=str,
-        default="otter",
-        choices=["otter", "flamingo", "idefics"],
-        help="otters or flamingo",
-    )
-    parser.add_argument(
-        "--instruction_format",
-        type=str,
-        default="simple",
-        choices=["simple", "llama2", "idefics"],
-        help="simple is for mpt/llama1, rest are in different instruction templates.",
-    )
-    parser.add_argument(
-        "--training_data_yaml",
-        type=str,
-        default="",
-        help="Path to the training data yaml file.",
-    )
-    # Argument for specifying the ratio for resampling past datasets.
-    parser.add_argument(
-        "--past_subset_ration",
-        type=float,
-        default=1.0,
-        help="The ratio for resampling the past dataset. Should be a float between 0 and 1.",
-    )
-
-    # optimizer args
-    parser.add_argument("--gradient_checkpointing", action="store_true")
-    parser.add_argument("--offline", action="store_true")
-    parser.add_argument("--save_ckpt_each_epoch", action="store_true")
-    parser.add_argument("--num_epochs", type=int, default=1)
-    parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
-    # Sum of gradient optimization batch size
-    parser.add_argument("--batch_size", type=int, default=128)
-    parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
-    parser.add_argument("--save_steps_interval", type=int, default=-1)
-    parser.add_argument(
-        "--pretrained_model_name_or_path",
-        type=str,
-        help="path to huggingface model or model identifier from local path or huggingface.co",
-        default=None,
-    )
-    parser.add_argument(
-        "--trained_ckpt",
-        type=str,
-        help="path to trained_ckpt",
-        default=None,
-    )
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--learning_rate", default=1e-4, type=float)
-    parser.add_argument(
-        "--lr_scheduler",
-        default="constant",
-        type=str,
-        help="constant, linear, or cosine",
-    )
-    parser.add_argument("--warmup_steps", default=1000, type=int)
-    parser.add_argument("--warmup_steps_ratio", default=None, type=float)
-    parser.add_argument("--weight_decay", default=0.1, type=float)
-    parser.add_argument("--workers", type=int, default=4)
-    # distributed training args
-    parser.add_argument(
-        "--dist-url",
-        default="env://",
-        type=str,
-        help="url used to set up distributed training",
-    )
-    parser.add_argument("--dist-backend", default="nccl", type=str, help="distributed backend")
-    parser.add_argument(
-        "--no-set-device-rank",
-        default=False,
-        action="store_true",
-        help="Don't set device index from local rank (when CUDA_VISIBLE_DEVICES restricted to one per proc).",
-    )
-    # YH: Training detail
-    parser.add_argument("--mask_lm_head", action="store_true")
-    parser.add_argument(
-        "--max_seq_len",
-        type=int,
-        default=2048,
-        help="the maximum src sequence length",
-    )
-    parser.add_argument("--patch-image-size", type=int, default=224)
-    parser.add_argument("--resample_frames", type=int, default=32)
-    # this could potentially save 33GB of all model parameters for otter-9b, including the language and vision model.
-    parser.add_argument("--save_hf_model", default=False, action="store_true")
-    parser.add_argument(
-        "--customized_config",
-        default=None,
-        type=str,
-        help="path to customized additional config.json, use to modify from the original config.json in pretrained model.",
-    )
-    parser.add_argument(
-        "--task_name",
-        default="",
-        type=str,
-        help="task name, used to decide different function to load dataset.",
-    )
-    parser.add_argument("--report_to_wandb", default=False, action="store_true")
-    parser.add_argument("--wandb_project", type=str)
-    parser.add_argument("--wandb_entity", type=str)
-    parser.add_argument(
-        "--save_checkpoints_to_wandb",
-        default=False,
-        action="store_true",
-        help="save checkpoints to wandb",
-    )
-    parser.add_argument(
-        "--resume_from_checkpoint",
-        default=False,
-        action="store_true",
-        help="resume from checkpoint (original openflamingo pt format, not hf format)",
-    )
-    # TODO: remove additional data args, all args would be processed in above parser
-    parser.add_argument(
-        "--delete_previous_checkpoint",
-        action="store_true",
-        help="delete previous checkpoint when saving new checkpoint",
-    )
-    args = parser.parse_args()
-
-    # Check for argument consistency and set environment variables if needed
-    if args.save_checkpoints_to_wandb and not args.report_to_wandb:
-        raise ValueError("save_checkpoints_to_wandb requires report_to_wandb")
-
-    if args.offline:
-        os.environ["WANDB_MODE"] = "offline"
-        os.environ["TRANSFORMERS_OFFLINE"] = "1"
-
-    args.local_rank, args.rank, args.world_size = world_info_from_env()
-
-    random_seed(args.seed)
-
-    return args
 
 
 def main():
@@ -449,7 +272,7 @@ def main():
     device_id = accelerator.device
 
     if args.pretrained_model_name_or_path is not None:
-        accelerator.print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
+        master_print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
         device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED" else "auto"
         kwargs = {"local_files_only": args.offline, "device_map": device_map}
         if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
@@ -502,10 +325,7 @@ def main():
         params_to_gather = [p for name, p in model.named_parameters() if p.requires_grad]
         with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
             if torch.distributed.get_rank() == 0:
-                print(
-                    device_id,
-                    f"Zero3 Optimization: Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B",
-                )
+                print(device_id, f"Zero3 Optimization: Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
     if args.trained_ckpt is not None:
         train_ckpt = torch.load(args.trained_ckpt, map_location="cpu")
@@ -526,46 +346,25 @@ def main():
     print(f"Start running training on rank {args.rank}.")
 
     mimicit_loaders = get_data(args, image_processor, tokenizer, "mimicit")
-
-    def get_grouped_params(model):
-        params_with_wd, params_without_wd = [], []
-
-        def apply_decay(x):
-            return "gated_cross_attn_layer" in x and "ff_gate" not in x and "attn_gate" not in x and "norm" not in x and "bias" not in x
-
-        for n, p in model.named_parameters():
-            # if p.requires_grad:
-            if apply_decay(n):
-                params_with_wd.append(p)
-            else:
-                params_without_wd.append(p)
-
-        return [
-            {"params": params_with_wd, "weight_decay": args.weight_decay},
-            {"params": params_without_wd, "weight_decay": 0.0},
-        ]
-
-    total_training_steps = len(mimicit_loaders[0]) * args.num_epochs
+    total_training_steps = sum(len(dataloader) for dataloader in mimicit_loaders) * args.num_epochs
     resume_from_epoch = 0
-    # check if a checkpoint exists for this run
     args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
-    if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is True:
-        checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
-        if len(checkpoint_list) == 0:
-            print(f"Found no checkpoints for run {args.external_save_dir}.")
-        else:
-            resume_from_checkpoint_path = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
-            print(f"Found checkpoint {resume_from_checkpoint_path} for run {args.external_save_dir}.")
+    # if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is True:
+    #     checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
+    #     if len(checkpoint_list) == 0:
+    #         print(f"Found no checkpoints for run {args.external_save_dir}.")
+    #     else:
+    #         resume_from_checkpoint_path = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
+    #         print(f"Found checkpoint {resume_from_checkpoint_path} for run {args.external_save_dir}.")
+    #     if args.rank == 0:
+    #         print(f"Loading checkpoint from {resume_from_checkpoint_path}")
+    #     checkpoint = torch.load(resume_from_checkpoint_path, map_location="cpu")
+    #     model.load_state_dict(checkpoint["model_state_dict"], False)
+    #     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    #     lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
+    #     resume_from_epoch = checkpoint["epoch"] + 1
 
-        if args.rank == 0:
-            print(f"Loading checkpoint from {resume_from_checkpoint_path}")
-        checkpoint = torch.load(resume_from_checkpoint_path, map_location="cpu")
-        model.load_state_dict(checkpoint["model_state_dict"], False)
-        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
-        resume_from_epoch = checkpoint["epoch"] + 1
-
-    optimizer = torch.optim.AdamW(get_grouped_params(model), lr=args.learning_rate)
+    optimizer = torch.optim.AdamW(get_grouped_params(model, wd=args.weight_decay), lr=args.learning_rate)
 
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
@@ -602,9 +401,10 @@ def main():
 
     model.train()
 
+    # Main Training Loop
     for epoch in range(resume_from_epoch, args.num_epochs):
-        for cur_data_loader in mimicit_loaders:
-            cur_data_loader.dataset.set_epoch(epoch)
+        for dataloader in mimicit_loaders:
+            dataloader.dataset.set_epoch(epoch)
 
         train_one_epoch(
             args=args,
@@ -619,94 +419,12 @@ def main():
             wandb=wandb,
         )
         accelerator.wait_for_everyone()
-
         if args.save_ckpt_each_epoch:
-            if args.rank == 0:
-                if not os.path.exists(args.external_save_dir):
-                    os.makedirs(args.external_save_dir)
+            save_checkpoint(epoch, model, args, accelerator)
+        accelerator.wait_for_everyone()
 
-            if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
-                checkpoint_dict = accelerator.get_state_dict(model)
-
-                if args.rank == 0:
-                    unwrapped_model = accelerator.unwrap_model(model)
-                    trainable_params_name = [name for name, p in unwrapped_model.named_parameters() if p.requires_grad]
-                    for name in list(checkpoint_dict.keys()):
-                        if name not in trainable_params_name:
-                            del checkpoint_dict[name]
-
-            else:
-                if args.rank == 0:
-                    unwrapped_model = accelerator.unwrap_model(model)
-                    # checkpoint_dict = {
-                    #     "epoch": epoch,
-                    #     "model_state_dict": get_checkpoint(unwrapped_model),
-                    #     "optimizer_state_dict": optimizer.state_dict(),
-                    #     "lr_scheduler_state_dict": lr_scheduler.state_dict(),
-                    # }
-                    checkpoint_dict = {
-                        "model_state_dict": get_checkpoint(unwrapped_model),
-                    }
-
-            if args.rank == 0:
-                print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
-                accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
-                # save the config
-                unwrapped_model.config.save_pretrained(args.external_save_dir)
-                if args.delete_previous_checkpoint:
-                    if epoch > 0:
-                        os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
-
-            accelerator.wait_for_everyone()
-
-    accelerator.wait_for_everyone()
-
-    if args.rank == 0:
-        if not os.path.exists(args.external_save_dir):
-            os.makedirs(args.external_save_dir)
-
-    if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
-        checkpoint_dict = accelerator.get_state_dict(model)
-
-        unwrapped_model = accelerator.unwrap_model(model)
-
-        unwrapped_model.config.save_pretrained(args.external_save_dir)
-
-        if args.rank == 0 and not args.save_hf_model:
-            trainable_params_name = [name for name, p in unwrapped_model.named_parameters() if p.requires_grad]
-            for name in list(checkpoint_dict.keys()):
-                if name not in trainable_params_name:
-                    del checkpoint_dict[name]
-
-            accelerator.save(
-                checkpoint_dict,
-                f"{args.external_save_dir}/final_weights.pt",
-            )
-        elif args.rank == 0 and args.save_hf_model:
-            unwrapped_model.save_pretrained(
-                f"{args.external_save_dir}",
-                is_main_process=accelerator.is_main_process,
-                save_function=accelerator.save,
-                state_dict=checkpoint_dict,
-            )
-
-    else:
-        if args.rank == 0:
-            unwrapped_model = accelerator.unwrap_model(model)
-            checkpoint_dict = get_checkpoint(model=unwrapped_model)
-
-            accelerator.save(
-                checkpoint_dict,
-                f"{args.external_save_dir}/final_weights.pt",
-            )
-            # save the config
-            unwrapped_model.config.save_pretrained(args.external_save_dir)
-
-            if args.report_to_wandb and args.save_checkpoints_to_wandb:
-                wandb.save(f"{args.external_save_dir}/final_weights.pt")
-            if args.save_hf_model:
-                unwrapped_model.save_pretrained(f"{args.external_save_dir}")
-
+    # Save the final weights
+    save_final_weights(model, args, accelerator, processor=processor if "idefics" in args.model_name.lower() else None)
     accelerator.wait_for_everyone()
 
 

@@ -19,7 +19,7 @@ from decord import VideoReader, cpu
 import torchvision.transforms as T
 from torchvision.transforms.functional import InterpolationMode
 
-config_file = "models/Ask_Anything/video_chat/configs/config.json"
+config_file = "/mnt/petrelfs/zhangyuanhan/Otter/pipeline/evaluation/models/Ask_Anything/video_chat/configs/config.json"
 cfg = Config.from_file(config_file)
 
 
@@ -169,14 +169,17 @@ class VideoChat(BaseModel):
     def generate(self, input_data):
         inputs = {}
         video_dir = input_data.get("video_root", "")
-        vid, msg = self.load_video(
-            os.path.join(video_dir, input_data["video_idx"] + ".mp4"),
-            num_segments=8,
-            return_msg=True,
-        )
+        vid, msg = self.load_video(input_data["video_path"], num_segments=8, return_msg=True)
         # print(msg)
+        object_description = input_data["object_description"]
+        if object_description != "None":
+            context = f"Given context:{object_description}. "
+        else:
+            context = ""
+        prompts_input = context + input_data["question"]
+
         self.chat.messages.append([self.chat.roles[0], f"<Video><VideoHere></Video> {msg}\n"])
-        self.chat.messages.append([self.chat.roles[0], input_data["question"] + "\n"])
+        self.chat.messages.append([self.chat.roles[0], prompts_input + "\n"])
 
         # The model expects inputs of shape: T x C x H x W
         TC, H, W = vid.shape

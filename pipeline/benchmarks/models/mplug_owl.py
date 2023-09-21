@@ -32,9 +32,17 @@ class mPlug_owl(BaseModel):
     def generate(self, input_data: dict):
         questions = input_data["question"]
         video_dir = input_data.get("video_root", "")
-        video_list = os.path.join(video_dir, input_data["video_idx"] + ".mp4")
+        video_list = input_data["video_path"]
         generate_kwargs = {"do_sample": True, "top_k": 5, "max_length": 512}
-        prompt = self.format_prompt(questions)
+
+        object_description = input_data["object_description"]
+        if object_description != "None":
+            context = f"Given context:{object_description}. "
+        else:
+            context = ""
+        prompts_input = context + input_data["question"]
+
+        prompt = self.format_prompt(prompts_input)
         inputs = self.processor(text=prompt, videos=video_list, num_frames=4, return_tensors="pt")
         inputs = {k: v.bfloat16() if v.dtype == torch.float else v for k, v in inputs.items()}
         inputs = {k: v.to(self.model.device) for k, v in inputs.items()}

@@ -19,15 +19,10 @@ import torchvision
 import webdataset as wds
 import yaml
 from PIL import Image, ImageFile, ImageSequence
-from torch.utils.data import DataLoader, IterableDataset, RandomSampler, get_worker_info
+from torch.utils.data import ConcatDataset, DataLoader, IterableDataset, RandomSampler, get_worker_info
 from torch.utils.data.distributed import DistributedSampler
 from webdataset.filters import _shuffle
-from webdataset.tariterators import (
-    base_plus_ext,
-    tar_file_expander,
-    url_opener,
-    valid_sample,
-)
+from webdataset.tariterators import base_plus_ext, tar_file_expander, url_opener, valid_sample
 
 sys.path.append("../..")
 import json
@@ -675,40 +670,38 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     args.task = "pretrain"
     args.tokenizer = tokenizer
     unified_datasets = []
-
     dataset_info = preload_dataset(args)
 
     # Converting multiple types of mimic-it datasets into a unified format dataset
     for key, item in dataset_info.items():
         if item != {}:  # if the category is not empty
-            unified_dataset = MimicitDataset(args, dataset_info=dataset_info[key])
+            unified_dataset = MimicitDataset(args, dataset_info=dataset_info[key], task_group=key)
             unified_datasets.append(unified_dataset)
 
-    round_fn = math.floor if floor else math.ceil
-    global_batch_size = args.batch_size * args.world_size
+    # round_fn = math.floor if floor else math.ceil
+    # global_batch_size = args.batch_size * args.world_size
 
     # num_samples = args.train_num_samples  # 8
-    num_samples = sum([len(dataset) for dataset in unified_datasets])
-    num_batches = round_fn(num_samples / global_batch_size)  # 2
-    num_samples = num_batches * global_batch_size  # 8
+    # num_samples = sum([len(dataset) for dataset in unified_datasets])
+    # num_batches = round_fn(num_samples / global_batch_size)  # 2
+    # num_samples = num_batches * global_batch_size  # 8
 
     dataloaders = []
-
-    for unified_dataset in unified_datasets:
-        sampler = RandomSampler(unified_dataset, replacement=True, num_samples=len(unified_dataset))
+    for dataset in unified_datasets:
+        sampler = RandomSampler(dataset, replacement=True, num_samples=len(dataset))
         if args.distributed_type == "DEEPSPEED" or args.distributed_type == "MULTI_GPU":
             sampler = DistributedProxySampler(sampler, num_replicas=args.world_size, rank=args.rank)
         dataloader = torch.utils.data.DataLoader(
-            unified_dataset,
+            dataset,
             sampler=sampler,
             batch_size=args.batch_size,
             num_workers=args.workers,
             pin_memory=True,
             drop_last=True,
-            collate_fn=unified_dataset.collate,
+            collate_fn=dataset.collate,
         )
-
         dataloaders.append(dataloader)
+
     return dataloaders
 
 

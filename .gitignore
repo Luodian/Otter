@@ -14,6 +14,7 @@ __pycache__/
 *.dir
 *.html
 *.mp4
+*.MP4
 *.png
 *.pt
 *.bin
@@ -134,7 +135,11 @@ USE_POLICY.md
 open_flamingo.egg-info
 llama-7b-hf/*
 cache/
-pipeline/evaluation/ckpts/*
-pipeline/evaluation/models/Ask_Anything
-pipeline/evaluation/models/FrozenBiLM
-pipeline/evaluation/models/LLaMA_Adapter
+pipeline/benchmarks/ckpts/*
+pipeline/benchmarks/models/Ask_Anything
+pipeline/benchmarks/models/FrozenBiLM
+pipeline/benchmarks/models/LLaMA_Adapter
+
+shared_scripts/**
+pipeline/benchmarks/models/Video_ChatGPT
+pipeline/benchmarks/evaluation_result

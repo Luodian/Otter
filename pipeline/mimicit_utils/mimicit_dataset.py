@@ -30,6 +30,9 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 ImageFile.MAX_IMAGE_PIXELS = None
 Image.MAX_IMAGE_PIXELS = None
 
+sys.path.append("../..")
+from pipeline.train.train_utils import master_print
+
 
 @contextlib.contextmanager
 def random_seed(seed, *addl_seeds):
@@ -56,7 +59,7 @@ import numpy as np
 
 def resample_data(data, N):
     # If N is equal to the length of the list, return the list
-    if N == -1:
+    if N == -1 or N == 0:
         return data
     if N == len(data):
         return data
@@ -81,10 +84,11 @@ def resample_data(data, N):
 
 
 class MimicitDataset(Dataset):
-    def __init__(self, args, dataset_info):
+    def __init__(self, args, dataset_info, task_group=""):
         self.args = args
         self.tokenizer = args.tokenizer
         self.remove_symbols = args.remove_symbols if hasattr(args, "remove_symbols") else True
+        self.task_group = task_group
         # remove more symbols in the question and answer, make the question and answer more clean and training loss more stable.
 
         self.mimicit_paths = []
@@ -108,21 +112,6 @@ class MimicitDataset(Dataset):
 
         self.instruction_format = args.instruction_format
         self.resample_frames = args.resample_frames
-        self.text_data_list = [
-            "LIMA",
-            "MBPP",
-            "SHAREGPT",
-            "AL",
-            "CAL",
-            "TEXT_ONLY",
-            "GUANACO",
-            "TXT_ULTRACHAT",
-            "ORCACHAT",
-        ]
-        self.in_context_imageqa_data_list = ["LACR_T2T", "LACR_I2I"]
-        # image data list (including multi-round conv)
-        self.imageqa_data_list = ["LACONV", "LADD", "M3IT", "PF", "PL", "SCIENCEQA", "SVIT", "IQA", "REFCOCO", "VQAV2", "OKVQA", "A-OKVQA", "GQA", "TEXT-VQA", "IMAGENET", "COCO", "COCO-GOI", "VSR", "ST-VQA", "IQA", "COCOITM"]
-        self.video_data_list = ["DC", "FunQA", "E4D", "TVC", "VideoQA", "EAI"]
         self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.\n<</SYS>>\n\n"
 
         self.patch_resize_transform = transforms.Compose(
@@ -185,6 +174,14 @@ class MimicitDataset(Dataset):
                 cache_train_config = {key: value["rel_ins_ids"] for key, value in cur_mimicit_data.items()}
 
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
+
+            # # make sure put all rel_ins_ids instruction ids into sampled training set.
+            # for ins_key in resampled_train:
+            #     rel_ins_ids = cache_train_config[ins_key]
+            #     for rel_ins_id in rel_ins_ids:
+            #         if rel_ins_id not in resampled_train:
+            #             resampled_train.append(rel_ins_id)
+
             table.add_row([task_name, cur_mimicit_path, cur_train_config_path if cur_train_config_path != "" else "None", cur_images_path if cur_images_path != "" else "None", len(resampled_train)])
             if cur_images_path:
                 with open(cur_images_path, "rb") as f:
@@ -198,7 +195,7 @@ class MimicitDataset(Dataset):
             self.train_config.update(cache_train_config)
 
         if args.rank == 0:
-            print(table)
+            master_print(table)
 
         self.bos_item = torch.LongTensor([args.tokenizer.bos_token_id])
         self.eos_item = torch.LongTensor([args.tokenizer.eos_token_id])
@@ -480,7 +477,6 @@ class MimicitDataset(Dataset):
         return patch_images, all_texts
 
     def process_image_text_pair(self, index):
-        # try:
         cur_train_id = self.train_data_list[index]
         (instruction_id, instruction, answer, image_ids, in_context_example_ids) = (
             cur_train_id,
@@ -491,7 +487,6 @@ class MimicitDataset(Dataset):
         )
         instruction_format = self.instruction_format
         resample_frames = self.resample_frames
-
         if cur_train_id.upper().startswith("SD") or cur_train_id.startswith("CGD"):
             patch_images, all_texts = self.process_spot_the_difference(
                 instruction_id,
@@ -510,7 +505,7 @@ class MimicitDataset(Dataset):
                 in_context_example_ids,
                 instruction_format=instruction_format,
             )
-        elif any(cur_train_id.upper().startswith(videoqa_task) for videoqa_task in self.video_data_list):
+        elif self.task_group == "VIDEO_TEXT":
             patch_images, all_texts = self.process_general_videoqa(
                 instruction_id,
                 instruction,
@@ -520,7 +515,7 @@ class MimicitDataset(Dataset):
                 resample_frames=resample_frames,
                 instruction_format=instruction_format,
             )
-        elif any(cur_train_id.upper().startswith(text_id) for text_id in self.text_data_list):
+        elif self.task_group == "TEXT_ONLY":
             patch_images, all_texts = self.process_general_text(
                 instruction_id,
                 instruction,
@@ -529,7 +524,7 @@ class MimicitDataset(Dataset):
                 in_context_example_ids,
                 instruction_format=instruction_format,
             )
-        elif any(cur_train_id.upper().startswith(imageqa_task) for imageqa_task in self.imageqa_data_list):
+        elif self.task_group == "IMAGE_TEXT":
             patch_images, all_texts = self.process_general_imageqa(
                 instruction_id,
                 instruction,
@@ -538,7 +533,7 @@ class MimicitDataset(Dataset):
                 in_context_example_ids,
                 instruction_format=instruction_format,
             )
-        elif any(cur_train_id.upper().startswith(in_context_imageqa_task) for in_context_imageqa_task in self.in_context_imageqa_data_list):
+        elif self.task_group == "IMAGE_TEXT_IN_CONTEXT":
             patch_images, all_texts = self.process_in_context_imageqa(
                 instruction_id,
                 instruction,
@@ -559,9 +554,8 @@ class MimicitDataset(Dataset):
         )
         num_tokens = all_text["input_ids"].shape[1]
         if num_tokens == self.max_seq_len:
-            if self.args.rank == 0:
-                print(f"{cur_train_id}'s all_texts reaches the max_seq_len.")
-                print(all_texts)
+            master_print(f"{cur_train_id}'s all_texts reaches the max_seq_len.")
+            master_print(all_texts)
 
         all_item = all_text["input_ids"].squeeze(0)
         all_item_mask = all_text["attention_mask"].squeeze(0)
@@ -569,13 +563,7 @@ class MimicitDataset(Dataset):
         all_item = torch.cat([self.bos_item, all_item, self.eos_item])
         all_item_mask = torch.cat([self.bos_mask, all_item_mask, self.eos_mask])
 
-        example = {
-            "id": instruction_id,
-            "source": all_item,
-            "text_mask": all_item_mask,
-            "patch_images": patch_images,
-        }
-
+        example = {"id": instruction_id, "source": all_item, "text_mask": all_item_mask, "patch_images": patch_images, "task_group": self.task_group}
         return example
 
     def __str__(self):
@@ -630,10 +618,12 @@ def collate_fn(samples, pad_idx, eos_idx):
     ids = [s["id"] for s in samples]
     src_tokens = merge("source", pad_idx=pad_idx, pading_size=larger_size)
     src_tokens_masks = merge("text_mask", pad_idx=0, pading_size=larger_size)
+    task_groups = [s["task_group"] for s in samples]
 
     batch = {
         "id": ids,
         "nsentences": len(samples),
+        "task_group": task_groups,
         "net_input": {
             "input_ids": src_tokens,
             "attention_masks": src_tokens_masks,

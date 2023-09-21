@@ -9,7 +9,8 @@ import transformers
 from PIL import Image
 import sys
 
-from otter_ai import OtterForConditionalGeneration
+sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/")
+from src.otter_ai.models.otter.modeling_otter import OtterForConditionalGeneration
 from .base_model import BaseModel
 
 # Disable warnings
@@ -80,6 +81,7 @@ class OtterVideo(BaseModel):
         )
 
         bad_words_id = self.tokenizer(["User:", "GPT1:", "GFT:", "GPT:"], add_special_tokens=False).input_ids
+        # import pdb;pdb.set_trace()
         generated_text = self.model.generate(
             vision_x=vision_x.to(model.device, dtype=tensor_dtype),
             lang_x=lang_x["input_ids"].to(model.device),
@@ -94,9 +96,15 @@ class OtterVideo(BaseModel):
 
     def generate(self, input_data):
         video_dir = input_data.get("video_root", "")
-        frames_list = self.extract_frames(os.path.join(video_dir, input_data["video_idx"] + ".mp4"))
+        frames_list = self.extract_frames(input_data["video_path"])
 
-        prompts_input = input_data["question"]
+        object_description = input_data["object_description"]
+
+        if object_description != "None":
+            context = f"Given context:{object_description}. "
+        else:
+            context = ""
+        prompts_input = context + input_data["question"]
 
         response = self.get_response(
             frames_list,
