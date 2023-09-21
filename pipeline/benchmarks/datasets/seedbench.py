@@ -1,68 +1,61 @@
 import os
-import orjson
-import pandas as pd
+import json
 from PIL import Image
-from torch.utils.data import Dataset
+import numpy as np
+import torch
+from otter_ai import OtterForConditionalGeneration
+import transformers
+from tqdm import tqdm
+from .base_eval_dataset import BaseEvalDataset
+from datasets import load_dataset
 
 
-def get_image(image_folder, image_id):
-    image_path = os.path.join(image_folder, image_id)
-    image = Image.open(image_path)
-    return image
+Image.MAX_IMAGE_PIXELS = 100_000_000
 
 
-class SEEDBench(Dataset):
-    def __init__(self, data_file, image_folder, sys_prompt="There are several options:"):
-        super().__init__("SEEDBench", data_file)
-        with open(data_file, "rb") as f:
-            data = orjson.loads(f.read())["questions"]
-        self.data = []
-        for item in data:
-            if item["data_type"] == "image" and os.path.exists(os.path.join(image_folder, item["data_id"])):
-                self.data.append(item)
-        if len(self.data) == 0:
-            raise ValueError("No valid data found!")
-        self.sys_prompt = sys_prompt
-        self.image_folder = image_folder
+class SEEDBenchDataset(BaseEvalDataset):
+    def __init__(self, data_path="Otter-AI/SEEDBench", *, split="train", cache_dir=None):
+        super().__init__("SEEDBenchDataset", data_path)
+        self.data = load_dataset("Otter-AI/SEEDBench", split=split, cache_dir=cache_dir)
 
-    def __len__(self):
-        return len(self.data)
+    def evaluate(self, model):
+        num_correct = 0
+        for data_dict in tqdm(self.data, total=len(self.data), desc="Evaluating"):
+            image = data_dict["image"]
+            question = data_dict["question"]
+            answer = data_dict["answer"]
+            options = [
+                data_dict["choice_a"],
+                data_dict["choice_b"],
+                data_dict["choice_c"],
+                data_dict["choice_d"],
+            ]
 
-    def __getitem__(self, idx):
-        image = get_image(self.image_folder, self.data[idx]["data_id"])
+            option_losses = []
+            for option in options:
+                option_losses.append(model.eval_forward(question, option, image).items())
 
-        question = self.data[idx]["question"]
-        answer = self.data[idx]["answer"]
+            prediction_idx = np.argmin(option_losses)
+            prediction = ["A", "B", "C", "D"][prediction_idx]
+            if prediction == answer:
+                num_correct += 1
 
-        option_candidate = {
-            "A": "choice_a",
-            "B": "choice_b",
-            "C": "choice_c",
-            "D": "choice_d",
-        }
-        options = "\n".join([f"{key}. {self.data[idx][item]}" for key, item in option_candidate.items()])
-
-        cur_prompt = question + "\n" + self.sys_prompt + "\n" + options
-
-        data = {
-            "question": cur_prompt,
-            "answer": answer,
-            "image": image,
-        }
-        return data
-
-    def load_from_df(self, idx, key):
-        if key in self.df.iloc[idx] and not pd.isna(self.df.iloc[idx][key]):
-            return self.df.iloc[idx][key]
-        else:
-            return None
+        accuracy = num_correct / len(self.data) * 100
+        print(f"Accuracy: {accuracy:.2f}%")
+        return accuracy
 
 
 if __name__ == "__main__":
-    dataset = SEEDBench(
-        "/data/pufanyi/training_data/SEEDBench/SEED-Bench.json",
-        "/data/pufanyi/training_data/SEEDBench/SEED-Bench-image",
-    )
-    for item in dataset:
-        print(item)
+    dataset = SEEDBenchDataset("/data/joshua/datasets/SEEDBench/SEED-Bench.json", "/data/joshua/datasets/SEEDBench/SEED-Bench-image")
+    for data in dataset:
+        print(data)
         break
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Using device: {device}")
+    # checkpoint = "/data/pufanyi/training_data/checkpoints/idefics-9b-instruct"
+    checkpoint = "/data/pufanyi/training_data/checkpoints/OTTER-Image-MPT7B"
+    model = OtterForConditionalGeneration.from_pretrained(checkpoint, torch_dtype=torch.bfloat16).to(device)
+    model.text_tokenizer.padding_side = "left"
+    tokenizer = model.text_tokenizer
+    dataset.evaluate(model, tokenizer)
