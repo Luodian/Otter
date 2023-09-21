@@ -1,4 +1,4 @@
-name: otter
+name: alcon
 channels:
   - defaults
 dependencies:
