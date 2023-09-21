@@ -61,25 +61,31 @@ def get_next_dataloader(dataloader_iterators, weights):
 def find_and_remove_tokens(input_tensor, labels_tensor, attention_mask_tensor, token_id, tokenizer):
     batch_size, seq_len = input_tensor.size()
 
-    # Find positions of the token_id in the input_tensor
-    pos = (input_tensor == token_id).nonzero(as_tuple=False)
+    # Create lists to store the new tensors
+    new_input_list = []
+    new_labels_list = []
+    new_attention_mask_list = []
 
-    # Create masks to remove token_id
-    mask_to_remove = torch.ones(batch_size, seq_len, dtype=torch.bool)
-    mask_to_remove[pos[:, 0], pos[:, 1]] = False
+    # Loop over each sequence in the batch
+    for i in range(batch_size):
+        single_input = input_tensor[i, :]
+        single_label = labels_tensor[i, :]
+        single_attention_mask = attention_mask_tensor[i, :]
 
-    # Remove token_id using the masks
-    new_input = input_tensor[mask_to_remove].view(batch_size, -1)
-    new_labels = labels_tensor[mask_to_remove].view(batch_size, -1)
-    new_attention_mask = attention_mask_tensor[mask_to_remove].view(batch_size, -1)
+        # Remove the token_id
+        new_single_input = torch.masked_select(single_input, single_input != token_id)
+        new_single_label = torch.masked_select(single_label, single_input != token_id)
+        new_single_attention_mask = torch.masked_select(single_attention_mask, single_input != token_id)
 
-    # Find the maximum sequence length within the batch after token removal
-    max_length = max(new_input.size(1), new_labels.size(1), new_attention_mask.size(1))
+        # Append the new sequence to the list
+        new_input_list.append(new_single_input)
+        new_labels_list.append(new_single_label)
+        new_attention_mask_list.append(new_single_attention_mask)
 
-    # Pad sequences within the batch to match the longest sequence
-    new_input = F.pad(new_input, pad=(0, max_length - new_input.size(1)), value=tokenizer.pad_token_id)
-    new_labels = F.pad(new_labels, pad=(0, max_length - new_labels.size(1)), value=-100)
-    new_attention_mask = F.pad(new_attention_mask, pad=(0, max_length - new_attention_mask.size(1)), value=0)
+    # Pad sequences within each batch to match the longest sequence
+    new_input = torch.nn.utils.rnn.pad_sequence(new_input_list, batch_first=True, padding_value=tokenizer.pad_token_id)
+    new_labels = torch.nn.utils.rnn.pad_sequence(new_labels_list, batch_first=True, padding_value=-100)
+    new_attention_mask = torch.nn.utils.rnn.pad_sequence(new_attention_mask_list, batch_first=True, padding_value=0)
 
     return new_input, new_labels, new_attention_mask
 
@@ -315,6 +321,11 @@ def main():
             args.tokenizer = model.text_tokenizer
             tokenizer = model.text_tokenizer
             image_processor = CLIPImageProcessor()
+            if not accelerator.distributed_type == "DEEPSPEED" or not accelerator.state.deepspeed_plugin.zero_stage == 3:
+                new_embedding_size = (len(tokenizer) // 64 + 1) * 64
+                master_print(f"Resizing Flamingo embedding from {len(tokenizer)} to {new_embedding_size}")
+                model.resize_token_embeddings(new_embedding_size, pad_to_multiple_of=64)
+
         elif "idefics" in args.model_name.lower():
             model = IdeficsForVisionText2Text.from_pretrained(
                 args.pretrained_model_name_or_path,
@@ -334,9 +345,7 @@ def main():
             tokenizer = processor.tokenizer
             # make embedding size divisible by 64 for hardware compatiblity https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html#requirements-tc
             # resize_token_embedding is not for parameter sharing in deepspeed !!!!
-            if not accelerator.distributed_type == "DEEPSPEED" or not accelerator.state.deepspeed_plugin.zero_stage == 3:
-                new_embedding_size = (len(tokenizer) // 64 + 1) * 64
-                model.resize_token_embeddings(new_embedding_size, pad_to_multiple_of=64)
+            
 
     if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
         params_to_gather = [p for name, p in model.named_parameters() if p.requires_grad]

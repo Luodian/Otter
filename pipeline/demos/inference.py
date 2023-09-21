@@ -1,7 +1,7 @@
 import argparse
 import json
 import sys
-
+import datetime
 import requests
 import yaml
 
@@ -15,7 +15,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, default="otter", required=True, help="The model name.")
     parser.add_argument("--checkpoint", type=str, help="The path to the checkpoint.")
-    parser.add_argument("--output_file", type=str, help="The path to the output file.")
+    parser.add_argument("--output_dir", type=str, help="The dir path to the output file.")
     args = parser.parse_args()
     return args
 
@@ -36,8 +36,13 @@ def main():
         with open(yaml_file, "r") as file:
             test_data_list = yaml.safe_load(file)
 
-        log_json_path = args.output_file if args.output_file else yaml_file.replace(".yaml", ".json")
-        log_json = {}
+        cur_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        log_json_path = f"{args.output_dir}/inference_log_{cur_date}.json"
+        log_json = {
+            "model_name": args.model_name,
+            "checkpoint": args.checkpoint,
+            "results": {},
+        }
         for test_id, test_data in enumerate(test_data_list):
             image_path = test_data.get("image_path", "")
             question = test_data.get("question", "")
@@ -53,7 +58,7 @@ def main():
             print_colored(f"answer: {response}", color_code="\033[94m")
             print("-" * 150)
 
-            log_json.update(
+            log_json['results'].update(
                 {
                     str(test_id).zfill(3): {
                         "image_path": image_path,
