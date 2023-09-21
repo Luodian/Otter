@@ -1,20 +1,11 @@
 import mimetypes
-import numpy
-import yaml
-import time
+import sys
 from typing import Union
+
 import requests
 from PIL import Image
-import sys
-from transformers import IdeficsForVisionText2Text, AutoProcessor
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-
-sys.path.append("/home/luodian/projects/Otter")
-from pipeline.train.train_utils import get_image_attention_mask
 
 requests.packages.urllib3.disable_warnings()
-import torch
 
 
 # --- Utility Functions ---
