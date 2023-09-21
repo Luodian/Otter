@@ -82,6 +82,12 @@ if __name__ == "__main__":
         help="Output file path for logging results.",
         default="evaluation.txt",
     )
+    args.add_argument(
+        "--cache_dir",
+        type=str,
+        help="Cache directory for datasets.",
+        default=None,
+    )
 
     phrased_args = args.parse_args()
 
@@ -98,7 +104,7 @@ if __name__ == "__main__":
             model_infos = [{"name": name, "model_path": path} for name, path in zip(model_names, model_paths)]
         else:
             model_infos = [{"name": name} for name in model_names]
-        dataset_infos = [{"name": dataset_name} for dataset_name in phrased_args.datasets.split(",")]
+        dataset_infos = [{"name": dataset_name, "cache_dir": phrased_args.cache_dir} for dataset_name in phrased_args.datasets.split(",")]
 
     with open(phrased_args.output, "w") as outfile, contextlib.redirect_stdout(DualOutput(outfile, sys.stdout)):
         print("=" * 80)
