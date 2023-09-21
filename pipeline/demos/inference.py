@@ -1,4 +1,6 @@
+import json
 import sys
+
 import requests
 import yaml
 
@@ -60,8 +62,7 @@ def main():
             )
 
         with open(log_json_path, "w") as file:
-            yaml.dump(log_json, file, default_flow_style=False)
-
+            json.dump(log_json, file, indent=4, sort_keys=False)
 
 if __name__ == "__main__":
     main()
