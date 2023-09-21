@@ -3,7 +3,14 @@ import torch.nn.functional as F
 
 
 class LPLayerNorm(torch.nn.LayerNorm):
-    def __init__(self, normalized_shape, eps=1e-05, elementwise_affine=True, device=None, dtype=None):
+    def __init__(
+        self,
+        normalized_shape,
+        eps=1e-05,
+        elementwise_affine=True,
+        device=None,
+        dtype=None,
+    ):
         super().__init__(
             normalized_shape=normalized_shape,
             eps=eps,
@@ -18,7 +25,13 @@ class LPLayerNorm(torch.nn.LayerNorm):
         downcast_weight = _cast_if_autocast_enabled(self.weight) if self.weight is not None else self.weight
         downcast_bias = _cast_if_autocast_enabled(self.bias) if self.bias is not None else self.bias
         with torch.autocast(enabled=False, device_type=module_device.type):
-            return F.layer_norm(downcast_x, self.normalized_shape, downcast_weight, downcast_bias, self.eps)
+            return F.layer_norm(
+                downcast_x,
+                self.normalized_shape,
+                downcast_weight,
+                downcast_bias,
+                self.eps,
+            )
 
 
 def _cast_if_autocast_enabled(tensor):

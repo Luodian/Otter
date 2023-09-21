@@ -51,7 +51,10 @@ model = FlamingoForConditionalGeneration(config=config)
 # you can visit https://huggingface.co/luodian/openflamingo-9b-hf/tree/main to download the checkpoint.
 # AZP = "os.environ["AZP"]"
 AZP = os.environ["AZP"]
-state_dict_3 = torch.load(f"{AZP}/otter/checkpoints/flamingo_9b_hf/pytorch_model-00004-of-00004.bin", map_location="cpu")
+state_dict_3 = torch.load(
+    f"{AZP}/otter/checkpoints/flamingo_9b_hf/pytorch_model-00004-of-00004.bin",
+    map_location="cpu",
+)
 for cur_key in list(state_dict_3.keys()):
     if "vision_encoder" not in cur_key:
         del state_dict_3[cur_key]

@@ -13,8 +13,18 @@ parser.add_argument(
     default="fp16",
     help="Precision of the loaded model. Either 'fp16' or 'bf16'. Default is 'fp16'.",
 )
-parser.add_argument("--checkpoint_path", type=str, required=True, help="Path to the pre-trained model checkpoint.")
-parser.add_argument("--save_path", type=str, default=None, help="Path to the converted model checkpoint.")
+parser.add_argument(
+    "--checkpoint_path",
+    type=str,
+    required=True,
+    help="Path to the pre-trained model checkpoint.",
+)
+parser.add_argument(
+    "--save_path",
+    type=str,
+    default=None,
+    help="Path to the converted model checkpoint.",
+)
 
 # Parse the input arguments
 args = parser.parse_args()

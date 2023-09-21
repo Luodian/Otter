@@ -4,24 +4,21 @@
 # found in the LICENSE file in the root directory.
 
 import base64
-from io import BytesIO
-import re
 import contextlib
 import os
-import orjson
-import ijson.backends.yajl2_cffi as ijson
-from PIL import ImageFile
-from torchvision import transforms
 import random
-
+import re
 import sys
-from PIL import Image, ImageFile
+from io import BytesIO
 
-import torch
+import ijson.backends.yajl2_c as ijson
 import numpy as np
-
+import orjson
+import torch
+from PIL import Image, ImageFile
+from prettytable import PrettyTable
 from torch.utils.data import Dataset
-
+from torchvision import transforms
 
 IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
@@ -59,6 +56,8 @@ import numpy as np
 
 def resample_data(data, N):
     # If N is equal to the length of the list, return the list
+    if N == -1:
+        return data
     if N == len(data):
         return data
     # Upsample if N is greater than the list length
@@ -82,19 +81,24 @@ def resample_data(data, N):
 
 
 class MimicitDataset(Dataset):
-    def __init__(
-        self,
-        args,
-        mimicit_paths="",
-        images_paths="",
-        train_config_paths="",
-        status_list=["past", "new"],
-        task_name="DC",
-    ):
+    def __init__(self, args, dataset_info):
         self.args = args
         self.tokenizer = args.tokenizer
         self.remove_symbols = args.remove_symbols if hasattr(args, "remove_symbols") else True
         # remove more symbols in the question and answer, make the question and answer more clean and training loss more stable.
+
+        self.mimicit_paths = []
+        self.num_samples_list = []
+        self.train_config_paths = []
+        self.images_paths = []
+        self.task_names = []
+
+        for key, value in dataset_info.items():
+            self.task_names.append(key)
+            self.mimicit_paths.append(value.get("mimicit_path", ""))
+            self.num_samples_list.append(value.get("num_samples", 0))
+            self.train_config_paths.append(value.get("train_config_path", ""))
+            self.images_paths.append(value.get("images_path", ""))
 
         self.seed = args.seed
         self.patch_image_size = args.patch_image_size
@@ -117,121 +121,84 @@ class MimicitDataset(Dataset):
         ]
         self.in_context_imageqa_data_list = ["LACR_T2T", "LACR_I2I"]
         # image data list (including multi-round conv)
-        self.imageqa_data_list = [
-            "LACONV",
-            "LADD",
-            "M3IT",
-            "PF",
-            "PL",
-            "SCIENCEQA",
-            "SVIT",
-            "IQA",
-            "REFCOCO",
-            "VQAV2",
-            "OKVQA",
-            "A-OKVQA",
-            "GQA",
-            "TEXT-VQA",
-            "IMAGENET",
-            "COCO",
-            "COCO-GOI",
-            "VSR",
-        ]
+        self.imageqa_data_list = ["LACONV", "LADD", "M3IT", "PF", "PL", "SCIENCEQA", "SVIT", "IQA", "REFCOCO", "VQAV2", "OKVQA", "A-OKVQA", "GQA", "TEXT-VQA", "IMAGENET", "COCO", "COCO-GOI", "VSR", "ST-VQA", "IQA", "COCOITM"]
         self.video_data_list = ["DC", "FunQA", "E4D", "TVC", "VideoQA", "EAI"]
         self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.\n<</SYS>>\n\n"
 
         self.patch_resize_transform = transforms.Compose(
             [
-                transforms.Resize((args.patch_image_size, args.patch_image_size), interpolation=transforms.InterpolationMode.BICUBIC),
+                transforms.Resize(
+                    (args.patch_image_size, args.patch_image_size),
+                    interpolation=transforms.InterpolationMode.BICUBIC,
+                ),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=FLAMINGO_MEAN, std=FLAMINGO_STD),
             ]
         )
-        assert mimicit_paths != "", f"Error: The mimicit_paths do not get!"
-
-        self.mimicit_paths = mimicit_paths
-        self.images_paths = images_paths if images_paths != "" else [""] * len(mimicit_paths)
-        self.train_config_paths = train_config_paths if train_config_paths != "" else [""] * len(mimicit_paths)
-        self.status_list = status_list
-
-        assert len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths) == len(self.status_list), f"metas do not have same number"
+        assert len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths), f"metas do not have same number"
 
         self.dataset = {}
         self.images = {}
         self.train_data_list = []
-        self.train_config = []
-        self.task_name = args.task_name
+        self.train_config = {}
 
         # Get the length of each dataset and use the second largest value as the length of each dataset
-        data_length_list = []
-        for cur_mimicit_path, cur_train_config_path in zip(self.mimicit_paths, self.train_config_paths):
-            # Load the train_config
-            if cur_train_config_path != "":
-                assert os.path.exists(cur_train_config_path), f"Error: The local train_config_path {cur_train_config_path} not exists!"
-                with open(cur_train_config_path, "rb") as f:
-                    cache_train_config = orjson.loads(f.read())
-            else:
-                with open(cur_mimicit_path, "rb") as f:
-                    cache_train_config = orjson.loads(f.read())["data"]
-                    cache_train_config = {key: [] for key in cache_train_config.keys()}
+        # data_length_list = []
+        # for cur_mimicit_path, cur_train_config_path in zip(self.mimicit_paths, self.train_config_paths):
+        #     # Load the train_config
+        #     if cur_train_config_path != "":
+        #         assert os.path.exists(cur_train_config_path), f"Error: The local train_config_path {cur_train_config_path} not exists!"
+        #         with open(cur_train_config_path, "rb") as f:
+        #             cache_train_config = orjson.loads(f.read())
+        #     else:
+        #         with open(cur_mimicit_path, "rb") as f:
+        #             cache_train_config = orjson.loads(f.read())["data"]
+        #             cache_train_config = {key: [] for key in cache_train_config.keys()}
 
-            cache_train_list = list(cache_train_config.keys())
+        #     cache_train_list = list(cache_train_config.keys())
 
-            data_length_list.append(len(cache_train_list))
+        #     data_length_list.append(len(cache_train_list))
 
-            del cache_train_config
-            del cache_train_list
+        #     del cache_train_config
+        #     del cache_train_list
 
-        if len(data_length_list) == 1:
-            max_items_per_dataset = max(data_length_list)
-        else:
-            max_items_per_dataset = sorted(data_length_list, reverse=True)[1]
+        # if len(data_length_list) == 1:
+        #     max_items_per_dataset = max(data_length_list)
+        # else:
+        #     max_items_per_dataset = sorted(data_length_list, reverse=True)[1]
 
-        for cur_mimicit_path, cur_images_path, cur_train_config_path, cur_status in zip(self.mimicit_paths, self.images_paths, self.train_config_paths, self.status_list):
+        table = PrettyTable()
+        # Set column names for the table
+        table.field_names = ["Task Name", "MIMICIT_PATH", "TRAIN_CONFIG_PATH", "IMAGES_PATH", "Num_samples"]
+        for cur_mimicit_path, cur_images_path, cur_train_config_path, sampled_examples, task_name in zip(self.mimicit_paths, self.images_paths, self.train_config_paths, self.num_samples_list, self.task_names):
             # Load the dataset
             assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!"
             with open(cur_mimicit_path, "rb") as f:
-                if self.dataset == {}:
-                    self.dataset = orjson.loads(f.read())["data"]
-                else:
-                    self.dataset.update(orjson.loads(f.read())["data"])
-
-            if cur_images_path != "":
-                with open(cur_images_path, "rb") as f:
-                    for key, value in ijson.kvitems(f, "", use_float=True):
-                        self.images[key] = value
+                cur_mimicit_data = orjson.loads(f.read())["data"]
+                self.dataset.update(cur_mimicit_data)
 
             # Load the train_config
             if cur_train_config_path != "":
-                assert os.path.exists(cur_train_config_path), f"Error: The local train_config_path {cur_train_config_path} not exists!"
                 with open(cur_train_config_path, "rb") as f:
                     cache_train_config = orjson.loads(f.read())
             else:
-                with open(cur_mimicit_path, "rb") as f:
-                    cache_train_config = orjson.loads(f.read())["data"]
-                    cache_train_config = {key: [] for key in cache_train_config.keys()}
+                cache_train_config = {key: value["rel_ins_ids"] for key, value in cur_mimicit_data.items()}
 
-            resampled_train = resample_data(list(cache_train_config.keys()), max_items_per_dataset)
-            cache_train_list = resampled_train
+            resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
+            table.add_row([task_name, cur_mimicit_path, cur_train_config_path if cur_train_config_path != "" else "None", cur_images_path if cur_images_path != "" else "None", len(resampled_train)])
+            if cur_images_path:
+                with open(cur_images_path, "rb") as f:
+                    images_data = orjson.loads(f.read())
+                    for ins_key in resampled_train:
+                        img_keys = self.dataset[ins_key]["image_ids"]
+                        for img_key in img_keys:
+                            self.images[img_key] = images_data[img_key]
 
-            # if cur_status == "new":
-            #     cache_train_config = {key: [] for key in resampled_train}
-            # else:
-            if cur_status == "past":
-                # Need to be modified if we use resampling stratedgy
-                random.seed(0)
-                random.shuffle(cache_train_list)
-                cache_train_list = cache_train_list[: int(len(cache_train_list) * args.past_subset_ration)]
+            self.train_data_list.extend(resampled_train)
+            self.train_config.update(cache_train_config)
 
-            if self.train_data_list == []:
-                self.train_data_list = cache_train_list
-                self.train_config = cache_train_config
-            else:
-                self.train_data_list += cache_train_list
-                self.train_config.update(cache_train_config)
-
-            del cache_train_config
-            del cache_train_list
+        if args.rank == 0:
+            print(table)
 
         self.bos_item = torch.LongTensor([args.tokenizer.bos_token_id])
         self.eos_item = torch.LongTensor([args.tokenizer.eos_token_id])
@@ -300,7 +267,15 @@ class MimicitDataset(Dataset):
         assert len(image_ids) == resample_frames
         return image_ids
 
-    def process_in_context_imageqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format="simple"):
+    def process_in_context_imageqa(
+        self,
+        instruction_id,
+        instruction,
+        answer,
+        image_ids,
+        in_context_example_ids,
+        instruction_format="simple",
+    ):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -431,9 +406,18 @@ class MimicitDataset(Dataset):
         all_texts = f"{incontext_text}{all_texts}"
         return patch_images, all_texts
 
-    def process_general_imageqa(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format="simple"):
+    def process_general_imageqa(
+        self,
+        instruction_id,
+        instruction,
+        answer,
+        image_ids,
+        in_context_example_ids,
+        instruction_format="simple",
+    ):
         # including multi-round conv for single image
         all_texts = ""
+        all_instruction_ids = in_context_example_ids + [instruction_id]
         for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
@@ -463,7 +447,15 @@ class MimicitDataset(Dataset):
         patch_images = self.patch_resize_transform(cur_image).unsqueeze(0).unsqueeze(0)
         return patch_images, all_texts
 
-    def process_general_text(self, instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format="simple"):
+    def process_general_text(
+        self,
+        instruction_id,
+        instruction,
+        answer,
+        image_ids,
+        in_context_example_ids,
+        instruction_format="simple",
+    ):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
@@ -490,13 +482,7 @@ class MimicitDataset(Dataset):
     def process_image_text_pair(self, index):
         # try:
         cur_train_id = self.train_data_list[index]
-        (
-            instruction_id,
-            instruction,
-            answer,
-            image_ids,
-            in_context_example_ids,
-        ) = (
+        (instruction_id, instruction, answer, image_ids, in_context_example_ids) = (
             cur_train_id,
             self.dataset[cur_train_id]["instruction"],
             self.dataset[cur_train_id]["answer"],
@@ -507,17 +493,60 @@ class MimicitDataset(Dataset):
         resample_frames = self.resample_frames
 
         if cur_train_id.upper().startswith("SD") or cur_train_id.startswith("CGD"):
-            patch_images, all_texts = self.process_spot_the_difference(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
+            patch_images, all_texts = self.process_spot_the_difference(
+                instruction_id,
+                instruction,
+                answer,
+                image_ids,
+                in_context_example_ids,
+                instruction_format=instruction_format,
+            )
         elif cur_train_id.upper().startswith("SN"):
-            patch_images, all_texts = self.process_scene_navigation(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
-        elif any(cur_train_id.upper().startswith(videoqa_task) for videoqa_task in self.video_data_list) or self.task_name in self.video_data_list:
-            patch_images, all_texts = self.process_general_videoqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, resample_frames=resample_frames, instruction_format=instruction_format)
-        elif any(cur_train_id.upper().startswith(text_id) for text_id in self.text_data_list) or self.task_name in self.text_data_list:
-            patch_images, all_texts = self.process_general_text(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
-        elif any(cur_train_id.upper().startswith(imageqa_task) for imageqa_task in self.imageqa_data_list) or self.task_name in self.imageqa_data_list:
-            patch_images, all_texts = self.process_general_imageqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
-        elif any(cur_train_id.upper().startswith(in_context_imageqa_task) for in_context_imageqa_task in self.in_context_imageqa_data_list) or self.task_name in self.in_context_imageqa_data_list:
-            patch_images, all_texts = self.process_in_context_imageqa(instruction_id, instruction, answer, image_ids, in_context_example_ids, instruction_format=instruction_format)
+            patch_images, all_texts = self.process_scene_navigation(
+                instruction_id,
+                instruction,
+                answer,
+                image_ids,
+                in_context_example_ids,
+                instruction_format=instruction_format,
+            )
+        elif any(cur_train_id.upper().startswith(videoqa_task) for videoqa_task in self.video_data_list):
+            patch_images, all_texts = self.process_general_videoqa(
+                instruction_id,
+                instruction,
+                answer,
+                image_ids,
+                in_context_example_ids,
+                resample_frames=resample_frames,
+                instruction_format=instruction_format,
+            )
+        elif any(cur_train_id.upper().startswith(text_id) for text_id in self.text_data_list):
+            patch_images, all_texts = self.process_general_text(
+                instruction_id,
+                instruction,
+                answer,
+                image_ids,
+                in_context_example_ids,
+                instruction_format=instruction_format,
+            )
+        elif any(cur_train_id.upper().startswith(imageqa_task) for imageqa_task in self.imageqa_data_list):
+            patch_images, all_texts = self.process_general_imageqa(
+                instruction_id,
+                instruction,
+                answer,
+                image_ids,
+                in_context_example_ids,
+                instruction_format=instruction_format,
+            )
+        elif any(cur_train_id.upper().startswith(in_context_imageqa_task) for in_context_imageqa_task in self.in_context_imageqa_data_list):
+            patch_images, all_texts = self.process_in_context_imageqa(
+                instruction_id,
+                instruction,
+                answer,
+                image_ids,
+                in_context_example_ids,
+                instruction_format=instruction_format,
+            )
         else:
             raise NotImplementedError(f"Error: The task {cur_train_id} is not supported!")
 
@@ -530,7 +559,9 @@ class MimicitDataset(Dataset):
         )
         num_tokens = all_text["input_ids"].shape[1]
         if num_tokens == self.max_seq_len:
-            print(f"{cur_train_id}'s all_texts reaches the max_seq_len.")
+            if self.args.rank == 0:
+                print(f"{cur_train_id}'s all_texts reaches the max_seq_len.")
+                print(all_texts)
 
         all_item = all_text["input_ids"].squeeze(0)
         all_item_mask = all_text["attention_mask"].squeeze(0)

@@ -24,6 +24,10 @@ def get_formatted_prompt(prompt: str) -> str:
     return f"<image>User: {prompt} GPT:<answer>"
 
 
+def get_formatted_forward_prompt(question: str, answer: str) -> str:
+    return f"<image>User: {question} GPT:<answer> {answer}"
+
+
 class OtterImage(BaseModel):
     def __init__(self, model_path="luodian/OTTER-Image-MPT7B", load_bit="bf16"):
         super().__init__("otter", model_path)
@@ -72,6 +76,28 @@ class OtterImage(BaseModel):
         )
         parsed_output = self.model.text_tokenizer.decode(generated_text[0]).split("<answer>")[-1].split("<|endofchunk|>")[0].strip()
         return parsed_output
+
+    def get_vision_x(self, input_data):
+        if isinstance(input_data, Image.Image):
+            if input_data.size == (224, 224) and not any(input_data.getdata()):  # Check if image is blank 224x224 image
+                vision_x = torch.zeros(1, 1, 1, 3, 224, 224, dtype=next(self.model.parameters()).dtype)
+            else:
+                vision_x = self.image_processor.preprocess([input_data], return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)
+        else:
+            raise ValueError("Invalid input data. Expected PIL Image.")
+        model_dtype = next(self.model.parameters()).dtype
+        vision_x = vision_x.to(dtype=model_dtype)
+        return vision_x
+
+    def forward(self, question, answer, image):
+        query = get_formatted_forward_prompt(question, answer)
+        tokens = self.tokenizer(query, return_tensors="pt")
+        input_ids = tokens["input_ids"]
+        attention_mask = tokens["attention_mask"]
+        with torch.no_grad():
+            vision_x = self.get_vision_x(image)
+            loss = self.model(vision_x=vision_x.to(self.model.device), lang_x=input_ids.to(self.model.device), attention_mask=attention_mask.to(self.model.device))
+        return loss
 
 
 if __name__ == "__main__":

@@ -4,11 +4,20 @@ import pandas as pd
 from PIL import Image
 from tqdm import tqdm
 from datasets import load_dataset
-from .base_evel_dataset import BaseEvalDataset
+from .base_eval_dataset import BaseEvalDataset
 
 
 class MMBenchDataset(BaseEvalDataset):
-    def __init__(self, data_path="Otter-AI/mmbench", *, sys_prompt="There are several options:", version="20230712", split="train", cache_dir=None, default_output_path="."):
+    def __init__(
+        self,
+        data_path="Otter-AI/mmbench",
+        *,
+        sys_prompt="There are several options:",
+        version="20230712",
+        split="train",
+        cache_dir=None,
+        default_output_path=".",
+    ):
         super().__init__("MMBenchDataset", data_path)
         version = str(version)
         self.df = load_dataset("Otter-AI/mmbench", version, split=split, cache_dir=cache_dir).to_pandas()

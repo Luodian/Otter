@@ -22,7 +22,11 @@ class BaseModel(ABC):
         self.model_path = model_path
 
     @abstractmethod
-    def generate(self, input_data: dict):
+    def generate(self, **kwargs):
+        pass
+
+    @abstractmethod
+    def forward(self, **kwargs):
         pass
 
 
