@@ -26,6 +26,7 @@ class SEEDBenchDataset(BaseEvalDataset):
         return filtered_data
 
     def __init__(self, data_file, image_folder):
+        super().__init__("seedbench", data_file)
         json_data = self.load_json(data_file)
         self.data = self.filter_image_only(json_data["questions"])
         self.question_type = json_data["question_type"]

@@ -85,6 +85,8 @@ class OtterImage(BaseModel):
                 vision_x = self.image_processor.preprocess([input_data], return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)
         else:
             raise ValueError("Invalid input data. Expected PIL Image.")
+        model_dtype = next(self.model.parameters()).dtype
+        vision_x = vision_x.to(dtype=model_dtype)
         return vision_x
 
     def forward(self, question, answer, image):

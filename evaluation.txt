@@ -1,9 +1,0 @@
-================================================================================
-                              EVALUATION REPORT
-================================================================================
-
-
-MODEL: otter_image
---------------------------------------------------------------------------------
-[2023-09-21 02:12:00,465] [INFO] [real_accelerator.py:158:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-Imported class: <class 'pipeline.evaluation.models.otter_image.OtterImage'>

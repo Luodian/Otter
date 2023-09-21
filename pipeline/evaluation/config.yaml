@@ -1,8 +1,11 @@
 datasets:
-  - name: mmbench
-    version: 20230712
-    split: train
-    cache_dir: /path/to/hf/cache
+  # - name: mmbench
+  #   version: 20230712
+  #   split: train
+  #   cache_dir: /path/to/hf/cache
+  - name: seedbench
+    data_file: /data/joshua/datasets/SEEDBench/SEED-Bench.json
+    image_folder: /data/joshua/datasets/SEEDBench/SEED-Bench-image
 
 
 models:
