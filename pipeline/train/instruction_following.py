@@ -4,45 +4,31 @@ import argparse
 import gc
 import glob
 import os
-
 import sys
 import time
+from itertools import cycle
 
 import deepspeed
 import numpy as np
 import torch
 import torch.nn
-from torch.utils.data import ConcatDataset, DataLoader
+import torch.nn.functional as F
 from accelerate import Accelerator
 from tqdm import tqdm
-from transformers import (
-    CLIPImageProcessor,
-    get_constant_schedule_with_warmup,
-    get_cosine_schedule_with_warmup,
-    get_linear_schedule_with_warmup,
-)
+from transformers import CLIPImageProcessor, get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup, get_linear_schedule_with_warmup
+
 import wandb
-from itertools import cycle
-import sys
 
 sys.path.append("../..")
+from transformers import AutoProcessor
+
 from pipeline.mimicit_utils.data import get_data
-from pipeline.train.train_utils import (
-    AverageMeter,
-    get_image_attention_mask,
-    verify_yaml,
-    get_grouped_params,
-    random_seed,
-    save_checkpoint,
-    save_final_weights,
-    master_print,
-)
 from pipeline.train.train_args import parse_args
+from pipeline.train.train_utils import AverageMeter, get_grouped_params, get_image_attention_mask, master_print, random_seed, save_checkpoint, save_final_weights, verify_yaml
+from src.otter_ai.models.flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 
 # import from src, not from pip package for training & debugging
 from src.otter_ai.models.otter.modeling_otter import OtterForConditionalGeneration
-from src.otter_ai.models.flamingo.modeling_flamingo import FlamingoForConditionalGeneration
-from transformers import AutoProcessor
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -70,6 +56,32 @@ def get_weights_for_dataloaders(dataloaders):
 def get_next_dataloader(dataloader_iterators, weights):
     chosen_dataloader_index = np.random.choice(len(dataloader_iterators), p=weights)
     return dataloader_iterators[chosen_dataloader_index]
+
+
+def find_and_remove_tokens(input_tensor, labels_tensor, attention_mask_tensor, token_id, tokenizer):
+    batch_size, seq_len = input_tensor.size()
+
+    # Find positions of the token_id in the input_tensor
+    pos = (input_tensor == token_id).nonzero(as_tuple=False)
+
+    # Create masks to remove token_id
+    mask_to_remove = torch.ones(batch_size, seq_len, dtype=torch.bool)
+    mask_to_remove[pos[:, 0], pos[:, 1]] = False
+
+    # Remove token_id using the masks
+    new_input = input_tensor[mask_to_remove].view(batch_size, -1)
+    new_labels = labels_tensor[mask_to_remove].view(batch_size, -1)
+    new_attention_mask = attention_mask_tensor[mask_to_remove].view(batch_size, -1)
+
+    # Find the maximum sequence length within the batch after token removal
+    max_length = max(new_input.size(1), new_labels.size(1), new_attention_mask.size(1))
+
+    # Pad sequences within the batch to match the longest sequence
+    new_input = F.pad(new_input, pad=(0, max_length - new_input.size(1)), value=tokenizer.pad_token_id)
+    new_labels = F.pad(new_labels, pad=(0, max_length - new_labels.size(1)), value=-100)
+    new_attention_mask = F.pad(new_attention_mask, pad=(0, max_length - new_attention_mask.size(1)), value=0)
+
+    return new_input, new_labels, new_attention_mask
 
 
 def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
@@ -137,7 +149,12 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         labels[labels == answer_token_id] = -100
         labels[labels == media_token_id] = -100
         if fake_token_image_exists:
+            # if fake token exists, remove loss for any token between <fake_token_around_image>
+            # and drop <answer> token to mimic the prompt strategy for Idefics Model
             labels[labels == fake_token_image_token_id] = -100
+            # print(f"Before removing <answer> token: {tokenizer.decode(input_ids[0])}")
+            input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, answer_token_id, tokenizer)
+            # print(f"After removing <answer> token: {tokenizer.decode(input_ids[0])}")
 
         with accelerator.autocast():
             unwrapped_model = accelerator.unwrap_model(model)
