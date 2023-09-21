@@ -19,11 +19,17 @@ class LlamaAdapter(BaseModel):
     def generate(self, input_data):
         inputs = {}
         video_dir = input_data.get("video_root", "")
-        image = data_utils.load_and_transform_video_data([os.path.join(video_dir, input_data["video_idx"] + ".mp4")], device="cuda")
+        image = data_utils.load_and_transform_video_data([input_data["video_path"]], device="cuda")
         inputs["Image"] = [image, 1]
 
-        # import pdb;pdb.set_trace()
-        results = self.model.generate(inputs, [llama.format_prompt(input_data["question"])], max_gen_len=256)
+        object_description = input_data["object_description"]
+        if object_description != "None":
+            context = f"Given context:{object_description}. "
+        else:
+            context = ""
+        prompts_input = context + input_data["question"]
+
+        results = self.model.generate(inputs, [llama.format_prompt(prompts_input)], max_gen_len=256)
         result = results[0].strip()
         return result
 

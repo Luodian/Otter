@@ -21,17 +21,17 @@ class Video_ChatGPT(BaseModel):
 
     def generate(self, input_data: dict):
         video_dir = input_data.get("video_root", "")
-        video_frames = load_video(os.path.join(video_dir, input_data["video_idx"] + ".mp4"))
-        question = input_data["question"]
+        video_frames = load_video(input_data["video_path"])
+
+        object_description = input_data["object_description"]
+        if object_description != "None":
+            context = f"Given context:{object_description}. "
+        else:
+            context = ""
+        prompts_input = context + input_data["question"]
+
         output = video_chatgpt_infer(
-            video_frames,
-            question,
-            conv_mode="video-chatgpt_v1",
-            model=self.model,
-            vision_tower=self.vision_tower,
-            tokenizer=self.tokenizer,
-            image_processor=self.image_processor,
-            video_token_len=self.video_token_len,
+            video_frames, prompts_input, conv_mode="video-chatgpt_v1", model=self.model, vision_tower=self.vision_tower, tokenizer=self.tokenizer, image_processor=self.image_processor, video_token_len=self.video_token_len
         )
         return output
 

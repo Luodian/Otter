@@ -11,6 +11,7 @@ AVAILABLE_MODELS: Dict[str, str] = {
     "mplug_owl": "mPlug_owl",
     "video_chatgpt": "Video_ChatGPT",
     "otter_image": "OtterImage",
+    "frozen_bilm": "FrozenBilm",
     "idefics": "Idefics",
     "idefics_otter": "IdeficsOtter",
 }
