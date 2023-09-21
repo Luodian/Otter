@@ -11,6 +11,20 @@ def get_pil_image(raw_image_data) -> Image.Image:
     return Image.open(io.BytesIO(raw_image_data["bytes"]))
 
 
+def get_formatted_prompt(question: str, no_image_flag: str) -> str:
+    if no_image_flag:
+        return f"User:{question}<end_of_utterance>\nAssistant:<answer>"
+    else:
+        return f"User:<fake_token_around_image><image><fake_token_around_image>{question}<end_of_utterance>\nAssistant:<answer>\n"
+
+
+def get_formatted_forward_prompt(question: str, answer: str, no_image_flag: bool) -> str:
+    if no_image_flag:
+        return f"User:{question}<end_of_utterance>\nAssistant:<answer>\n{answer}<end_of_utterance>"
+    else:
+        return f"User:<fake_token_around_image><image><fake_token_around_image>{question}<end_of_utterance>\nAssistant:<answer>\n{answer}<end_of_utterance>"
+
+
 class IdeficsOtter(BaseModel):
     def __init__(
         self,
@@ -26,45 +40,30 @@ class IdeficsOtter(BaseModel):
         self.tokenizer.padding_side = "left"
         self.model.eval()
 
-    def get_formatted_prompt(self, question: str, no_image_flag: str) -> str:
-        if no_image_flag:
-            return f"User:{question}<end_of_utterance>\nAssistant:<answer>"
+    def get_vision_x(self, input_data):
+        if isinstance(input_data, Image.Image):
+            if input_data.size == (224, 224) and not any(input_data.getdata()):  # Check if image is blank 224x224 image
+                vision_x = torch.zeros(1, 1, 1, 3, 224, 224, dtype=next(self.model.parameters()).dtype)
+            else:
+                vision_x = self.image_processor.preprocess([input_data], return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)
         else:
-            return f"User:<fake_token_around_image><image><fake_token_around_image>{question}<end_of_utterance>\nAssistant:<answer>\n"
+            raise ValueError("Invalid input data. Expected PIL Image.")
+        model_dtype = next(self.model.parameters()).dtype
+        vision_x = vision_x.to(dtype=model_dtype)
+        return vision_x
 
     def generate(self, question, raw_image_data, no_image_flag=False):
         input_data = get_pil_image(raw_image_data)
-
-        # Check if the input data is an instance of PIL Image
-        if isinstance(input_data, Image.Image):
-            # If no_image_flag is True, create a tensor of zeros with shape (1, 1, 3, 224, 224)
-            if no_image_flag:
-                vision_x = torch.zeros(1, 1, 3, 224, 224, dtype=next(self.model.parameters()).dtype)
-            else:
-                # Preprocess the input image using the image_processor and return the preprocessed tensor
-                vision_x = self.image_processor.preprocess([input_data], return_tensors="pt").unsqueeze(0)
-        else:
-            # Raise a ValueError if the input data is not a PIL Image
-            raise ValueError("Invalid input data. Expected PIL Image.")
-
-        lang_x = self.tokenizer(
-            [
-                self.get_formatted_prompt(question, no_image_flag=no_image_flag),
-            ],
-            return_tensors="pt",
-        )
-
+        vision_x = self.get_vision_x(input_data)
         model_dtype = next(self.model.parameters()).dtype
         vision_x = vision_x.to(dtype=model_dtype)
         # vision_x = self.image_processor.preprocess([image], return_tensors="pt")["pixel_values"].unsqueeze(0)
         lang_x = self.tokenizer(
             [
-                self.get_formatted_prompt(question, no_image_flag=no_image_flag),
+                get_formatted_prompt(question, no_image_flag=no_image_flag),
             ],
             return_tensors="pt",
         )
-        print("------------------------------------------------------------")
-        print(self.get_formatted_prompt(question, no_image_flag=no_image_flag))
         image_attention_mask = get_image_attention_mask(lang_x["input_ids"], 1, self.tokenizer)
         exit_condition = self.processor.tokenizer("<end_of_utterance>", add_special_tokens=False).input_ids
         bad_words_ids = self.processor.tokenizer(["<image>", "<fake_token_around_image>"], add_special_tokens=False).input_ids
@@ -80,6 +79,27 @@ class IdeficsOtter(BaseModel):
         output = self.tokenizer.decode(generated_text[0])
 
         return output
+
+    def eval_forward(self, question, answer, image):
+        query = get_formatted_forward_prompt(question, answer)
+        lang_x = self.tokenizer([query], return_tensors="pt")
+        input_ids = lang_x["input_ids"]
+        attention_mask = lang_x["attention_mask"]
+        image_attention_mask = get_image_attention_mask(input_ids, 1, self.tokenizer)
+        vision_x = self.get_vision_x(image)
+        # query = get_formatted_forward_prompt(question, answer)
+        # tokens = self.tokenizer(query, return_tensors="pt")
+        # input_ids = tokens["input_ids"]
+        # attention_mask = tokens["attention_mask"]
+        with torch.no_grad():
+            vision_x = self.get_vision_x(image)
+            loss = self.model(
+                pixel_values=vision_x.to(self.model.device), 
+                lang_x=input_ids.to(self.model.device), 
+                attention_mask=attention_mask.to(self.model.device),
+                image_attention_mask=image_attention_mask.to(self.model.device)
+            )[0]
+        return loss
 
 
 if __name__ == "__main__":

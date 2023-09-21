@@ -89,14 +89,14 @@ class OtterImage(BaseModel):
         vision_x = vision_x.to(dtype=model_dtype)
         return vision_x
 
-    def forward(self, question, answer, image):
+    def eval_forward(self, question, answer, image):
         query = get_formatted_forward_prompt(question, answer)
         tokens = self.tokenizer(query, return_tensors="pt")
         input_ids = tokens["input_ids"]
         attention_mask = tokens["attention_mask"]
         with torch.no_grad():
             vision_x = self.get_vision_x(image)
-            loss = self.model(vision_x=vision_x.to(self.model.device), lang_x=input_ids.to(self.model.device), attention_mask=attention_mask.to(self.model.device))
+            loss = self.model(vision_x=vision_x.to(self.model.device), lang_x=input_ids.to(self.model.device), attention_mask=attention_mask.to(self.model.device))[0]
         return loss
 
 

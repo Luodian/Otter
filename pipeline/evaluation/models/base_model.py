@@ -26,7 +26,7 @@ class BaseModel(ABC):
         pass
 
     @abstractmethod
-    def forward(self, **kwargs):
+    def eval_forward(self, **kwargs):
         pass
 
 

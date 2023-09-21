@@ -34,7 +34,7 @@ class SEEDBenchDataset(BaseEvalDataset):
 
             option_losses = []
             for option in options:
-                option_losses.append(model.forward(question, option, image).items())
+                option_losses.append(model.eval_forward(question, option, image).items())
 
             prediction_idx = np.argmin(option_losses)
             prediction = ["A", "B", "C", "D"][prediction_idx]
