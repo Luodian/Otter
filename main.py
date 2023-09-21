@@ -21,12 +21,19 @@ def main():
     parser.add_argument(
         "--input_video_path", type=str, required=True, help="path for input mp4 video"
     )
+    parser.add_argument(
+        "--load_bit",
+        type=str,
+        choices=["fp16", "bf16", "fp32"],
+        default="fp16",
+        help="model load bit",
+    )
     args = parser.parse_args()
 
     # TODO: loggingを導入する
 
     # model settings
-    load_bit = "fp32"
+    load_bit = args.load_bit
     if load_bit == "fp16":
         precision = {"torch_dtype": torch.float16}
     elif load_bit == "bf16":
