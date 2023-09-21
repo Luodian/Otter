@@ -122,9 +122,7 @@ class TestOtterIdefics:
 
 class TestIdefics:
     def __init__(self, checkpoint: str = "HuggingFaceM4/idefics-9b-instruct"):
-        super().__init__("idefics", checkpoint)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        checkpoint = checkpoint
         self.model = IdeficsForVisionText2Text.from_pretrained(checkpoint, device_map="auto", torch_dtype=torch.bfloat16).to(self.device)
         self.processor = AutoProcessor.from_pretrained(checkpoint)
 
