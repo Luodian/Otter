@@ -1,18 +1,17 @@
+import argparse
 import json
 import sys
 
 import requests
 import yaml
 
-from .demo_models import TestOtter, TestOtterIdefics, TestIdefics
+from .demo_models import TestIdefics, TestOtter, TestOtterIdefics
 from .demo_utils import get_image, print_colored
 
 requests.packages.urllib3.disable_warnings()
 
 
 def parse_args():
-    import argparse
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, default="otter", required=True, help="The model name.")
     parser.add_argument("--checkpoint", type=str, help="The path to the checkpoint.")
