@@ -31,24 +31,43 @@ def get_content_type(file_path):
 # ------------------- Image and Video Handling Functions -------------------
 
 
-def extract_frames(video_path, num_frames=16):
+def extract_frames(video_path, is_transparent_background):
     video = cv2.VideoCapture(video_path)
     total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    num_frames = int(video.get(cv2.CAP_PROP_FPS))
+    # Otter-video maximum frame
+    num_frames = 128 if num_frames >= 128 else num_frames
     frame_step = total_frames // num_frames
+
+    logger.info(
+        "total frames: {}, num_frames: {}, frame_step: {}".format(
+            total_frames, num_frames, frame_step
+        )
+    )
+
     frames = []
 
-    # subtractor = cv2.createBackgroundSubtractorMOG2(detectShadows=False)
+    # frame_width = int(video.get(3))
+    # frame_height = int(video.get(4))
+    # 出力動画ファイルの設定
+    # fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    # out = cv2.VideoWriter("temp.mp4", fourcc, 3, (frame_width, frame_height), isColor=True)
+
+    subtractor = cv2.createBackgroundSubtractorMOG2(detectShadows=False)
     for i in range(num_frames):
         video.set(cv2.CAP_PROP_POS_FRAMES, i * frame_step)
         ret, frame = video.read()
         if ret:
-            # frame = remove_background(frame, subtractor)
+            if is_transparent_background:
+                frame = remove_background(frame, subtractor)
+            # out.write(frame)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = Image.fromarray(frame).convert("RGB")
             frames.append(frame)
-            # TODO: 試しに表示する
 
     video.release()
+    # out.release()
     return frames
 
 
@@ -64,7 +83,7 @@ def remove_background(frame, subtractor):
     return result
 
 
-def get_image(url: str) -> Union[Image.Image, list]:
+def get_image(url: str, is_transparent_background: bool) -> Union[Image.Image, list]:
     if "://" not in url:  # Local file
         content_type = get_content_type(url)
     else:  # Remote URL
@@ -84,7 +103,7 @@ def get_image(url: str) -> Union[Image.Image, list]:
         else:  # Remote URL
             with open(video_path, "wb") as f:
                 f.write(requests.get(url, stream=True, verify=False).content)
-        frames = extract_frames(video_path)
+        frames = extract_frames(video_path, is_transparent_background)
         if "://" in url:  # Only remove the temporary video file if it was downloaded
             os.remove(video_path)
         return frames

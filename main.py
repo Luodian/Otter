@@ -19,10 +19,17 @@ requests.packages.urllib3.disable_warnings()
 logger = logging.getLogger("alcon_log")
 logger.setLevel(logging.INFO)
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--input_video_path", type=str, required=True, help="path for input mp4 video"
+        "--input_video_path", type=str, required=True, help="path for input mp4 video."
+    )
+    parser.add_argument(
+        "--is_transparent_background",
+        type=bool,
+        default=True,
+        help="Transparent background or not.",
     )
     parser.add_argument(
         "--load_bit",
@@ -64,7 +71,7 @@ def main():
         logger.error("mp4ファイルを指定してください。")
         return
 
-    frames_list = get_image(video_url)
+    frames_list = get_image(video_url, args.is_transparent_background)
 
     # TODO: プロンプトのファイル数だけ繰り返す
     # otter model input and output
@@ -74,6 +81,7 @@ def main():
         frames_list, prompts_input, model, image_processor, tensor_dtype
     )
     logger.info(f"Response: {response}")
+    print(f"Response: {response}")
 
     # TODO: 回答をCSVに書き込む
 
