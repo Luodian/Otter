@@ -1,11 +1,8 @@
 datasets:
-  # - name: mmbench
-  #   version: 20230712
-  #   split: train
-  #   cache_dir: /path/to/hf/cache
-  - name: seedbench
-    cache_dir: /data/pufanyi/cache
-
+  - name: mmbench
+    version: 20230712
+    split: dev
+    cache_dir: /path/to/hf/cache
 
 models:
   # - name: idefics

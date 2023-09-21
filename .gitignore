@@ -138,3 +138,5 @@ pipeline/evaluation/ckpts/*
 pipeline/evaluation/models/Ask_Anything
 pipeline/evaluation/models/FrozenBiLM
 pipeline/evaluation/models/LLaMA_Adapter
+
+shared_scripts/**

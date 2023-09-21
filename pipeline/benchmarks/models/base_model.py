@@ -32,7 +32,7 @@ class BaseModel(ABC):
 
 def load_model(model_name: str, model_args: Dict[str, str]) -> BaseModel:
     assert model_name in AVAILABLE_MODELS, f"{model_name} is not an available model."
-    module_path = "pipeline.evaluation.models." + model_name
+    module_path = "pipeline.benchmarks.models." + model_name
     model_formal_name = AVAILABLE_MODELS[model_name]
     imported_module = importlib.import_module(module_path)
     model_class = getattr(imported_module, model_formal_name)

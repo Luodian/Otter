@@ -1,19 +1,33 @@
+import os
+import random
 import subprocess
 import sys
-import time
 from contextlib import suppress
 
+import numpy as np
 import torch
 from torch.utils.data.distributed import DistributedSampler
-from tqdm import tqdm
+import torch.distributed as dist
 
 try:
-    from transformers.models.idefics.processing_idefics import (
-        image_attention_mask_for_packed_input_ids,
-        incremental_to_binary_attention_mask,
-    )
+    from transformers.models.idefics.processing_idefics import image_attention_mask_for_packed_input_ids, incremental_to_binary_attention_mask
 except ImportError:
     print("Failed to import Idefics processing module.")
+
+
+def master_print(*args, **kwargs):
+    if dist.is_available() and dist.is_initialized():
+        rank = dist.get_rank()
+        if rank == 0:
+            print(*args, **kwargs)
+    else:
+        print(*args, **kwargs)
+
+
+def random_seed(seed=42, rank=0):
+    torch.manual_seed(seed + rank)
+    np.random.seed(seed + rank)
+    random.seed(seed + rank)
 
 
 def get_cast_dtype(precision: str):
@@ -142,3 +156,89 @@ def verify_yaml(args):
     if result.returncode != 0:
         print("YAML verification failed!")
         sys.exit(1)
+
+
+def get_grouped_params(model, wd):
+    params_with_wd, params_without_wd = [], []
+
+    def apply_decay(x):
+        return "gated_cross_attn_layer" in x and "ff_gate" not in x and "attn_gate" not in x and "norm" not in x and "bias" not in x
+
+    for n, p in model.named_parameters():
+        # if p.requires_grad:
+        if apply_decay(n):
+            params_with_wd.append(p)
+        else:
+            params_without_wd.append(p)
+
+    return [
+        {"params": params_with_wd, "weight_decay": wd},
+        {"params": params_without_wd, "weight_decay": 0.0},
+    ]
+
+
+def save_checkpoint(epoch, model, args, accelerator, unwrapped_model=None, global_step=None):
+    """Save a checkpoint for the model."""
+    # Ensure the directory exists
+    if not os.path.exists(args.external_save_dir):
+        os.makedirs(args.external_save_dir)
+
+    if unwrapped_model is None:
+        unwrapped_model = accelerator.unwrap_model(model)
+
+    # Formulate the checkpoint filename based on whether it's an epoch or global_step checkpoint
+    if global_step:
+        checkpoint_path = f"{args.external_save_dir}/checkpoint_steps_{global_step}.pt"
+        checkpoint_dict = {
+            "steps": global_step,
+            "model_state_dict": get_checkpoint(unwrapped_model),
+        }
+    else:
+        checkpoint_path = f"{args.external_save_dir}/checkpoint_{epoch}.pt"
+        checkpoint_dict = {"model_state_dict": get_checkpoint(unwrapped_model)}
+
+    # Save the checkpoint if rank is 0
+    if args.rank == 0:
+        print(f"Saving checkpoint to {checkpoint_path}")
+        accelerator.save(checkpoint_dict, checkpoint_path)
+
+        # Save the model's configuration
+        unwrapped_model.config.save_pretrained(args.external_save_dir)
+
+        # Remove the previous checkpoint if required
+        if args.delete_previous_checkpoint:
+            if global_step:
+                prev_checkpoint_path = f"{args.external_save_dir}/checkpoint_step_{global_step-args.save_steps_interval}.pt"
+                if os.path.exists(prev_checkpoint_path):
+                    os.remove(prev_checkpoint_path)
+            elif epoch > 0:
+                os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
+
+
+def save_final_weights(model, args, accelerator, processor=None):
+    """Save final weights of the model."""
+    unwrapped_model = accelerator.unwrap_model(model)
+
+    # Save based on the distributed type
+    if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
+        checkpoint_dict = accelerator.get_state_dict(model)
+        unwrapped_model.config.save_pretrained(args.external_save_dir)
+        if args.rank == 0:
+            if not args.save_hf_model:
+                trainable_params_name = [name for name, p in unwrapped_model.named_parameters() if p.requires_grad]
+                for name in list(checkpoint_dict.keys()):
+                    if name not in trainable_params_name:
+                        del checkpoint_dict[name]
+                accelerator.save(checkpoint_dict, f"{args.external_save_dir}/final_weights.pt")
+            else:
+                unwrapped_model.save_pretrained(f"{args.external_save_dir}", is_main_process=accelerator.is_main_process, save_function=accelerator.save, state_dict=checkpoint_dict)
+                if args.model_name == "idefics":
+                    processor.save_pretrained(f"{args.external_save_dir}", is_main_process=accelerator.is_main_process, save_function=accelerator.save)
+    else:
+        checkpoint_dict = get_checkpoint(model=unwrapped_model)
+        accelerator.save(checkpoint_dict, f"{args.external_save_dir}/final_weights.pt")
+        unwrapped_model.config.save_pretrained(args.external_save_dir)
+        if args.save_hf_model:
+            unwrapped_model.save_pretrained(f"{args.external_save_dir}")
+            if args.model_name == "idefics":
+                processor.save_pretrained(f"{args.external_save_dir}", is_main_process=accelerator.is_main_process, save_function=accelerator.save)

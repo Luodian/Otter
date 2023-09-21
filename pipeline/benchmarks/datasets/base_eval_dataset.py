@@ -7,7 +7,6 @@ import importlib
 AVAILABLE_EVAL_DATASETS: Dict[str, str] = {
     "mhbench": "MultiHopBenchDataset",
     "mmbench": "MMBenchDataset",
-    "seedbench": "SEEDBenchDataset",
 }
 
 
@@ -23,7 +22,7 @@ class BaseEvalDataset(ABC):
 
 def load_dataset(dataset_name: str, dataset_args: Dict[str, str] = {}) -> BaseEvalDataset:
     assert dataset_name in AVAILABLE_EVAL_DATASETS, f"{dataset_name} is not an available eval dataset."
-    module_path = "pipeline.evaluation.eval_datasets." + dataset_name
+    module_path = "pipeline.benchmarks.datasets." + dataset_name
     dataset_formal_name = AVAILABLE_EVAL_DATASETS[dataset_name]
     imported_module = importlib.import_module(module_path)
     dataset_class = getattr(imported_module, dataset_formal_name)

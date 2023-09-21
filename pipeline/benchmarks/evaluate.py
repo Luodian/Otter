@@ -96,6 +96,7 @@ if __name__ == "__main__":
             config = yaml.safe_load(f)
         model_infos = config["models"]
         dataset_infos = config["datasets"]
+        phrased_args.output = config["output"] if "output" in config else phrased_args.output
     else:
         # Zip the models and their respective paths
         model_names = phrased_args.models.split(",")

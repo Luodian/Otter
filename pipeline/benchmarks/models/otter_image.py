@@ -73,6 +73,7 @@ class OtterImage(BaseModel):
             max_new_tokens=512,
             num_beams=3,
             no_repeat_ngram_size=3,
+            pad_token_id=self.tokenizer.eos_token_id,
         )
         parsed_output = self.model.text_tokenizer.decode(generated_text[0]).split("<answer>")[-1].split("<|endofchunk|>")[0].strip()
         return parsed_output
