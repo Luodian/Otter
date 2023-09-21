@@ -8,6 +8,7 @@ import torch
 import transformers
 from PIL import Image
 import sys
+import logging
 
 sys.path.append("./src")
 from src.otter_ai import OtterForConditionalGeneration
@@ -15,6 +16,8 @@ from pipeline.demo.otter_video import get_response, get_image
 
 requests.packages.urllib3.disable_warnings()
 
+logger = logging.getLogger("alcon_log")
+logger.setLevel(logging.INFO)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -29,8 +32,6 @@ def main():
         help="model load bit",
     )
     args = parser.parse_args()
-
-    # TODO: loggingを導入する
 
     # model settings
     load_bit = args.load_bit
@@ -60,7 +61,7 @@ def main():
 
     if video_url[-3:] != "MP4" and video_url[-3:] != "mp4":
         # TODO: logging
-        print("mp4ファイルを指定してください。")
+        logger.error("mp4ファイルを指定してください。")
         return
 
     frames_list = get_image(video_url)
@@ -68,10 +69,11 @@ def main():
     # TODO: プロンプトのファイル数だけ繰り返す
     # otter model input and output
     prompts_input = input("Enter prompts: ")
+    logger.info("Generating answer...")
     response = get_response(
         frames_list, prompts_input, model, image_processor, tensor_dtype
     )
-    print(f"Response: {response}")
+    logger.info(f"Response: {response}")
 
     # TODO: 回答をCSVに書き込む
 

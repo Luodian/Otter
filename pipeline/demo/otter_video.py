@@ -1,3 +1,4 @@
+import logging
 import mimetypes
 import os
 from typing import Union
@@ -14,6 +15,10 @@ from otter_ai import OtterForConditionalGeneration
 
 # Disable warnings
 requests.packages.urllib3.disable_warnings()
+
+
+logger = logging.getLogger("alcon_log")
+logger.setLevel(logging.INFO)
 
 # ------------------- Utility Functions -------------------
 
@@ -43,7 +48,6 @@ def extract_frames(video_path, num_frames=16):
             frames.append(frame)
             # TODO: 試しに表示する
 
-
     video.release()
     return frames
 
@@ -64,7 +68,9 @@ def get_image(url: str) -> Union[Image.Image, list]:
     if "://" not in url:  # Local file
         content_type = get_content_type(url)
     else:  # Remote URL
-        content_type = requests.head(url, stream=True, verify=False).headers.get("Content-Type")
+        content_type = requests.head(url, stream=True, verify=False).headers.get(
+            "Content-Type"
+        )
 
     if "image" in content_type:
         if "://" not in url:  # Local file
@@ -93,13 +99,27 @@ def get_formatted_prompt(prompt: str) -> str:
     return f"<image>User: {prompt} GPT:<answer>"
 
 
-def get_response(input_data, prompt: str, model=None, image_processor=None, tensor_dtype=None) -> str:
+def get_response(
+    input_data, prompt: str, model=None, image_processor=None, tensor_dtype=None
+) -> str:
     if isinstance(input_data, Image.Image):
-        vision_x = image_processor.preprocess([input_data], return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)
+        vision_x = (
+            image_processor.preprocess([input_data], return_tensors="pt")[
+                "pixel_values"
+            ]
+            .unsqueeze(1)
+            .unsqueeze(0)
+        )
     elif isinstance(input_data, list):  # list of video frames
-        vision_x = image_processor.preprocess(input_data, return_tensors="pt")["pixel_values"].unsqueeze(0).unsqueeze(0)
+        vision_x = (
+            image_processor.preprocess(input_data, return_tensors="pt")["pixel_values"]
+            .unsqueeze(0)
+            .unsqueeze(0)
+        )
     else:
-        raise ValueError("Invalid input data. Expected PIL Image or list of video frames.")
+        raise ValueError(
+            "Invalid input data. Expected PIL Image or list of video frames."
+        )
 
     lang_x = model.text_tokenizer(
         [
@@ -116,7 +136,9 @@ def get_response(input_data, prompt: str, model=None, image_processor=None, tens
     lang_x_input_ids = lang_x["input_ids"]
     lang_x_attention_mask = lang_x["attention_mask"]
 
-    bad_words_id = model.text_tokenizer(["User:", "GPT1:", "GFT:", "GPT:"], add_special_tokens=False).input_ids
+    bad_words_id = model.text_tokenizer(
+        ["User:", "GPT1:", "GFT:", "GPT:"], add_special_tokens=False
+    ).input_ids
     generated_text = model.generate(
         vision_x=vision_x.to(model.device),
         lang_x=lang_x_input_ids.to(model.device),
