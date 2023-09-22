@@ -5,7 +5,6 @@ import numpy as np
 import re
 from word2number import w2n
 
-
 FISH_TYPES = 5
 
 

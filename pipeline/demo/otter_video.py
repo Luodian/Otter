@@ -17,7 +17,7 @@ from otter_ai import OtterForConditionalGeneration
 requests.packages.urllib3.disable_warnings()
 
 
-logger = logging.getLogger("alcon_log")
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # ------------------- Utility Functions -------------------
@@ -47,31 +47,23 @@ def extract_frames(video_path, is_transparent_background):
     )
 
     frames = []
-
-    # frame_width = int(video.get(3))
-    # frame_height = int(video.get(4))
-    # 出力動画ファイルの設定
-    # fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    # out = cv2.VideoWriter("temp.mp4", fourcc, 3, (frame_width, frame_height), isColor=True)
-
     subtractor = cv2.createBackgroundSubtractorMOG2(detectShadows=False)
     for i in range(num_frames):
         video.set(cv2.CAP_PROP_POS_FRAMES, i * frame_step)
         ret, frame = video.read()
         if ret:
             if is_transparent_background:
-                frame = remove_background(frame, subtractor)
-            # out.write(frame)
+                logger.info("Transparent background in input mp4")
+                frame = transparent_background(frame, subtractor)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = Image.fromarray(frame).convert("RGB")
             frames.append(frame)
 
     video.release()
-    # out.release()
     return frames
 
 
-def remove_background(frame, subtractor):
+def transparent_background(frame, subtractor):
     # get foreground
     fg_mask = subtractor.apply(frame)
 

@@ -19,7 +19,7 @@ from pipeline.demo.otter_video import get_response, get_image
 
 requests.packages.urllib3.disable_warnings()
 
-logger = logging.getLogger("alcon_log")
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 PROMPT_PATH = "./prompt"
@@ -90,7 +90,6 @@ def main():
     # read prompt from ./prompt/*.txt
     result = {}
     prompt_files = glob.glob(os.path.join(PROMPT_PATH, "*.txt"))
-    print(prompt_files)
     for prompt_file in prompt_files:
         fish_name = os.path.splitext(os.path.basename(prompt_file))[0]
         with open(prompt_file, "r", encoding="utf-8") as file:
@@ -109,13 +108,16 @@ def main():
 
     result = utils.convert_fish_name_to_number(result)
     logger.info(f"Converted Result: {result}")
+
     # calculate accuracy
     if args.truth_csv_path:
-        # TODO: CSVからdictを読み取る
+        ground_truth = {}
         with open(args.truth_csv_path, "r", encoding="utf-8") as file:
-            # TODO: ここ３行目から読み取れてる？
-            reader = csv.reader(file)[2:]
-            ground_truth = {rows[0]: rows[1] for rows in reader}
+            reader = csv.reader(file)
+            for row in reader:
+                if reader.line_num < 3:
+                    continue
+                ground_truth[int(row[0])] = int(row[1])
         accuracy = utils.accuracy(result, ground_truth)
         logger.info(f"Accuracy: {accuracy}")
 
