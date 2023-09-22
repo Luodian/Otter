@@ -8,6 +8,7 @@ import torch
 import transformers
 from PIL import Image
 import sys
+import random
 
 sys.path.append("../../src")
 # make sure you can properly access the otter folder
@@ -20,7 +21,7 @@ requests.packages.urllib3.disable_warnings()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# TODO: seed値を固定する
+random.seed(11)
 
 # ------------------- Utility Functions -------------------
 
