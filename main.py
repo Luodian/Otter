@@ -40,6 +40,8 @@ class Config:
 
     @staticmethod
     def from_csv(path):
+        if not os.path.isfile(path):
+            raise FileNotFoundError(f"{path} is'nt exist!")
         with open(path) as f:
             reader = csv.reader(f)
             lines = list(map(lambda e: e[0], reader))
@@ -113,11 +115,14 @@ def main():
 
     # read mp4
     video_url = os.path.join(config.folder_name, config.input_video_path)
-    print(video_url)
-
     if video_url[-3:] != "MP4" and video_url[-3:] != "mp4":
-        logger.error("mp4ファイルを指定してください。")
+        logger.error("Please set path for mp4.")
         return
+    if not os.path.isfile(video_url):
+        raise FileNotFoundError(
+            f"{video_url} is'nt exist! Change the first line of the input CSV."
+        )
+
     frames_list = get_image(video_url, args.is_transparent_background, int(config.fps))
 
     # read prompt from ./prompt/*.txt
