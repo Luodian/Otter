@@ -413,4 +413,6 @@ ipython_config.py
 #   git rm -r .ipynb_checkpoints/
 
 main.build/
+main.dist/
+main.onefile-build/
 output.csv
