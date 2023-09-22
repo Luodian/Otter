@@ -140,6 +140,6 @@ pipeline/benchmarks/models/Ask_Anything
 pipeline/benchmarks/models/FrozenBiLM
 pipeline/benchmarks/models/LLaMA_Adapter
 
-shared_scripts/**
+shared_scripts/gcp_instance/**
 pipeline/benchmarks/models/Video_ChatGPT
 pipeline/benchmarks/evaluation_result
