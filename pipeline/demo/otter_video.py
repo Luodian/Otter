@@ -20,6 +20,8 @@ requests.packages.urllib3.disable_warnings()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+# TODO: seed値を固定する
+
 # ------------------- Utility Functions -------------------
 
 
@@ -31,11 +33,11 @@ def get_content_type(file_path):
 # ------------------- Image and Video Handling Functions -------------------
 
 
-def extract_frames(video_path, is_transparent_background):
+def extract_frames(video_path, is_transparent_background, video_fps):
     video = cv2.VideoCapture(video_path)
     total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    num_frames = int(video.get(cv2.CAP_PROP_FPS))
+    num_frames = video_fps
     # Otter-video maximum frame
     num_frames = 128 if num_frames >= 128 else num_frames
     frame_step = total_frames // num_frames
@@ -75,7 +77,9 @@ def transparent_background(frame, subtractor):
     return result
 
 
-def get_image(url: str, is_transparent_background: bool) -> Union[Image.Image, list]:
+def get_image(
+    url: str, is_transparent_background: bool, video_fps: float
+) -> Union[Image.Image, list]:
     if "://" not in url:  # Local file
         content_type = get_content_type(url)
     else:  # Remote URL
@@ -95,7 +99,7 @@ def get_image(url: str, is_transparent_background: bool) -> Union[Image.Image, l
         else:  # Remote URL
             with open(video_path, "wb") as f:
                 f.write(requests.get(url, stream=True, verify=False).content)
-        frames = extract_frames(video_path, is_transparent_background)
+        frames = extract_frames(video_path, is_transparent_background, video_fps)
         if "://" in url:  # Only remove the temporary video file if it was downloaded
             os.remove(video_path)
         return frames

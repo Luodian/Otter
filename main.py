@@ -25,11 +25,40 @@ logger.setLevel(logging.INFO)
 PROMPT_PATH = "./prompt"
 
 
+class Config:
+    def __init__(
+        self,
+        folder_name,
+        fps,
+        fish_variety,
+        input_video_path,
+    ):
+        self.folder_name = folder_name
+        self.fps = fps
+        self.fish_variety = fish_variety
+        self.input_video_path = input_video_path
+
+    @staticmethod
+    def from_csv(path):
+        with open(path) as f:
+            reader = csv.reader(f)
+            lines = list(map(lambda e: e[0], reader))
+        return Config(
+            lines[0],
+            float(lines[5]),
+            int(lines[6]),
+            lines[7],
+        )
+
+
 def main():
     # command line args
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--input_video_path", type=str, required=True, help="path for input mp4 video."
+        "--input_csv_path",
+        type=str,
+        required=True,
+        help="path for input video metadata csv.",
     )
     parser.add_argument(
         "--output_csv_path",
@@ -57,6 +86,8 @@ def main():
     )
     args = parser.parse_args()
 
+    config = Config.from_csv(args.input_csv_path)
+
     # model settings
     load_bit = args.load_bit
     if load_bit == "fp16":
@@ -81,11 +112,13 @@ def main():
     model.eval()
 
     # read mp4
-    video_url = args.input_video_path
+    video_url = os.path.join(config.folder_name, config.input_video_path)
+    print(video_url)
+
     if video_url[-3:] != "MP4" and video_url[-3:] != "mp4":
         logger.error("mp4ファイルを指定してください。")
         return
-    frames_list = get_image(video_url, args.is_transparent_background)
+    frames_list = get_image(video_url, args.is_transparent_background, int(config.fps))
 
     # read prompt from ./prompt/*.txt
     result = {}
@@ -118,11 +151,11 @@ def main():
                 if reader.line_num < 3:
                     continue
                 ground_truth[int(row[0])] = int(row[1])
-        accuracy = utils.accuracy(result, ground_truth)
+        accuracy = utils.accuracy(result, ground_truth, config.fish_variety)
         logger.info(f"Accuracy: {accuracy}")
 
     # output
-    utils.output_csv(result, video_url, args.output_csv_path)
+    utils.output_csv(result, video_url, args.output_csv_path, config.fish_variety)
 
 
 if __name__ == "__main__":

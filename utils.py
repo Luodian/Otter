@@ -5,8 +5,6 @@ import numpy as np
 import re
 from word2number import w2n
 
-FISH_TYPES = 5
-
 
 class FishNames(IntEnum):
     HIMEDAKA = 1
@@ -23,20 +21,20 @@ class FishNames(IntEnum):
         raise ValueError(f"{name} is not a valid FishNames!")
 
 
-def accuracy(result, ground_truth):
+def accuracy(result, ground_truth, fish_variety):
     count = 0
     for v in FishNames:
         if result[int(v)] == ground_truth[int(v)]:
             count += 1
-    accuracy = 100 * (count / FISH_TYPES)
+    accuracy = 100 * (count / fish_variety)
     return accuracy
 
 
-def output_csv(result, input_video_path, output_csv_path):
+def output_csv(result, input_video_path, output_csv_path, fish_variety):
     with open(output_csv_path, "w", encoding="utf-8") as file:
         csv_writer = csv.writer(file)
         csv_writer.writerow([input_video_path])
-        csv_writer.writerow([FISH_TYPES])
+        csv_writer.writerow([fish_variety])
         for key in sorted(result.keys()):
             value = result[key]
             csv_writer.writerow([key, value])
