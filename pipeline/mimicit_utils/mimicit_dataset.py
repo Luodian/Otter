@@ -131,31 +131,6 @@ class MimicitDataset(Dataset):
         self.train_data_list = []
         self.train_config = {}
 
-        # Get the length of each dataset and use the second largest value as the length of each dataset
-        # data_length_list = []
-        # for cur_mimicit_path, cur_train_config_path in zip(self.mimicit_paths, self.train_config_paths):
-        #     # Load the train_config
-        #     if cur_train_config_path != "":
-        #         assert os.path.exists(cur_train_config_path), f"Error: The local train_config_path {cur_train_config_path} not exists!"
-        #         with open(cur_train_config_path, "rb") as f:
-        #             cache_train_config = orjson.loads(f.read())
-        #     else:
-        #         with open(cur_mimicit_path, "rb") as f:
-        #             cache_train_config = orjson.loads(f.read())["data"]
-        #             cache_train_config = {key: [] for key in cache_train_config.keys()}
-
-        #     cache_train_list = list(cache_train_config.keys())
-
-        #     data_length_list.append(len(cache_train_list))
-
-        #     del cache_train_config
-        #     del cache_train_list
-
-        # if len(data_length_list) == 1:
-        #     max_items_per_dataset = max(data_length_list)
-        # else:
-        #     max_items_per_dataset = sorted(data_length_list, reverse=True)[1]
-
         table = PrettyTable()
         # Set column names for the table
         table.field_names = ["Task Name", "MIMICIT_PATH", "TRAIN_CONFIG_PATH", "IMAGES_PATH", "Num_samples"]
@@ -189,7 +164,10 @@ class MimicitDataset(Dataset):
                     for ins_key in resampled_train:
                         img_keys = self.dataset[ins_key]["image_ids"]
                         for img_key in img_keys:
-                            self.images[img_key] = images_data[img_key]
+                            # Decode the base64 string to image
+                            img_data = base64.urlsafe_b64decode(images_data[img_key])
+                            img = Image.open(BytesIO(img_data)).convert("RGB")
+                            self.images[img_key] = img
 
             self.train_data_list.extend(resampled_train)
             self.train_config.update(cache_train_config)
@@ -344,7 +322,6 @@ class MimicitDataset(Dataset):
         image_ids = self.resample_frames_fn(image_ids, resample_frames)
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
-            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
             cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
             if len(patch_images) == 0:
                 patch_images = cur_patch_image
@@ -360,7 +337,6 @@ class MimicitDataset(Dataset):
         # <image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
-            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
             cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
             if len(patch_images) == 0:
                 patch_images = cur_patch_image
@@ -389,7 +365,6 @@ class MimicitDataset(Dataset):
         # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
-            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
             cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
             if len(patch_images) == 0:
                 patch_images = cur_patch_image
@@ -440,7 +415,6 @@ class MimicitDataset(Dataset):
         all_texts = all_texts.rstrip("\n")  # remove the last \n
         cur_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
         cur_image = self.images[cur_image_id]
-        cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
         patch_images = self.patch_resize_transform(cur_image).unsqueeze(0).unsqueeze(0)
         return patch_images, all_texts
 
