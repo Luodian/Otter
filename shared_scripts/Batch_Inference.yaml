@@ -106,3 +106,25 @@
   question: What's unusual about this image?
 - image_path: https://i.postimg.cc/8CC2ZZhy/WX20230922-023123-2x.png
   question: What is the gender of the person riding the motorcycle in the image?
+- image_path: https://i.postimg.cc/MGVQ5RSF/sunder-pichai-pti-1579688604.jpg
+  question: What does the man look like? What is he thinking about?
+- image_path: https://i.postimg.cc/GtfRxJD4/IMG-5651.jpg
+  question: What animal inside this image?
+- image_path: https://i.postimg.cc/L6rRqDR7/IMG-5652.jpg
+  question: How many people inside this image?
+- image_path: https://i.postimg.cc/L6rRqDR7/IMG-5652.jpg
+  question: Where are they?
+- image_path: https://i.postimg.cc/L6rRqDR7/IMG-5652.jpg
+  question: What are they doing? and what are they wearing?
+- image_path: https://i.postimg.cc/4NKsNqCV/IMG-5653.jpg
+  question: Who is she and what does she do?
+- image_path: https://i.postimg.cc/WzzjZfdR/IMG-5653.jpg
+  question: What does she wear?
+- image_path: https://i.postimg.cc/66bBKwPB/IMG-5654.jpg
+  question: What does the kitty wear?
+- image_path: https://i.postimg.cc/66bBKwPB/IMG-5655.jpg
+  question: Is it a screenshot and in what app does the screenshot come from?
+- image_path: https://i.postimg.cc/TwCfpXYq/IMG-5661.jpg
+  question: How many people inside this image? And who are they?
+- image_path: https://i.postimg.cc/TwCfpXYq/IMG-5661.jpg
+  question: What does the man in the left look like? Who is he?
