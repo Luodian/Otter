@@ -21,7 +21,7 @@ requests.packages.urllib3.disable_warnings()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-random.seed(11)
+random.seed(3407)
 
 # ------------------- Utility Functions -------------------
 

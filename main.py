@@ -19,7 +19,7 @@ from pipeline.demo.otter_video import get_response, get_image
 
 requests.packages.urllib3.disable_warnings()
 
-logger = logging.getLogger(__name__)
+logger = logging.getlogging(__name__)
 logger.setLevel(logging.INFO)
 
 PROMPT_PATH = "./prompt"
@@ -116,7 +116,7 @@ def main():
     # read mp4
     video_url = os.path.join(config.folder_name, config.input_video_path)
     if video_url[-3:] != "MP4" and video_url[-3:] != "mp4":
-        logger.error("Please set path for mp4.")
+        logging.error("Please set path for mp4.")
         return
     if not os.path.isfile(video_url):
         raise FileNotFoundError(
@@ -132,20 +132,20 @@ def main():
         fish_name = os.path.splitext(os.path.basename(prompt_file))[0]
         with open(prompt_file, "r", encoding="utf-8") as file:
             prompt = file.read()
-            logger.info(f"Prompt: {prompt}")
+            logging.info(f"Prompt: {prompt}")
             # otter model input and output
-            logger.info("Generating answer...")
+            logging.info("Generating answer...")
             response = get_response(
                 frames_list, prompt, model, image_processor, tensor_dtype
             )
-            logger.info(f"Response: {response}")
+            logging.info(f"Response: {response}")
             # extract fish number
             fish_num = utils.extract_number_from_response(response)
             result[fish_name] = fish_num
-    logger.info(f"Result: {result}")
+    logging.info(f"Result: {result}")
 
     result = utils.convert_fish_name_to_number(result)
-    logger.info(f"Converted Result: {result}")
+    logging.info(f"Converted Result: {result}")
 
     # calculate accuracy
     if args.truth_csv_path:
@@ -157,7 +157,7 @@ def main():
                     continue
                 ground_truth[int(row[0])] = int(row[1])
         accuracy = utils.accuracy(result, ground_truth, config.fish_variety)
-        logger.info(f"Accuracy: {accuracy}")
+        print(f"Accuracy: {accuracy}")
 
     # output
     utils.output_csv(result, video_url, args.output_csv_path, config.fish_variety)
