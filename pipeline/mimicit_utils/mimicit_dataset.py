@@ -87,7 +87,7 @@ class MimicitDataset(Dataset):
     def __init__(self, args, dataset_info, task_group=""):
         self.args = args
         self.tokenizer = args.tokenizer
-        self.remove_symbols = args.remove_symbols if hasattr(args, "remove_symbols") else True
+        self.keep_symbols = args.keep_symbols if hasattr(args, "keep_symbols") else False
         self.task_group = task_group
         # remove more symbols in the question and answer, make the question and answer more clean and training loss more stable.
 
@@ -214,8 +214,8 @@ class MimicitDataset(Dataset):
 
         return first_letter + question[1:]
 
-    def pre_question(self, question, remove_symbols=True):
-        if remove_symbols:
+    def pre_question(self, question, keep_symbols=False):
+        if not keep_symbols:
             # question = question.rstrip(",.!?*#:;~").lstrip(",.!?*#:;~")
             question = question.strip(" ")
             question = re.sub(r"\s{2,}", " ", question)
@@ -225,14 +225,13 @@ class MimicitDataset(Dataset):
 
         return question
 
-    def pre_answer(self, answer, remove_symbols=True):
-        if remove_symbols:
+    def pre_answer(self, answer, keep_symbols=False):
+        if not keep_symbols:
             answer = answer.strip(" ")
             answer = re.sub(r"\s{2,}", " ", answer)
             answer = answer.lstrip("\n")
             answer = answer.rstrip("\n")
         answer = answer.strip(" ")
-
         # # truncate question
         # return_answer = ""
         # answers = answer.split(".")
@@ -312,13 +311,13 @@ class MimicitDataset(Dataset):
     ):
         patch_images = torch.tensor([])
         all_texts = ""
-        all_instruction_ids = in_context_example_ids + [instruction_id]
+        all_instruction_ids = [instruction_id]
         random.shuffle(all_instruction_ids)
-        for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
+        for idx, cur_instruction_id in enumerate(all_instruction_ids):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
-            cur_instruction = self.pre_question(cur_instruction, remove_symbols=self.remove_symbols)
+            cur_instruction = self.pre_question(cur_instruction, keep_symbols=self.keep_symbols)
             cur_answer = self.dataset[cur_instruction_id]["answer"]
-            cur_answer = self.pre_answer(cur_answer, remove_symbols=self.remove_symbols)
+            cur_answer = self.pre_answer(cur_answer, keep_symbols=self.keep_symbols)
             if instruction_format == "llama2":
                 if idx == 0:
                     cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
@@ -554,7 +553,7 @@ class MimicitDataset(Dataset):
         )
         num_tokens = all_text["input_ids"].shape[1]
         if num_tokens == self.max_seq_len:
-            master_print(f"{cur_train_id}'s all_texts reaches the max_seq_len.")
+            master_print(f"{cur_train_id}'s all_texts has reaches the max_seq_len: {self.max_seq_len}.")
             master_print(all_texts)
 
         all_item = all_text["input_ids"].squeeze(0)

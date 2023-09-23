@@ -136,6 +136,12 @@ def parse_args():
         "--delete_previous_checkpoint",
         action="store_true",
         help="delete previous checkpoint when saving new checkpoint",
+    ),
+    parser.add_argument(
+        "--keep_symbols",
+        action="store_true",
+        default=False,
+        help="keep symbols in the generated text",
     )
     args = parser.parse_args()
 
