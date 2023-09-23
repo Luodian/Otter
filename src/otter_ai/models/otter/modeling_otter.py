@@ -732,8 +732,7 @@ class OtterModel(OtterPreTrainedModel):
         b, T, F = vision_x.shape[:3]
 
         vision_x = rearrange(vision_x, "b T F c h w -> (b T F) c h w")
-        with torch.no_grad():
-            vision_x = self.vision_encoder(vision_x)[0][:, 1:, :]
+        vision_x = self.vision_encoder(vision_x)[0][:, 1:, :]
         vision_x = rearrange(vision_x, "(b T F) v d -> b T F v d", b=b, T=T, F=F)
 
         vision_x = self.perceiver(vision_x)  # reshapes to (b, T, n, d)
@@ -1254,8 +1253,7 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
         b, T, F = vision_x.shape[:3]
 
         vision_x = rearrange(vision_x, "b T F c h w -> (b T F) c h w")
-        with torch.no_grad():
-            vision_x = self.vision_encoder(vision_x)[0][:, 1:, :]
+        vision_x = self.vision_encoder(vision_x)[0][:, 1:, :]
         vision_x = rearrange(vision_x, "(b T F) v d -> b T F v d", b=b, T=T, F=F)
 
         vision_x = self.perceiver(vision_x)  # reshapes to (b, T, n, d)
