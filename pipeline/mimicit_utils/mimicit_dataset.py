@@ -26,6 +26,9 @@ IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
 FLAMINGO_MEAN = [0.481, 0.458, 0.408]
 FLAMINGO_STD = [0.269, 0.261, 0.276]
 
+IDEFICS_STANDARD_MEAN = [0.48145466, 0.4578275, 0.40821073]
+IDEFICS_STANDARD_STD = [0.26862954, 0.26130258, 0.27577711]
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 ImageFile.MAX_IMAGE_PIXELS = None
 Image.MAX_IMAGE_PIXELS = None
@@ -87,7 +90,7 @@ class MimicitDataset(Dataset):
     def __init__(self, args, dataset_info, task_group=""):
         self.args = args
         self.tokenizer = args.tokenizer
-        self.keep_symbols = args.keep_symbols if hasattr(args, "keep_symbols") else False
+        self.keep_symbols = args.keep_symbols if hasattr(args, "keep_symbols") else True
         self.task_group = task_group
         # remove more symbols in the question and answer, make the question and answer more clean and training loss more stable.
 
@@ -114,6 +117,7 @@ class MimicitDataset(Dataset):
         self.resample_frames = args.resample_frames
         self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.\n<</SYS>>\n\n"
 
+        self.mean, self.std = IDEFICS_STANDARD_MEAN, IDEFICS_STANDARD_STD if args.model_name == "idefics" else FLAMINGO_MEAN, FLAMINGO_STD
         self.patch_resize_transform = transforms.Compose(
             [
                 transforms.Resize(
@@ -121,7 +125,7 @@ class MimicitDataset(Dataset):
                     interpolation=transforms.InterpolationMode.BICUBIC,
                 ),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=FLAMINGO_MEAN, std=FLAMINGO_STD),
+                transforms.Normalize(mean=self.mean, std=self.std),
             ]
         )
         assert len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths), f"metas do not have same number"
@@ -150,13 +154,6 @@ class MimicitDataset(Dataset):
 
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
 
-            # # make sure put all rel_ins_ids instruction ids into sampled training set.
-            # for ins_key in resampled_train:
-            #     rel_ins_ids = cache_train_config[ins_key]
-            #     for rel_ins_id in rel_ins_ids:
-            #         if rel_ins_id not in resampled_train:
-            #             resampled_train.append(rel_ins_id)
-
             table.add_row([task_name, cur_mimicit_path, cur_train_config_path if cur_train_config_path != "" else "None", cur_images_path if cur_images_path != "" else "None", len(resampled_train)])
             if cur_images_path:
                 with open(cur_images_path, "rb") as f:
@@ -164,10 +161,7 @@ class MimicitDataset(Dataset):
                     for ins_key in resampled_train:
                         img_keys = self.dataset[ins_key]["image_ids"]
                         for img_key in img_keys:
-                            # Decode the base64 string to image
-                            img_data = base64.urlsafe_b64decode(images_data[img_key])
-                            img = Image.open(BytesIO(img_data)).convert("RGB").resize((224, 224), Image.BICUBIC)
-                            self.images[img_key] = img
+                            self.images[img_key] = images_data[img_key]
 
             self.train_data_list.extend(resampled_train)
             self.train_config.update(cache_train_config)
@@ -192,8 +186,8 @@ class MimicitDataset(Dataset):
 
         return first_letter + question[1:]
 
-    def pre_question(self, question, keep_symbols=False):
-        if not keep_symbols:
+    def pre_question(self, question, keep_symbols=True):
+        if keep_symbols is False:
             # question = question.rstrip(",.!?*#:;~").lstrip(",.!?*#:;~")
             question = question.strip(" ")
             question = re.sub(r"\s{2,}", " ", question)
@@ -203,13 +197,14 @@ class MimicitDataset(Dataset):
 
         return question
 
-    def pre_answer(self, answer, keep_symbols=False):
-        if not keep_symbols:
+    def pre_answer(self, answer, keep_symbols=True):
+        if keep_symbols is False:
             answer = answer.strip(" ")
             answer = re.sub(r"\s{2,}", " ", answer)
             answer = answer.lstrip("\n")
             answer = answer.rstrip("\n")
         answer = answer.strip(" ")
+
         # # truncate question
         # return_answer = ""
         # answers = answer.split(".")
@@ -253,11 +248,12 @@ class MimicitDataset(Dataset):
         patch_images = torch.tensor([])
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
-        for idx, cur_instruction_id in enumerate(all_instruction_ids):
+        for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
             cur_instruction_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_image = self.images[cur_instruction_image_id]
+            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
             cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0).unsqueeze(0)
             if len(patch_images) == 0:
                 patch_images = cur_patch_image
@@ -290,7 +286,7 @@ class MimicitDataset(Dataset):
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
         random.shuffle(all_instruction_ids)
-        for idx, cur_instruction_id in enumerate(all_instruction_ids):
+        for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_instruction = self.pre_question(cur_instruction, keep_symbols=self.keep_symbols)
             cur_answer = self.dataset[cur_instruction_id]["answer"]
@@ -320,6 +316,7 @@ class MimicitDataset(Dataset):
         image_ids = self.resample_frames_fn(image_ids, resample_frames)
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
+            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
             cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
             if len(patch_images) == 0:
                 patch_images = cur_patch_image
@@ -335,6 +332,7 @@ class MimicitDataset(Dataset):
         # <image>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
+            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
             cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
             if len(patch_images) == 0:
                 patch_images = cur_patch_image
@@ -363,6 +361,7 @@ class MimicitDataset(Dataset):
         # <image>User: {cur_incontext_instruction} GPT:<answer> {cur_incontext_answer}<|endofchunk|>User: {instruction} GPT:<answer> {answer}<|endofchunk|>
         for cur_image_id in image_ids:
             cur_image = self.images[cur_image_id]
+            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
             cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
             if len(patch_images) == 0:
                 patch_images = cur_patch_image
@@ -388,7 +387,7 @@ class MimicitDataset(Dataset):
         # including multi-round conv for single image
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
-        for idx, cur_instruction_id in enumerate(all_instruction_ids):
+        for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_instruction = self.pre_question(cur_instruction)
@@ -413,6 +412,7 @@ class MimicitDataset(Dataset):
         all_texts = all_texts.rstrip("\n")  # remove the last \n
         cur_image_id = self.dataset[cur_instruction_id]["image_ids"][0]
         cur_image = self.images[cur_image_id]
+        cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
         patch_images = self.patch_resize_transform(cur_image).unsqueeze(0).unsqueeze(0)
         return patch_images, all_texts
 
@@ -429,7 +429,7 @@ class MimicitDataset(Dataset):
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
         patch_images = torch.zeros(3, 224, 224).unsqueeze(0).unsqueeze(0)
-        for idx, cur_instruction_id in enumerate(all_instruction_ids):
+        for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
             cur_instruction = self.pre_question(cur_instruction)
@@ -526,7 +526,7 @@ class MimicitDataset(Dataset):
         )
         num_tokens = all_text["input_ids"].shape[1]
         if num_tokens == self.max_seq_len:
-            master_print(f"{cur_train_id}'s all_texts has reaches the max_seq_len: {self.max_seq_len}.")
+            master_print(f"{cur_train_id}'s all_texts reaches the max_seq_len.")
             master_print(all_texts)
 
         all_item = all_text["input_ids"].squeeze(0)
