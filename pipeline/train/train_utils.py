@@ -15,6 +15,12 @@ except ImportError:
     print("Failed to import Idefics processing module.")
 
 
+def truncate_path(path, keep_start=20, keep_end=20, truncate_to="..."):
+    if len(path) <= (keep_start + keep_end + len(truncate_to)):
+        return path
+    return path[:keep_start] + truncate_to + path[-keep_end:]
+
+
 def master_print(*args, **kwargs):
     if dist.is_available() and dist.is_initialized():
         rank = dist.get_rank()

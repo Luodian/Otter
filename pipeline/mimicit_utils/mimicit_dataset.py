@@ -34,7 +34,7 @@ ImageFile.MAX_IMAGE_PIXELS = None
 Image.MAX_IMAGE_PIXELS = None
 
 sys.path.append("../..")
-from pipeline.train.train_utils import master_print
+from pipeline.train.train_utils import master_print, truncate_path
 
 
 @contextlib.contextmanager
@@ -117,7 +117,7 @@ class MimicitDataset(Dataset):
         self.resample_frames = args.resample_frames
         self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.\n<</SYS>>\n\n"
 
-        self.mean, self.std = IDEFICS_STANDARD_MEAN, IDEFICS_STANDARD_STD if args.model_name == "idefics" else FLAMINGO_MEAN, FLAMINGO_STD
+        (self.mean, self.std) = (IDEFICS_STANDARD_MEAN, IDEFICS_STANDARD_STD) if args.model_name == "idefics" else (FLAMINGO_MEAN, FLAMINGO_STD)
         self.patch_resize_transform = transforms.Compose(
             [
                 transforms.Resize(
@@ -136,11 +136,14 @@ class MimicitDataset(Dataset):
         self.train_config = {}
 
         table = PrettyTable()
+
         # Set column names for the table
-        table.field_names = ["Task Name", "MIMICIT_PATH", "TRAIN_CONFIG_PATH", "IMAGES_PATH", "Num_samples"]
+        table.field_names = ["Task Name", "MIMICIT_PATH", "TRAIN_CONFIG_PATH", "IMAGES_PATH", "Num Samples"]
+
         for cur_mimicit_path, cur_images_path, cur_train_config_path, sampled_examples, task_name in zip(self.mimicit_paths, self.images_paths, self.train_config_paths, self.num_samples_list, self.task_names):
             # Load the dataset
             assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!"
+
             with open(cur_mimicit_path, "rb") as f:
                 cur_mimicit_data = orjson.loads(f.read())["data"]
                 self.dataset.update(cur_mimicit_data)
@@ -154,7 +157,13 @@ class MimicitDataset(Dataset):
 
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
 
-            table.add_row([task_name, cur_mimicit_path, cur_train_config_path if cur_train_config_path != "" else "None", cur_images_path if cur_images_path != "" else "None", len(resampled_train)])
+            # Truncate paths for display
+            truncated_mimicit_path = truncate_path(cur_mimicit_path)
+            truncated_train_config_path = truncate_path(cur_train_config_path)
+            truncated_images_path = truncate_path(cur_images_path)
+
+            table.add_row([task_name, truncated_mimicit_path, truncated_train_config_path if cur_train_config_path != "" else "None", truncated_images_path if cur_images_path != "" else "None", len(resampled_train)])
+
             if cur_images_path:
                 with open(cur_images_path, "rb") as f:
                     images_data = orjson.loads(f.read())
