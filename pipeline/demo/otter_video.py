@@ -70,11 +70,10 @@ def transparent_background(frame, subtractor):
     # get foreground
     fg_mask = subtractor.apply(frame)
 
-    # exchange foreground and background
-    bg_mask = cv2.bitwise_not(fg_mask)
+    _, thresh = cv2.threshold(fg_mask, 200, 255, cv2.THRESH_BINARY)
 
     # mask background
-    result = cv2.bitwise_and(frame, frame, mask=fg_mask)
+    result = cv2.bitwise_and(frame, frame, mask=thresh)
     return result
 
 
