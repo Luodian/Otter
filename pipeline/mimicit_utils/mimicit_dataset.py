@@ -26,9 +26,6 @@ IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
 FLAMINGO_MEAN = [0.481, 0.458, 0.408]
 FLAMINGO_STD = [0.269, 0.261, 0.276]
 
-IDEFICS_STANDARD_MEAN = [0.48145466, 0.4578275, 0.40821073]
-IDEFICS_STANDARD_STD = [0.26862954, 0.26130258, 0.27577711]
-
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 ImageFile.MAX_IMAGE_PIXELS = None
 Image.MAX_IMAGE_PIXELS = None
@@ -117,7 +114,6 @@ class MimicitDataset(Dataset):
         self.resample_frames = args.resample_frames
         self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.\n<</SYS>>\n\n"
 
-        self.mean, self.std = IDEFICS_STANDARD_MEAN, IDEFICS_STANDARD_STD if args.model_name == "idefics" else FLAMINGO_MEAN, FLAMINGO_STD
         self.patch_resize_transform = transforms.Compose(
             [
                 transforms.Resize(
@@ -125,7 +121,7 @@ class MimicitDataset(Dataset):
                     interpolation=transforms.InterpolationMode.BICUBIC,
                 ),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=self.mean, std=self.std),
+                transforms.Normalize(mean=FLAMINGO_MEAN, std=FLAMINGO_STD),
             ]
         )
         assert len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths), f"metas do not have same number"
@@ -153,6 +149,13 @@ class MimicitDataset(Dataset):
                 cache_train_config = {key: value["rel_ins_ids"] for key, value in cur_mimicit_data.items()}
 
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
+
+            # # make sure put all rel_ins_ids instruction ids into sampled training set.
+            # for ins_key in resampled_train:
+            #     rel_ins_ids = cache_train_config[ins_key]
+            #     for rel_ins_id in rel_ins_ids:
+            #         if rel_ins_id not in resampled_train:
+            #             resampled_train.append(rel_ins_id)
 
             table.add_row([task_name, cur_mimicit_path, cur_train_config_path if cur_train_config_path != "" else "None", cur_images_path if cur_images_path != "" else "None", len(resampled_train)])
             if cur_images_path:
