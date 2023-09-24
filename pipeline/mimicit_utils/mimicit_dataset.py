@@ -135,31 +135,6 @@ class MimicitDataset(Dataset):
         self.train_data_list = []
         self.train_config = {}
 
-        # Get the length of each dataset and use the second largest value as the length of each dataset
-        # data_length_list = []
-        # for cur_mimicit_path, cur_train_config_path in zip(self.mimicit_paths, self.train_config_paths):
-        #     # Load the train_config
-        #     if cur_train_config_path != "":
-        #         assert os.path.exists(cur_train_config_path), f"Error: The local train_config_path {cur_train_config_path} not exists!"
-        #         with open(cur_train_config_path, "rb") as f:
-        #             cache_train_config = orjson.loads(f.read())
-        #     else:
-        #         with open(cur_mimicit_path, "rb") as f:
-        #             cache_train_config = orjson.loads(f.read())["data"]
-        #             cache_train_config = {key: [] for key in cache_train_config.keys()}
-
-        #     cache_train_list = list(cache_train_config.keys())
-
-        #     data_length_list.append(len(cache_train_list))
-
-        #     del cache_train_config
-        #     del cache_train_list
-
-        # if len(data_length_list) == 1:
-        #     max_items_per_dataset = max(data_length_list)
-        # else:
-        #     max_items_per_dataset = sorted(data_length_list, reverse=True)[1]
-
         table = PrettyTable()
         # Set column names for the table
         table.field_names = ["Task Name", "MIMICIT_PATH", "TRAIN_CONFIG_PATH", "IMAGES_PATH", "Num_samples"]
@@ -178,13 +153,6 @@ class MimicitDataset(Dataset):
                 cache_train_config = {key: value["rel_ins_ids"] for key, value in cur_mimicit_data.items()}
 
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
-
-            # # make sure put all rel_ins_ids instruction ids into sampled training set.
-            # for ins_key in resampled_train:
-            #     rel_ins_ids = cache_train_config[ins_key]
-            #     for rel_ins_id in rel_ins_ids:
-            #         if rel_ins_id not in resampled_train:
-            #             resampled_train.append(rel_ins_id)
 
             table.add_row([task_name, cur_mimicit_path, cur_train_config_path if cur_train_config_path != "" else "None", cur_images_path if cur_images_path != "" else "None", len(resampled_train)])
             if cur_images_path:
