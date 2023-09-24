@@ -14,4 +14,4 @@
 3. 背景を透過させた動画と`./prompt`以下にある文章を,マルチモーダルLLM`luodian/OTTER-9B-DenseCaption`に入力する
 4. 出力をフォーマットしてCSVに出力する
 
-![architecture](./architecture.png)
+![overview](./overview.png)
