@@ -195,7 +195,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     image_attention_mask=image_attention_mask,
                     labels=labels,
                 )[0]
-            elif args.model_name == "otter":
+            elif args.model_name == "otter" or args.model_name == "flamingo":
                 loss_mimicit = model(
                     vision_x=images.to(autocast_type),
                     lang_x=input_ids,
@@ -208,6 +208,8 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     attention_mask=attention_mask,
                     labels=labels,
                 )[0]
+            else:
+                raise NotImplementedError(f"Loss of model {args.model_name} not implemented.")
 
         if accelerator.mixed_precision == "fp16":
             accelerator.backward(loss_mimicit.to(device_id))
