@@ -152,9 +152,11 @@ class MimicitDataset(Dataset):
             if cur_train_config_path != "":
                 with open(cur_train_config_path, "rb") as f:
                     cache_train_config = orjson.loads(f.read())
-            else:
+            elif args.populate_rel_ins:
                 cache_train_config = {key: value["rel_ins_ids"] for key, value in cur_mimicit_data.items()}
-
+            else:
+                cache_train_config = {key: [] for key, value in cur_mimicit_data.items()}
+                
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
 
             # Truncate paths for display
