@@ -459,13 +459,13 @@ class MimicitDataset(Dataset):
 
     def process_image_text_pair(self, index):
         cur_train_id = self.train_data_list[index]
-        (instruction_id, instruction, answer, image_ids, in_context_example_ids) = (
+        (instruction_id, instruction, answer, in_context_example_ids) = (
             cur_train_id,
             self.dataset[cur_train_id]["instruction"],
             self.dataset[cur_train_id]["answer"],
-            self.dataset[cur_train_id]["image_ids"],
             self.train_config[cur_train_id],
         )
+        image_ids = self.dataset[cur_train_id]["image_ids"] if self.dataset[cur_train_id].get("image_ids", None) is not None else [] # handling for text-only data without image_ids
         instruction_format = self.instruction_format
         resample_frames = self.resample_frames
         if cur_train_id.upper().startswith("SD") or cur_train_id.startswith("CGD"):
