@@ -320,7 +320,7 @@ def main():
             model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"]})
             model.config.update({
                 "special_tokens": model.text_tokenizer.all_special_tokens,
-                "architectures": "FlamingoForConditionalGeneration",
+                "architectures": "OtterForConditionalGeneration",
             })
             args.tokenizer = model.text_tokenizer
             tokenizer = model.text_tokenizer
