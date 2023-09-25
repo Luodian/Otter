@@ -19,7 +19,7 @@ from pipeline.demo.otter_video import get_response, get_image
 
 requests.packages.urllib3.disable_warnings()
 
-logger = logging.getlogging(__name__)
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 PROMPT_PATH = "./prompt"
