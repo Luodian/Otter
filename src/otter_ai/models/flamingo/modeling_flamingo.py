@@ -511,7 +511,7 @@ class FlamingoModel(FlamingoPreTrainedModel):
                 text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
                 lang_encoder = RWForCausalLM(config=config.text_config)
         else:
-            text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+            text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
             lang_encoder = LlamaForCausalLM(config=config.text_config)
 
         vision_encoder = CLIPVisionModel(config=config.vision_config)
@@ -525,8 +525,6 @@ class FlamingoModel(FlamingoPreTrainedModel):
         extend_instance(lang_encoder, FlamingoLMMixin)
         decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
         lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        if lang_encoder.__class__.__name__ == "LlamaForCausalLM":
-            lang_encoder.resize_token_embeddings(len(text_tokenizer))
         self.lang_encoder = lang_encoder
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers if hasattr(config, "cross_attn_every_n_layers") else 4
@@ -719,7 +717,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
             lang_encoder = RWForCausalLM(config=config.text_config)
         # TODO: what's the logic here?
         elif config.text_config.architectures[0] == "LlamaForCausalLM":
-            text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+            text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
             lang_encoder = LlamaForCausalLM(config=config.text_config)
         else:
             import pdb
@@ -740,8 +738,6 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         extend_instance(lang_encoder, FlamingoLMMixin)
         decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
         lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        if "LlamaForCausalLM" in lang_encoder.__class__.__name__:
-            lang_encoder.resize_token_embeddings(len(text_tokenizer))
         self.lang_encoder = lang_encoder
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers if hasattr(config, "cross_attn_every_n_layers") else 4
@@ -818,13 +814,11 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         ## MPTForCausalLM is tied word embedding
         if "LlamaForCausalLM" in self.lang_encoder.__class__.__name__:
             self.lang_encoder.lm_head.requires_grad_(True)
-
         total_params = 0
         for name, param in self.named_parameters():
             if param.requires_grad:
                 total_params += param.numel()
-                master_print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
-        master_print(f"Total Trainable param: {total_params / 1e9:.6f} B")
+        master_print(f"Total Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
     def forward(
         self,

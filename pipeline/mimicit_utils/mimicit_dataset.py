@@ -115,7 +115,7 @@ class MimicitDataset(Dataset):
 
         self.instruction_format = args.instruction_format
         self.resample_frames = args.resample_frames
-        self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.\n<</SYS>>\n\n"
+        self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content. You need to answer user's questions with plans and Python codes as response.\n<</SYS>>\n\n"
 
         (self.mean, self.std) = (IDEFICS_STANDARD_MEAN, IDEFICS_STANDARD_STD) if args.model_name == "idefics" else (FLAMINGO_MEAN, FLAMINGO_STD)
         self.patch_resize_transform = transforms.Compose(
@@ -295,7 +295,7 @@ class MimicitDataset(Dataset):
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
         random.shuffle(all_instruction_ids)
-        for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
+        for idx, cur_instruction_id in enumerate(all_instruction_ids):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_instruction = self.pre_question(cur_instruction, keep_symbols=self.keep_symbols)
             cur_answer = self.dataset[cur_instruction_id]["answer"]

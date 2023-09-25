@@ -27,7 +27,7 @@ def parse_args():
         "--model_name",
         type=str,
         default="otter",
-        choices=["otter", "flamingo", "idefics"],
+        choices=["otter", "flamingo", "idefics", "llama2"],
         help="otters or flamingo",
     )
     parser.add_argument(
@@ -142,6 +142,18 @@ def parse_args():
         action="store_true",
         default=False,
         help="keep symbols in the generated text",
+    )
+    parser.add_argument(
+        "--remove_answer_token",
+        action="store_true",
+        default=False,
+        help="we have an <answer> token as indicator for separating question and answer, use this flag to remove it before training.",
+    )
+    parser.add_argument(
+        "--remove_eos_token",
+        action="store_true",
+        default=False,
+        help="we have an eos token as indicator for separating question and answer, use this flag to remove it before training.",
     )
     args = parser.parse_args()
 
