@@ -17,9 +17,7 @@ from otter_ai import OtterForConditionalGeneration
 # Disable warnings
 requests.packages.urllib3.disable_warnings()
 
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logging.basicConfig(encoding="utf-8", level=logging.INFO)
 
 random.seed(1113)
 
@@ -43,7 +41,7 @@ def extract_frames(video_path, is_transparent_background, video_fps):
     num_frames = 128 if num_frames >= 128 else num_frames
     frame_step = total_frames // num_frames
 
-    logger.info(
+    logging.info(
         "total frames: {}, num_frames: {}, frame_step: {}".format(
             total_frames, num_frames, frame_step
         )
@@ -56,7 +54,6 @@ def extract_frames(video_path, is_transparent_background, video_fps):
         ret, frame = video.read()
         if ret:
             if is_transparent_background:
-                logger.info("Transparent background in input mp4")
                 frame = transparent_background(frame, subtractor)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = Image.fromarray(frame).convert("RGB")

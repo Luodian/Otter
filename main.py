@@ -19,8 +19,7 @@ from pipeline.demo.otter_video import get_response, get_image
 
 requests.packages.urllib3.disable_warnings()
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logging.basicConfig(encoding="utf-8", level=logging.INFO)
 
 PROMPT_PATH = "./prompt"
 
@@ -132,7 +131,7 @@ def main():
         fish_name = os.path.splitext(os.path.basename(prompt_file))[0]
         with open(prompt_file, "r", encoding="utf-8") as file:
             prompt = file.read()
-            logging.info(f"Prompt: {prompt}")
+            logging.info(f"Reading prompt from {prompt_file}")
             # otter model input and output
             logging.info("Generating answer...")
             response = get_response(
