@@ -562,7 +562,7 @@ class OtterModel(OtterPreTrainedModel):
                 text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
                 lang_encoder = RWForCausalLM(config=config.text_config)
         else:
-            text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+            text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
             lang_encoder = LlamaForCausalLM(config=config.text_config)
         vision_encoder = CLIPVisionModel(config=config.vision_config)
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
@@ -732,8 +732,7 @@ class OtterModel(OtterPreTrainedModel):
         b, T, F = vision_x.shape[:3]
 
         vision_x = rearrange(vision_x, "b T F c h w -> (b T F) c h w")
-        with torch.no_grad():
-            vision_x = self.vision_encoder(vision_x)[0][:, 1:, :]
+        vision_x = self.vision_encoder(vision_x)[0][:, 1:, :]
         vision_x = rearrange(vision_x, "(b T F) v d -> b T F v d", b=b, T=T, F=F)
 
         vision_x = self.perceiver(vision_x)  # reshapes to (b, T, n, d)
@@ -762,14 +761,14 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
                 text_tokenizer = AutoTokenizer.from_pretrained("PATH-TO-YOUR-FALCON")
                 lang_encoder = RWForCausalLM(config=config.text_config)
             elif config.text_config.architectures[0] == "LlamaForCausalLM":
-                text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+                text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
                 lang_encoder = LlamaForCausalLM(config=config.text_config)
             else:
                 import pdb
 
                 pdb.set_trace()
         else:
-            text_tokenizer = LlamaTokenizer.from_pretrained(config.text_config._name_or_path)
+            text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
             lang_encoder = LlamaForCausalLM(config=config.text_config)
         vision_encoder = CLIPVisionModel(config=config.vision_config)
 
@@ -783,8 +782,8 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         extend_instance(lang_encoder, OtterLMMixin)
         decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
         lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        if lang_encoder.__class__.__name__ == "LlamaForCausalLM":
-            lang_encoder.resize_token_embeddings(len(text_tokenizer))
+        # if lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+        #     lang_encoder.resize_token_embeddings(len(text_tokenizer))
         self.lang_encoder = lang_encoder
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
@@ -898,7 +897,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         for name, param in self.named_parameters():
             if param.requires_grad:
                 total_params += param.numel()
-                master_print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
+                # master_print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
         master_print(f"Total Trainable param: {total_params / 1e9:.6f} B")
 
     def forward(
@@ -1254,8 +1253,7 @@ class OtterForConditionalGenerationWithValueHead(OtterPreTrainedModel):
         b, T, F = vision_x.shape[:3]
 
         vision_x = rearrange(vision_x, "b T F c h w -> (b T F) c h w")
-        with torch.no_grad():
-            vision_x = self.vision_encoder(vision_x)[0][:, 1:, :]
+        vision_x = self.vision_encoder(vision_x)[0][:, 1:, :]
         vision_x = rearrange(vision_x, "(b T F) v d -> b T F v d", b=b, T=T, F=F)
 
         vision_x = self.perceiver(vision_x)  # reshapes to (b, T, n, d)

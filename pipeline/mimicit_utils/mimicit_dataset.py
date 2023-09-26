@@ -26,12 +26,15 @@ IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
 FLAMINGO_MEAN = [0.481, 0.458, 0.408]
 FLAMINGO_STD = [0.269, 0.261, 0.276]
 
+IDEFICS_STANDARD_MEAN = [0.48145466, 0.4578275, 0.40821073]
+IDEFICS_STANDARD_STD = [0.26862954, 0.26130258, 0.27577711]
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 ImageFile.MAX_IMAGE_PIXELS = None
 Image.MAX_IMAGE_PIXELS = None
 
 sys.path.append("../..")
-from pipeline.train.train_utils import master_print
+from pipeline.train.train_utils import master_print, truncate_text
 
 
 @contextlib.contextmanager
@@ -87,7 +90,7 @@ class MimicitDataset(Dataset):
     def __init__(self, args, dataset_info, task_group=""):
         self.args = args
         self.tokenizer = args.tokenizer
-        self.remove_symbols = args.remove_symbols if hasattr(args, "remove_symbols") else True
+        self.keep_symbols = args.keep_symbols if hasattr(args, "keep_symbols") else True
         self.task_group = task_group
         # remove more symbols in the question and answer, make the question and answer more clean and training loss more stable.
 
@@ -96,6 +99,7 @@ class MimicitDataset(Dataset):
         self.train_config_paths = []
         self.images_paths = []
         self.task_names = []
+        self.task_description = []
 
         for key, value in dataset_info.items():
             self.task_names.append(key)
@@ -103,6 +107,7 @@ class MimicitDataset(Dataset):
             self.num_samples_list.append(value.get("num_samples", 0))
             self.train_config_paths.append(value.get("train_config_path", ""))
             self.images_paths.append(value.get("images_path", ""))
+            self.task_description.append(value.get("task_description", ""))
 
         self.seed = args.seed
         self.patch_image_size = args.patch_image_size
@@ -112,8 +117,9 @@ class MimicitDataset(Dataset):
 
         self.instruction_format = args.instruction_format
         self.resample_frames = args.resample_frames
-        self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.\n<</SYS>>\n\n"
+        self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content. You need to answer user's questions with plans and Python codes as response.\n<</SYS>>\n\n"
 
+        (self.mean, self.std) = (IDEFICS_STANDARD_MEAN, IDEFICS_STANDARD_STD) if args.model_name == "idefics" else (FLAMINGO_MEAN, FLAMINGO_STD)
         self.patch_resize_transform = transforms.Compose(
             [
                 transforms.Resize(
@@ -121,7 +127,7 @@ class MimicitDataset(Dataset):
                     interpolation=transforms.InterpolationMode.BICUBIC,
                 ),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=FLAMINGO_MEAN, std=FLAMINGO_STD),
+                transforms.Normalize(mean=self.mean, std=self.std),
             ]
         )
         assert len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths), f"metas do not have same number"
@@ -130,38 +136,29 @@ class MimicitDataset(Dataset):
         self.images = {}
         self.train_data_list = []
         self.train_config = {}
-
-        # Get the length of each dataset and use the second largest value as the length of each dataset
-        # data_length_list = []
-        # for cur_mimicit_path, cur_train_config_path in zip(self.mimicit_paths, self.train_config_paths):
-        #     # Load the train_config
-        #     if cur_train_config_path != "":
-        #         assert os.path.exists(cur_train_config_path), f"Error: The local train_config_path {cur_train_config_path} not exists!"
-        #         with open(cur_train_config_path, "rb") as f:
-        #             cache_train_config = orjson.loads(f.read())
-        #     else:
-        #         with open(cur_mimicit_path, "rb") as f:
-        #             cache_train_config = orjson.loads(f.read())["data"]
-        #             cache_train_config = {key: [] for key in cache_train_config.keys()}
-
-        #     cache_train_list = list(cache_train_config.keys())
-
-        #     data_length_list.append(len(cache_train_list))
-
-        #     del cache_train_config
-        #     del cache_train_list
-
-        # if len(data_length_list) == 1:
-        #     max_items_per_dataset = max(data_length_list)
-        # else:
-        #     max_items_per_dataset = sorted(data_length_list, reverse=True)[1]
+        # use a dict to record data index to task index mapping
+        # e.g. "0": 1, where "0" is the first data index, 1 is the task index in the task name/desc list
+        self.task_mapping = {}
 
         table = PrettyTable()
+
         # Set column names for the table
-        table.field_names = ["Task Name", "MIMICIT_PATH", "TRAIN_CONFIG_PATH", "IMAGES_PATH", "Num_samples"]
-        for cur_mimicit_path, cur_images_path, cur_train_config_path, sampled_examples, task_name in zip(self.mimicit_paths, self.images_paths, self.train_config_paths, self.num_samples_list, self.task_names):
+        table.field_names = [
+            "Task Name",
+            "MIMICIT_PATH",
+            "TRAIN_CONFIG_PATH",
+            "IMAGES_PATH",
+            "Num Samples",
+            "Task Description",
+        ]
+
+        cur_task_id = 0
+        for cur_mimicit_path, cur_images_path, cur_train_config_path, sampled_examples, task_name, task_desc in zip(
+            self.mimicit_paths, self.images_paths, self.train_config_paths, self.num_samples_list, self.task_names, self.task_description
+        ):
             # Load the dataset
             assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!"
+
             with open(cur_mimicit_path, "rb") as f:
                 cur_mimicit_data = orjson.loads(f.read())["data"]
                 self.dataset.update(cur_mimicit_data)
@@ -170,20 +167,31 @@ class MimicitDataset(Dataset):
             if cur_train_config_path != "":
                 with open(cur_train_config_path, "rb") as f:
                     cache_train_config = orjson.loads(f.read())
-            else:
+            elif args.populate_rel_ins:
                 cache_train_config = {key: value["rel_ins_ids"] for key, value in cur_mimicit_data.items()}
+            else:
+                cache_train_config = {key: [] for key, value in cur_mimicit_data.items()}
 
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
 
-            # # make sure put all rel_ins_ids instruction ids into sampled training set.
-            # for ins_key in resampled_train:
-            #     rel_ins_ids = cache_train_config[ins_key]
-            #     for rel_ins_id in rel_ins_ids:
-            #         if rel_ins_id not in resampled_train:
-            #             resampled_train.append(rel_ins_id)
+            # Truncate paths for display
+            truncated_mimicit_path = truncate_text(cur_mimicit_path)
+            truncated_train_config_path = truncate_text(cur_train_config_path)
+            truncated_images_path = truncate_text(cur_images_path)
+            truncated_task_desc = truncate_text(task_desc)
 
-            table.add_row([task_name, cur_mimicit_path, cur_train_config_path if cur_train_config_path != "" else "None", cur_images_path if cur_images_path != "" else "None", len(resampled_train)])
-            if cur_images_path:
+            table.add_row(
+                [
+                    task_name,
+                    truncated_mimicit_path,
+                    truncated_train_config_path if cur_train_config_path != "" else "None",
+                    truncated_images_path if cur_images_path != "" else "None",
+                    len(resampled_train),
+                    truncated_task_desc,
+                ]
+            )
+
+            if cur_images_path != "":
                 with open(cur_images_path, "rb") as f:
                     images_data = orjson.loads(f.read())
                     for ins_key in resampled_train:
@@ -193,6 +201,8 @@ class MimicitDataset(Dataset):
 
             self.train_data_list.extend(resampled_train)
             self.train_config.update(cache_train_config)
+            self.task_mapping.update({key: cur_task_id for key in resampled_train})  # use len(self.task_mapping) to get the task index
+            cur_task_id += 1
 
         if args.rank == 0:
             master_print(table)
@@ -214,8 +224,8 @@ class MimicitDataset(Dataset):
 
         return first_letter + question[1:]
 
-    def pre_question(self, question, remove_symbols=True):
-        if remove_symbols:
+    def pre_question(self, question, keep_symbols=True):
+        if keep_symbols is False:
             # question = question.rstrip(",.!?*#:;~").lstrip(",.!?*#:;~")
             question = question.strip(" ")
             question = re.sub(r"\s{2,}", " ", question)
@@ -225,8 +235,8 @@ class MimicitDataset(Dataset):
 
         return question
 
-    def pre_answer(self, answer, remove_symbols=True):
-        if remove_symbols:
+    def pre_answer(self, answer, keep_symbols=True):
+        if keep_symbols is False:
             answer = answer.strip(" ")
             answer = re.sub(r"\s{2,}", " ", answer)
             answer = answer.lstrip("\n")
@@ -314,11 +324,11 @@ class MimicitDataset(Dataset):
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
         random.shuffle(all_instruction_ids)
-        for idx, cur_instruction_id in enumerate(all_instruction_ids[:]):
+        for idx, cur_instruction_id in enumerate(all_instruction_ids):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
-            cur_instruction = self.pre_question(cur_instruction, remove_symbols=self.remove_symbols)
+            cur_instruction = self.pre_question(cur_instruction, keep_symbols=self.keep_symbols)
             cur_answer = self.dataset[cur_instruction_id]["answer"]
-            cur_answer = self.pre_answer(cur_answer, remove_symbols=self.remove_symbols)
+            cur_answer = self.pre_answer(cur_answer, keep_symbols=self.keep_symbols)
             if instruction_format == "llama2":
                 if idx == 0:
                     cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
@@ -478,15 +488,18 @@ class MimicitDataset(Dataset):
 
     def process_image_text_pair(self, index):
         cur_train_id = self.train_data_list[index]
-        (instruction_id, instruction, answer, image_ids, in_context_example_ids) = (
+        (instruction_id, instruction, answer, in_context_example_ids) = (
             cur_train_id,
             self.dataset[cur_train_id]["instruction"],
             self.dataset[cur_train_id]["answer"],
-            self.dataset[cur_train_id]["image_ids"],
             self.train_config[cur_train_id],
         )
+        image_ids = self.dataset[cur_train_id]["image_ids"] if self.dataset[cur_train_id].get("image_ids", None) is not None else []  # handling for text-only data without image_ids
         instruction_format = self.instruction_format
         resample_frames = self.resample_frames
+
+        cur_task_desc = self.task_description[self.task_mapping[cur_train_id]]
+
         if cur_train_id.upper().startswith("SD") or cur_train_id.startswith("CGD"):
             patch_images, all_texts = self.process_spot_the_difference(
                 instruction_id,
@@ -545,6 +558,8 @@ class MimicitDataset(Dataset):
         else:
             raise NotImplementedError(f"Error: The task {cur_train_id} is not supported!")
 
+        if cur_task_desc != "":
+            all_texts = cur_task_desc + "\n" + all_texts
         all_text = self.tokenizer(
             all_texts,
             return_tensors="pt",
@@ -563,7 +578,13 @@ class MimicitDataset(Dataset):
         all_item = torch.cat([self.bos_item, all_item, self.eos_item])
         all_item_mask = torch.cat([self.bos_mask, all_item_mask, self.eos_mask])
 
-        example = {"id": instruction_id, "source": all_item, "text_mask": all_item_mask, "patch_images": patch_images, "task_group": self.task_group}
+        example = {
+            "id": instruction_id,
+            "source": all_item,
+            "text_mask": all_item_mask,
+            "patch_images": patch_images,
+            "task_group": self.task_group,
+        }
         return example
 
     def __str__(self):
