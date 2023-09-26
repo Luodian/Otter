@@ -15,7 +15,7 @@ except ImportError:
     print("Failed to import Idefics processing module.")
 
 
-def truncate_path(path, keep_start=20, keep_end=20, truncate_to="..."):
+def truncate_text(path, keep_start=10, keep_end=10, truncate_to="..."):
     if len(path) <= (keep_start + keep_end + len(truncate_to)):
         return path
     return path[:keep_start] + truncate_to + path[-keep_end:]

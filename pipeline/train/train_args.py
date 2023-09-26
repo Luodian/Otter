@@ -27,7 +27,7 @@ def parse_args():
         "--model_name",
         type=str,
         default="otter",
-        choices=["otter", "flamingo", "idefics", "llama2"],
+        choices=["otter", "flamingo", "idefics", "llama2", "debug_model"],
         help="otters or flamingo",
     )
     parser.add_argument(

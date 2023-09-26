@@ -34,7 +34,7 @@ ImageFile.MAX_IMAGE_PIXELS = None
 Image.MAX_IMAGE_PIXELS = None
 
 sys.path.append("../..")
-from pipeline.train.train_utils import master_print, truncate_path
+from pipeline.train.train_utils import master_print, truncate_text
 
 
 @contextlib.contextmanager
@@ -99,6 +99,7 @@ class MimicitDataset(Dataset):
         self.train_config_paths = []
         self.images_paths = []
         self.task_names = []
+        self.task_description = []
 
         for key, value in dataset_info.items():
             self.task_names.append(key)
@@ -106,6 +107,7 @@ class MimicitDataset(Dataset):
             self.num_samples_list.append(value.get("num_samples", 0))
             self.train_config_paths.append(value.get("train_config_path", ""))
             self.images_paths.append(value.get("images_path", ""))
+            self.task_description.append(value.get("task_description", ""))
 
         self.seed = args.seed
         self.patch_image_size = args.patch_image_size
@@ -117,7 +119,11 @@ class MimicitDataset(Dataset):
         self.resample_frames = args.resample_frames
         self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content. You need to answer user's questions with plans and Python codes as response.\n<</SYS>>\n\n"
 
-        (self.mean, self.std) = (IDEFICS_STANDARD_MEAN, IDEFICS_STANDARD_STD) if args.model_name == "idefics" else (FLAMINGO_MEAN, FLAMINGO_STD)
+        (self.mean, self.std) = (
+            (IDEFICS_STANDARD_MEAN, IDEFICS_STANDARD_STD)
+            if args.model_name == "idefics"
+            else (FLAMINGO_MEAN, FLAMINGO_STD)
+        )
         self.patch_resize_transform = transforms.Compose(
             [
                 transforms.Resize(
@@ -128,19 +134,33 @@ class MimicitDataset(Dataset):
                 transforms.Normalize(mean=self.mean, std=self.std),
             ]
         )
-        assert len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths), f"metas do not have same number"
+        assert (
+            len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths)
+        ), f"metas do not have same number"
 
         self.dataset = {}
         self.images = {}
         self.train_data_list = []
         self.train_config = {}
+        # use a dict to record data index to task index mapping
+        # e.g. "0": 1, where "0" is the first data index, 1 is the task index in the task name/desc list
+        self.task_mapping = {}
 
         table = PrettyTable()
 
         # Set column names for the table
-        table.field_names = ["Task Name", "MIMICIT_PATH", "TRAIN_CONFIG_PATH", "IMAGES_PATH", "Num Samples"]
+        table.field_names = [
+            "Task Name",
+            "MIMICIT_PATH",
+            "TRAIN_CONFIG_PATH",
+            "IMAGES_PATH",
+            "Num Samples",
+            "Task Description",
+        ]
 
-        for cur_mimicit_path, cur_images_path, cur_train_config_path, sampled_examples, task_name in zip(self.mimicit_paths, self.images_paths, self.train_config_paths, self.num_samples_list, self.task_names):
+        for cur_mimicit_path, cur_images_path, cur_train_config_path, sampled_examples, task_name, task_desc in zip(
+            self.mimicit_paths, self.images_paths, self.train_config_paths, self.num_samples_list, self.task_names, self.task_description
+        ):
             # Load the dataset
             assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!"
 
@@ -160,13 +180,23 @@ class MimicitDataset(Dataset):
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
 
             # Truncate paths for display
-            truncated_mimicit_path = truncate_path(cur_mimicit_path)
-            truncated_train_config_path = truncate_path(cur_train_config_path)
-            truncated_images_path = truncate_path(cur_images_path)
+            truncated_mimicit_path = truncate_text(cur_mimicit_path)
+            truncated_train_config_path = truncate_text(cur_train_config_path)
+            truncated_images_path = truncate_text(cur_images_path)
+            truncated_task_desc = truncate_text(task_desc)
 
-            table.add_row([task_name, truncated_mimicit_path, truncated_train_config_path if cur_train_config_path != "" else "None", truncated_images_path if cur_images_path != "" else "None", len(resampled_train)])
+            table.add_row(
+                [
+                    task_name,
+                    truncated_mimicit_path,
+                    truncated_train_config_path if cur_train_config_path != "" else "None",
+                    truncated_images_path if cur_images_path != "" else "None",
+                    len(resampled_train),
+                    truncated_task_desc,
+                ]
+            )
 
-            if cur_images_path:
+            if cur_images_path != "":
                 with open(cur_images_path, "rb") as f:
                     images_data = orjson.loads(f.read())
                     for ins_key in resampled_train:
@@ -176,6 +206,7 @@ class MimicitDataset(Dataset):
 
             self.train_data_list.extend(resampled_train)
             self.train_config.update(cache_train_config)
+            self.task_mapping.update({key: len(self.task_mapping) for key in resampled_train}) # use len(self.task_mapping) to get the task index
 
         if args.rank == 0:
             master_print(table)
@@ -311,9 +342,13 @@ class MimicitDataset(Dataset):
                 if idx == 0:
                     cur_text = f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
                 elif idx < len(all_instruction_ids) - 1:
-                    cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
+                    cur_text = (
+                        f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
+                    )
                 elif idx == len(all_instruction_ids) - 1:
-                    cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>"
+                    cur_text = (
+                        f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>"
+                    )
             elif instruction_format == "simple":
                 if idx == 0:
                     cur_text = f"<image>User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
@@ -412,7 +447,9 @@ class MimicitDataset(Dataset):
                 if idx == 0:
                     cur_text = f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
                 else:
-                    cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
+                    cur_text = (
+                        f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
+                    )
             elif instruction_format == "simple":
                 if idx == 0:
                     cur_text = f"<image>User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
@@ -451,7 +488,9 @@ class MimicitDataset(Dataset):
                 else:
                     cur_text = f"[INST]{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
             elif instruction_format == "idefics":
-                cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
+                cur_text = (
+                    f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
+                )
             elif instruction_format == "simple":
                 cur_text = f"User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
             all_texts += cur_text
@@ -470,6 +509,9 @@ class MimicitDataset(Dataset):
         image_ids = self.dataset[cur_train_id]["image_ids"] if self.dataset[cur_train_id].get("image_ids", None) is not None else []  # handling for text-only data without image_ids
         instruction_format = self.instruction_format
         resample_frames = self.resample_frames
+
+        cur_task_desc = self.task_description[self.task_mapping[cur_train_id]]
+        
         if cur_train_id.upper().startswith("SD") or cur_train_id.startswith("CGD"):
             patch_images, all_texts = self.process_spot_the_difference(
                 instruction_id,
@@ -528,6 +570,8 @@ class MimicitDataset(Dataset):
         else:
             raise NotImplementedError(f"Error: The task {cur_train_id} is not supported!")
 
+        if cur_task_desc != "":
+            all_texts = cur_task_desc + "\n" + all_texts
         all_text = self.tokenizer(
             all_texts,
             return_tensors="pt",
@@ -546,7 +590,13 @@ class MimicitDataset(Dataset):
         all_item = torch.cat([self.bos_item, all_item, self.eos_item])
         all_item_mask = torch.cat([self.bos_mask, all_item_mask, self.eos_mask])
 
-        example = {"id": instruction_id, "source": all_item, "text_mask": all_item_mask, "patch_images": patch_images, "task_group": self.task_group}
+        example = {
+            "id": instruction_id,
+            "source": all_item,
+            "text_mask": all_item_mask,
+            "patch_images": patch_images,
+            "task_group": self.task_group,
+        }
         return example
 
     def __str__(self):
