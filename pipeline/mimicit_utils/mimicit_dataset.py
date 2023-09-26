@@ -119,11 +119,7 @@ class MimicitDataset(Dataset):
         self.resample_frames = args.resample_frames
         self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content. You need to answer user's questions with plans and Python codes as response.\n<</SYS>>\n\n"
 
-        (self.mean, self.std) = (
-            (IDEFICS_STANDARD_MEAN, IDEFICS_STANDARD_STD)
-            if args.model_name == "idefics"
-            else (FLAMINGO_MEAN, FLAMINGO_STD)
-        )
+        (self.mean, self.std) = (IDEFICS_STANDARD_MEAN, IDEFICS_STANDARD_STD) if args.model_name == "idefics" else (FLAMINGO_MEAN, FLAMINGO_STD)
         self.patch_resize_transform = transforms.Compose(
             [
                 transforms.Resize(
@@ -134,9 +130,7 @@ class MimicitDataset(Dataset):
                 transforms.Normalize(mean=self.mean, std=self.std),
             ]
         )
-        assert (
-            len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths)
-        ), f"metas do not have same number"
+        assert len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths), f"metas do not have same number"
 
         self.dataset = {}
         self.images = {}
@@ -206,7 +200,7 @@ class MimicitDataset(Dataset):
 
             self.train_data_list.extend(resampled_train)
             self.train_config.update(cache_train_config)
-            self.task_mapping.update({key: len(self.task_mapping) for key in resampled_train}) # use len(self.task_mapping) to get the task index
+            self.task_mapping.update({key: len(self.task_mapping) for key in resampled_train})  # use len(self.task_mapping) to get the task index
 
         if args.rank == 0:
             master_print(table)
@@ -342,13 +336,9 @@ class MimicitDataset(Dataset):
                 if idx == 0:
                     cur_text = f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
                 elif idx < len(all_instruction_ids) - 1:
-                    cur_text = (
-                        f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
-                    )
+                    cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
                 elif idx == len(all_instruction_ids) - 1:
-                    cur_text = (
-                        f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>"
-                    )
+                    cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>"
             elif instruction_format == "simple":
                 if idx == 0:
                     cur_text = f"<image>User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
@@ -447,9 +437,7 @@ class MimicitDataset(Dataset):
                 if idx == 0:
                     cur_text = f"User:<fake_token_around_image><image><fake_token_around_image>{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
                 else:
-                    cur_text = (
-                        f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
-                    )
+                    cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
             elif instruction_format == "simple":
                 if idx == 0:
                     cur_text = f"<image>User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
@@ -488,9 +476,7 @@ class MimicitDataset(Dataset):
                 else:
                     cur_text = f"[INST]{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
             elif instruction_format == "idefics":
-                cur_text = (
-                    f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
-                )
+                cur_text = f"User:{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
             elif instruction_format == "simple":
                 cur_text = f"User:{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
             all_texts += cur_text
@@ -506,16 +492,12 @@ class MimicitDataset(Dataset):
             self.dataset[cur_train_id]["answer"],
             self.train_config[cur_train_id],
         )
-        image_ids = (
-            self.dataset[cur_train_id]["image_ids"]
-            if self.dataset[cur_train_id].get("image_ids", None) is not None
-            else []
-        )  # handling for text-only data without image_ids
+        image_ids = self.dataset[cur_train_id]["image_ids"] if self.dataset[cur_train_id].get("image_ids", None) is not None else []  # handling for text-only data without image_ids
         instruction_format = self.instruction_format
         resample_frames = self.resample_frames
 
         cur_task_desc = self.task_description[self.task_mapping[cur_train_id]]
-        
+
         if cur_train_id.upper().startswith("SD") or cur_train_id.startswith("CGD"):
             patch_images, all_texts = self.process_spot_the_difference(
                 instruction_id,

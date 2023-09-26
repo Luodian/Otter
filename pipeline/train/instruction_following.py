@@ -387,11 +387,11 @@ def main():
         elif args.model_name.lower() == "debug_model":
             model = torch.nn.Linear(100, 100)
             tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-chat-hf")
-            
+
             tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>", "<image>", "<|endofchunk|>"]})
             if tokenizer.pad_token is None:
                 tokenizer.add_special_tokens({"pad_token": "<PAD>"})
-                
+
             image_processor = None
 
     if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
