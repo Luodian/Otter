@@ -396,7 +396,7 @@ def main():
 
             image_processor = None
 
-    if hasattr(model, "lang_encoder") and "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
+    if args.resize_embedding and hasattr(model, "lang_encoder") and "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
         model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
         master_print(f"Resizing Llama embedding to {len(model.text_tokenizer)}")
     
