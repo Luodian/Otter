@@ -377,9 +377,9 @@ def main():
                 **kwargs,
             )
             tokenizer = AutoTokenizer.from_pretrained(args.pretrained_model_name_or_path)
-            if "<answer>" not in tokenizer.special_tokens_map["additional_special_tokens"]:
-                past_special_tokens = tokenizer.special_tokens_map["additional_special_tokens"]
-                tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>", "<image>", "<|endofchunk|>"] + past_special_tokens})
+            past_special_tokens = tokenizer.special_tokens_map["additional_special_tokens"] if "additional_special_tokens" in tokenizer.special_tokens_map else [value for key, value in tokenizer.special_tokens_map.items()]
+            if "<answer>" not in past_special_tokens:
+                tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>", "<image>", "<|endofchunk|>"]})
 
             if tokenizer.pad_token is None:
                 tokenizer.add_special_tokens({"pad_token": "<PAD>"})
