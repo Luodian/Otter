@@ -156,7 +156,7 @@ class MimicitDataset(Dataset):
                 cache_train_config = {key: value["rel_ins_ids"] for key, value in cur_mimicit_data.items()}
             else:
                 cache_train_config = {key: [] for key, value in cur_mimicit_data.items()}
-                
+
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
 
             # Truncate paths for display
@@ -467,7 +467,7 @@ class MimicitDataset(Dataset):
             self.dataset[cur_train_id]["answer"],
             self.train_config[cur_train_id],
         )
-        image_ids = self.dataset[cur_train_id]["image_ids"] if self.dataset[cur_train_id].get("image_ids", None) is not None else [] # handling for text-only data without image_ids
+        image_ids = self.dataset[cur_train_id]["image_ids"] if self.dataset[cur_train_id].get("image_ids", None) is not None else []  # handling for text-only data without image_ids
         instruction_format = self.instruction_format
         resample_frames = self.resample_frames
         if cur_train_id.upper().startswith("SD") or cur_train_id.startswith("CGD"):
