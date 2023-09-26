@@ -98,12 +98,17 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     total_training_steps = args.num_epochs * num_batches_per_epoch
 
     # special design for Idefics Model's prompt strategy
-    fake_token_image_exists = True if "<fake_token_around_image>" in tokenizer.special_tokens_map["additional_special_tokens"] else False
-    fake_token_image_token_id = tokenizer("<fake_token_around_image>", add_special_tokens=False)["input_ids"][-1]
+    if args.model_name.lower() == "idefics":
+        fake_token_image_exists = True if "<fake_token_around_image>" in tokenizer.special_tokens_map["additional_special_tokens"] else False
+        fake_token_image_token_id = tokenizer("<fake_token_around_image>", add_special_tokens=False)["input_ids"][-1]
+        endofchunk_text = "<end_of_utterance>"
+    else:
+        fake_token_image_exists = False
+        fake_token_image_token_id = None
+        endofchunk_text = "<|endofchunk|>"
 
     # normal prompt strategy
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
-    endofchunk_text = "<|endofchunk|>" if "<|endofchunk|>" in tokenizer.special_tokens_map["additional_special_tokens"] else "<end_of_utterance>"  # for different tokenizer
     endofchunk_token_id = tokenizer(endofchunk_text, add_special_tokens=False)["input_ids"][-1]
     answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
     ens_token_id = tokenizer(tokenizer.eos_token, add_special_tokens=False)["input_ids"][-1]
@@ -155,7 +160,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
         labels[labels == answer_token_id] = -100
         labels[labels == media_token_id] = -100
-        if fake_token_image_exists:
+        if args.model_name == "idefics" and fake_token_image_exists:
             # if fake token exists, remove loss for any token between <fake_token_around_image>
             # and drop <answer> token to mimic the prompt strategy for Idefics Model
             labels[labels == fake_token_image_token_id] = -100
@@ -175,7 +180,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 master_print(f"Device: {device_id}, attention_mask: {attention_mask.shape}")
                 master_print(f"Device: {device_id}, labels: {labels.shape}")
                 master_print(f"model: {unwrapped_model.__class__.__name__}")
-                master_print(f"model dtype: {unwrapped_model.dtype}")
+                master_print(f"model dtype: {unwrapped_model.dtype if hasattr(unwrapped_model, 'dtype') else 'None'}")
 
             if args.model_name == "idefics":
                 # only for image model
@@ -314,7 +319,7 @@ def main():
             kwargs.pop("device_map")
         if args.customized_config is not None:
             kwargs["config"] = args.customized_config
-        if "otter" in args.model_name.lower():
+        if args.model_name.lower() == "otter":
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
                 **kwargs,
@@ -323,17 +328,19 @@ def main():
             tokenizer = model.text_tokenizer
             image_processor = CLIPImageProcessor()
 
-        elif "flamingo" in args.model_name.lower():
+        elif args.model_name.lower() == "flamingo":
             model = FlamingoForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
                 **kwargs,
             )
             # add special tokens for instruction tuning
             model.text_tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"]})
-            model.config.update({
-                "special_tokens": model.text_tokenizer.all_special_tokens,
-                "architectures": "OtterForConditionalGeneration",
-            })
+            model.config.update(
+                {
+                    "special_tokens": model.text_tokenizer.all_special_tokens,
+                    "architectures": "OtterForConditionalGeneration",
+                }
+            )
             args.tokenizer = model.text_tokenizer
             tokenizer = model.text_tokenizer
             image_processor = CLIPImageProcessor()
@@ -342,7 +349,7 @@ def main():
                 master_print(f"Resizing Flamingo embedding from {len(tokenizer)} to {new_embedding_size}")
                 model.resize_token_embeddings(new_embedding_size, pad_to_multiple_of=64)
 
-        elif "idefics" in args.model_name.lower():
+        elif args.model_name.lower() == "idefics":
             model = IdeficsForVisionText2Text.from_pretrained(
                 args.pretrained_model_name_or_path,
                 **kwargs,
@@ -362,7 +369,7 @@ def main():
             tokenizer = processor.tokenizer
             # make embedding size divisible by 64 for hardware compatiblity https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html#requirements-tc
             # resize_token_embedding is not for parameter sharing in deepspeed !!!!
-        elif "llama2" in args.model_name.lower():
+        elif args.model_name.lower() == "llama2":
             model = LlamaForCausalLM.from_pretrained(
                 args.pretrained_model_name_or_path,
                 **kwargs,
@@ -376,6 +383,15 @@ def main():
                 tokenizer.add_special_tokens({"pad_token": "<PAD>"})
 
             args.tokenizer = tokenizer
+            image_processor = None
+        elif args.model_name.lower() == "debug_model":
+            model = torch.nn.Linear(100, 100)
+            tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-chat-hf")
+            
+            tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>", "<image>", "<|endofchunk|>"]})
+            if tokenizer.pad_token is None:
+                tokenizer.add_special_tokens({"pad_token": "<PAD>"})
+                
             image_processor = None
 
     if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:

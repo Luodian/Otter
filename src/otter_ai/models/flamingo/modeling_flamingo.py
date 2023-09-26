@@ -16,6 +16,7 @@ from ..falcon.modelling_RW import RWForCausalLM
 from ..mpt.modeling_mpt import MPTForCausalLM
 from ..mpt_redpajama.mosaic_gpt import MosaicGPT
 import torch.distributed as dist
+
 # from .configuration_flamingo import FlamingoConfig
 
 __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
@@ -30,6 +31,7 @@ __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
     "MosaicGPT": "transformer.blocks",
 }
 
+
 def master_print(*args, **kwargs):
     if dist.is_available() and dist.is_initialized():
         rank = dist.get_rank()
@@ -37,6 +39,7 @@ def master_print(*args, **kwargs):
             print(*args, **kwargs)
     else:
         print(*args, **kwargs)
+
 
 def _infer_decoder_layers_attr_name(model: nn.Module):
     for k in __KNOWN_DECODER_LAYERS_ATTR_NAMES:

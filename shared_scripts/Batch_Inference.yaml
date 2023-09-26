@@ -146,3 +146,7 @@
   question: What does the image describe? And why it's unusual?
 - image_path: https://i.postimg.cc/yYS7G4ZY/WX20230924-133813-2x.png
   question: How many objects inside this image?
+- image_path: https://i.postimg.cc/wM9B2jpk/LV.jpg
+  question: How many people inside this image?
+- image_path: https://i.postimg.cc/wM9B2jpk/LV.jpg
+  question: Is there an angel inside this image?
