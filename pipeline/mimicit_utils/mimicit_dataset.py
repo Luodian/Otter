@@ -152,6 +152,7 @@ class MimicitDataset(Dataset):
             "Task Description",
         ]
 
+        cur_task_id = 0
         for cur_mimicit_path, cur_images_path, cur_train_config_path, sampled_examples, task_name, task_desc in zip(
             self.mimicit_paths, self.images_paths, self.train_config_paths, self.num_samples_list, self.task_names, self.task_description
         ):
@@ -200,7 +201,8 @@ class MimicitDataset(Dataset):
 
             self.train_data_list.extend(resampled_train)
             self.train_config.update(cache_train_config)
-            self.task_mapping.update({key: len(self.task_mapping) for key in resampled_train})  # use len(self.task_mapping) to get the task index
+            self.task_mapping.update({key: cur_task_id for key in resampled_train})  # use len(self.task_mapping) to get the task index
+            cur_task_id += 1
 
         if args.rank == 0:
             master_print(table)
