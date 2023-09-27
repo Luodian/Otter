@@ -85,12 +85,14 @@ def resample_data(data, N):
         random.seed(0)
         return random.sample(data, N)
 
+
 def extract_rgb_number(path):
     # Use regular expression to find the 'rgb{x}' pattern
-    match = re.search(r'rgb(\d)', path)
+    match = re.search(r"rgb(\d)", path)
     if match:
         return int(match.group(1))
     return -1  # Return -1 if 'rgb{x}' is not found
+
 
 class MimicitDataset(Dataset):
     def __init__(self, args, dataset_info, task_group=""):

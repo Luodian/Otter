@@ -315,13 +315,13 @@ def main():
         master_print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
         device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED" else "auto"
         kwargs = {"local_files_only": args.offline, "device_map": device_map}
-        
+
         if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
             kwargs.pop("device_map")
-            
+
         if args.customized_config is not None:
             kwargs["config"] = args.customized_config
-            
+
         if args.model_name.lower() == "otter":
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
@@ -399,7 +399,7 @@ def main():
     if args.resize_embedding and hasattr(model, "lang_encoder") and "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
         model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
         master_print(f"Resizing Llama embedding to {len(model.text_tokenizer)}")
-    
+
     if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
         params_to_gather = [p for name, p in model.named_parameters() if p.requires_grad]
         with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
