@@ -216,15 +216,6 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             else:
                 raise NotImplementedError(f"Loss of model {args.model_name} not implemented.")
 
-        master_print(tokenizer.decode(input_ids[0]))
-        master_print(model.lang_encoder.lm_head)
-        master_print(tokenizer("<image>"))
-        master_print(tokenizer("<|endofchunk|>"))
-        master_print(tokenizer("<answer>"))
-        master_print(labels[0])
-        master_print(loss_mimicit)
-        break
-    
         if accelerator.mixed_precision == "fp16":
             accelerator.backward(loss_mimicit.to(device_id))
         else:
