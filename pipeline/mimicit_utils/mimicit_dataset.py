@@ -331,7 +331,7 @@ class MimicitDataset(Dataset):
             cur_answer = self.pre_answer(cur_answer, keep_symbols=self.keep_symbols)
             if instruction_format == "llama2":
                 if idx == 0:
-                    cur_text = f"[INST]{self.wrap_sys}<image>{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
+                    cur_text = f"[INST]<image>\n{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
                 else:
                     cur_text = f"[INST]{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
             elif instruction_format == "idefics":
