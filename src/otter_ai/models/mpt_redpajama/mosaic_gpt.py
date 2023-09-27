@@ -424,3 +424,12 @@ class MosaicGPT(PreTrainedModel):
         for layer_past in past_key_values:
             reordered_past += [tuple(past_state.index_select(0, beam_idx) for past_state in layer_past)]
         return reordered_past
+
+    def get_input_embeddings(self):
+        return self.transformer.wte
+
+    def set_input_embeddings(self, new_embeddings):
+        self.transformer.wte = new_embeddings.device(self.transformer.wte.weight.device)
+
+    def get_decoder(self):
+        return self.transformer
