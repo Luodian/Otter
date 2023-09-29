@@ -27,7 +27,7 @@ def parse_args():
         "--model_name",
         type=str,
         default="otter",
-        choices=["otter", "flamingo", "idefics"],
+        choices=["otter", "flamingo", "idefics", "llama2", "debug_model"],
         help="otters or flamingo",
     )
     parser.add_argument(
@@ -110,12 +110,6 @@ def parse_args():
         type=str,
         help="path to customized additional config.json, use to modify from the original config.json in pretrained model.",
     )
-    parser.add_argument(
-        "--task_name",
-        default="",
-        type=str,
-        help="task name, used to decide different function to load dataset.",
-    )
     parser.add_argument("--report_to_wandb", default=False, action="store_true")
     parser.add_argument("--wandb_project", type=str)
     parser.add_argument("--wandb_entity", type=str)
@@ -136,6 +130,30 @@ def parse_args():
         "--delete_previous_checkpoint",
         action="store_true",
         help="delete previous checkpoint when saving new checkpoint",
+    ),
+    parser.add_argument(
+        "--keep_symbols",
+        action="store_true",
+        default=False,
+        help="keep symbols in the generated text",
+    )
+    parser.add_argument(
+        "--remove_answer_token",
+        action="store_true",
+        default=False,
+        help="we have an <answer> token as indicator for separating question and answer, use this flag to remove it before training.",
+    )
+    parser.add_argument(
+        "--remove_eos_token",
+        action="store_true",
+        default=False,
+        help="we have an eos token as indicator for separating question and answer, use this flag to remove it before training.",
+    )
+    parser.add_argument(
+        "--populate_rel_ins",
+        action="store_true",
+        default=False,
+        help="populate rel_ins into train_config.",
     )
     args = parser.parse_args()
 

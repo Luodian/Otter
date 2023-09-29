@@ -15,6 +15,12 @@ except ImportError:
     print("Failed to import Idefics processing module.")
 
 
+def truncate_text(path, keep_start=10, keep_end=10, truncate_to="..."):
+    if len(path) <= (keep_start + keep_end + len(truncate_to)):
+        return path
+    return path[:keep_start] + truncate_to + path[-keep_end:]
+
+
 def master_print(*args, **kwargs):
     if dist.is_available() and dist.is_initialized():
         rank = dist.get_rank()
@@ -215,7 +221,7 @@ def save_checkpoint(epoch, model, args, accelerator, unwrapped_model=None, globa
                 os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
 
 
-def save_final_weights(model, args, accelerator, processor=None):
+def save_final_weights(model, args, accelerator, processor=None, tokenizer=None):
     """Save final weights of the model."""
     unwrapped_model = accelerator.unwrap_model(model)
 
@@ -224,16 +230,18 @@ def save_final_weights(model, args, accelerator, processor=None):
         checkpoint_dict = accelerator.get_state_dict(model)
         unwrapped_model.config.save_pretrained(args.external_save_dir)
         if args.rank == 0:
-            if not args.save_hf_model:
+            if args.save_hf_model:
+                unwrapped_model.save_pretrained(f"{args.external_save_dir}", is_main_process=accelerator.is_main_process, save_function=accelerator.save, state_dict=checkpoint_dict)
+                if args.model_name == "idefics":
+                    processor.save_pretrained(f"{args.external_save_dir}", is_main_process=accelerator.is_main_process, save_function=accelerator.save)
+                if args.model_name == "llama2":
+                    tokenizer.save_pretrained(f"{args.external_save_dir}", is_main_process=accelerator.is_main_process, save_function=accelerator.save)
+            else:
                 trainable_params_name = [name for name, p in unwrapped_model.named_parameters() if p.requires_grad]
                 for name in list(checkpoint_dict.keys()):
                     if name not in trainable_params_name:
                         del checkpoint_dict[name]
                 accelerator.save(checkpoint_dict, f"{args.external_save_dir}/final_weights.pt")
-            else:
-                unwrapped_model.save_pretrained(f"{args.external_save_dir}", is_main_process=accelerator.is_main_process, save_function=accelerator.save, state_dict=checkpoint_dict)
-                if args.model_name == "idefics":
-                    processor.save_pretrained(f"{args.external_save_dir}", is_main_process=accelerator.is_main_process, save_function=accelerator.save)
     else:
         checkpoint_dict = get_checkpoint(model=unwrapped_model)
         accelerator.save(checkpoint_dict, f"{args.external_save_dir}/final_weights.pt")
@@ -242,3 +250,5 @@ def save_final_weights(model, args, accelerator, processor=None):
             unwrapped_model.save_pretrained(f"{args.external_save_dir}")
             if args.model_name == "idefics":
                 processor.save_pretrained(f"{args.external_save_dir}", is_main_process=accelerator.is_main_process, save_function=accelerator.save)
+            if args.model_name == "llama2":
+                tokenizer.save_pretrained(f"{args.external_save_dir}", is_main_process=accelerator.is_main_process, save_function=accelerator.save)
