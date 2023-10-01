@@ -128,11 +128,7 @@ class MimicitDataset(Dataset):
         self.resample_frames = args.resample_frames
         self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content. You need to answer user's questions with plans and Python codes as response.\n<</SYS>>\n\n"
 
-        (self.mean, self.std) = (
-            (IDEFICS_STANDARD_MEAN, IDEFICS_STANDARD_STD)
-            if args.model_name == "idefics"
-            else (FLAMINGO_MEAN, FLAMINGO_STD)
-        )
+        (self.mean, self.std) = (IDEFICS_STANDARD_MEAN, IDEFICS_STANDARD_STD) if args.model_name == "idefics" else (FLAMINGO_MEAN, FLAMINGO_STD)
         self.patch_resize_transform = transforms.Compose(
             [
                 transforms.Resize(
@@ -143,9 +139,7 @@ class MimicitDataset(Dataset):
                 transforms.Normalize(mean=self.mean, std=self.std),
             ]
         )
-        assert (
-            len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths)
-        ), f"metas do not have same number"
+        assert len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths), f"metas do not have same number"
 
         self.dataset = {}
         self.images = []
@@ -212,20 +206,14 @@ class MimicitDataset(Dataset):
                 ]
             )
 
-            if (
-                cur_images_path != ""
-                and cur_images_path.endswith(".parquet")
-                and cur_images_path not in loaded_images_path
-            ):
+            if cur_images_path != "" and cur_images_path.endswith(".parquet") and cur_images_path not in loaded_images_path:
                 cur_df = pd.read_parquet(cur_images_path, columns=None)  # not in memory
                 self.images.append(cur_df)
                 loaded_images_path.add(cur_images_path)
 
             self.train_data_list.extend(resampled_train)
             self.train_config.update(cache_train_config)
-            self.task_mapping.update(
-                {key: cur_task_id for key in resampled_train}
-            )  # use len(self.task_mapping) to get the task index
+            self.task_mapping.update({key: cur_task_id for key in resampled_train})  # use len(self.task_mapping) to get the task index
             cur_task_id += 1
 
         if self.images != []:
@@ -281,9 +269,7 @@ class MimicitDataset(Dataset):
         assert len(image_ids) == resample_frames
         return image_ids
 
-    def process_text_formatting(
-        self, cur_instruction, cur_answer, instruction_format, insert_image=False, is_text_only=False
-    ):
+    def process_text_formatting(self, cur_instruction, cur_answer, instruction_format, insert_image=False, is_text_only=False):
         if instruction_format == "llama2":
             image_placeholder = "<image>" if not is_text_only else ""
             prefix = f"[INST]{image_placeholder}\n" if insert_image else "[INST]"
@@ -329,9 +315,7 @@ class MimicitDataset(Dataset):
             cur_answer = self.pre_answer(cur_answer)
 
             if task_group == "IMAGE_TEXT_IN_CONTEXT":
-                cur_text = self.process_text_formatting(
-                    cur_instruction, cur_answer, self.instruction_format, insert_image=True, is_text_only=False
-                )
+                cur_text = self.process_text_formatting(cur_instruction, cur_answer, self.instruction_format, insert_image=True, is_text_only=False)
             else:
                 # only insert image for the first instruction, used for conversation.
                 cur_text = self.process_text_formatting(
@@ -360,11 +344,7 @@ class MimicitDataset(Dataset):
             self.dataset[cur_train_id]["answer"],
             self.train_config[cur_train_id],
         )
-        image_ids = (
-            self.dataset[cur_train_id]["image_ids"]
-            if self.dataset[cur_train_id].get("image_ids", None) is not None
-            else []
-        )  # handling for text-only data without image_ids
+        image_ids = self.dataset[cur_train_id]["image_ids"] if self.dataset[cur_train_id].get("image_ids", None) is not None else []  # handling for text-only data without image_ids
 
         cur_task_desc = self.task_description[self.task_mapping[cur_train_id]]
 
@@ -376,9 +356,7 @@ class MimicitDataset(Dataset):
         }
 
         if self.task_group in process_mapping:
-            patch_images, all_texts = self.process_general(
-                instruction_id, image_ids, in_context_example_ids, self.task_group
-            )
+            patch_images, all_texts = self.process_general(instruction_id, image_ids, in_context_example_ids, self.task_group)
         else:
             raise NotImplementedError(f"Error: The task {cur_train_id} is not supported!")
 
