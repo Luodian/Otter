@@ -111,7 +111,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
     endofchunk_token_id = tokenizer(endofchunk_text, add_special_tokens=False)["input_ids"][-1]
     answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
-    ens_token_id = tokenizer(tokenizer.eos_token, add_special_tokens=False)["input_ids"][-1]
+    eos_token_id = tokenizer(tokenizer.eos_token, add_special_tokens=False)["input_ids"][-1]
 
     model.train()
 
@@ -160,6 +160,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
         labels[labels == answer_token_id] = -100
         labels[labels == media_token_id] = -100
+        labels[labels == eos_token_id] = -100
         if args.model_name == "idefics" and fake_token_image_exists:
             # if fake token exists, remove loss for any token between <fake_token_around_image>
             # and drop <answer> token to mimic the prompt strategy for Idefics Model
