@@ -149,7 +149,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 token_idx += 1
 
             # remove loss for any token between <|endofchunk|> and <answer>, except <image>
-            for endofchunk_idx in endofchunk_idxs[:-1]:
+            for endofchunk_idx in endofchunk_idxs[:-1]: # Do not mask the last endofchunk
                 token_idx = endofchunk_idx + 1
                 while token_idx < labels.shape[1] and labels[i][token_idx] != answer_token_id:
                     if labels[i][token_idx] == media_token_id:
