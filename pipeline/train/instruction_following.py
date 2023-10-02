@@ -134,36 +134,66 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         input_ids = batch_mimicit["net_input"]["input_ids"].to(device_id, non_blocking=True)
         attention_mask = batch_mimicit["net_input"]["attention_masks"].to(device_id, non_blocking=True)
 
-        labels = input_ids.clone()
-        labels[labels == tokenizer.pad_token_id] = -100
-        labels[:, 0] = -100
-        for i in range(labels.shape[0]):
-            # get index of all endofchunk/media tokens in the sequence
-            endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
-            media_idxs = torch.where(labels[i] == media_token_id)[0]
+        ################################################################
+        def old_masking():
+            labels = input_ids.clone()
+            labels[labels == tokenizer.pad_token_id] = -100
+            labels[:, 0] = -100
+            for i in range(labels.shape[0]):
+                # get index of all endofchunk/media tokens in the sequence
+                endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
+                media_idxs = torch.where(labels[i] == media_token_id)[0]
 
-            # remove loss for any token the before the first <answer>
-            token_idx = 0
-            while token_idx < labels.shape[1] and labels[i][token_idx] != answer_token_id:
-                labels[i][token_idx] = -100
-                token_idx += 1
-
-            # remove loss for any token between <|endofchunk|> and <answer>, except <image>
-            for endofchunk_idx in endofchunk_idxs[:-1]: # Do not mask the last endofchunk
-                token_idx = endofchunk_idx + 1
+                # remove loss for any token the before the first <answer>
+                token_idx = 0
                 while token_idx < labels.shape[1] and labels[i][token_idx] != answer_token_id:
-                    if labels[i][token_idx] == media_token_id:
-                        pass
-                    else:
-                        labels[i][token_idx] = -100
+                    labels[i][token_idx] = -100
                     token_idx += 1
 
-        labels[labels == answer_token_id] = -100
-        labels[labels == media_token_id] = -100
-        if args.model_name == "idefics" and fake_token_image_exists:
-            # if fake token exists, remove loss for any token between <fake_token_around_image>
-            # and drop <answer> token to mimic the prompt strategy for Idefics Model
-            labels[labels == fake_token_image_token_id] = -100
+                # remove loss for any token between <|endofchunk|> and <answer>, except <image>
+                for endofchunk_idx in endofchunk_idxs[:-1]:  # Do not mask the last endofchunk
+                    token_idx = endofchunk_idx + 1
+                    while token_idx < labels.shape[1] and labels[i][token_idx] != answer_token_id:
+                        if labels[i][token_idx] == media_token_id:
+                            pass
+                        else:
+                            labels[i][token_idx] = -100
+                        token_idx += 1
+
+            labels[labels == answer_token_id] = -100
+            labels[labels == media_token_id] = -100
+            if args.model_name == "idefics" and fake_token_image_exists:
+                # if fake token exists, remove loss for any token between <fake_token_around_image>
+                # and drop <answer> token to mimic the prompt strategy for Idefics Model
+                labels[labels == fake_token_image_token_id] = -100
+            return labels
+
+        ################################################################
+
+        def masking(masking_number: int = -100):
+            labels = input_ids.clone()
+
+            for i in range(labels.shape[0]):
+                row = labels[i]
+                should_mask = True
+                for j in range(labels.shape[1]):
+                    if row[j] == media_token_id:
+                        pass
+                    if row[j] == answer_token_id:
+                        should_mask = False
+                        row[j] = masking_number
+                    elif row[j] == endofchunk_token_id:
+                        should_mask = True
+                        row[j] = masking_number
+                    elif should_mask:
+                        row[j] = masking_number
+                    elif args.model_name == "idefics" and fake_token_image_exists and row[j] == fake_token_image_token_id:
+                        row[j] = masking_number
+
+            return labels
+
+        labels = masking()
+        assert labels == old_masking()
 
         if args.remove_answer_token:
             input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, answer_token_id, tokenizer)
