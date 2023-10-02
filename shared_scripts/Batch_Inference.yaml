@@ -78,21 +78,7 @@
   question: How many company logos inside this image and what are they?
 - image_path: https://i.postimg.cc/hGr94z9s/refrig-milk.jpg
   question: Is there any milk inside this image?
-- image_path: https://i.postimg.cc/tJCk8DRT/dall-226x300.jpg
-  question: What does the image describe and is it unusual?
-- image_path: https://i.postimg.cc/3R3FD9vB/dall-e-3-got-announced-around-mid-october-for-gpt-v0-v8pb8e5j3gpb1.webp
-  question: What does the image describe?
-- image_path: https://i.postimg.cc/W4G73xhz/dall-e-3-in-chatgpt-1.png
-  question: What's written on the image?
-- image_path: https://i.postimg.cc/hPYs39kD/dall-e-3-sample-3.webp
-  question: What's about the image? and what's written on the image?
-- image_path: https://i.postimg.cc/qRQXcncd/Dall-e-First-Look-Created-by-Himself.webp
-  question: What's unusual about the image?
-- image_path: https://i.postimg.cc/j2gcTNCh/DALL-E-2-artificial-intelligence-digital-image-generated-photo.jpg
-  question: What's unusual about the image?
-- image_path: https://i.postimg.cc/GpwQbb36/dalle-3-81-2.webp
-  question: What's unusual about the image?
-- image_path: https://i.postimg.cc/brBxWhFC/DALL-E-2022-07-21-00-57-02-A-marble-Greek-statue-of-Vegeta-from-Dragon-Ball.png
+- uestion: What's written on the image?
   question: What's unusual about the image?
 - image_path: https://i.postimg.cc/44BBpCwh/F6ey4-UIak-AAg-KA8.webp
   question: What's unusual about the image?
@@ -150,3 +136,7 @@
   question: How many people inside this image?
 - image_path: https://i.postimg.cc/wM9B2jpk/LV.jpg
   question: Is there an angel inside this image?
+- image_path: https://i.imgur.com/cIOcK5Z.jpg
+  question: What does the image describe?
+- image_path: https://i.imgur.com/cIOcK5Z.jpg
+  question: Can you recognize the difference between the left and the right part of this image?
