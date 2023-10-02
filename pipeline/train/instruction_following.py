@@ -178,8 +178,8 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 should_mask = True
                 for j in range(labels.shape[1]):
                     if row[j] == media_token_id:
-                        pass
-                    if row[j] == answer_token_id:
+                        row[j] = masking_number
+                    elif row[j] == answer_token_id:
                         should_mask = False
                         row[j] = masking_number
                     elif row[j] == endofchunk_token_id:
