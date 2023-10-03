@@ -176,7 +176,11 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             for i in range(labels.shape[0]):
                 row = labels[i]
                 should_mask = True
-                for j in range(labels.shape[1]):
+                row[0] = masking_number
+                # last_end_of_chunk = -1
+                for j in range(1, labels.shape[1]):
+                    if row[j] == 0:
+                        continue
                     if row[j] == media_token_id:
                         row[j] = masking_number
                     elif row[j] == answer_token_id:
@@ -184,7 +188,9 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                         row[j] = masking_number
                     elif row[j] == endofchunk_token_id:
                         should_mask = True
-                        row[j] = masking_number
+                        # if last_end_of_chunk != -1:
+                        #     row[last_end_of_chunk] = masking_number
+                        # last_end_of_chunk = j
                     elif should_mask:
                         row[j] = masking_number
                     elif args.model_name == "idefics" and fake_token_image_exists and row[j] == fake_token_image_token_id:
@@ -193,7 +199,13 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             return labels
 
         labels = masking()
-        assert labels == old_masking()
+        # old_labels = old_masking()
+        # for i in range(labels.shape[0]):
+        #     if not torch.equal(labels[i], old_labels[i]):
+        #         print(f"In {i}th row, labels are different")
+        #         print(f"old: {old_labels[i]}")
+        #         print(f"new: {labels[i]}")
+        #         assert False
 
         if args.remove_answer_token:
             input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, answer_token_id, tokenizer)
