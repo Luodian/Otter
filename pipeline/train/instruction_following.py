@@ -202,13 +202,13 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             labels = torch.full(input_ids.shape, masking_number, dtype=torch.int64)
             for i in range(labels.shape[0]):
                 labels[i] = torch.where(input_ids[i] == eos_token_id, eos_token_id, labels[i])
-                labels[:, 0] = masking_number
                 answer_token_ids = torch.where(input_ids[i] == answer_token_id)
                 endofchunk_token_ids = torch.where(input_ids[i] == endofchunk_token_id)
                 assert(len(answer_token_ids) == len(endofchunk_token_ids))
                 for answer_token_idx, endofchunk_token_idx in zip(answer_token_ids, endofchunk_token_ids):
                     labels[i, answer_token_idx+1:endofchunk_token_idx+1] = input_ids[i, answer_token_idx+1:endofchunk_token_idx+1]
             
+            labels[:, 0] = masking_number
             if args.model_name == "idefics" and fake_token_image_exists:
                 labels[labels == fake_token_image_token_id] = -100
             
@@ -231,9 +231,22 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
         # assert(torch.equal(labels_0, labels_2))
 
-        # old_masking() took 0.006161689758300781 seconds
-        # alt_masking() took 0.009554862976074219 seconds
-        # masking() took 0.001491546630859375 seconds
+        # Results:
+        
+        # MME 
+        # old_masking() took 0.004889726638793945 seconds
+        # alt_masking() took 0.007615327835083008 seconds
+        # masking() took 0.0011909008026123047 seconds
+
+        # SHAREGPT
+        # old_masking() took 0.008891105651855469 seconds
+        # alt_masking() took 0.14351749420166016 seconds
+        # masking() took 0.005905866622924805 seconds
+
+        # LACR_T2T
+        # old_masking() took 0.003914356231689453 seconds
+        # alt_masking() took 0.05003643035888672 seconds
+        # masking() took 0.0028901100158691406 seconds
 
         labels = masking()
 
