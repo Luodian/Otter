@@ -111,7 +111,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
     endofchunk_token_id = tokenizer(endofchunk_text, add_special_tokens=False)["input_ids"][-1]
     answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
-    ens_token_id = tokenizer(tokenizer.eos_token, add_special_tokens=False)["input_ids"][-1]
+    eos_token_id = tokenizer(tokenizer.eos_token, add_special_tokens=False)["input_ids"][-1]
 
     model.train()
 
@@ -168,9 +168,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 labels[labels == fake_token_image_token_id] = -100
             return labels
 
-        ################################################################
-
-        def masking(masking_number: int = -100):
+        def alt_masking(masking_number: int = -100):
             labels = input_ids.clone()
 
             for i in range(labels.shape[0]):
@@ -197,15 +195,47 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                         row[j] = masking_number
 
             return labels
+        
+        ################################################################
+
+        def masking(masking_number: int = -100):
+            labels = torch.full(input_ids.shape, masking_number, dtype=torch.int64)
+            for i in range(labels.shape[0]):
+                labels[i] = torch.where(input_ids[i] == eos_token_id, eos_token_id, labels[i])
+                labels[:, 0] = masking_number
+                answer_token_ids = torch.where(input_ids[i] == answer_token_id)
+                endofchunk_token_ids = torch.where(input_ids[i] == endofchunk_token_id)
+                assert(len(answer_token_ids) == len(endofchunk_token_ids))
+                for answer_token_idx, endofchunk_token_idx in zip(answer_token_ids, endofchunk_token_ids):
+                    labels[i, answer_token_idx+1:endofchunk_token_idx+1] = input_ids[i, answer_token_idx+1:endofchunk_token_idx+1]
+            
+            if args.model_name == "idefics" and fake_token_image_exists:
+                labels[labels == fake_token_image_token_id] = -100
+            
+            return labels
+
+        # start_time = time.time()
+        # labels_0 = old_masking()
+        # end_time = time.time()
+        # print(f"old_masking() took {end_time - start_time} seconds")
+
+        # start_time = time.time()
+        # labels_1 = alt_masking()
+        # end_time = time.time()
+        # print(f"alt_masking() took {end_time - start_time} seconds")
+
+        # start_time = time.time()
+        # labels_2 = masking()
+        # end_time = time.time()
+        # print(f"masking() took {end_time - start_time} seconds")
+
+        # assert(torch.equal(labels_0, labels_2))
+
+        # old_masking() took 0.006161689758300781 seconds
+        # alt_masking() took 0.009554862976074219 seconds
+        # masking() took 0.001491546630859375 seconds
 
         labels = masking()
-        # old_labels = old_masking()
-        # for i in range(labels.shape[0]):
-        #     if not torch.equal(labels[i], old_labels[i]):
-        #         print(f"In {i}th row, labels are different")
-        #         print(f"old: {old_labels[i]}")
-        #         print(f"new: {labels[i]}")
-        #         assert False
 
         if args.remove_answer_token:
             input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, answer_token_id, tokenizer)

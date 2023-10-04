@@ -145,3 +145,4 @@ shared_scripts/gcp_instance/**
 shared_scripts/shai_instance/**
 pipeline/benchmarks/models/Video_ChatGPT
 pipeline/benchmarks/evaluation_result
+config.yaml
