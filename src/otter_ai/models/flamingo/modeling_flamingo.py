@@ -821,6 +821,7 @@ class FlamingoForConditionalGeneration(FlamingoPreTrainedModel):
         for name, param in self.named_parameters():
             if param.requires_grad:
                 total_params += param.numel()
+                master_print(f"{name}: {param.numel() / 1e6:.3f} M")
         master_print(f"Total Trainable param: {(sum(p.numel() for p in self.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
     def forward(

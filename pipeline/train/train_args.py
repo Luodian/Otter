@@ -155,6 +155,12 @@ def parse_args():
         default=False,
         help="populate rel_ins into train_config.",
     )
+    parser.add_argument(
+        "--resize_embedding",
+        action="store_true",
+        default=False,
+        help="resize embedding layer to match the vocabulary size.",
+    )
     args = parser.parse_args()
 
     # Check for argument consistency and set environment variables if needed
