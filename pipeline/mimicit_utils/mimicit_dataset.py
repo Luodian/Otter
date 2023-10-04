@@ -279,8 +279,9 @@ class MimicitDataset(Dataset):
             return f"{prefix}{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}{postfix}"
         elif instruction_format == "simple":
             image_placeholder = "<image>" if not is_text_only else ""
+            postfix = "<|endofchunk|>"
             prefix = f"{image_placeholder}User:" if insert_image else "User:"
-            return f"{prefix}{cur_instruction} GPT:<answer>{cur_answer}"
+            return f"{prefix}{cur_instruction} GPT:<answer>{cur_answer}{postfix}"
 
     def process_images(self, image_ids, is_video=False):
         patch_images = torch.tensor([])
