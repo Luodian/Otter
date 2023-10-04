@@ -200,36 +200,36 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
         def masking(masking_number: int = -100):
             labels = torch.full(input_ids.shape, masking_number, dtype=torch.int64)
-            for i in range(labels.shape[0]):
+            for i in range(input_ids.shape[0]):
                 labels[i] = torch.where(input_ids[i] == eos_token_id, eos_token_id, labels[i])
                 answer_token_ids = torch.where(input_ids[i] == answer_token_id)
                 endofchunk_token_ids = torch.where(input_ids[i] == endofchunk_token_id)
-                assert(len(answer_token_ids) == len(endofchunk_token_ids))
+
                 for answer_token_idx, endofchunk_token_idx in zip(answer_token_ids, endofchunk_token_ids):
                     labels[i, answer_token_idx+1:endofchunk_token_idx+1] = input_ids[i, answer_token_idx+1:endofchunk_token_idx+1]
             
             labels[:, 0] = masking_number
             if args.model_name == "idefics" and fake_token_image_exists:
-                labels[labels == fake_token_image_token_id] = -100
+                labels[labels == fake_token_image_token_id] = masking_number
             
             return labels
 
-        # start_time = time.time()
-        # labels_0 = old_masking()
-        # end_time = time.time()
-        # print(f"old_masking() took {end_time - start_time} seconds")
+        start_time = time.time()
+        labels_0 = old_masking()
+        end_time = time.time()
+        print(f"old_masking() took {end_time - start_time} seconds")
 
-        # start_time = time.time()
-        # labels_1 = alt_masking()
-        # end_time = time.time()
-        # print(f"alt_masking() took {end_time - start_time} seconds")
+        start_time = time.time()
+        labels_1 = alt_masking()
+        end_time = time.time()
+        print(f"alt_masking() took {end_time - start_time} seconds")
 
-        # start_time = time.time()
-        # labels_2 = masking()
-        # end_time = time.time()
-        # print(f"masking() took {end_time - start_time} seconds")
+        start_time = time.time()
+        labels_2 = masking()
+        end_time = time.time()
+        print(f"masking() took {end_time - start_time} seconds")
 
-        # assert(torch.equal(labels_0, labels_2))
+        assert(torch.equal(labels_0, labels_2))
 
         # Results:
         
