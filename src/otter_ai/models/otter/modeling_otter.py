@@ -897,7 +897,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         for name, param in self.named_parameters():
             if param.requires_grad:
                 total_params += param.numel()
-                # master_print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
+                master_print(f"Parameter: {name}, Size: {param.numel() / 1e6:.6f} M")
         master_print(f"Total Trainable param: {total_params / 1e9:.6f} B")
 
     def forward(

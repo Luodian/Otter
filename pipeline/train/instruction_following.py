@@ -111,7 +111,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
     endofchunk_token_id = tokenizer(endofchunk_text, add_special_tokens=False)["input_ids"][-1]
     answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
-    ens_token_id = tokenizer(tokenizer.eos_token, add_special_tokens=False)["input_ids"][-1]
+    eos_token_id = tokenizer(tokenizer.eos_token, add_special_tokens=False)["input_ids"][-1]
 
     model.train()
 
@@ -160,6 +160,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
         labels[labels == answer_token_id] = -100
         labels[labels == media_token_id] = -100
+        labels[labels == eos_token_id] = -100
         if args.model_name == "idefics" and fake_token_image_exists:
             # if fake token exists, remove loss for any token between <fake_token_around_image>
             # and drop <answer> token to mimic the prompt strategy for Idefics Model
@@ -315,10 +316,13 @@ def main():
         master_print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
         device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED" else "auto"
         kwargs = {"local_files_only": args.offline, "device_map": device_map}
+
         if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
             kwargs.pop("device_map")
+
         if args.customized_config is not None:
             kwargs["config"] = args.customized_config
+
         if args.model_name.lower() == "otter":
             model = OtterForConditionalGeneration.from_pretrained(
                 args.pretrained_model_name_or_path,
@@ -341,13 +345,12 @@ def main():
                     "architectures": "OtterForConditionalGeneration",
                 }
             )
-            args.tokenizer = model.text_tokenizer
-            tokenizer = model.text_tokenizer
+            tokenizer = args.tokenizer = model.text_tokenizer
             image_processor = CLIPImageProcessor()
-            if not accelerator.distributed_type == "DEEPSPEED" or not accelerator.state.deepspeed_plugin.zero_stage == 3:
-                new_embedding_size = (len(tokenizer) // 64 + 1) * 64
-                master_print(f"Resizing Flamingo embedding from {len(tokenizer)} to {new_embedding_size}")
-                model.resize_token_embeddings(new_embedding_size, pad_to_multiple_of=64)
+            # if not accelerator.distributed_type == "DEEPSPEED" or not accelerator.state.deepspeed_plugin.zero_stage == 3:
+            # new_embedding_size = (len(model.text_tokenizer) // 64 + 1) * 64
+            # master_print(f"Resizing Flamingo embedding from {len(model.text_tokenizer)} to {new_embedding_size}")
+            # model.resize_token_embeddings(new_embedding_size, pad_to_multiple_of=64)
 
         elif args.model_name.lower() == "idefics":
             model = IdeficsForVisionText2Text.from_pretrained(
@@ -375,9 +378,9 @@ def main():
                 **kwargs,
             )
             tokenizer = AutoTokenizer.from_pretrained(args.pretrained_model_name_or_path)
-            if "<answer>" not in tokenizer.special_tokens_map["additional_special_tokens"]:
-                past_special_tokens = tokenizer.special_tokens_map["additional_special_tokens"]
-                tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>", "<image>", "<|endofchunk|>"] + past_special_tokens})
+            past_special_tokens = tokenizer.special_tokens_map["additional_special_tokens"] if "additional_special_tokens" in tokenizer.special_tokens_map else [value for key, value in tokenizer.special_tokens_map.items()]
+            if "<answer>" not in past_special_tokens:
+                tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>", "<image>", "<|endofchunk|>"]})
 
             if tokenizer.pad_token is None:
                 tokenizer.add_special_tokens({"pad_token": "<PAD>"})
@@ -393,6 +396,10 @@ def main():
                 tokenizer.add_special_tokens({"pad_token": "<PAD>"})
 
             image_processor = None
+
+    if args.resize_embedding and hasattr(model, "lang_encoder") and "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
+        model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
+        master_print(f"Resizing Llama embedding to {len(model.text_tokenizer)}")
 
     if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
         params_to_gather = [p for name, p in model.named_parameters() if p.requires_grad]
@@ -411,31 +418,13 @@ def main():
 
     args.distributed_type = accelerator.distributed_type
 
-    if hasattr(model, "lang_encoder") and "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
-        model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
-
     random_seed(args.seed, args.rank)
-
     print(f"Start running training on rank {args.rank}.")
 
     mimicit_loaders = get_data(args, image_processor, tokenizer, "mimicit")
     total_training_steps = sum(len(dataloader) for dataloader in mimicit_loaders) * args.num_epochs
     resume_from_epoch = 0
     args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
-    # if os.path.exists(f"{args.external_save_dir}") and args.resume_from_checkpoint is True:
-    #     checkpoint_list = glob.glob(f"{args.external_save_dir}/checkpoint_*.pt")
-    #     if len(checkpoint_list) == 0:
-    #         print(f"Found no checkpoints for run {args.external_save_dir}.")
-    #     else:
-    #         resume_from_checkpoint_path = sorted(checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0]))[-1]
-    #         print(f"Found checkpoint {resume_from_checkpoint_path} for run {args.external_save_dir}.")
-    #     if args.rank == 0:
-    #         print(f"Loading checkpoint from {resume_from_checkpoint_path}")
-    #     checkpoint = torch.load(resume_from_checkpoint_path, map_location="cpu")
-    #     model.load_state_dict(checkpoint["model_state_dict"], False)
-    #     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-    #     lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
-    #     resume_from_epoch = checkpoint["epoch"] + 1
 
     optimizer = torch.optim.AdamW(get_grouped_params(model, wd=args.weight_decay), lr=args.learning_rate)
 
@@ -497,7 +486,7 @@ def main():
         accelerator.wait_for_everyone()
 
     # Save the final weights
-    save_final_weights(model, args, accelerator, processor=processor if "idefics" in args.model_name.lower() else None)
+    save_final_weights(model, args, accelerator, processor=processor if "idefics" in args.model_name.lower() else None, tokenizer=tokenizer if "llama2" in args.model_name.lower() else None)
     # accelerator.wait_for_everyone()
 
 
