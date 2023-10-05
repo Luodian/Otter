@@ -8,7 +8,7 @@ accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_
     --customized_config=/mnt/petrelfs/libo.p/Otter/shared_scripts/Otter_MPT7B_Train_Decoder_4K.json \
     --model_name=otter \
     --instruction_format=simple \
-    --training_data_yaml=/mnt/petrelfs/libo.p/Otter/shared_scripts/shai_instance/shai_data_recipe.yaml \
+    --training_data_yaml=/home/luodian/projects/Otter/shared_scripts/Demo_Data.yaml \
     --batch_size=2 \
     --num_epochs=3 \
     --report_to_wandb \
