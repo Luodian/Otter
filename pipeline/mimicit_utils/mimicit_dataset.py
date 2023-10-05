@@ -271,17 +271,15 @@ class MimicitDataset(Dataset):
         if instruction_format == "llama2":
             image_placeholder = "<image>" if not is_text_only else ""
             prefix = f"[INST]{image_placeholder}\n" if insert_image else "[INST]"
-            return f"{prefix}{cur_instruction}[/INST]<answer>{cur_answer}"
+            return f"{prefix}{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
         elif instruction_format == "idefics":
             image_placeholder = "<fake_token_around_image><image><fake_token_around_image>" if not is_text_only else ""
-            postfix = "<end_of_utterance>\n"
             prefix = f"User:{image_placeholder}" if insert_image else "User:"
-            return f"{prefix}{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}{postfix}"
+            return f"{prefix}{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
         elif instruction_format == "simple":
             image_placeholder = "<image>" if not is_text_only else ""
-            postfix = "<|endofchunk|>"
             prefix = f"{image_placeholder}User:" if insert_image else "User:"
-            return f"{prefix}{cur_instruction} GPT:<answer>{cur_answer}{postfix}"
+            return f"{prefix}{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
 
     def process_images(self, image_ids, is_video=False):
         patch_images = torch.tensor([])

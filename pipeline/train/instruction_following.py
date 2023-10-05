@@ -24,7 +24,19 @@ from transformers import AutoProcessor
 
 from pipeline.mimicit_utils.data import get_data
 from pipeline.train.train_args import parse_args
-from pipeline.train.train_utils import AverageMeter, get_grouped_params, get_image_attention_mask, master_print, random_seed, save_checkpoint, save_final_weights, verify_yaml
+from pipeline.train.train_utils import (
+    AverageMeter,
+    get_grouped_params,
+    get_image_attention_mask,
+    master_print,
+    random_seed,
+    save_checkpoint,
+    save_final_weights,
+    verify_yaml,
+    get_weights_for_dataloaders,
+    get_next_dataloader,
+    find_and_remove_tokens,
+)
 from src.otter_ai.models.flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 
 # import from src, not from pip package for training & debugging
@@ -48,47 +60,42 @@ except ImportError:
     IdeficsForVisionText2Text = type(None)
 
 
-def get_weights_for_dataloaders(dataloaders):
-    total_samples = sum(len(dataloader.dataset) for dataloader in dataloaders)
-    weights = [len(dataloader.dataset) / total_samples for dataloader in dataloaders]
-    return weights
+def forward_pass(args, model, tokenizer, images, input_ids, attention_mask, labels, unwrapped_model, device_id, autocast_type):
+    if args.model_name == "idefics":
+        # only for image model
+        max_num_images = images.shape[1]
+        pure_text = torch.all(images == 0)
+        image_attention_mask = get_image_attention_mask(
+            input_ids,
+            max_num_images,
+            tokenizer,
+            include_image=not pure_text,
+        )
+        image_attention_mask = image_attention_mask.to(device_id, non_blocking=True)
+        loss_mimicit = model(
+            pixel_values=images.squeeze(2).to(autocast_type),
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            image_attention_mask=image_attention_mask,
+            labels=labels,
+        )[0]
+    elif args.model_name == "otter" or args.model_name == "flamingo":
+        loss_mimicit = model(
+            vision_x=images.to(autocast_type),
+            lang_x=input_ids,
+            attention_mask=attention_mask,
+            labels=labels,
+        )[0]
+    elif args.model_name == "llama2":
+        loss_mimicit = model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            labels=labels,
+        )[0]
+    else:
+        raise NotImplementedError(f"Loss of model {args.model_name} not implemented.")
 
-
-def get_next_dataloader(dataloader_iterators, weights):
-    chosen_dataloader_index = np.random.choice(len(dataloader_iterators), p=weights)
-    return dataloader_iterators[chosen_dataloader_index]
-
-
-def find_and_remove_tokens(input_tensor, labels_tensor, attention_mask_tensor, token_id, tokenizer):
-    batch_size, seq_len = input_tensor.size()
-
-    # Create lists to store the new tensors
-    new_input_list = []
-    new_labels_list = []
-    new_attention_mask_list = []
-
-    # Loop over each sequence in the batch
-    for i in range(batch_size):
-        single_input = input_tensor[i, :]
-        single_label = labels_tensor[i, :]
-        single_attention_mask = attention_mask_tensor[i, :]
-
-        # Remove the token_id
-        new_single_input = torch.masked_select(single_input, single_input != token_id)
-        new_single_label = torch.masked_select(single_label, single_input != token_id)
-        new_single_attention_mask = torch.masked_select(single_attention_mask, single_input != token_id)
-
-        # Append the new sequence to the list
-        new_input_list.append(new_single_input)
-        new_labels_list.append(new_single_label)
-        new_attention_mask_list.append(new_single_attention_mask)
-
-    # Pad sequences within each batch to match the longest sequence
-    new_input = torch.nn.utils.rnn.pad_sequence(new_input_list, batch_first=True, padding_value=tokenizer.pad_token_id)
-    new_labels = torch.nn.utils.rnn.pad_sequence(new_labels_list, batch_first=True, padding_value=-100)
-    new_attention_mask = torch.nn.utils.rnn.pad_sequence(new_attention_mask_list, batch_first=True, padding_value=0)
-
-    return new_input, new_labels, new_attention_mask
+    return loss_mimicit
 
 
 def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
@@ -97,7 +104,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     num_batches_per_epoch = sum(len(dataloader) for dataloader in mimicit_loaders)
     total_training_steps = args.num_epochs * num_batches_per_epoch
 
-    # special design for Idefics Model's prompt strategy
+    # Special Design for Idefics Model's prompt strategy
     if args.model_name.lower() == "idefics":
         fake_token_image_exists = True if "<fake_token_around_image>" in tokenizer.special_tokens_map["additional_special_tokens"] else False
         fake_token_image_token_id = tokenizer("<fake_token_around_image>", add_special_tokens=False)["input_ids"][-1]
@@ -107,7 +114,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         fake_token_image_token_id = None
         endofchunk_text = "<|endofchunk|>"
 
-    # normal prompt strategy
+    # Normal Prompt Strategy
     media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
     endofchunk_token_id = tokenizer(endofchunk_text, add_special_tokens=False)["input_ids"][-1]
     answer_token_id = tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
@@ -134,26 +141,54 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         input_ids = batch_mimicit["net_input"]["input_ids"].to(device_id, non_blocking=True)
         attention_mask = batch_mimicit["net_input"]["attention_masks"].to(device_id, non_blocking=True)
 
+        master_print(batch_mimicit['full_text'][0])
+
         def masking(masking_number: int = -100):
-            labels = torch.full(input_ids.shape, masking_number, dtype=torch.int64)
+            labels = torch.full(input_ids.shape, masking_number, dtype=torch.int64).to(device_id, non_blocking=True)
             for i in range(input_ids.shape[0]):
                 labels[i] = torch.where(input_ids[i] == eos_token_id, eos_token_id, labels[i])
-                answer_token_ids = torch.where(input_ids[i] == answer_token_id)
-                endofchunk_token_ids = torch.where(input_ids[i] == endofchunk_token_id)
+                answer_token_ids_all = torch.where(input_ids[i] == answer_token_id)[0]
+                endofchunk_token_ids_all = torch.where(input_ids[i] == endofchunk_token_id)[0]
 
-                for answer_token_idx, endofchunk_token_idx in zip(answer_token_ids, endofchunk_token_ids):
-                    labels[i, answer_token_idx+1:endofchunk_token_idx+1] = input_ids[i, answer_token_idx+1:endofchunk_token_idx+1]
-            
+                j = 0  # Counter for endofchunk_token_ids
+                for answer_token_idx in answer_token_ids_all:
+                    # Find the closest endofchunk_token_id that is greater than answer_token_id
+                    while j < len(endofchunk_token_ids_all) and endofchunk_token_ids_all[j] < answer_token_idx:
+                        j += 1
+
+                    if j < len(endofchunk_token_ids_all):
+                        endofchunk_token_idx = endofchunk_token_ids_all[j]
+                        labels[i, answer_token_idx + 1 : endofchunk_token_idx + 1] = input_ids[i, answer_token_idx + 1 : endofchunk_token_idx + 1]
+                        
+                        # Increment j for the next iteration
+                        j += 1
+
             labels[:, 0] = masking_number
             if args.model_name == "idefics" and fake_token_image_exists:
                 labels[labels == fake_token_image_token_id] = masking_number
-            
+
             return labels
 
-        labels = masking().to(device_id, non_blocking=True)
+        # def masking(masking_number: int = -100):
+        #     labels = torch.full(input_ids.shape, masking_number, dtype=torch.int64).to(device_id, non_blocking=True)
+        #     for i in range(input_ids.shape[0]):
+        #         labels[i] = torch.where(input_ids[i] == eos_token_id, eos_token_id, labels[i])
+        #         answer_token_ids = torch.where(input_ids[i] == answer_token_id)[0]
+        #         endofchunk_token_ids = torch.where(input_ids[i] == endofchunk_token_id)[0]
+
+        #         for answer_token_idx, endofchunk_token_idx in zip(answer_token_ids, endofchunk_token_ids):
+        #             labels[i, answer_token_idx + 1 : endofchunk_token_idx + 1] = input_ids[i, answer_token_idx + 1 : endofchunk_token_idx + 1]
+
+        #     labels[:, 0] = masking_number
+        #     if args.model_name == "idefics" and fake_token_image_exists:
+        #         labels[labels == fake_token_image_token_id] = masking_number
+
+        #     return labels
+
+        labels = masking()
 
         if args.remove_answer_token:
-            input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, answer_token_id, tokenizer)
+            input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, answer_token_id, tokenizer)  # find and remove certain tokens from input_ids, labels, and attention_mask
 
         if args.remove_eos_token:
             input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, endofchunk_token_id, tokenizer)
@@ -169,39 +204,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 master_print(f"model: {unwrapped_model.__class__.__name__}")
                 master_print(f"model dtype: {unwrapped_model.dtype if hasattr(unwrapped_model, 'dtype') else 'None'}")
 
-            if args.model_name == "idefics":
-                # only for image model
-                max_num_images = images.shape[1]
-                pure_text = torch.all(images == 0)
-                image_attention_mask = get_image_attention_mask(
-                    input_ids,
-                    max_num_images,
-                    tokenizer,
-                    include_image=not pure_text,
-                )
-                image_attention_mask = image_attention_mask.to(device_id, non_blocking=True)
-                loss_mimicit = model(
-                    pixel_values=images.squeeze(2).to(autocast_type),
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    image_attention_mask=image_attention_mask,
-                    labels=labels,
-                )[0]
-            elif args.model_name == "otter" or args.model_name == "flamingo":
-                loss_mimicit = model(
-                    vision_x=images.to(autocast_type),
-                    lang_x=input_ids,
-                    attention_mask=attention_mask,
-                    labels=labels,
-                )[0]
-            elif args.model_name == "llama2":
-                loss_mimicit = model(
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    labels=labels,
-                )[0]
-            else:
-                raise NotImplementedError(f"Loss of model {args.model_name} not implemented.")
+            loss_mimicit = forward_pass(args, model, tokenizer, images, input_ids, attention_mask, labels, unwrapped_model, device_id, autocast_type)
 
         if accelerator.mixed_precision == "fp16":
             accelerator.backward(loss_mimicit.to(device_id))
@@ -223,12 +226,8 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         if args.mask_lm_head and args.distributed_type != "DEEPSPEED":
             unwrapped_model = accelerator.unwrap_model(model)
             if isinstance(unwrapped_model, IdeficsForVisionText2Text):
-                # This code need to be refined.
                 unwrapped_model.lm_head.apply(mask_embedding)
-            elif unwrapped_model.lang_encoder.__class__.__name__ in [
-                "MPTForCausalLM",
-                "MosaicGPT",
-            ]:
+            elif unwrapped_model.lang_encoder.__class__.__name__ in ["MPTForCausalLM", "MosaicGPT"]:
                 unwrapped_model.lang_encoder.transformer.wte.apply(mask_embedding)
             elif "LlamaForCausalLM" in unwrapped_model.lang_encoder.__class__.__name__:
                 unwrapped_model.lang_encoder.model.embed_tokens.apply(mask_embedding)

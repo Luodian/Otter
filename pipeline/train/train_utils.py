@@ -252,3 +252,46 @@ def save_final_weights(model, args, accelerator, processor=None, tokenizer=None)
                 processor.save_pretrained(f"{args.external_save_dir}", is_main_process=accelerator.is_main_process, save_function=accelerator.save)
             if args.model_name == "llama2":
                 tokenizer.save_pretrained(f"{args.external_save_dir}", is_main_process=accelerator.is_main_process, save_function=accelerator.save)
+
+
+def get_weights_for_dataloaders(dataloaders):
+    total_samples = sum(len(dataloader.dataset) for dataloader in dataloaders)
+    weights = [len(dataloader.dataset) / total_samples for dataloader in dataloaders]
+    return weights
+
+
+def get_next_dataloader(dataloader_iterators, weights):
+    chosen_dataloader_index = np.random.choice(len(dataloader_iterators), p=weights)
+    return dataloader_iterators[chosen_dataloader_index]
+
+
+def find_and_remove_tokens(input_tensor, labels_tensor, attention_mask_tensor, token_id, tokenizer):
+    batch_size, seq_len = input_tensor.size()
+
+    # Create lists to store the new tensors
+    new_input_list = []
+    new_labels_list = []
+    new_attention_mask_list = []
+
+    # Loop over each sequence in the batch
+    for i in range(batch_size):
+        single_input = input_tensor[i, :]
+        single_label = labels_tensor[i, :]
+        single_attention_mask = attention_mask_tensor[i, :]
+
+        # Remove the token_id
+        new_single_input = torch.masked_select(single_input, single_input != token_id)
+        new_single_label = torch.masked_select(single_label, single_input != token_id)
+        new_single_attention_mask = torch.masked_select(single_attention_mask, single_input != token_id)
+
+        # Append the new sequence to the list
+        new_input_list.append(new_single_input)
+        new_labels_list.append(new_single_label)
+        new_attention_mask_list.append(new_single_attention_mask)
+
+    # Pad sequences within each batch to match the longest sequence
+    new_input = torch.nn.utils.rnn.pad_sequence(new_input_list, batch_first=True, padding_value=tokenizer.pad_token_id)
+    new_labels = torch.nn.utils.rnn.pad_sequence(new_labels_list, batch_first=True, padding_value=-100)
+    new_attention_mask = torch.nn.utils.rnn.pad_sequence(new_attention_mask_list, batch_first=True, padding_value=0)
+
+    return new_input, new_labels, new_attention_mask
