@@ -142,12 +142,12 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 endofchunk_token_ids = torch.where(input_ids[i] == endofchunk_token_id)
 
                 for answer_token_idx, endofchunk_token_idx in zip(answer_token_ids, endofchunk_token_ids):
-                    labels[i, answer_token_idx+1:endofchunk_token_idx+1] = input_ids[i, answer_token_idx+1:endofchunk_token_idx+1]
-            
+                    labels[i, answer_token_idx + 1 : endofchunk_token_idx + 1] = input_ids[i, answer_token_idx + 1 : endofchunk_token_idx + 1]
+
             labels[:, 0] = masking_number
             if args.model_name == "idefics" and fake_token_image_exists:
                 labels[labels == fake_token_image_token_id] = masking_number
-            
+
             return labels
 
         labels = masking().to(device_id, non_blocking=True)
