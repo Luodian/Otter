@@ -191,6 +191,8 @@ class MimicitDataset(Dataset):
             truncated_mimicit_path = truncate_text(cur_mimicit_path)
             truncated_train_config_path = truncate_text(cur_train_config_path)
             truncated_images_path = truncate_text(cur_images_path)
+            if len(task_desc) > 0:  # if with multiple task descriptions, join them with comma
+                task_desc = ",".join(task_desc)
             truncated_task_desc = truncate_text(task_desc)
 
             table.add_row(
@@ -271,17 +273,15 @@ class MimicitDataset(Dataset):
         if instruction_format == "llama2":
             image_placeholder = "<image>" if not is_text_only else ""
             prefix = f"[INST]{image_placeholder}\n" if insert_image else "[INST]"
-            return f"{prefix}{cur_instruction}[/INST]<answer>{cur_answer}"
+            return f"{prefix}{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
         elif instruction_format == "idefics":
             image_placeholder = "<fake_token_around_image><image><fake_token_around_image>" if not is_text_only else ""
-            postfix = "<end_of_utterance>\n"
             prefix = f"User:{image_placeholder}" if insert_image else "User:"
-            return f"{prefix}{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}{postfix}"
+            return f"{prefix}{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
         elif instruction_format == "simple":
             image_placeholder = "<image>" if not is_text_only else ""
-            postfix = "<|endofchunk|>"
             prefix = f"{image_placeholder}User:" if insert_image else "User:"
-            return f"{prefix}{cur_instruction} GPT:<answer>{cur_answer}{postfix}"
+            return f"{prefix}{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
 
     def process_images(self, image_ids, is_video=False):
         patch_images = torch.tensor([])
@@ -346,6 +346,8 @@ class MimicitDataset(Dataset):
         image_ids = self.dataset[cur_train_id]["image_ids"] if self.dataset[cur_train_id].get("image_ids", None) is not None else []  # handling for text-only data without image_ids
 
         cur_task_desc = self.task_description[self.task_mapping[cur_train_id]]
+        if len(cur_task_desc) > 0:
+            cur_task_desc = random.choice(cur_task_desc)
 
         process_mapping = {
             "VIDEO_TEXT": "process_general_videoqa",
