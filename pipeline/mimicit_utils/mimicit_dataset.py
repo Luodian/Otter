@@ -191,7 +191,7 @@ class MimicitDataset(Dataset):
             truncated_mimicit_path = truncate_text(cur_mimicit_path)
             truncated_train_config_path = truncate_text(cur_train_config_path)
             truncated_images_path = truncate_text(cur_images_path)
-            if len(task_desc) > 0: # if with multiple task descriptions, join them with comma
+            if len(task_desc) > 0:  # if with multiple task descriptions, join them with comma
                 task_desc = ",".join(task_desc)
             truncated_task_desc = truncate_text(task_desc)
 
