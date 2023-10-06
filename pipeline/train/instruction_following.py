@@ -161,7 +161,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                         # Increment j for the next iteration
                         j += 1
 
-                for answer_token_idx, endofchunk_token_idx in zip(answer_token_ids, endofchunk_token_ids):
+                for answer_token_idx, endofchunk_token_idx in zip(answer_token_ids_all, endofchunk_token_ids_all):
                     labels[i, answer_token_idx + 1 : endofchunk_token_idx + 1] = input_ids[i, answer_token_idx + 1 : endofchunk_token_idx + 1]
 
             labels[:, 0] = masking_number
