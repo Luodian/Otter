@@ -141,8 +141,6 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         input_ids = batch_mimicit["net_input"]["input_ids"].to(device_id, non_blocking=True)
         attention_mask = batch_mimicit["net_input"]["attention_masks"].to(device_id, non_blocking=True)
 
-        master_print(batch_mimicit["full_text"][0])
-
         def masking(masking_number: int = -100):
             labels = torch.full(input_ids.shape, masking_number, dtype=torch.int64).to(device_id, non_blocking=True)
             for i in range(input_ids.shape[0]):

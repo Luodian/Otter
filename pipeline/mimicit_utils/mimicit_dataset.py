@@ -191,6 +191,8 @@ class MimicitDataset(Dataset):
             truncated_mimicit_path = truncate_text(cur_mimicit_path)
             truncated_train_config_path = truncate_text(cur_train_config_path)
             truncated_images_path = truncate_text(cur_images_path)
+            if len(task_desc) > 0: # if with multiple task descriptions, join them with comma
+                task_desc = ",".join(task_desc)
             truncated_task_desc = truncate_text(task_desc)
 
             table.add_row(
@@ -344,6 +346,8 @@ class MimicitDataset(Dataset):
         image_ids = self.dataset[cur_train_id]["image_ids"] if self.dataset[cur_train_id].get("image_ids", None) is not None else []  # handling for text-only data without image_ids
 
         cur_task_desc = self.task_description[self.task_mapping[cur_train_id]]
+        if len(cur_task_desc) > 0:
+            cur_task_desc = random.choice(cur_task_desc)
 
         process_mapping = {
             "VIDEO_TEXT": "process_general_videoqa",
