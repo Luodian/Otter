@@ -142,9 +142,9 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         attention_mask = batch_mimicit["net_input"]["attention_masks"].to(device_id, non_blocking=True)
 
         def masking(masking_number: int = -100):
-            labels = torch.full(input_ids.shape, masking_number, dtype=torch.int64).to(device_id, non_blocking=True)
+            labels = torch.empty(input_ids.shape, dtype=torch.int64).to(device_id, non_blocking=True)
             for i in range(input_ids.shape[0]):
-                labels[i] = torch.where(input_ids[i] == eos_token_id, eos_token_id, labels[i])
+                labels[i] = torch.where(input_ids[i] == eos_token_id, eos_token_id, masking_number)
                 answer_token_ids_all = torch.where(input_ids[i] == answer_token_id)[0]
                 endofchunk_token_ids_all = torch.where(input_ids[i] == endofchunk_token_id)[0]
 
@@ -166,22 +166,6 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 labels[labels == fake_token_image_token_id] = masking_number
 
             return labels
-
-        # def masking(masking_number: int = -100):
-        #     labels = torch.full(input_ids.shape, masking_number, dtype=torch.int64).to(device_id, non_blocking=True)
-        #     for i in range(input_ids.shape[0]):
-        #         labels[i] = torch.where(input_ids[i] == eos_token_id, eos_token_id, labels[i])
-        #         answer_token_ids = torch.where(input_ids[i] == answer_token_id)[0]
-        #         endofchunk_token_ids = torch.where(input_ids[i] == endofchunk_token_id)[0]
-
-        #         for answer_token_idx, endofchunk_token_idx in zip(answer_token_ids, endofchunk_token_ids):
-        #             labels[i, answer_token_idx + 1 : endofchunk_token_idx + 1] = input_ids[i, answer_token_idx + 1 : endofchunk_token_idx + 1]
-
-        #     labels[:, 0] = masking_number
-        #     if args.model_name == "idefics" and fake_token_image_exists:
-        #         labels[labels == fake_token_image_token_id] = masking_number
-
-        #     return labels
 
         labels = masking()
 
