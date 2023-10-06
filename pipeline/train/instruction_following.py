@@ -144,7 +144,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         master_print(batch_mimicit["full_text"][0])
 
         def masking(masking_number: int = -100):
-            labels = torch.zeros(input_ids.shape, dtype=torch.int64).to(device_id, non_blocking=True)
+            labels = torch.empty(input_ids.shape, dtype=torch.int64).to(device_id, non_blocking=True)
             for i in range(input_ids.shape[0]):
                 labels[i] = torch.where(input_ids[i] == eos_token_id, eos_token_id, masking_number)
                 answer_token_ids_all = torch.where(input_ids[i] == answer_token_id)[0]
@@ -156,7 +156,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     while j < len(endofchunk_token_ids_all) and endofchunk_token_ids_all[j] < answer_token_idx:
                         j += 1
 
-                    if j < len(endofchunk_token_ids_all):gi
+                    if j < len(endofchunk_token_ids_all):
                         endofchunk_token_idx = endofchunk_token_ids_all[j]
                         labels[i, answer_token_idx + 1 : endofchunk_token_idx + 1] = input_ids[i, answer_token_idx + 1 : endofchunk_token_idx + 1]
 
