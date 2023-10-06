@@ -13,7 +13,7 @@
     "dropout": 0.0,
     "eos_token_id": 2,
     "freeze_lm_head": false,
-    "freeze_text_layers": true,
+    "freeze_text_layers": false,
     "freeze_text_module_exceptions": [],
     "freeze_vision_layers": true,
     "freeze_vision_module_exceptions": [],

@@ -337,12 +337,16 @@ class MimicitDataset(Dataset):
 
     def process_image_text_pair(self, index):
         cur_train_id = self.train_data_list[index]
-        (instruction_id, instruction, answer, in_context_example_ids) = (
-            cur_train_id,
-            self.dataset[cur_train_id]["instruction"],
-            self.dataset[cur_train_id]["answer"],
-            self.train_config[cur_train_id],
-        )
+        if cur_train_id in self.dataset and "instruction" in self.dataset[cur_train_id] and "answer" in self.dataset[cur_train_id]:
+            (instruction_id, instruction, answer, in_context_example_ids) = (
+                cur_train_id,
+                self.dataset[cur_train_id]["instruction"],
+                self.dataset[cur_train_id]["answer"],
+                self.train_config[cur_train_id],
+            )
+        else:
+            print(f"Error: {cur_train_id} is invalid!")
+            exit()
         image_ids = self.dataset[cur_train_id]["image_ids"] if self.dataset[cur_train_id].get("image_ids", None) is not None else []  # handling for text-only data without image_ids
 
         cur_task_desc = self.task_description[self.task_mapping[cur_train_id]]
