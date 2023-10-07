@@ -3,7 +3,7 @@ import os
 import yaml
 import pytest
 import orjson
-
+import pandas as pd
 
 # Define the pytest fixture
 @pytest.fixture
@@ -43,3 +43,12 @@ def test_yaml_structure(yaml_data):
                         data = orjson.loads(f.read())
 
                     assert "data" in data
+
+                if path_key == "images_path":
+                    print(f"Checking -> {path_value} in images format.")
+                    assert os.path.exists(path_value), f"Dataset path {path_value} specified under {category} -> {dataset_name} does not exist."
+                    # # Read the parquet file using pandas
+                    # df = pd.read_parquet(path_value)
+                    
+                    # # Check for the 'base64' column
+                    # assert "base64" in df.columns, f"The 'base64' column was not found in the dataset {path_value}."

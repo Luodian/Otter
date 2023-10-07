@@ -360,10 +360,17 @@ class MimicitDataset(Dataset):
             "IMAGE_TEXT_IN_CONTEXT": "process_in_context_imageqa",
         }
 
-        if self.task_group in process_mapping:
-            patch_images, all_texts = self.process_general(instruction_id, image_ids, in_context_example_ids, self.task_group)
-        else:
-            raise NotImplementedError(f"Error: The task {cur_train_id} is not supported!")
+        try:
+            if self.task_group in process_mapping:
+                patch_images, all_texts = self.process_general(instruction_id, image_ids, in_context_example_ids, self.task_group)
+        except Exception as e:
+            print(f"Error: {e}")
+            print(f"cur_train_id: {cur_train_id}")
+            print(f"self.task_group: {self.task_group}")
+            print(f"instruction_id: {instruction_id}")
+            print(f"image_ids: {image_ids}")
+            print(f"in_context_example_ids: {in_context_example_ids}")
+            exit()
 
         if cur_task_desc != "":
             all_texts = cur_task_desc + "\n" + all_texts
