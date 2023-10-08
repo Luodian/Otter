@@ -1,12 +1,12 @@
 datasets:
-  - name: mmbench
+  - name: mme
     version: 20230712
     split: dev
-    cache_dir: /path/to/hf/cache
+    # cache_dir: /path/to/hf/cache
 
 models:
   - name: idefics
-    model_path: /path/to/checkpoints/idefics-9b-instruct
-  - name: idefics_otter
-    model_path: /path/to/checkpoints/otter_idefics9b_0830
-    processor: /path/to/checkpoints/idefics-9b-instruct
+    model_path: /home/luodian/azure_storage/otter/checkpoints/Otter_Idefics_1005_TaskDesc
+  # - name: idefics_otter
+  #   model_path: /path/to/checkpoints/otter_idefics9b_0830
+  #   processor: /path/to/checkpoints/idefics-9b-instruct
