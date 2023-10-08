@@ -415,7 +415,7 @@ def main():
             num_warmup_steps=args.warmup_steps // args.gradient_accumulation_steps,
             num_training_steps=total_training_steps // args.gradient_accumulation_steps,
         )
-    else:
+    elif args.lr_scheduler == "constant":
         lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps)
 
     if args.rank == 0 and args.report_to_wandb:
