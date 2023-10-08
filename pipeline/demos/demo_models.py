@@ -96,7 +96,7 @@ class TestOtterIdefics:
             ],
             return_tensors="pt",
         )
-        image_attention_mask = get_image_attention_mask(lang_x["input_ids"], 1, self.tokenizer)
+        image_attention_mask = get_image_attention_mask(lang_x["input_ids"], 1, self.tokenizer, include_image=not no_image_flag)
         exit_condition = self.processor.tokenizer("<end_of_utterance>", add_special_tokens=False).input_ids
         bad_words_ids = self.processor.tokenizer(["<image>", "<fake_token_around_image>"], add_special_tokens=False).input_ids
         generated_text = self.model.generate(
@@ -110,14 +110,14 @@ class TestOtterIdefics:
             max_new_tokens=512,
         )
         output = self.tokenizer.decode(generated_text[0])
-        output = output.split("<answer>")[1].lstrip("\n").strip().replace("<end_of_utterance>", "")
+        output = output.split("Assistant:")[1].strip().replace("<end_of_utterance>", "")
         return output
 
     def get_formatted_prompt(self, question: str, no_image_flag: str) -> str:
         if no_image_flag:
-            return f"User:{question}<end_of_utterance>\nAssistant:<answer>"
+            return f"User:{question}<end_of_utterance>\nAssistant:"
         else:
-            return f"User:<fake_token_around_image><image><fake_token_around_image>{question}<end_of_utterance>\nAssistant:<answer>\n"
+            return f"User:<fake_token_around_image><image><fake_token_around_image>{question}<end_of_utterance>\nAssistant:"
 
 
 class TestIdefics:
@@ -154,9 +154,9 @@ class TestIdefics:
             ],
             return_tensors="pt",
         )
-        image_attention_mask = get_image_attention_mask(lang_x["input_ids"], 1, self.tokenizer)
+        image_attention_mask = get_image_attention_mask(lang_x["input_ids"], 1, self.tokenizer, include_image=not no_image_flag)
         exit_condition = self.processor.tokenizer("<end_of_utterance>", add_special_tokens=False).input_ids
-        bad_words_ids = self.processor.tokenizer(["<image>", "<fake_token_around_image>"], add_special_tokens=False).input_ids
+        bad_words_ids = self.processor.tokenizer(["<image>", "<fake_token_around_image>", "User:"], add_special_tokens=False).input_ids
         generated_ids = self.model.generate(
             pixel_values=vision_x.to(self.model.device),
             input_ids=lang_x["input_ids"].to(self.model.device),

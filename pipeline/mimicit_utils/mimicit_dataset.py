@@ -18,7 +18,7 @@ from PIL import Image, ImageFile
 from prettytable import PrettyTable
 from torch.utils.data import Dataset
 from torchvision import transforms
-
+from transformers import AutoProcessor
 IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
 
@@ -127,16 +127,19 @@ class MimicitDataset(Dataset):
         self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content. You need to answer user's questions with plans and Python codes as response.\n<</SYS>>\n\n"
 
         (self.mean, self.std) = (IDEFICS_STANDARD_MEAN, IDEFICS_STANDARD_STD) if args.model_name == "idefics" else (FLAMINGO_MEAN, FLAMINGO_STD)
-        self.patch_resize_transform = transforms.Compose(
-            [
-                transforms.Resize(
-                    (args.patch_image_size, args.patch_image_size),
-                    interpolation=transforms.InterpolationMode.BICUBIC,
-                ),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=self.mean, std=self.std),
-            ]
-        )
+        if args.model_name == "otter":
+            self.patch_resize_transform = transforms.Compose(
+                [
+                    transforms.Resize(
+                        (args.patch_image_size, args.patch_image_size),
+                        interpolation=transforms.InterpolationMode.BICUBIC,
+                    ),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=self.mean, std=self.std),
+                ]
+            )
+        elif args.model_name == "idefics":
+            self.patch_resize_transform = AutoProcessor.from_pretrained("HuggingFaceM4/idefics-9b-instruct").image_processor.preprocess
         assert len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths), f"metas do not have same number"
 
         self.dataset = {}
