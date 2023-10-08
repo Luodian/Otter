@@ -7,22 +7,20 @@ import os
 import numpy as np
 from loguru import logger
 
-eval_type_dict = {
-    "Perception": ["existence", "count", "position", "color", "posters", "celebrity", "scene", "landmark", "artwork", "ocr"],
-    "Cognition": ["commonsense", "numerical", "text", "code"]
-}
+eval_type_dict = {"Perception": ["existence", "count", "position", "color", "posters", "celebrity", "scene", "landmark", "artwork", "ocr"], "Cognition": ["commonsense", "numerical", "text", "code"]}
+
 
 class MMEDataset(object):
     def decode_base64_to_image(self, base64_string):
         image_data = base64.b64decode(base64_string)
         image = Image.open(io.BytesIO(image_data))
         return image
-    
+
     def load_json(self, json_file):
         with open(json_file) as f:
             data = json.load(f)
         return data
-    
+
     def __init__(self, instruction_file, train_file, image_file, logger_file="output.log"):
         super().__init__()
 
@@ -46,11 +44,7 @@ class MMEDataset(object):
             image_id = row["image_ids"][0]
             image = self.decode_base64_to_image(self.image_data[image_id])
 
-            data = {
-                "question": question,
-                "answer": answer,
-                "image": image
-            }
+            data = {"question": question, "answer": answer, "image": image}
 
             if category in eval_type_dict["Cognition"]:
                 eval_type = "Cognition"
@@ -67,7 +61,7 @@ class MMEDataset(object):
 
             if image_id not in self.category_data[eval_type][category]:
                 self.category_data[eval_type][category][image_id] = []
-            
+
             self.category_data[eval_type][category][image_id].append(data)
 
     def parse_pred_ans(self, pred_ans):
@@ -84,7 +78,7 @@ class MMEDataset(object):
             else:
                 pred_label = "other"
         return pred_label
-    
+
     def compute_metric(self, gts, preds):
         assert len(gts) == len(preds)
 
@@ -93,26 +87,25 @@ class MMEDataset(object):
             "no": 0,
             "other": -1,
         }
-        
+
         gts = [label_map[x] for x in gts]
         preds = [label_map[x] for x in preds]
 
-        acc = accuracy_score(gts, preds) 
+        acc = accuracy_score(gts, preds)
 
         clean_gts = []
         clean_preds = []
-        other_num = 0 
+        other_num = 0
         for gt, pred in zip(gts, preds):
             if pred == -1:
                 other_num += 1
                 continue
             clean_gts.append(gt)
             clean_preds.append(pred)
-        
 
-        conf_mat = confusion_matrix(clean_gts, clean_preds, labels=[1,0])
-        precision = precision_score(clean_gts, clean_preds, average='binary')
-        recall = recall_score(clean_gts, clean_preds, average='binary')
+        conf_mat = confusion_matrix(clean_gts, clean_preds, labels=[1, 0])
+        precision = precision_score(clean_gts, clean_preds, average="binary")
+        recall = recall_score(clean_gts, clean_preds, average="binary")
         tp, fn = conf_mat[0]
         fp, tn = conf_mat[1]
 
@@ -134,8 +127,7 @@ class MMEDataset(object):
 
         return metric_dict
 
-    def evaluate(self, model, output_dir='./LaVIN'):
-        
+    def evaluate(self, model, output_dir="./LaVIN"):
         model_score_dict = {}
         for eval_type in self.category_data.keys():
             print("===========", eval_type, "===========")
@@ -181,8 +173,8 @@ class MMEDataset(object):
 
                 for k, v in metric_dict.items():
                     if k in ["acc", "acc_plus"]:
-                        task_score += v*100
-                
+                        task_score += v * 100
+
                 task_score_dict[task_name] = task_score
                 scores += task_score
 
@@ -195,6 +187,5 @@ class MMEDataset(object):
             logger.info(f"total score: {scores}")
             for task_name, score in task_score_dict.items():
                 logger.info(f"\t {task_name} score: {score}")
-            
 
         return

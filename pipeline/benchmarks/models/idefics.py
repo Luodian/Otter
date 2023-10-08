@@ -6,6 +6,7 @@ from PIL import Image
 from .base_model import BaseModel
 from pipeline.train.train_utils import get_image_attention_mask
 
+
 def get_pil_image(raw_image_data) -> Image.Image:
     return Image.open(io.BytesIO(raw_image_data["bytes"]))
 
