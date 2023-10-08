@@ -452,7 +452,8 @@ def main():
         )
         accelerator.wait_for_everyone()
         if args.save_ckpt_each_epoch:
-            save_checkpoint(epoch, model, args, accelerator)
+            # save_checkpoint(epoch, model, args, accelerator)
+            save_final_weights(model, args, accelerator, processor=processor if "idefics" in args.model_name.lower() else None, tokenizer=tokenizer if "llama2" in args.model_name.lower() else None)
         accelerator.wait_for_everyone()
 
     # Save the final weights
