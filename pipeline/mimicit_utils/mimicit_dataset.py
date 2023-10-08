@@ -19,6 +19,7 @@ from prettytable import PrettyTable
 from torch.utils.data import Dataset
 from torchvision import transforms
 from transformers import AutoProcessor
+
 IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
 
