@@ -79,15 +79,15 @@ class SEEDBenchDataset(object):
         return accuracy
 
 
-# from transformers import IdeficsForVisionText2Text, AutoProcessor
-# if __name__ == "__main__":
-#     dataset = "https://huggingface.co/datasets/Otter-AI/SEEDBench/tree/main/data"
-#     dataset = SEEDBenchDataset(dataset, "data/images")
-#     for data in dataset:
-#         print(data)
-#         break
+from transformers import IdeficsForVisionText2Text, AutoProcessor
+if __name__ == "__main__":
+    dataset = "https://huggingface.co/datasets/Otter-AI/SEEDBench/tree/main/data"
+    dataset = SEEDBenchDataset(dataset, "data/images")
+    for data in dataset:
+        print(data)
+        break
 
-#     checkpoint = "HuggingFaceM4/idefics-9b"
-#     model = IdeficsForVisionText2Text.from_pretrained(checkpoint, torch_dtype=torch.bfloat16, torch_device="auto")
-#     tokenizer = AutoProcessor.from_pretrained(checkpoint)
-#     dataset.evaluate(model, tokenizer)
+    checkpoint = "HuggingFaceM4/idefics-9b-instruct"
+    model = IdeficsForVisionText2Text.from_pretrained(checkpoint, torch_dtype=torch.bfloat16, torch_device="auto")
+    tokenizer = AutoProcessor.from_pretrained(checkpoint)
+    dataset.evaluate(model, tokenizer)

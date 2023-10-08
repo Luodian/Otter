@@ -1,7 +1,7 @@
 datasets:
-  - name: mme
+  - name: mmbench
     version: 20230712
-    split: dev
+    split: test
     # cache_dir: /path/to/hf/cache
 
 models:

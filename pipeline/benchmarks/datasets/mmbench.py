@@ -20,7 +20,8 @@ class MMBenchDataset(BaseEvalDataset):
     ):
         super().__init__("MMBenchDataset", data_path)
         version = str(version)
-        self.df = load_dataset("Otter-AI/MMBench", version, split=split, cache_dir=cache_dir).to_pandas()
+        name_converter = {"dev": "validation", "test": "test"}
+        self.df = load_dataset("Otter-AI/MMBench", version, split=name_converter[split], cache_dir=cache_dir).to_pandas()
         self.default_output_path = default_output_path
         self.sys_prompt = sys_prompt
 
@@ -54,7 +55,7 @@ class MMBenchDataset(BaseEvalDataset):
             "l2-category": l2_catetory,
             "options_dict": options,
             "index": index,
-            "context": hint,
+            "hint": hint,
         }
         return data
 
@@ -69,12 +70,12 @@ class MMBenchDataset(BaseEvalDataset):
             question = cur_data["question"]
             answer = cur_data["answer"]
             options = cur_data["options"]
-            contexts = cur_data["context"]
+            hint = cur_data["hint"]
             index = cur_data["index"]
             options_dict = cur_data["options_dict"]
             category = cur_data["category"]
             l2_category = cur_data["l2-category"]
-            cur_prompt = contexts + " " + question + " " + options if contexts is not None else question + " " + options
+            cur_prompt = hint + " " + question + " " + options if hint is not "nan" else question + " " + options
             pred_answer = model.generate(cur_prompt, image)
             # print(f"model response: {pred_answer}")
             result = dict()

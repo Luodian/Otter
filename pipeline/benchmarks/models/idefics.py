@@ -19,14 +19,12 @@ def get_formatted_prompt(prompt: str, image) -> List[str]:
         "\nAssistant:",
     ]
 
-
 class Idefics(BaseModel):
     def __init__(self, model_path: str = "HuggingFaceM4/idefics-9b-instruct"):
         super().__init__("idefics", model_path)
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        checkpoint = model_path
-        self.model = IdeficsForVisionText2Text.from_pretrained(checkpoint, device_map="auto", torch_dtype=torch.bfloat16).to(self.device)
-        self.processor = AutoProcessor.from_pretrained(checkpoint)
+        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        self.model = IdeficsForVisionText2Text.from_pretrained(model_path, device_map = {"": self.device}, torch_dtype=torch.bfloat16).to(self.device)
+        self.processor = AutoProcessor.from_pretrained(model_path)
 
     def generate(self, question: str, raw_image_data: Image.Image):
         formatted_prompt = get_formatted_prompt(question, raw_image_data)
@@ -38,7 +36,7 @@ class Idefics(BaseModel):
             **inputs,
             eos_token_id=exit_condition,
             bad_words_ids=bad_words_ids,
-            max_length=512,
+            max_new_tokens=512,
         )
         generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
         return generated_text[0][len_formatted_prompt:].strip()

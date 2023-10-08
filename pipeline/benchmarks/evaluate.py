@@ -80,7 +80,7 @@ if __name__ == "__main__":
         "-o",
         type=str,
         help="Output file path for logging results.",
-        default="evaluation.txt",
+        default="./logs/evaluation.txt",
     )
     args.add_argument(
         "--cache_dir",
