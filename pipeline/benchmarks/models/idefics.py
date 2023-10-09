@@ -8,7 +8,10 @@ from pipeline.train.train_utils import get_image_attention_mask
 
 
 def get_pil_image(raw_image_data) -> Image.Image:
-    return Image.open(io.BytesIO(raw_image_data["bytes"]))
+    if isinstance(raw_image_data, Image.Image):
+        return raw_image_data
+    else:
+        return Image.open(io.BytesIO(raw_image_data["bytes"]))
 
 
 def get_formatted_prompt(prompt: str, image) -> List[str]:
@@ -27,7 +30,7 @@ class Idefics(BaseModel):
         self.model = IdeficsForVisionText2Text.from_pretrained(model_path, device_map={"": self.device}, torch_dtype=torch.bfloat16).to(self.device)
         self.processor = AutoProcessor.from_pretrained(model_path)
 
-    def generate(self, question: str, raw_image_data: Image.Image):
+    def generate(self, question: str, raw_image_data):
         formatted_prompt = get_formatted_prompt(question, raw_image_data)
         len_formatted_prompt = len(formatted_prompt[0]) + len(formatted_prompt[-1]) + 1
         inputs = self.processor(formatted_prompt, return_tensors="pt").to(self.device)

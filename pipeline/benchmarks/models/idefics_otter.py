@@ -8,7 +8,10 @@ from pipeline.train.train_utils import get_image_attention_mask
 
 
 def get_pil_image(raw_image_data) -> Image.Image:
-    return Image.open(io.BytesIO(raw_image_data["bytes"]))
+    if isinstance(raw_image_data, Image.Image):
+        return raw_image_data
+    else:
+        return Image.open(io.BytesIO(raw_image_data["bytes"]))
 
 
 def get_formatted_prompt(question: str, no_image_flag: str) -> str:

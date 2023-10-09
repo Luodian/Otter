@@ -17,7 +17,10 @@ requests.packages.urllib3.disable_warnings()
 
 
 def get_pil_image(raw_image_data) -> Image.Image:
-    return Image.open(BytesIO(raw_image_data["bytes"]))
+    if isinstance(raw_image_data, Image.Image):
+        return raw_image_data
+    else:
+        return Image.open(BytesIO(raw_image_data["bytes"]))
 
 
 def get_formatted_prompt(prompt: str) -> str:

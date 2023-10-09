@@ -5,18 +5,19 @@ from PIL import Image
 from tqdm import tqdm
 from datasets import load_dataset
 from .base_eval_dataset import BaseEvalDataset
+from typing import Union
 
 
 class MMBenchDataset(BaseEvalDataset):
     def __init__(
         self,
-        data_path="Otter-AI/MMBench",
+        data_path: str = "Otter-AI/MMBench",
         *,
-        sys_prompt="There are several options:",
-        version="20230712",
-        split="test",
-        cache_dir=None,
-        default_output_path=".",
+        sys_prompt: str = "There are several options:",
+        version: str = "20230712",
+        split: str = "test",
+        cache_dir: Union[str, None] = None,
+        default_output_path: str = ".",
     ):
         super().__init__("MMBenchDataset", data_path)
         version = str(version)

@@ -6,43 +6,45 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, confu
 import os
 import numpy as np
 from loguru import logger
+from datasets import load_dataset
+from typing import Union
+from .base_eval_dataset import BaseEvalDataset
+from tqdm import tqdm
 
 eval_type_dict = {"Perception": ["existence", "count", "position", "color", "posters", "celebrity", "scene", "landmark", "artwork", "ocr"], "Cognition": ["commonsense", "numerical", "text", "code"]}
 
 
-class MMEDataset(object):
+class MMEDataset(BaseEvalDataset):
     def decode_base64_to_image(self, base64_string):
         image_data = base64.b64decode(base64_string)
         image = Image.open(io.BytesIO(image_data))
         return image
 
-    def load_json(self, json_file):
-        with open(json_file) as f:
-            data = json.load(f)
-        return data
-
-    def __init__(self, instruction_file, train_file, image_file, logger_file="output.log"):
-        super().__init__()
+    def __init__(self, data_path: str = "Otter-AI/MME", *, cache_dir: Union[str, None] = None, logger_file: str = "output.log", default_output_path: str = ".", split: str = "train"):
+        super().__init__("MMEDataset", data_path)
 
         logger.add(logger_file)
 
-        self.instruction_file = instruction_file
-        self.train_file = train_file
-        self.image_file = image_file
-        self.instruction_data = self.load_json(self.instruction_file)
-        self.train_data = self.load_json(self.train_file)
-        self.image_data = self.load_json(self.image_file)
-        self.ids = list(self.instruction_data["data"].keys())
+        self.default_output_path = default_output_path
+
+        # self.instruction_file = instruction_file
+        # self.train_file = train_file
+        # self.image_file = image_file
+        self.data = load_dataset("Otter-AI/MME", split="train", cache_dir=cache_dir)
+        # self.instruction_data = self.load_json(self.instruction_file)
+        # self.train_data = self.load_json(self.train_file)
+        # self.image_data = self.load_json(self.image_file)
+        # self.ids = list(self.instruction_data["data"].keys())
 
         self.category_data = {}
-        for idx in range(len(self.ids)):
-            id = self.ids[idx]
+        # for idx in range(len(self.ids)):
+        for item in tqdm(self.data, desc="Loading data"):
+            id = item["id"]
             category = id.split("_")[0].lower()
-            row = self.instruction_data["data"][id]
-            question = row["instruction"]
-            answer = row["answer"]
-            image_id = row["image_ids"][0]
-            image = self.decode_base64_to_image(self.image_data[image_id])
+            question = item["instruction"]
+            answer = item["answer"]
+            image_id = item["image_ids"][0]
+            image = item["images"][0]
 
             data = {"question": question, "answer": answer, "image": image}
 
@@ -134,14 +136,14 @@ class MMEDataset(object):
 
             scores = 0
             task_score_dict = {}
-            for task_name in self.category_data[eval_type].keys():
+            for task_name in tqdm(self.category_data[eval_type].keys(), desc=f"Evaluating {eval_type}"):
                 img_num = len(self.category_data[eval_type][task_name])
                 task_other_ans_num = 0
                 task_score = 0
                 acc_plus_correct_num = 0
                 gts = []
                 preds = []
-                for image_pair in self.category_data[eval_type][task_name].values():
+                for image_pair in tqdm(self.category_data[eval_type][task_name].values(), desc=f"Evaluating {eval_type} {task_name}"):
                     assert len(image_pair) == 2
                     img_correct_num = 0
 
@@ -187,5 +189,3 @@ class MMEDataset(object):
             logger.info(f"total score: {scores}")
             for task_name, score in task_score_dict.items():
                 logger.info(f"\t {task_name} score: {score}")
-
-        return
