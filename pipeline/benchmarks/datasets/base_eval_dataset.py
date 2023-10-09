@@ -9,6 +9,7 @@ AVAILABLE_EVAL_DATASETS: Dict[str, str] = {
     "mmbench": "MMBenchDataset",
     "mme": "MMEDataset",
     "mmvet": "MMVetDataset",
+    "seedbench": "SEEDBenchDataset",
 }
 
 
