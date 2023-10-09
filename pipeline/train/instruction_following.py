@@ -391,6 +391,14 @@ def main():
     random_seed(args.seed, args.rank)
     print(f"Start running training on rank {args.rank}.")
 
+    if args.rank == 0 and args.report_to_wandb:
+        master_print(f"Logging to wandb as {args.wandb_entity}/{args.wandb_project}/{args.run_name}")
+        wandb.init(
+            project=args.wandb_project,
+            entity=args.wandb_entity,
+            name=args.run_name,
+        )
+
     mimicit_loaders = get_data(args, image_processor, tokenizer, "mimicit")
     total_training_steps = sum(len(dataloader) for dataloader in mimicit_loaders) * args.num_epochs
     resume_from_epoch = 0
@@ -419,12 +427,7 @@ def main():
         lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps)
 
     if args.rank == 0 and args.report_to_wandb:
-        wandb.init(
-            project=args.wandb_project,
-            entity=args.wandb_entity,
-            name=args.run_name,
-            config=vars(args),
-        )
+        wandb.config.update(vars(args))
 
     if accelerator.distributed_type == "DEEPSPEED" or accelerator.distributed_type == "MULTI_GPU":
         model, optimizer = accelerator.prepare(model, optimizer)
