@@ -80,6 +80,7 @@ class SEEDBenchDataset(object):
 
 
 from transformers import IdeficsForVisionText2Text, AutoProcessor
+
 if __name__ == "__main__":
     dataset = "https://huggingface.co/datasets/Otter-AI/SEEDBench/tree/main/data"
     dataset = SEEDBenchDataset(dataset, "data/images")

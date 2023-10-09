@@ -19,11 +19,12 @@ def get_formatted_prompt(prompt: str, image) -> List[str]:
         "\nAssistant:",
     ]
 
+
 class Idefics(BaseModel):
     def __init__(self, model_path: str = "HuggingFaceM4/idefics-9b-instruct"):
         super().__init__("idefics", model_path)
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        self.model = IdeficsForVisionText2Text.from_pretrained(model_path, device_map = {"": self.device}, torch_dtype=torch.bfloat16).to(self.device)
+        self.model = IdeficsForVisionText2Text.from_pretrained(model_path, device_map={"": self.device}, torch_dtype=torch.bfloat16).to(self.device)
         self.processor = AutoProcessor.from_pretrained(model_path)
 
     def generate(self, question: str, raw_image_data: Image.Image):

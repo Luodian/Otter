@@ -19,6 +19,7 @@ from prettytable import PrettyTable
 from torch.utils.data import Dataset
 from torchvision import transforms
 from transformers import AutoProcessor
+import wandb
 
 IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
@@ -226,6 +227,10 @@ class MimicitDataset(Dataset):
 
         if args.rank == 0:
             master_print(table)
+            wandb_table = wandb.Table(columns=table.field_names)
+            for row in table._rows:
+                wandb_table.add_data(*row)
+            wandb.log({"Task Table": wandb_table})
 
         self.bos_item = torch.LongTensor([args.tokenizer.bos_token_id])
         self.eos_item = torch.LongTensor([args.tokenizer.eos_token_id])
