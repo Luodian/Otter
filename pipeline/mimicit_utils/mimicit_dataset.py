@@ -193,21 +193,21 @@ class MimicitDataset(Dataset):
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
 
             # Truncate paths for display
-            truncated_mimicit_path = truncate_text(cur_mimicit_path)
-            truncated_train_config_path = truncate_text(cur_train_config_path)
-            truncated_images_path = truncate_text(cur_images_path)
-            if len(task_desc) > 0:  # if with multiple task descriptions, join them with comma
-                task_desc = ",".join(task_desc)
-            truncated_task_desc = truncate_text(task_desc)
+            # truncated_mimicit_path = truncate_text(cur_mimicit_path)
+            # truncated_train_config_path = truncate_text(cur_train_config_path)
+            # truncated_images_path = truncate_text(cur_images_path)
+            # if len(task_desc) > 0:  # if with multiple task descriptions, join them with comma
+            #     task_desc = ",".join(task_desc)
+            # truncated_task_desc = truncate_text(task_desc)
 
             table.add_row(
                 [
                     task_name,
-                    truncated_mimicit_path,
-                    truncated_train_config_path if cur_train_config_path != "" else "None",
-                    truncated_images_path if cur_images_path != "" else "None",
+                    cur_mimicit_path,
+                    cur_train_config_path if cur_train_config_path != "" else "None",
+                    cur_images_path if cur_images_path != "" else "None",
                     len(resampled_train),
-                    truncated_task_desc,
+                    task_desc,
                 ]
             )
 
@@ -226,11 +226,11 @@ class MimicitDataset(Dataset):
             # self.images = self.images
 
         if args.rank == 0:
-            master_print(table)
+            # master_print(table)
             wandb_table = wandb.Table(columns=table.field_names)
             for row in table._rows:
                 wandb_table.add_data(*row)
-            wandb.log({"Task Table": wandb_table})
+            wandb.log({f"{self.task_group} Task Table": wandb_table})
 
         self.bos_item = torch.LongTensor([args.tokenizer.bos_token_id])
         self.eos_item = torch.LongTensor([args.tokenizer.eos_token_id])
