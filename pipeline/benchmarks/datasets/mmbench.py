@@ -3,7 +3,12 @@ import pandas as pd
 from tqdm import tqdm
 from datasets import load_dataset
 from .base_eval_dataset import BaseEvalDataset
-from typing import Union
+import pytz
+import datetime
+
+utc_plus_8 = pytz.timezone("Asia/Singapore")  # You can also use 'Asia/Shanghai', 'Asia/Taipei', etc.
+utc_now = pytz.utc.localize(datetime.datetime.utcnow())
+utc_plus_8_time = utc_now.astimezone(utc_plus_8)
 
 
 class MMBenchDataset(BaseEvalDataset):
@@ -11,89 +16,79 @@ class MMBenchDataset(BaseEvalDataset):
         self,
         data_path: str = "Otter-AI/MMBench",
         *,
-        sys_prompt: str = "There are several options:",
-        version: str = "20230712",
-        split: str = "test",
-        cache_dir: Union[str, None] = None,
-        default_output_path: str = ".",
+        sys_prompt="There are several options:",
+        version="20230712",
+        split="test",
+        cache_dir=None,
+        default_output_path="./logs",
     ):
         super().__init__("MMBenchDataset", data_path)
-        version = str(version)
-        name_converter = {"dev": "validation", "test": "test"}
-        self.df = load_dataset("Otter-AI/MMBench", version, split=name_converter[split], cache_dir=cache_dir).to_pandas()
+        self.version = str(version)
+        self.name_converter = {"dev": "validation", "test": "test"}
+        self.df = load_dataset("Otter-AI/MMBench", self.version, split=self.name_converter[split], cache_dir=cache_dir).to_pandas()
         self.default_output_path = default_output_path
         self.sys_prompt = sys_prompt
+        self.cur_datetime = utc_plus_8_time.strftime("%Y-%m-%d_%H-%M-%S")
 
     def load_from_df(self, idx, key):
-        if key in self.df.iloc[idx] and not pd.isna(self.df.iloc[idx][key]):
-            return self.df.iloc[idx][key]
-        else:
-            return None
+        if key in self.df.columns:
+            value = self.df.loc[idx, key]
+            return value if pd.notna(value) else None
+        return None
+
+    def create_options_prompt(self, idx, option_candidate):
+        available_keys = set(self.df.columns) & set(option_candidate)
+        options = {cand: self.load_from_df(idx, cand) for cand in available_keys if self.load_from_df(idx, cand)}
+        sorted_options = dict(sorted(options.items()))
+        options_prompt = f"{self.sys_prompt}\n"
+        for key, item in sorted_options.items():
+            options_prompt += f"{key}. {item}\n"
+        return options_prompt.rstrip("\n"), sorted_options
 
     def get_data(self, idx):
-        index = self.df.iloc[idx]["index"]
-        image = self.df.iloc[idx]["image"]
-        question = self.df.iloc[idx]["question"]
-        answer = self.df.iloc[idx]["answer"] if "answer" in self.df.iloc[0].keys() else None
-        catetory = self.df.iloc[idx]["category"]
-        l2_catetory = self.df.iloc[idx]["l2-category"]
-
+        row = self.df.loc[idx]
         option_candidate = ["A", "B", "C", "D", "E"]
-        options = {cand: self.load_from_df(idx, cand) for cand in option_candidate if self.load_from_df(idx, cand) is not None}
-        options_prompt = f"{self.sys_prompt}\n"
-        for key, item in options.items():
-            options_prompt += f"{key}. {item}\n"
+        options_prompt, options_dict = self.create_options_prompt(idx, option_candidate)
 
-        hint = self.load_from_df(idx, "hint")
         data = {
-            "img": image,
-            "question": question,
-            "answer": answer,
+            "img": row["image"],
+            "question": row["question"],
+            "answer": row.get("answer"),
             "options": options_prompt,
-            "category": catetory,
-            "l2-category": l2_catetory,
-            "options_dict": options,
-            "index": index,
-            "hint": hint,
+            "category": row["category"],
+            "l2-category": row["l2-category"],
+            "options_dict": options_dict,
+            "index": row["index"],
+            "hint": self.load_from_df(idx, "hint"),
+            "source": row["source"],
+            "split": row["split"],
         }
         return data
 
     def evaluate(self, model):
-        output_file = os.path.join(self.default_output_path, f"{model.name}_mmbench_eval_result.xlsx")
-
+        output_file = os.path.join(self.default_output_path, f"{model.name}_mmbench_eval_result_{self.cur_datetime}.xlsx")
         results = []
 
         for idx in tqdm(range(len(self.df))):
             cur_data = self.get_data(idx)
-            image = cur_data["img"]
-            question = cur_data["question"]
-            answer = cur_data["answer"]
-            options = cur_data["options"]
-            hint = cur_data["hint"]
-            index = cur_data["index"]
-            options_dict = cur_data["options_dict"]
-            category = cur_data["category"]
-            l2_category = cur_data["l2-category"]
-            cur_prompt = hint + " " + question + " " + options if hint is not "nan" else question + " " + options
-            pred_answer = model.generate(cur_prompt, image)
-            # print(f"model response: {pred_answer}")
-            result = dict()
-            result["question"] = question
-            result["answer"] = answer
-            result.update(options_dict)
-            result["prediction"] = pred_answer
-            if category is not None:
-                result["category"] = category
-            if l2_category is not None:
-                result["l2-category"] = l2_category
-            result["index"] = index
+            cur_prompt = f"{cur_data['hint']} {cur_data['question']} {cur_data['options']}" if pd.notna(cur_data["hint"]) else f"{cur_data['question']} {cur_data['options']}"
+            pred_answer = model.generate(cur_prompt, cur_data["img"])
+
+            result = {
+                "question": cur_data["question"],
+                "answer": cur_data["answer"],
+                **cur_data["options_dict"],
+                "prediction": pred_answer,
+                "hint": cur_data["hint"],
+                "source": cur_data["source"],
+                "split": cur_data["split"],
+                "category": cur_data["category"],
+                "l2-category": cur_data["l2-category"],
+                "index": cur_data["index"],
+            }
             results.append(result)
 
         df = pd.DataFrame(results)
-        with pd.ExcelWriter(
-            output_file,
-            engine="xlsxwriter",
-        ) as writer:
+        with pd.ExcelWriter(output_file, engine="xlsxwriter") as writer:
             df.to_excel(writer, index=False)
-
         print(f"MMBench Evaluator: Result saved to {output_file}.")

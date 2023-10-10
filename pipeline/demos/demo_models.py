@@ -165,6 +165,9 @@ class TestIdefics:
             eos_token_id=exit_condition,
             bad_words_ids=bad_words_ids,
             max_new_tokens=512,
+            temperature=0.2,
+            do_sample=True,
+            top_p=0.5,
         )
         output = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
         output = output.split("Assistant:")[1].strip().replace("<end_of_utterance>", "")

@@ -73,6 +73,9 @@ class Idefics(BaseModel):
             eos_token_id=exit_condition,
             bad_words_ids=bad_words_ids,
             max_new_tokens=512,
+            temperature=0.2,
+            do_sample=True,
+            top_p=0.5,
         )
         generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
         return generated_text[0][len_formatted_prompt:].strip()
