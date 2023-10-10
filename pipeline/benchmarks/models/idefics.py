@@ -187,7 +187,7 @@ class Idefics(BaseModel):
                 labels=batch_labels,
                 # more arguments as needed
             )
-            
+
         # Assuming `outputs.per_token_loss` contains the loss for each token for each item in the batch
         per_token_loss = outputs.per_token_loss  # Shape would be [batch_size, sequence_length]
 
