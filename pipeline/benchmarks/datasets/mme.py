@@ -5,12 +5,16 @@ import json
 from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix
 import os
 import numpy as np
-from loguru import logger
 from datasets import load_dataset
 from typing import Union
 from .base_eval_dataset import BaseEvalDataset
 from tqdm import tqdm
 import datetime
+import pytz
+
+utc_plus_8 = pytz.timezone("Asia/Singapore")  # You can also use 'Asia/Shanghai', 'Asia/Taipei', etc.
+utc_now = pytz.utc.localize(datetime.datetime.utcnow())
+utc_plus_8_time = utc_now.astimezone(utc_plus_8)
 
 eval_type_dict = {"Perception": ["existence", "count", "position", "color", "posters", "celebrity", "scene", "landmark", "artwork", "ocr"], "Cognition": ["commonsense", "numerical", "text", "code"]}
 
@@ -21,24 +25,16 @@ class MMEDataset(BaseEvalDataset):
         image = Image.open(io.BytesIO(image_data))
         return image
 
-    def __init__(self, data_path: str = "Otter-AI/MME", *, cache_dir: Union[str, None] = None, logger_file: str = "output.log", default_output_path: str = "./logs/MME", split: str = "test"):
+    def __init__(self, data_path: str = "Otter-AI/MME", *, cache_dir: Union[str, None] = None, default_output_path: str = "./logs/MME", split: str = "test", debug: bool = False):
         super().__init__("MMEDataset", data_path)
 
-        logger.add(logger_file)
-
-        self.cur_datetime = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        self.cur_datetime = utc_plus_8_time.strftime("%Y-%m-%d_%H-%M-%S")
         self.default_output_path = os.path.join(default_output_path, self.cur_datetime)
         if not os.path.exists(self.default_output_path):
             os.makedirs(self.default_output_path)
 
-        # self.instruction_file = instruction_file
-        # self.train_file = train_file
-        # self.image_file = image_file
         self.data = load_dataset("Otter-AI/MME", split=split, cache_dir=cache_dir)
-        # self.instruction_data = self.load_json(self.instruction_file)
-        # self.train_data = self.load_json(self.train_file)
-        # self.image_data = self.load_json(self.image_file)
-        # self.ids = list(self.instruction_data["data"].keys())
+        self.debug = debug
 
         self.category_data = {}
         # for idx in range(len(self.ids)):
@@ -156,7 +152,11 @@ class MMEDataset(BaseEvalDataset):
                         question = item["question"]
                         image = item["image"]
                         gt_ans = item["answer"].lower().strip().replace(".", "")
-                        pred_ans = self.parse_pred_ans(model.generate(question, image))
+                        response = model.generate(question, image)
+                        if self.debug:
+                            print(f"\n#Query: {question}")
+                            print(f"\n#Response: {response}")
+                        pred_ans = self.parse_pred_ans(response)
 
                         assert gt_ans in ["yes", "no"]
                         assert pred_ans in ["yes", "no", "other"]
@@ -189,6 +189,6 @@ class MMEDataset(BaseEvalDataset):
                 with open(output_path, "w") as f:
                     json.dump(metric_dict, f)
 
-            logger.info(f"total score: {scores}")
+            print(f"total score: {scores}")
             for task_name, score in task_score_dict.items():
-                logger.info(f"\t {task_name} score: {score}")
+                print(f"\t {task_name} score: {score}")

@@ -245,6 +245,7 @@ class MathVistaDataset(BaseEvalDataset):
         default_output_path="./logs",
         cache_dir=None,
         api_key=None,
+        debug=False,
     ):
         super().__init__("MathVistaDataset", data_path)
         name_converter = {"dev": "validation", "test": "test"}
@@ -260,6 +261,7 @@ class MathVistaDataset(BaseEvalDataset):
             "4": self.data["4"],
             "5": self.data["5"],
         }
+        self.debug = debug
 
         self.default_output_path = default_output_path
         if os.path.exists(self.default_output_path) is False:
@@ -343,8 +345,9 @@ class MathVistaDataset(BaseEvalDataset):
             base64_image = query_data["base64_image"]
             image = Image.open(BytesIO(base64.b64decode(base64_image)))
             response = model.generate(query, image)
-            print(f"\n#Query {idx_key}: {query}")
-            print(f"\n#Response {idx_key}: {response}")
+            if self.debug:
+                print(f"\n#Query: {query}")
+                print(f"\n#Response: {response}")
             results[idx_key].update({"query": query})
             results[idx_key].update({"response": response})
 

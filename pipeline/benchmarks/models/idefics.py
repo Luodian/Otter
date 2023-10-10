@@ -64,7 +64,6 @@ class Idefics(BaseModel):
 
     def generate(self, question: str, raw_image_data):
         formatted_prompt = get_formatted_prompt(question, raw_image_data)
-        len_formatted_prompt = len(formatted_prompt[0]) + len(formatted_prompt[-1]) + 1
         inputs = self.processor(formatted_prompt, return_tensors="pt").to(self.device)
         exit_condition = self.processor.tokenizer("<end_of_utterance>", add_special_tokens=False).input_ids
         bad_words_ids = self.processor.tokenizer(["<image>", "<fake_token_around_image>"], add_special_tokens=False).input_ids
@@ -77,8 +76,8 @@ class Idefics(BaseModel):
             do_sample=True,
             top_p=0.5,
         )
-        generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
-        return generated_text[0][len_formatted_prompt:].strip()
+        generated_text = self.processor.batch_decode(generated_ids)[0]
+        return generated_text.strip().split("Assistant:")[1].replace("<end_of_utterance>", "").strip()
 
     def prepare_labels(self, input_ids, eos_token_id, answer_token_id, endofchunk_token_id, fake_token_image_token_id, masking_number: int = -100):
         labels = torch.empty(input_ids.shape, dtype=torch.int64)
