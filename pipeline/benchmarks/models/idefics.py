@@ -50,7 +50,6 @@ class Idefics(BaseModel):
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
         self.model = IdeficsForVisionText2Text.from_pretrained(model_path, device_map={"": self.device}, torch_dtype=torch.bfloat16).to(self.device)
         self.processor = AutoProcessor.from_pretrained(model_path)
-
         if "<answer>" not in self.processor.tokenizer.special_tokens_map["additional_special_tokens"]:
             past_special_tokens = self.processor.tokenizer.special_tokens_map["additional_special_tokens"]
             self.processor.tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"] + past_special_tokens})

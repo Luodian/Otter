@@ -314,7 +314,6 @@ class MimicitDataset(Dataset):
     def process_general(self, instruction_id, image_ids, in_context_example_ids, task_group):
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
-        is_video = task_group == "VIDEO_TEXT"
 
         for idx, cur_instruction_id in enumerate(all_instruction_ids):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
@@ -339,8 +338,10 @@ class MimicitDataset(Dataset):
         patch_images = torch.tensor([])
         if task_group == "TEXT_ONLY":
             patch_images = torch.zeros(3, 224, 224).unsqueeze(0).unsqueeze(0)
-        else:
-            patch_images = self.process_images(image_ids, is_video)
+        elif task_group == "IMAGE_TEXT_IN_CONTEXT" or task_group == "IMAGE_TEXT":
+            patch_images = self.process_images(image_ids, is_video=False).unsqueeze(1)
+        elif task_group == "VIDEO_TEXT":
+            patch_images = self.process_images(image_ids, is_video=True).unsqueeze(0)
 
         return patch_images, all_texts.rstrip("\n")
 
