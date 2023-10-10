@@ -341,7 +341,7 @@ class MimicitDataset(Dataset):
         elif task_group == "IMAGE_TEXT_IN_CONTEXT" or task_group == "IMAGE_TEXT":
             patch_images = self.process_images(image_ids, is_video=False).unsqueeze(1)
         elif task_group == "VIDEO_TEXT":
-            patch_images = self.process_images(image_ids, is_video=True).unsqueeze(0)
+            patch_images = self.process_images(image_ids, is_video=True)
 
         return patch_images, all_texts.rstrip("\n")
 
