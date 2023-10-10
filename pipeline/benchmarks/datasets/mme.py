@@ -10,6 +10,7 @@ from datasets import load_dataset
 from typing import Union
 from .base_eval_dataset import BaseEvalDataset
 from tqdm import tqdm
+import datetime
 
 eval_type_dict = {"Perception": ["existence", "count", "position", "color", "posters", "celebrity", "scene", "landmark", "artwork", "ocr"], "Cognition": ["commonsense", "numerical", "text", "code"]}
 
@@ -20,12 +21,15 @@ class MMEDataset(BaseEvalDataset):
         image = Image.open(io.BytesIO(image_data))
         return image
 
-    def __init__(self, data_path: str = "Otter-AI/MME", *, cache_dir: Union[str, None] = None, logger_file: str = "output.log", default_output_path: str = "./logs", split: str = "test"):
+    def __init__(self, data_path: str = "Otter-AI/MME", *, cache_dir: Union[str, None] = None, logger_file: str = "output.log", default_output_path: str = "./logs/MME", split: str = "test"):
         super().__init__("MMEDataset", data_path)
 
         logger.add(logger_file)
 
-        self.default_output_path = default_output_path
+        self.cur_datetime = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        self.default_output_path = os.path.join(default_output_path, self.cur_datetime)
+        if not os.path.exists(self.default_output_path):
+            os.makedirs(self.default_output_path)
 
         # self.instruction_file = instruction_file
         # self.train_file = train_file
@@ -129,8 +133,9 @@ class MMEDataset(BaseEvalDataset):
 
         return metric_dict
 
-    def evaluate(self, model, output_dir="./LaVIN"):
+    def evaluate(self, model):
         model_score_dict = {}
+
         for eval_type in self.category_data.keys():
             print("===========", eval_type, "===========")
 
@@ -180,9 +185,7 @@ class MMEDataset(BaseEvalDataset):
                 task_score_dict[task_name] = task_score
                 scores += task_score
 
-                if not os.path.exists(output_dir):
-                    os.makedirs(output_dir)
-                output_path = os.path.join(output_dir, f"{task_name}.json")
+                output_path = os.path.join(self.default_output_path, f"{task_name}.json")
                 with open(output_path, "w") as f:
                     json.dump(metric_dict, f)
 
