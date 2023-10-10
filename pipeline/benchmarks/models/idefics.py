@@ -59,6 +59,7 @@ class Idefics(BaseModel):
         self.endofchunk_token_id = self.processor.tokenizer(self.endofchunk_text, add_special_tokens=False)["input_ids"][-1]
         self.answer_token_id = self.processor.tokenizer("<answer>", add_special_tokens=False)["input_ids"][-1]
         self.eos_token_id = self.processor.tokenizer(self.processor.tokenizer.eos_token, add_special_tokens=False)["input_ids"][-1]
+        self.patch_resize_transform = self.processor.image_processor.preprocess
 
     def generate(self, question: str, raw_image_data):
         formatted_prompt = get_formatted_prompt(question, raw_image_data)
@@ -75,8 +76,8 @@ class Idefics(BaseModel):
         generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
         return generated_text[0][len_formatted_prompt:].strip()
 
-    def prepare_labels(self, input_ids, device_id, eos_token_id, answer_token_id, endofchunk_token_id, fake_token_image_token_id, masking_number: int = -100):
-        labels = torch.empty(input_ids.shape, dtype=torch.int64).to(device_id, non_blocking=True)
+    def prepare_labels(self, input_ids, eos_token_id, answer_token_id, endofchunk_token_id, fake_token_image_token_id, masking_number: int = -100):
+        labels = torch.empty(input_ids.shape, dtype=torch.int64)
         for i in range(input_ids.shape[0]):
             labels[i] = torch.where(input_ids[i] == eos_token_id, eos_token_id, masking_number)
             answer_token_ids_all = torch.where(input_ids[i] == answer_token_id)[0]
@@ -100,11 +101,11 @@ class Idefics(BaseModel):
         return labels
 
     def eval_forward(self, question, answer, image):
-        formatted_prompt = get_formatted_prompt(question, image, answer)
-        inputs = self.processor(formatted_prompt, add_end_of_utterance_token=False, return_tensors="pt").to(self.device)
+        forward_prompt = f"User:<fake_token_around_image><image><fake_token_around_image>{question}<end_of_utterance>\nAssistant:<answer>{answer}<end_of_utterance>"
+        inputs = self.processor.tokenizer(forward_prompt, return_tensors="pt")
+        vision_x = self.patch_resize_transform(image).unsqueeze(0).to(self.device)
         labels = self.prepare_labels(
             inputs["input_ids"],
-            self.device,
             self.eos_token_id,
             self.answer_token_id,
             self.endofchunk_token_id,
@@ -123,11 +124,11 @@ class Idefics(BaseModel):
         # attention_mask = tokens["attention_mask"]
         with torch.no_grad():
             loss = self.model(
-                pixel_values=inputs["pixel_values"],
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                image_attention_mask=image_attention_mask,
-                labels=labels,
+                pixel_values=vision_x,
+                input_ids=input_ids.to(self.device),
+                attention_mask=attention_mask.to(self.device),
+                image_attention_mask=image_attention_mask.to(self.device),
+                labels=labels.to(self.device),
                 # input_ids=input_ids,
                 # attention_mask=attention_mask,
                 # image_attention_mask=image_attention_mask,

@@ -16,7 +16,11 @@ class SEEDBenchDataset(BaseEvalDataset):
         with tqdm(total=len(self.data), desc="Evaluating") as pbar:
             for data_dict in self.data:
                 image = data_dict["image"]
-                question = data_dict["question"]
+                question = data_dict["question"] + " There are several options:"
+                option_index = ["A", "B", "C", "D"]
+                for cur_idx in range(4):
+                    question += f" {option_index[cur_idx]}. {data_dict[f'choice_{option_index[cur_idx].lower()}']}"
+
                 answer = data_dict["answer"]
                 options = [
                     data_dict["choice_a"],
@@ -26,9 +30,8 @@ class SEEDBenchDataset(BaseEvalDataset):
                 ]
 
                 option_losses = []
-                option_index = ["A", "B", "C", "D"]
-                for option in options:
-                    option = option_index.pop(0) + ". " + option
+                for idx, option in enumerate(options):
+                    option = option_index[idx] + ". " + option
                     loss = model.eval_forward(question, option, image)
                     option_losses.append(loss.item())
 
