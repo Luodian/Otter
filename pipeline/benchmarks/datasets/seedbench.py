@@ -48,3 +48,41 @@ class SEEDBenchDataset(BaseEvalDataset):
         accuracy = num_correct / count * 100
         print(f"Accuracy: {accuracy:.2f}%")
         return accuracy
+
+    def batch_evaluate(self, model, batch_size=16):
+        count = 0
+        num_correct = 0
+        with tqdm(total=len(self.data), desc="Evaluating") as pbar:
+            for i in range(0, len(self.data), batch_size):
+                batch_data = self.data[i : i + batch_size]
+                batch_images = batch_data["image"]
+                batch_answers = batch_data["answer"]
+
+                processed_questions = []
+                processed_options = []
+                processed_images = []
+
+                for idx in range(batch_size):
+                    question = batch_data["question"][idx] + " There are several options:"
+                    option_index = ["A", "B", "C", "D"]
+                    for cur_idx in range(4):
+                        question += f" {option_index[cur_idx]}. {batch_data[f'choice_{option_index[cur_idx].lower()}'][idx]}"
+                        processed_options.append(f"{option_index[cur_idx]}. {batch_data[f'choice_{option_index[cur_idx].lower()}'][idx]}")
+
+                    processed_questions.extend([question] * 4)
+                    processed_images.extend([batch_images[idx]] * 4)
+
+                batch_losses = model.eval_forward_batch(processed_questions, processed_options, processed_images)
+
+                for j in range(len(batch_data)):
+                    option_losses = batch_losses[j]
+                    prediction_idx = np.argmin(option_losses)
+                    prediction = ["A", "B", "C", "D"][prediction_idx]
+
+                    if prediction == batch_answers[j]:
+                        num_correct += 1
+                    count += 1
+
+                accuracy = num_correct / count * 100
+                pbar.set_postfix(accuracy=f"{accuracy:.2f}")
+                pbar.update(len(batch_data))

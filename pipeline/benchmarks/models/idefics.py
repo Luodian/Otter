@@ -6,6 +6,7 @@ from PIL import Image
 from .base_model import BaseModel
 from pipeline.train.train_utils import find_and_remove_tokens, get_image_attention_mask
 import base64
+import numpy as np
 
 
 def get_pil_image(raw_image_data) -> Image.Image:
@@ -136,6 +137,65 @@ class Idefics(BaseModel):
                 # labels=labels,
             ).loss
         return loss
+
+    def eval_forward_batch(self, batch_questions, batch_options, batch_images):
+        batch_size = len(batch_questions)
+        all_option_losses = []
+        tensor_images = [self.patch_resize_transform(image).unsqueeze(0) for image in batch_images]
+
+        # Prepare batched inputs and put them on the device
+        batch_input_ids = []
+        batch_attention_mask = []
+        batch_prompt = []
+
+        for i in range(batch_size):
+            question = batch_questions[i]
+            option = batch_options[i]
+            forward_prompt = f"User:<fake_token_around_image><image><fake_token_around_image>{question}<end_of_utterance>\nAssistant:<answer>{option}<end_of_utterance>"
+            batch_prompt.append(forward_prompt)
+
+        inputs = self.processor.tokenizer(batch_prompt, return_tensors="pt", padding="longest", truncation=True, max_length=512)
+        batch_input_ids.append(inputs["input_ids"])
+        batch_attention_mask.append(inputs["attention_mask"])
+
+        batch_input_ids = torch.cat(batch_input_ids, dim=0)
+        batch_attention_mask = torch.cat(batch_attention_mask, dim=0)
+        batch_labels = self.prepare_labels(
+            batch_input_ids,
+            self.eos_token_id,
+            self.answer_token_id,
+            self.endofchunk_token_id,
+            self.fake_token_image_token_id,
+        )
+
+        batch_input_ids, batch_labels, batch_attention_mask = find_and_remove_tokens(batch_input_ids, batch_labels, batch_attention_mask, self.answer_token_id, self.processor.tokenizer)
+
+        # to device
+        batch_image_tensors = torch.stack(tensor_images).to(self.device)
+        batch_input_ids = batch_input_ids.to(self.device)
+        batch_labels = batch_labels.to(self.device)
+        batch_attention_mask = batch_attention_mask.to(self.device)
+
+        # Perform batch inference
+        with torch.no_grad():
+            # Your forward function can go here, adjusted for batches
+            outputs = self.model(
+                pixel_values=batch_image_tensors.squeeze(2),
+                input_ids=batch_input_ids,
+                attention_mask=batch_attention_mask,
+                image_attention_mask=get_image_attention_mask(batch_input_ids, 1, self.processor.tokenizer).to(self.device),
+                labels=batch_labels,
+                # more arguments as needed
+            )
+            
+        # Assuming `outputs.per_token_loss` contains the loss for each token for each item in the batch
+        per_token_loss = outputs.per_token_loss  # Shape would be [batch_size, sequence_length]
+
+        # Summing along the sequence length dimension to get per-item loss
+        per_item_loss = torch.sum(per_token_loss, dim=1)  # Shape [batch_size]
+        all_option_losses = np.split(per_item_loss, batch_size)
+
+        return all_option_losses
 
 
 if __name__ == "__main__":
