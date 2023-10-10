@@ -33,7 +33,7 @@ class MMVetDataset(BaseEvalDataset):
         data_path: str = "Otter-AI/MMVet",
         gpt_model: str = "gpt-4-0613",
         *,
-        gpt_key: str,
+        api_key: str,
         split: str = "test",
         cache_dir: Union[str, None] = None,
         default_output_path: str = ".",
@@ -48,7 +48,7 @@ class MMVetDataset(BaseEvalDataset):
         self.gpt_model = gpt_model
         self.num_run = num_run
         self.decimal_places = decimail_places
-        self.gpt_key = gpt_key
+        self.api_key = api_key
         self.prepare()
 
     def prepare(self):
@@ -108,7 +108,7 @@ class MMVetDataset(BaseEvalDataset):
         return model_results_file, grade_file, cap_score_file, cap_int_score_file
 
     def evaluate(self, model):
-        openai.api_key = self.gpt_key
+        openai.api_key = self.api_key
 
         model_results_file, grade_file, cap_score_file, cap_int_score_file = self.get_output_file_name(model)
 
@@ -262,4 +262,4 @@ class MMVetDataset(BaseEvalDataset):
 
 
 if __name__ == "__main__":
-    data = MMVetDataset(gpt_key=None, cache_dir="/data/pufanyi/cache")
+    data = MMVetDataset(api_key=None, cache_dir="/data/pufanyi/cache")
