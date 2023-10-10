@@ -36,7 +36,7 @@ class MMVetDataset(BaseEvalDataset):
         api_key: str,
         split: str = "test",
         cache_dir: Union[str, None] = None,
-        default_output_path: str = ".",
+        default_output_path: str = "./logs/MMVet",
         num_run: int = 1,
         prompt: str = MM_VET_PROMPT,
         decimail_places: int = 1,  # number of decimal places to round to
@@ -138,8 +138,9 @@ class MMVetDataset(BaseEvalDataset):
                         continue
 
                     model_pred = model.generate(line["instruction"], line["images"][0])
-                    print(f"model pred: {model_pred}")
-                    print(f"ground truth: {line['answer']}")
+                    print(f"# Query: {line['instruction']}")
+                    print(f"# Response: {model_pred}")
+                    print(f"# Ground Truth: {line['answer']}")
 
                     question = self.prompt + "\n" + " | ".join([line["instruction"], line["answer"].replace("<AND>", " <AND> ").replace("<OR>", " <OR> "), model_pred, ""])
                     messages = [
@@ -188,7 +189,7 @@ class MMVetDataset(BaseEvalDataset):
                             # gpt4 may have token rate limit
                             print(e)
                             print("sleep 30s")
-                            time.sleep(30)
+                            time.sleep(15)
 
                     if len(sample_grade["model"]) >= j + 1:
                         sample_grade["model"][j] = response["model"]
