@@ -20,7 +20,7 @@ class MMEDataset(BaseEvalDataset):
         image = Image.open(io.BytesIO(image_data))
         return image
 
-    def __init__(self, data_path: str = "Otter-AI/MME", *, cache_dir: Union[str, None] = None, logger_file: str = "output.log", default_output_path: str = ".", split: str = "train"):
+    def __init__(self, data_path: str = "Otter-AI/MME", *, cache_dir: Union[str, None] = None, logger_file: str = "output.log", default_output_path: str = "./logs", split: str = "test"):
         super().__init__("MMEDataset", data_path)
 
         logger.add(logger_file)
@@ -30,7 +30,7 @@ class MMEDataset(BaseEvalDataset):
         # self.instruction_file = instruction_file
         # self.train_file = train_file
         # self.image_file = image_file
-        self.data = load_dataset("Otter-AI/MME", split="train", cache_dir=cache_dir)
+        self.data = load_dataset("Otter-AI/MME", split=split, cache_dir=cache_dir)
         # self.instruction_data = self.load_json(self.instruction_file)
         # self.train_data = self.load_json(self.train_file)
         # self.image_data = self.load_json(self.image_file)
