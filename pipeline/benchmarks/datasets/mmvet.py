@@ -56,6 +56,11 @@ class MMVetDataset(BaseEvalDataset):
         self.cap_set_list = []
         self.cap_set_counter = []
         self.len_data = 0
+        self.caps = {}
+
+        for index, row in self.df.iterrows():
+            self.caps[row["id"]] = row["capability"]
+
         for cap in self.df["capability"]:
             cap = set(cap)
             self.counter.update(cap)
@@ -218,7 +223,7 @@ class MMVetDataset(BaseEvalDataset):
             #     continue
             for i in range(self.num_run):
                 score = v["score"][i]
-                caps = set(data[k]["capability"])
+                caps = set(self.caps[k])
                 for c in caps:
                     cap_socres[c][i] += score
 
@@ -240,13 +245,13 @@ class MMVetDataset(BaseEvalDataset):
 
         cap_socres["std"] = std
         cap_socres["runs"] = runs
-        self.result1.loc[model] = cap_socres
+        self.result1.loc[model.name] = cap_socres
 
         for k, v in cap_socres2.items():
             cap_socres2[k] = round(np.mean(np.array(v) / counter2[k] * 100), self.decimal_places)
         cap_socres2["std"] = std
         cap_socres2["runs"] = runs
-        self.result2.loc[model] = cap_socres2
+        self.result2.loc[model.name] = cap_socres2
 
         self.result1.to_csv(cap_score_file)
         self.result2.to_csv(cap_int_score_file)
