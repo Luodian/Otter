@@ -73,7 +73,7 @@ def forward_pass(args, model, tokenizer, images, input_ids, attention_mask, labe
         )
         image_attention_mask = image_attention_mask.to(device_id, non_blocking=True)
         loss_mimicit = model(
-            pixel_values=images.squeeze(2).to(autocast_type),
+            pixel_values=images.squeeze(1, 2).to(autocast_type),
             input_ids=input_ids,
             attention_mask=attention_mask,
             image_attention_mask=image_attention_mask,
