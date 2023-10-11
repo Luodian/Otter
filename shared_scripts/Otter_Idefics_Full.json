@@ -15,7 +15,7 @@
     "freeze_lm_head": false,
     "freeze_text_layers": false,
     "freeze_text_module_exceptions": [],
-    "freeze_vision_layers": true,
+    "freeze_vision_layers": false,
     "freeze_vision_module_exceptions": [],
     "hidden_act": "silu",
     "hidden_size": 4096,
