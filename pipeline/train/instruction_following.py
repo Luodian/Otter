@@ -15,7 +15,12 @@ import torch.nn
 import torch.nn.functional as F
 from accelerate import Accelerator
 from tqdm import tqdm
-from transformers import CLIPImageProcessor, get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup, get_linear_schedule_with_warmup
+from transformers import (
+    CLIPImageProcessor,
+    get_constant_schedule_with_warmup,
+    get_cosine_schedule_with_warmup,
+    get_linear_schedule_with_warmup,
+)
 
 import wandb
 
@@ -51,7 +56,7 @@ torch.backends.cuda.matmul.allow_tf32 = True
 
 # The flag below controls whether to allow TF32 on cuDNN. This flag defaults to True.
 torch.backends.cudnn.allow_tf32 = True
-
+torch.backends.cuda.enable_flash_sdp(True)
 # Try importing IdeficsForVisionText2Text, and if it's not available, define a dummy class
 try:
     from transformers import IdeficsForVisionText2Text
@@ -60,7 +65,9 @@ except ImportError:
     IdeficsForVisionText2Text = type(None)
 
 
-def forward_pass(args, model, tokenizer, images, input_ids, attention_mask, labels, unwrapped_model, device_id, autocast_type):
+def forward_pass(
+    args, model, tokenizer, images, input_ids, attention_mask, labels, unwrapped_model, device_id, autocast_type
+):
     if args.model_name == "idefics":
         # only for image model
         max_num_images = images.shape[1]
@@ -98,7 +105,9 @@ def forward_pass(args, model, tokenizer, images, input_ids, attention_mask, labe
     return loss_mimicit
 
 
-def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
+def train_one_epoch(
+    args, model, epoch, mimicit_loaders, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb
+):
     dataloader_iterators = [cycle(dataloader) for dataloader in mimicit_loaders]
     weights = get_weights_for_dataloaders(mimicit_loaders)
     num_batches_per_epoch = sum(len(dataloader) for dataloader in mimicit_loaders)
@@ -106,7 +115,9 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
     # Special Design for Idefics Model's prompt strategy
     if args.model_name.lower() == "idefics":
-        fake_token_image_exists = True if "<fake_token_around_image>" in tokenizer.special_tokens_map["additional_special_tokens"] else False
+        fake_token_image_exists = (
+            True if "<fake_token_around_image>" in tokenizer.special_tokens_map["additional_special_tokens"] else False
+        )
         fake_token_image_token_id = tokenizer("<fake_token_around_image>", add_special_tokens=False)["input_ids"][-1]
         endofchunk_text = "<end_of_utterance>"
     else:
@@ -124,7 +135,9 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
     # setup logging
     step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
-    data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
+    data_time_m = (
+        AverageMeter()
+    )  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
     autocast_type = torch.bfloat16 if accelerator.mixed_precision == "bf16" else torch.float32
 
@@ -156,13 +169,17 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
                     if j < len(endofchunk_token_ids_all):
                         endofchunk_token_idx = endofchunk_token_ids_all[j]
-                        labels[i, answer_token_idx + 1 : endofchunk_token_idx + 1] = input_ids[i, answer_token_idx + 1 : endofchunk_token_idx + 1]
+                        labels[i, answer_token_idx + 1 : endofchunk_token_idx + 1] = input_ids[
+                            i, answer_token_idx + 1 : endofchunk_token_idx + 1
+                        ]
 
                         # Increment j for the next iteration
                         j += 1
 
                 for answer_token_idx, endofchunk_token_idx in zip(answer_token_ids_all, endofchunk_token_ids_all):
-                    labels[i, answer_token_idx + 1 : endofchunk_token_idx + 1] = input_ids[i, answer_token_idx + 1 : endofchunk_token_idx + 1]
+                    labels[i, answer_token_idx + 1 : endofchunk_token_idx + 1] = input_ids[
+                        i, answer_token_idx + 1 : endofchunk_token_idx + 1
+                    ]
 
             labels[:, 0] = masking_number
             if args.model_name == "idefics" and fake_token_image_exists:
@@ -173,10 +190,14 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         labels = masking()
 
         if args.remove_answer_token:
-            input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, answer_token_id, tokenizer)  # find and remove certain tokens from input_ids, labels, and attention_mask
+            input_ids, labels, attention_mask = find_and_remove_tokens(
+                input_ids, labels, attention_mask, answer_token_id, tokenizer
+            )  # find and remove certain tokens from input_ids, labels, and attention_mask
 
         if args.remove_eos_token:
-            input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, endofchunk_token_id, tokenizer)
+            input_ids, labels, attention_mask = find_and_remove_tokens(
+                input_ids, labels, attention_mask, endofchunk_token_id, tokenizer
+            )
 
         with accelerator.autocast():
             unwrapped_model = accelerator.unwrap_model(model)
@@ -189,8 +210,20 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 master_print(f"model: {unwrapped_model.__class__.__name__}")
                 master_print(f"model dtype: {unwrapped_model.dtype if hasattr(unwrapped_model, 'dtype') else 'None'}")
 
-            loss_mimicit = forward_pass(args, model, tokenizer, images, input_ids, attention_mask, labels, unwrapped_model, device_id, autocast_type)
+            loss_mimicit = forward_pass(
+                args,
+                model,
+                tokenizer,
+                images,
+                input_ids,
+                attention_mask,
+                labels,
+                unwrapped_model,
+                device_id,
+                autocast_type,
+            )
 
+        master_print(loss_mimicit)
         if accelerator.mixed_precision == "fp16":
             accelerator.backward(loss_mimicit.to(device_id))
         else:
@@ -232,8 +265,12 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         if accelerator.sync_gradients:
             if args.rank == 0 and args.report_to_wandb:
                 # compute within rank 0
-                mimicit_samples_per_second = args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.val
-                mimicit_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size / step_time_m.val
+                mimicit_samples_per_second = (
+                    args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.val
+                )
+                mimicit_samples_per_second_per_gpu = (
+                    args.gradient_accumulation_steps * args.batch_size / step_time_m.val
+                )
 
                 wandb.log(
                     {
@@ -250,7 +287,9 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 data_time_m.reset()
 
                 group_name = batch_mimicit["task_group"][0]
-                assert all(item == group_name for item in batch_mimicit["task_group"]), "Not all items in the list are the same"
+                assert all(
+                    item == group_name for item in batch_mimicit["task_group"]
+                ), "Not all items in the list are the same"
                 wandb.log(
                     {
                         "loss_mimicit": mean_loss,
@@ -262,12 +301,19 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 # torch.cuda.empty_cache()
                 # gc.collect()  # forces garbage collection
 
-        if args.rank == 0 and global_step != 0 and (args.save_steps_interval != -1) and (global_step % args.save_steps_interval == 0):
+        if (
+            args.rank == 0
+            and global_step != 0
+            and (args.save_steps_interval != -1)
+            and (global_step % args.save_steps_interval == 0)
+        ):
             save_checkpoint(epoch=None, global_step=global_step, model=model, args=args, accelerator=accelerator)
 
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
-            print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss MIMIC-IT: {mean_loss.item():.3f}")
+            print(
+                f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss MIMIC-IT: {mean_loss.item():.3f}"
+            )
 
 
 def main():
@@ -284,7 +330,11 @@ def main():
 
     if args.pretrained_model_name_or_path is not None:
         master_print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
-        device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED" else "auto"
+        device_map = (
+            {"": device_id}
+            if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED"
+            else "auto"
+        )
         kwargs = {"local_files_only": args.offline, "device_map": device_map}
 
         if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
@@ -336,7 +386,9 @@ def main():
 
             if "<answer>" not in processor.tokenizer.special_tokens_map["additional_special_tokens"]:
                 past_special_tokens = processor.tokenizer.special_tokens_map["additional_special_tokens"]
-                processor.tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"] + past_special_tokens})
+                processor.tokenizer.add_special_tokens(
+                    {"additional_special_tokens": ["<answer>"] + past_special_tokens}
+                )
 
             image_processor = processor.image_processor
             tokenizer = processor.tokenizer
@@ -348,7 +400,11 @@ def main():
                 **kwargs,
             )
             tokenizer = AutoTokenizer.from_pretrained(args.pretrained_model_name_or_path)
-            past_special_tokens = tokenizer.special_tokens_map["additional_special_tokens"] if "additional_special_tokens" in tokenizer.special_tokens_map else [value for key, value in tokenizer.special_tokens_map.items()]
+            past_special_tokens = (
+                tokenizer.special_tokens_map["additional_special_tokens"]
+                if "additional_special_tokens" in tokenizer.special_tokens_map
+                else [value for key, value in tokenizer.special_tokens_map.items()]
+            )
             if "<answer>" not in past_special_tokens:
                 tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>", "<image>", "<|endofchunk|>"]})
 
@@ -367,7 +423,11 @@ def main():
 
             image_processor = None
 
-    if args.resize_embedding and hasattr(model, "lang_encoder") and "LlamaForCausalLM" in model.lang_encoder.__class__.__name__:
+    if (
+        args.resize_embedding
+        and hasattr(model, "lang_encoder")
+        and "LlamaForCausalLM" in model.lang_encoder.__class__.__name__
+    ):
         model.lang_encoder.resize_token_embeddings(len(model.text_tokenizer))
         master_print(f"Resizing Llama embedding to {len(model.text_tokenizer)}")
 
@@ -375,7 +435,10 @@ def main():
         params_to_gather = [p for name, p in model.named_parameters() if p.requires_grad]
         with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
             if torch.distributed.get_rank() == 0:
-                print(device_id, f"Zero3 Optimization: Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
+                print(
+                    device_id,
+                    f"Zero3 Optimization: Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B",
+                )
 
     if args.trained_ckpt is not None:
         train_ckpt = torch.load(args.trained_ckpt, map_location="cpu")
@@ -402,14 +465,18 @@ def main():
     mimicit_loaders = get_data(args, image_processor, tokenizer, "mimicit")
     total_training_steps = sum(len(dataloader) for dataloader in mimicit_loaders) * args.num_epochs
     resume_from_epoch = 0
-    args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
+    args.external_save_dir = (
+        os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name
+    )
 
     optimizer = torch.optim.AdamW(get_grouped_params(model, wd=args.weight_decay), lr=args.learning_rate)
 
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
 
-    args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
+    args.warmup_steps = (
+        total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
+    )
 
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
@@ -432,7 +499,9 @@ def main():
     if accelerator.distributed_type == "DEEPSPEED" or accelerator.distributed_type == "MULTI_GPU":
         model, optimizer = accelerator.prepare(model, optimizer)
     else:
-        model, optimizer, lr_scheduler, mimicit_loaders = accelerator.prepare(model, optimizer, lr_scheduler, mimicit_loaders)
+        model, optimizer, lr_scheduler, mimicit_loaders = accelerator.prepare(
+            model, optimizer, lr_scheduler, mimicit_loaders
+        )
 
     model.train()
 
@@ -456,11 +525,23 @@ def main():
         accelerator.wait_for_everyone()
         if args.save_ckpt_each_epoch:
             # save_checkpoint(epoch, model, args, accelerator)
-            save_final_weights(model, args, accelerator, processor=processor if "idefics" in args.model_name.lower() else None, tokenizer=tokenizer if "llama2" in args.model_name.lower() else None)
+            save_final_weights(
+                model,
+                args,
+                accelerator,
+                processor=processor if "idefics" in args.model_name.lower() else None,
+                tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
+            )
         accelerator.wait_for_everyone()
 
     # Save the final weights
-    save_final_weights(model, args, accelerator, processor=processor if "idefics" in args.model_name.lower() else None, tokenizer=tokenizer if "llama2" in args.model_name.lower() else None)
+    save_final_weights(
+        model,
+        args,
+        accelerator,
+        processor=processor if "idefics" in args.model_name.lower() else None,
+        tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
+    )
     # accelerator.wait_for_everyone()
 
 
