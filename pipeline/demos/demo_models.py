@@ -46,8 +46,8 @@ class TestOtter:
             lang_x=lang_x["input_ids"].to(self.model.device),
             attention_mask=lang_x["attention_mask"].to(self.model.device),
             max_new_tokens=512,
-            num_beams=3,
-            no_repeat_ngram_size=3,
+            temperature=0.2,
+            do_sample=True,
             pad_token_id=self.tokenizer.pad_token_id,
         )
         output = self.tokenizer.decode(generated_text[0]).split("<answer>")[-1].strip().replace("<|endofchunk|>", "")
