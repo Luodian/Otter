@@ -1,3 +1,7 @@
+- image_path: https://i.postimg.cc/q7ZRJ2ML/1.png
+  question: When a spring does work on an object, we cannot find the work by simply multiplying the spring force by the object's displacement. The reason is that there is no one value for the force-it changes. However, we can split the displacement up into an infinite number of tiny parts and then approximate the force in each as being constant. Integration sums the work done in all those parts. Here we use the generic result of the integration.\r\n\r\nIn Figure, a cumin canister of mass $m=0.40 \\mathrm{~kg}$ slides across a horizontal frictionless counter with speed $v=0.50 \\mathrm{~m} / \\mathrm{s}$. It then runs into and compresses a spring of spring constant $k=750 \\mathrm{~N} / \\mathrm{m}$. When the canister is momentarily stopped by the spring, by what distance $d$ is the spring compressed?
+- image_path: https://i.postimg.cc/Hx9TJ5TR/COCO-val2014-000000310196.jpg
+  question: Is there a snowboard in the image?
 - image_path: https://i.postimg.cc/tJCk8DRT/dall-226x300.jpg
   question: What does the image describe and is it unusual?
 - image_path: https://i.postimg.cc/3R3FD9vB/dall-e-3-got-announced-around-mid-october-for-gpt-v0-v8pb8e5j3gpb1.webp

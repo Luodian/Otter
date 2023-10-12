@@ -45,7 +45,7 @@ class TestOtter:
             vision_x=vision_x.to(self.model.device),
             lang_x=lang_x["input_ids"].to(self.model.device),
             attention_mask=lang_x["attention_mask"].to(self.model.device),
-            max_new_tokens=512,
+            max_new_tokens=1024,
             temperature=0.2,
             do_sample=True,
             pad_token_id=self.tokenizer.pad_token_id,
