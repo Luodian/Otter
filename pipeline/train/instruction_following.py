@@ -80,7 +80,7 @@ def forward_pass(
         )
         image_attention_mask = image_attention_mask.to(device_id, non_blocking=True)
         loss_mimicit = model(
-            pixel_values=images.squeeze(1, 2).to(autocast_type),
+            pixel_values=images.squeeze(2).to(autocast_type),
             input_ids=input_ids,
             attention_mask=attention_mask,
             image_attention_mask=image_attention_mask,
@@ -223,7 +223,6 @@ def train_one_epoch(
                 autocast_type,
             )
 
-        master_print(loss_mimicit)
         if accelerator.mixed_precision == "fp16":
             accelerator.backward(loss_mimicit.to(device_id))
         else:

@@ -141,7 +141,8 @@ class MimicitDataset(Dataset):
                 ]
             )
         elif args.model_name == "idefics":
-            self.patch_resize_transform = AutoProcessor.from_pretrained("HuggingFaceM4/idefics-9b-instruct").image_processor.preprocess
+            # since idefics transform will return a [batch, image], we need to squeeze it to match with our uniformed data format
+            self.patch_resize_transform = lambda x: AutoProcessor.from_pretrained("HuggingFaceM4/idefics-9b-instruct").image_processor.preprocess(x).squeeze(0)
         assert len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths), f"metas do not have same number"
 
         self.dataset = {}
@@ -256,7 +257,7 @@ class MimicitDataset(Dataset):
             question = re.sub(r"\s{2,}", " ", question)
             question = question.lstrip("\n")
             question = question.rstrip("\n")
-        question = question.strip(" ")
+        question = question.strip(" ").strip("\n")
 
         return question
 
@@ -266,7 +267,7 @@ class MimicitDataset(Dataset):
             answer = re.sub(r"\s{2,}", " ", answer)
             answer = answer.lstrip("\n")
             answer = answer.rstrip("\n")
-        answer = answer.strip(" ")
+        answer = answer.strip(" ").strip("\n")
         return answer
 
     def set_epoch(self, epoch, **unused):
