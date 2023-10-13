@@ -11,6 +11,7 @@ AVAILABLE_EVAL_DATASETS: Dict[str, str] = {
     "mathvista": "MathVistaDataset",
     "mmvet": "MMVetDataset",
     "seedbench": "SEEDBenchDataset",
+    "pope": "PopeDataset",
 }
 
 
