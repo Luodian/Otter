@@ -8,7 +8,7 @@ import datetime
 
 
 class SEEDBenchDataset(BaseEvalDataset):
-    def __init__(self, data_path: str = "Otter-AI/SEEDBench", split="test", default_output_path=".", cache_dir=None):
+    def __init__(self, data_path: str = "Otter-AI/SEEDBench", split="test", default_output_path="./logs", cache_dir=None):
         super().__init__("SEEDBenchDataset", data_path)
         print("Loading dataset from", data_path)
         self.data = load_dataset(data_path, split=split, cache_dir=cache_dir)

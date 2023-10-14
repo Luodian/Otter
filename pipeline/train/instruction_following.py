@@ -345,11 +345,8 @@ def main():
             )
             if args.gradient_checkpointing:
                 model.gradient_checkpointing_enable()
-            try:
-                processor = AutoProcessor.from_pretrained(args.pretrained_model_name_or_path, legacy=False)
-            except OSError:
-                processor = AutoProcessor.from_pretrained("HuggingfaceM4/idefics-9b-instruct", legacy=False)
 
+            processor = AutoProcessor.from_pretrained(args.pretrained_model_name_or_path, legacy=False)
             if "<answer>" not in processor.tokenizer.special_tokens_map["additional_special_tokens"]:
                 past_special_tokens = processor.tokenizer.special_tokens_map["additional_special_tokens"]
                 processor.tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"] + past_special_tokens})

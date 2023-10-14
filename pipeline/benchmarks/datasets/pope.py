@@ -12,7 +12,7 @@ class PopeDataset(BaseEvalDataset):
         self,
         data_path="Otter-AI/POPE",
         split="test",
-        default_output_path=".",
+        default_output_path="./logs",
         cache_dir=None,
     ):
         super().__init__("PopeDataset", data_path)
@@ -52,7 +52,8 @@ class PopeDataset(BaseEvalDataset):
                 question = data_dict["question"]
                 answer = data_dict["answer"]
                 image = data_dict["image"]
-                pred = self.parse_pred(model.generate(question, image))
+                response = model.generate(question, image)
+                pred = self.parse_pred(response)
                 category = data_dict["category"]
 
                 if answer == "yes":
@@ -90,11 +91,27 @@ class PopeDataset(BaseEvalDataset):
             print("TP\tFP\tTN\tFN\t")
             print("{}\t{}\t{}\t{}".format(TP, FP, TN, FN))
 
-            metrics[category]["precision"] = precision = float(TP) / float(TP + FP)
-            metrics[category]["recall"] = recall = float(TP) / float(TP + FN)
-            metrics[category]["f1"] = f1 = 2 * precision * recall / float(precision + recall)
+            if TP + FP == 0:
+                metrics[category]["precision"] = precision = 0
+            else:
+                metrics[category]["precision"] = precision = float(TP) / float(TP + FP)
+
+            if TP + FN == 0:
+                metrics[category]["recall"] = recall = 0
+            else:
+                metrics[category]["recall"] = recall = float(TP) / float(TP + FN)
+
+            if precision + recall == 0:
+                metrics[category]["f1"] = f1 = 0
+            else:
+                metrics[category]["f1"] = f1 = 2 * precision * recall / float(precision + recall)
+
             metrics[category]["acc"] = acc = float(TP + TN) / float(TP + TN + FP + FN)
-            metrics[category]["yes_ratio"] = yes_ratio = yes_count / float(yes_count + no_count)
+
+            if yes_count + no_count == 0:
+                metrics[category]["yes_ratio"] = yes_ratio = 0
+            else:
+                metrics[category]["yes_ratio"] = yes_ratio = yes_count / float(yes_count + no_count)
 
             print("Accuracy: {}".format(acc))
             print("Precision: {}".format(precision))

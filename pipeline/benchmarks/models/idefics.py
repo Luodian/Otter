@@ -27,7 +27,7 @@ def get_pil_image(raw_image_data) -> Image.Image:
 def get_formatted_prompt(question, image=None, answer="") -> List[str]:
     if answer == "":
         return [
-            f"User",
+            f"User:",
             get_pil_image(image),
             question,
             "<end_of_utterance>\n",
@@ -70,7 +70,7 @@ class Idefics(BaseModel):
             **inputs,
             eos_token_id=exit_condition,
             bad_words_ids=bad_words_ids,
-            max_new_tokens=512,
+            max_new_tokens=768,
             temperature=0.2,
             do_sample=True,
             top_p=0.5,

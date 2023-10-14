@@ -383,7 +383,7 @@ class MimicitDataset(Dataset):
             print(f"in_context_example_ids: {in_context_example_ids}")
             exit()
 
-        if cur_task_desc != "":
+        if cur_task_desc != "" and self.args.with_task_description:
             all_texts = cur_task_desc + "\n" + all_texts
         tokenized_all_text = self.tokenizer(
             all_texts,
