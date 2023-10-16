@@ -359,7 +359,7 @@ parser.add_argument(
 
 def main():
     args, leftovers = parser.parse_known_args()
-    module = importlib.import_module(f"pipeline.eval.models.{args.model}")
+    module = importlib.import_module(f"pipeline.benchmarks.public_datasets_suite.models.{args.model}")
 
     # print("======================================")
     # print(args)

@@ -4,9 +4,9 @@ from PIL import Image
 import torch
 import transformers
 
-from pipeline.eval.eval_model import BaseEvalModel
+from pipeline.benchmarks.public_datasets_suite.eval_model import BaseEvalModel
 from contextlib import suppress
-from pipeline.eval.models.utils import unwrap_model
+from pipeline.benchmarks.public_datasets_suite.models.utils import unwrap_model
 from otter_ai import OtterForConditionalGeneration
 import os
 

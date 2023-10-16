@@ -53,6 +53,7 @@ python -m pipeline.eval.evaluate \
     --eval_textvqa \
     --eval_vizwiz \
     --eval_hateful_memes \
+    --device=cuda
 
 
 
