@@ -108,8 +108,7 @@ class EvalModel(BaseEvalModel):
         num_beams: int,
         length_penalty: float,
     ) -> List[str]:
-        batch_images = list(map(lambda x: x[0], batch_images))
-        formatted_prompt = get_formatted_prompt(batch_text, batch_images)
+        instructions = get_formatted_prompt(batch_text, batch_images)
 
 
 if __name__ == "__main__":
