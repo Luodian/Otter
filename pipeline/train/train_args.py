@@ -161,6 +161,11 @@ def parse_args():
         default=False,
         help="resize embedding layer to match the vocabulary size.",
     )
+    parser.add_argument(
+        "--with_task_description",
+        action="store_true",
+        default=False,
+    )
     args = parser.parse_args()
 
     # Check for argument consistency and set environment variables if needed

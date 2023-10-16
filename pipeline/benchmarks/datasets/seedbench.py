@@ -8,7 +8,7 @@ import datetime
 
 
 class SEEDBenchDataset(BaseEvalDataset):
-    def __init__(self, data_path: str = "Otter-AI/SEEDBench", split="test", default_output_path=".", cache_dir=None):
+    def __init__(self, data_path: str = "Otter-AI/SEEDBench", split="test", default_output_path="./logs", cache_dir=None):
         super().__init__("SEEDBenchDataset", data_path)
         print("Loading dataset from", data_path)
         self.data = load_dataset(data_path, split=split, cache_dir=cache_dir)
@@ -30,25 +30,28 @@ class SEEDBenchDataset(BaseEvalDataset):
                 for cur_idx in range(4):
                     question += f" {option_index[cur_idx]}. {data_dict[f'choice_{option_index[cur_idx].lower()}']}"
 
-                answer = data_dict["answer"]
-                options = [
-                    data_dict["choice_a"],
-                    data_dict["choice_b"],
-                    data_dict["choice_c"],
-                    data_dict["choice_d"],
-                ]
+                    answer = data_dict["answer"]
+                    options = [
+                        data_dict["choice_a"],
+                        data_dict["choice_b"],
+                        data_dict["choice_c"],
+                        data_dict["choice_d"],
+                    ]
 
-                option_losses = []
-                for idx, option in enumerate(options):
-                    option = option_index[idx] + ". " + option
-                    loss = model.eval_forward(question, option, image)
-                    option_losses.append(loss.item())
+                    option_losses = []
+                    for idx, option in enumerate(options):
+                        option = option_index[idx] + ". " + option
+                        loss = model.eval_forward(question, option, image)
+                        option_losses.append(loss.item())
 
-                prediction_idx = np.argmin(option_losses)
-                prediction = ["A", "B", "C", "D"][prediction_idx]
-                if prediction == answer:
-                    num_correct += 1
-                count += 1
+                    prediction_idx = np.argmin(option_losses)
+                    prediction = ["A", "B", "C", "D"][prediction_idx]
+                    if prediction == answer:
+                        num_correct += 1
+                    count += 1
+
+                answer_record = {"question_id": data_dict["question_id"], "prediction": prediction}
+                output_f.write(json.dumps(answer_record) + "\n")
 
                 answer_record = {"question_id": data_dict["question_id"], "prediction": prediction}
                 output_f.write(json.dumps(answer_record) + "\n")

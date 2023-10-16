@@ -4,8 +4,8 @@ from PIL import Image
 import torch
 
 from transformers import Blip2Processor, Blip2ForConditionalGeneration
-from open_flamingo.eval.eval_model import BaseEvalModel
-from open_flamingo.eval.models.utils import unwrap_model
+from pipeline.benchmarks.public_datasets_suite.eval_model import BaseEvalModel
+from pipeline.benchmarks.public_datasets_suite.models.utils import unwrap_model
 
 
 class EvalModel(BaseEvalModel):
