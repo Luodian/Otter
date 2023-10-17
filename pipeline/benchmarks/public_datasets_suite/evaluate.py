@@ -377,7 +377,7 @@ def main():
     if device_id != torch.device("cpu") and args.world_size > 1:
         eval_model.init_distributed()
 
-    if args.model != "open_flamingo" and args.model != "otter" and args.shots != [0]:
+    if args.model != "open_flamingo" and args.model != "otter" and args.model != "idefics" and args.shots != [0]:
         raise ValueError("Only 0 shot eval is supported for non-open_flamingo models")
 
     if len(args.trial_seeds) != args.num_trials:

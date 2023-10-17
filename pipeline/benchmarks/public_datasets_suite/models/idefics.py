@@ -44,7 +44,10 @@ def get_single_formatted_prompt(instruction: str, images: List[Image.Image]) -> 
                 continue
             if final_instruction == [] and formatted_ins == end_of_utterance:
                 continue
-            final_instruction.append(formatted_ins.strip())
+            if isinstance(formatted_ins, str):
+                final_instruction.append(formatted_ins.strip())
+            else:
+                final_instruction.append(formatted_ins)
 
     if final_instruction[-1] == "Assistant:<answer>":
         final_instruction[-1] = "Assistant:"
@@ -109,6 +112,27 @@ class EvalModel(BaseEvalModel):
         length_penalty: float,
     ) -> List[str]:
         instructions = get_formatted_prompt(batch_text, batch_images)
+        inputs = self.processor(instructions, return_tensors="pt").to(self.device)
+        exit_condition = self.processor.tokenizer("<end_of_utterance>", add_special_tokens=False).input_ids
+        bad_words_ids = self.processor.tokenizer(["<image>", "<fake_token_around_image>"], add_special_tokens=False).input_ids
+        generated_ids = self.model.generate(
+            **inputs,
+            eos_token_id=exit_condition,
+            bad_words_ids=bad_words_ids,
+            max_new_tokens=max_generation_length,
+            temperature=0.2,
+            do_sample=True,
+            top_p=0.5,
+        )
+        generated_text = self.processor.batch_decode(generated_ids)
+        results = map(lambda text: text.split("Assistant:")[-1].split(self.endofchunk_text)[0].strip(), generated_text)
+        return results
+
+    def get_vqa_prompt(self, question, answer=None) -> str:
+        return f"<image>User: {question} Please answer in short words. GPT:<answer>{answer if answer is not None else ''}{self.endofchunk_text if answer is not None else ''}"
+
+    def get_caption_prompt(self, caption=None) -> str:
+        return f"<image>User: What does the image describe? GPT:<answer>{caption if caption is not None else ''}{self.endofchunk_text if caption is not None else ''}"
 
 
 if __name__ == "__main__":
