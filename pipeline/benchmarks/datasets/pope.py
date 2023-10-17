@@ -53,7 +53,7 @@ class PopeDataset(BaseEvalDataset):
                 answer = data_dict["answer"]
                 image = data_dict["image"]
                 response = model.generate(question, image)
-                pred = self.parse_pred()
+                pred = self.parse_pred(response)
                 category = data_dict["category"]
 
                 if answer == "yes":
