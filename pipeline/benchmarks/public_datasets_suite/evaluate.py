@@ -695,9 +695,9 @@ def evaluate_captioning(
     predictions = defaultdict()
 
     np.random.seed(seed + args.rank)  # make sure each worker has a different seed for the random context samples
-    
+
     # index = 0
-    
+
     for batch in tqdm(
         test_dataloader,
         desc=f"Running inference {dataset_name.upper()}",
@@ -737,9 +737,9 @@ def evaluate_captioning(
             predictions[sample_id] = {
                 "caption": new_predictions[i],
             }
-        
+
         # index += 1
-        
+
         # if index >= 3:
         #     break
 

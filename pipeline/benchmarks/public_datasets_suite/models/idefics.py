@@ -160,7 +160,6 @@ class EvalModel(BaseEvalModel):
                 )
         return outputs
 
-
     def get_vqa_prompt(self, question, answer=None) -> str:
         return f"<image>User: {question} Please answer in short words. GPT:<answer>{answer if answer is not None else ''}{self.endofchunk_text if answer is not None else ''}"
 
