@@ -119,13 +119,18 @@ class EvalModel(BaseEvalModel):
             **inputs,
             eos_token_id=exit_condition,
             bad_words_ids=bad_words_ids,
+            min_new_tokens=min_generation_length,
             max_new_tokens=max_generation_length,
+            # num_beams=num_beams,
+            length_penalty=length_penalty,
             temperature=0.2,
             do_sample=True,
             top_p=0.5,
         )
         generated_text = self.processor.batch_decode(generated_ids)
-        results = map(lambda text: text.split("Assistant:")[-1].split(self.endofchunk_text)[0].strip(), generated_text)
+        results = list(map(lambda text: text.split("Assistant:")[-1].split(self.endofchunk_text)[0].strip(), generated_text))
+        # print(max_generation_length)
+        # print(results)
         return results
 
     def get_vqa_prompt(self, question, answer=None) -> str:

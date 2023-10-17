@@ -114,7 +114,13 @@ class EvalModel(BaseEvalModel):
 
         outputs = outputs[:, len(input_ids[0]) :]
 
-        return self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
+        result = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
+
+        result = list(map(lambda text: text.strip(), result))
+
+        # print(result)
+        
+        return result
 
     def get_logits(
         self,
