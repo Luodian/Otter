@@ -119,7 +119,7 @@ class EvalModel(BaseEvalModel):
         result = list(map(lambda text: text.strip(), result))
 
         # print(result)
-        
+
         return result
 
     def get_logits(
