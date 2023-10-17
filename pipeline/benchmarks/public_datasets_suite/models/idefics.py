@@ -8,6 +8,7 @@ from pipeline.train.train_utils import find_and_remove_tokens, get_image_attenti
 from pipeline.benchmarks.public_datasets_suite.models.utils import unwrap_model
 import base64
 import numpy as np
+from contextlib import suppress
 import re
 
 
@@ -102,6 +103,10 @@ class EvalModel(BaseEvalModel):
         self.eos_token_id = self.processor.tokenizer(self.processor.tokenizer.eos_token, add_special_tokens=False)["input_ids"][-1]
         self.patch_resize_transform = self.processor.image_processor.preprocess
 
+        # autocast
+        self.autocast = get_autocast(model_args["precision"])
+        self.cast_dtype = get_cast_dtype(model_args["precision"])
+
     def get_outputs(
         self,
         batch_text: List[str],
@@ -115,18 +120,20 @@ class EvalModel(BaseEvalModel):
         inputs = self.processor(instructions, return_tensors="pt").to(self.device)
         exit_condition = self.processor.tokenizer("<end_of_utterance>", add_special_tokens=False).input_ids
         bad_words_ids = self.processor.tokenizer(["<image>", "<fake_token_around_image>"], add_special_tokens=False).input_ids
-        generated_ids = self.model.generate(
-            **inputs,
-            eos_token_id=exit_condition,
-            bad_words_ids=bad_words_ids,
-            min_new_tokens=min_generation_length,
-            max_new_tokens=max_generation_length,
-            # num_beams=num_beams,
-            length_penalty=length_penalty,
-            temperature=0.2,
-            do_sample=True,
-            top_p=0.5,
-        )
+        with torch.inference_mode():
+            with self.autocast():
+                generated_ids = unwrap_model(self.model).generate(
+                    **inputs,
+                    eos_token_id=exit_condition,
+                    bad_words_ids=bad_words_ids,
+                    min_new_tokens=min_generation_length,
+                    max_new_tokens=max_generation_length,
+                    num_beams=4,
+                    length_penalty=length_penalty,
+                    temperature=0.2,
+                    do_sample=True,
+                    top_p=0.5,
+                )
         generated_text = self.processor.batch_decode(generated_ids)
         results = list(map(lambda text: text.split("Assistant:")[-1].split(self.endofchunk_text)[0].strip(), generated_text))
         # print(max_generation_length)
@@ -138,6 +145,25 @@ class EvalModel(BaseEvalModel):
 
     def get_caption_prompt(self, caption=None) -> str:
         return f"<image>User: What does the image describe? GPT:<answer>{caption if caption is not None else ''}{self.endofchunk_text if caption is not None else ''}"
+
+
+def get_cast_dtype(precision: str):
+    cast_dtype = None
+    if precision == "bf16":
+        cast_dtype = torch.bfloat16
+    elif precision == "fp16":
+        cast_dtype = torch.float16
+    return cast_dtype
+
+
+def get_autocast(precision):
+    if precision == "amp":
+        return torch.cuda.amp.autocast
+    elif precision == "amp_bfloat16" or precision == "amp_bf16":
+        # amp_bfloat16 is more stable than amp float16 for clip training
+        return lambda: torch.cuda.amp.autocast(dtype=torch.bfloat16)
+    else:
+        return suppress
 
 
 if __name__ == "__main__":
