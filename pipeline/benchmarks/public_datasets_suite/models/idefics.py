@@ -10,77 +10,7 @@ import base64
 import numpy as np
 from contextlib import suppress
 import re
-
-
-def get_single_formatted_prompt(instruction: str, images: List[Image.Image]) -> List[str]:
-    end_of_utterance = "<end_of_utterance>\n"
-    image_tag = "<image>"
-    user_note = "User:"
-    assistant_note = "Assistant:"
-    change_role_tag = "<change_role>"
-    instruction = instruction.replace(f"{image_tag}{user_note}", f"{user_note}{image_tag}")
-    instruction = instruction.replace("GPT:", assistant_note)
-    instruction = instruction.replace(user_note, f"{change_role_tag}{end_of_utterance}{change_role_tag}{user_note}")
-    instruction = instruction.replace(assistant_note, f"{change_role_tag}{end_of_utterance}{change_role_tag}{assistant_note}")
-    instruction = instruction.split(image_tag)
-    assert len(instruction) == len(images) + 1, f"Number of images ({len(images)}) does not match number of image tags ({len(instruction) - 1})"
-    instruction_with_image = []
-    for i in range(len(images)):
-        instruction_with_image.append(instruction[i].strip())
-        instruction_with_image.append(images[i])
-    instruction_with_image.append(instruction[-1].strip())
-
-    final_instruction = []
-
-    def format(text):
-        if not isinstance(text, str):
-            return [text]
-        text = text.strip()
-        text = text.split(change_role_tag)
-        return text
-
-    for ins in instruction_with_image:
-        for formatted_ins in format(ins):
-            if formatted_ins is None or formatted_ins == "":
-                continue
-            if final_instruction == [] and formatted_ins == end_of_utterance:
-                continue
-            if isinstance(formatted_ins, str):
-                final_instruction.append(formatted_ins.strip())
-            else:
-                final_instruction.append(formatted_ins)
-
-    if final_instruction[-1] == "Assistant:<answer>":
-        final_instruction[-1] = "Assistant:"
-    elif final_instruction[-1] != end_of_utterance:
-        final_instruction.append(end_of_utterance)
-
-    return final_instruction
-
-    # if answer == "":
-    #     return [
-    #         f"User:",
-    #         image,
-    #         question,
-    #         "<end_of_utterance>\n",
-    #         "Assistant:",
-    #     ]
-    # else:
-    #     return [
-    #         f"User:",
-    #         image,
-    #         question,
-    #         "<end_of_utterance>\n",
-    #         f"Assistant:<answer> {answer}",
-    #         "<end_of_utterance>",
-    #     ]
-
-
-def get_formatted_prompt(questions, images):
-    instructions = []
-    for ques, img in zip(questions, images):
-        instructions.append(get_single_formatted_prompt(ques, img))
-    return instructions
+import json
 
 
 class EvalModel(BaseEvalModel):
@@ -107,6 +37,18 @@ class EvalModel(BaseEvalModel):
         self.autocast = get_autocast(model_args["precision"])
         self.cast_dtype = get_cast_dtype(model_args["precision"])
 
+        self.image_processor = self.processor.image_processor
+        self.tokenizer = self.processor.tokenizer
+        self.tokenizer.padding_side = "left"
+    
+    
+    def get_list_image_vision_x(self, images: List[Image.Image]) -> torch.Tensor:
+        return self.image_processor.preprocess(images, return_tensors="pt").to(self.device)
+    
+    def get_vision_x(self, batch_images: List[List[Image.Image]]) -> torch.Tensor:
+        vision_x = [self.get_list_image_vision_x(images) for images in batch_images]
+        return torch.stack(vision_x).to(self.device)
+    
     def get_outputs(
         self,
         batch_text: List[str],
@@ -116,28 +58,45 @@ class EvalModel(BaseEvalModel):
         num_beams: int,
         length_penalty: float,
     ) -> List[str]:
-        instructions = get_formatted_prompt(batch_text, batch_images)
-        inputs = self.processor(instructions, return_tensors="pt").to(self.device)
+        # print(json.dumps(batch_text, indent=4))
+        # instructions = get_formatted_prompt(batch_text, batch_images)
+        # inputs = self.processor(batch_text, return_tensors="pt").to(self.device)
+        lang_x = self.tokenizer(
+            batch_text,
+            return_tensors="pt",
+            padding=True,
+        )
+        vision_x = self.get_vision_x(batch_images)
         exit_condition = self.processor.tokenizer("<end_of_utterance>", add_special_tokens=False).input_ids
         bad_words_ids = self.processor.tokenizer(["<image>", "<fake_token_around_image>"], add_special_tokens=False).input_ids
-        with torch.inference_mode():
-            with self.autocast():
-                generated_ids = unwrap_model(self.model).generate(
-                    **inputs,
-                    eos_token_id=exit_condition,
-                    bad_words_ids=bad_words_ids,
-                    min_new_tokens=min_generation_length,
-                    max_new_tokens=max_generation_length,
-                    # num_beams=num_beams,
-                    # length_penalty=length_penalty,
-                    temperature=0.2,
-                    do_sample=True,
-                    top_p=0.5,
-                )
+        image_attention_mask = get_image_attention_mask(lang_x["input_ids"], 1, self.tokenizer)
+        # print(vision_x.shape, lang_x["input_ids"].shape, lang_x["attention_mask"].shape, image_attention_mask.shape)
+        generated_ids = self.model.generate(
+            pixel_values=vision_x.to(self.model.device),
+            input_ids=lang_x["input_ids"].to(self.model.device),
+            attention_mask=lang_x["attention_mask"].to(self.model.device),
+            image_attention_mask=image_attention_mask.to(self.model.device),
+            eos_token_id=exit_condition,
+            bad_words_ids=bad_words_ids,
+            num_beams=3,
+            max_new_tokens=512,
+        )
+        # generated_ids = unwrap_model(self.model).generate(
+        #     **inputs,
+        #     eos_token_id=exit_condition,
+        #     bad_words_ids=bad_words_ids,
+        #     min_new_tokens=min_generation_length,
+        #     max_new_tokens=max_generation_length,
+        #     # num_beams=num_beams,
+        #     # length_penalty=length_penalty,
+        #     temperature=0.2,
+        #     do_sample=True,
+        #     top_p=0.5,
+        # )
         generated_text = self.processor.batch_decode(generated_ids)
         results = list(map(lambda text: text.split("Assistant:")[-1].split(self.endofchunk_text)[0].strip(), generated_text))
         # print(max_generation_length)
-        # print(results)
+        # print(json.dumps(results, indent=4))
         return results
 
     def get_logits(
@@ -161,10 +120,10 @@ class EvalModel(BaseEvalModel):
         return outputs
 
     def get_vqa_prompt(self, question, answer=None) -> str:
-        return f"<image>User: {question} Please answer in short words. GPT:<answer>{answer if answer is not None else ''}{self.endofchunk_text if answer is not None else ''}"
+        return f"<image>User: <fake_token_around_image><image><fake_token_around_image>{question} Please answer in short words.<end_of_utterance>\nAssistant:{f'<answer>{answer}{self.endofchunk_text}' if answer is not None else ''}"
 
     def get_caption_prompt(self, caption=None) -> str:
-        return f"<image>User: What does the image describe? GPT:<answer>{caption if caption is not None else ''}{self.endofchunk_text if caption is not None else ''}"
+        return f"<image>User: <fake_token_around_image><image><fake_token_around_image>What does the image describe?<end_of_utterance>\nAssistant:{f'<answer>{caption}{self.endofchunk_text}' if caption is not None else ''}"
 
 
 def get_cast_dtype(precision: str):
@@ -186,6 +145,6 @@ def get_autocast(precision):
         return suppress
 
 
-if __name__ == "__main__":
-    s = "<image>User: what is the brand on the bottle? Please answer in short words. GPT:<answer>"
-    print(get_single_formatted_prompt(s, ["An image"]))
+# if __name__ == "__main__":
+#     s = "<image>User: what is the brand on the bottle? Please answer in short words. GPT:<answer>"
+#     print(get_single_formatted_prompt(s, ["An image"]))
