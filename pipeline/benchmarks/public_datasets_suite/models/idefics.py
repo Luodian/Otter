@@ -41,6 +41,9 @@ class EvalModel(BaseEvalModel):
         self.tokenizer = self.processor.tokenizer
         self.tokenizer.padding_side = "left"
 
+        self.token_around_image = "<fake_token_around_image>"
+        self.image_token = "<image>"
+
     def get_list_image_vision_x(self, images: List[Image.Image]) -> torch.Tensor:
         return self.image_processor.preprocess(images, return_tensors="pt").to(self.device)
 
@@ -121,10 +124,12 @@ class EvalModel(BaseEvalModel):
         return outputs
 
     def get_vqa_prompt(self, question, answer=None) -> str:
-        return f"User: <fake_token_around_image><image><fake_token_around_image>{question} Please answer in short words.<end_of_utterance>\nAssistant:{f'{answer}{self.endofchunk_text}' if answer is not None else ''}"
+        # return f"Image:{self.token_around_image}{self.image_token}{self.token_around_image}Question: {question} Answer: {answer if answer is not None else ''}\n{self.endofchunk_text}"
+        return f"{self.token_around_image}{self.image_token}{self.token_around_image}User: {question} Please answer in short words.<end_of_utterance>\nAssistant:{f'{answer}{self.endofchunk_text}' if answer is not None else ''}"  # 14.36
+        # return f"User: <fake_token_around_image><image><fake_token_around_image>{question}<end_of_utterance>\nAssistant:{f'{answer}{self.endofchunk_text}' if answer is not None else ''}" # 5.94
 
     def get_caption_prompt(self, caption=None) -> str:
-        return f"User: <fake_token_around_image><image><fake_token_around_image>What does the image describe?<end_of_utterance>\nAssistant:{f'{caption}{self.endofchunk_text}' if caption is not None else ''}"
+        return f"{self.token_around_image}{self.image_token}{self.token_around_image}User: What does the image describe?<end_of_utterance>\nAssistant:{f'{caption}{self.endofchunk_text}' if caption is not None else ''}"
 
 
 def get_cast_dtype(precision: str):
