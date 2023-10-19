@@ -41,14 +41,14 @@ python -m pipeline.benchmarks.public_datasets_suite.evaluate \
     --hateful_memes_train_annotations_json_path=/data/pufanyi/download/lavis/hateful_memes/train.json \
     --hateful_memes_test_annotations_json_path=/data/pufanyi/download/lavis/hateful_memes/dev.json \
     --model=idefics \
-    --checkpoint_path=/data \
     --model_path=/data/pufanyi/training_data/checkpoints/idefics-9b-instruct \
     --device_map=auto \
     --precision=fp32 \
+    --eval_vqav2 \
     --batch_size=8 \
-    --eval_coco \
-    --device=cuda
-
+    --device=cuda \
+    --results_file=./logs/idefics.json \
+    # --eval_coco \
     # --eval_vqav2 \
     # --eval_flickr30 \
     # --eval_ok_vqa \

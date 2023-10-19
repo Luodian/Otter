@@ -356,6 +356,13 @@ parser.add_argument(
     help="Don't set device index from local rank (when CUDA_VISIBLE_DEVICES restricted to one per proc).",
 )
 
+parser.add_argument(
+    "--debug_num",
+    default=None,
+    type=int,
+    help="Number of samples to debug on. None for all samples.",
+)
+
 
 def main():
     args, leftovers = parser.parse_known_args()
@@ -696,7 +703,8 @@ def evaluate_captioning(
 
     np.random.seed(seed + args.rank)  # make sure each worker has a different seed for the random context samples
 
-    # index = 0
+    if args.debug_num:
+        index = 0
 
     for batch in tqdm(
         test_dataloader,
@@ -738,10 +746,11 @@ def evaluate_captioning(
                 "caption": new_predictions[i],
             }
 
-        # index += 1
+        if args.debug_num:
+            index += 1
 
-        # if index >= 3:
-        #     break
+            if index >= args.debug_num:
+                break
 
     # all gather
     all_predictions = [None] * args.world_size
