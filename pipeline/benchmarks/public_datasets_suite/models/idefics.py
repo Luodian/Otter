@@ -40,15 +40,14 @@ class EvalModel(BaseEvalModel):
         self.image_processor = self.processor.image_processor
         self.tokenizer = self.processor.tokenizer
         self.tokenizer.padding_side = "left"
-    
-    
+
     def get_list_image_vision_x(self, images: List[Image.Image]) -> torch.Tensor:
         return self.image_processor.preprocess(images, return_tensors="pt").to(self.device)
-    
+
     def get_vision_x(self, batch_images: List[List[Image.Image]]) -> torch.Tensor:
         vision_x = [self.get_list_image_vision_x(images) for images in batch_images]
         return torch.stack(vision_x).to(self.device)
-    
+
     def get_outputs(
         self,
         batch_text: List[str],
