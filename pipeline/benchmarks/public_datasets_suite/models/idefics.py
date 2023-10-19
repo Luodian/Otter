@@ -70,7 +70,7 @@ class EvalModel(BaseEvalModel):
         bad_words_ids = self.processor.tokenizer(["<image>", "<fake_token_around_image>"], add_special_tokens=False).input_ids
         image_attention_mask = get_image_attention_mask(lang_x["input_ids"], vision_x.shape[1], self.tokenizer)
         # print(vision_x.shape, lang_x["input_ids"].shape, lang_x["attention_mask"].shape, image_attention_mask.shape)
-        generated_ids = self.model.generate(
+        generated_ids = unwrap_model(self.model).generate(
             pixel_values=vision_x.to(self.model.device),
             input_ids=lang_x["input_ids"].to(self.model.device),
             attention_mask=lang_x["attention_mask"].to(self.model.device),
