@@ -69,7 +69,7 @@ class EvalModel(BaseEvalModel):
         vision_x = self.get_vision_x(batch_images)
         exit_condition = self.processor.tokenizer("<end_of_utterance>", add_special_tokens=False).input_ids
         bad_words_ids = self.processor.tokenizer(["<image>", "<fake_token_around_image>"], add_special_tokens=False).input_ids
-        image_attention_mask = get_image_attention_mask(lang_x["input_ids"], 1, self.tokenizer)
+        image_attention_mask = get_image_attention_mask(lang_x["input_ids"], vision_x.shape[1], self.tokenizer)
         # print(vision_x.shape, lang_x["input_ids"].shape, lang_x["attention_mask"].shape, image_attention_mask.shape)
         generated_ids = self.model.generate(
             pixel_values=vision_x.to(self.model.device),
@@ -78,8 +78,10 @@ class EvalModel(BaseEvalModel):
             image_attention_mask=image_attention_mask.to(self.model.device),
             eos_token_id=exit_condition,
             bad_words_ids=bad_words_ids,
-            num_beams=3,
-            max_new_tokens=512,
+            num_beams=num_beams,
+            length_penalty=length_penalty,
+            max_new_tokens=max_generation_length,
+            min_new_tokens=min_generation_length,
         )
         # generated_ids = unwrap_model(self.model).generate(
         #     **inputs,
@@ -120,10 +122,10 @@ class EvalModel(BaseEvalModel):
         return outputs
 
     def get_vqa_prompt(self, question, answer=None) -> str:
-        return f"<image>User: <fake_token_around_image><image><fake_token_around_image>{question} Please answer in short words.<end_of_utterance>\nAssistant:{f'<answer>{answer}{self.endofchunk_text}' if answer is not None else ''}"
+        return f"User: <fake_token_around_image><image><fake_token_around_image>{question} Please answer in short words.<end_of_utterance>\nAssistant:{f'{answer}{self.endofchunk_text}' if answer is not None else ''}"
 
     def get_caption_prompt(self, caption=None) -> str:
-        return f"<image>User: <fake_token_around_image><image><fake_token_around_image>What does the image describe?<end_of_utterance>\nAssistant:{f'<answer>{caption}{self.endofchunk_text}' if caption is not None else ''}"
+        return f"User: <fake_token_around_image><image><fake_token_around_image>What does the image describe?<end_of_utterance>\nAssistant:{f'{caption}{self.endofchunk_text}' if caption is not None else ''}"
 
 
 def get_cast_dtype(precision: str):
