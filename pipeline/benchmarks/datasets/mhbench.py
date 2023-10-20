@@ -24,7 +24,7 @@ class MultiHopBenchDataset(BaseEvalDataset):
         if not os.path.exists(os.path.join(video_dir, "images")):
             shutil.unpack_archive(os.path.join(cache_path, "images.zip"), video_dir)
 
-    def _evaluate(self, model, batch, output_file=None):
+    def _evaluate(self, model, output_file=None):
         result = dict()
         for cur_data in tqdm(self.df["test"]):
             question_idx = cur_data["question_idx"]

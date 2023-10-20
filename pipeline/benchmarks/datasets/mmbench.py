@@ -65,7 +65,7 @@ class MMBenchDataset(BaseEvalDataset):
         }
         return data
 
-    def _evaluate(self, model, batch):
+    def _evaluate(self, model):
         output_file = os.path.join(self.default_output_path, f"{model.name}_mmbench_eval_result_{self.cur_datetime}.xlsx")
         results = []
 

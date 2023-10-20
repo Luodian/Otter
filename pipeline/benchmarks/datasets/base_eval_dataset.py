@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from PIL import Image
-from typing import Dict
+from typing import Dict, List, Any
 
 import importlib
 
@@ -35,8 +35,13 @@ class BaseEvalDataset(ABC):
     def evaluate(self, model, **kwargs):
         batch = kwargs.get("batch", 1)
         batch = self.check_batch(batch, model)
-        kwargs["batch"] = batch
-        return self._evaluate(model, **kwargs)
+        if batch == 1:
+            if "batch" in kwargs:
+                del kwargs["batch"]
+            return self._evaluate(model, **kwargs)
+        else:
+            kwargs["batch"] = batch
+            return self._evaluate(model, **kwargs)
 
     @abstractmethod
     def _evaluate(self, model: str):

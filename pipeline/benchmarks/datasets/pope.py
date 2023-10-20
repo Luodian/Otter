@@ -35,7 +35,7 @@ class PopeDataset(BaseEvalDataset):
         else:
             return "yes"
 
-    def _evaluate(self, model, batch):
+    def _evaluate(self, model):
         cur_datetime = datetime.datetime.now().strftime("%Y%m%d-%H%M")
         output_path = os.path.join(self.default_output_path, f"pope_{model.name}_test_submit_{cur_datetime}.json")
 
