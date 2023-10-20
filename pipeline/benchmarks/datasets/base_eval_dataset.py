@@ -20,7 +20,7 @@ class BaseEvalDataset(ABC):
         self.name = name
         self.dataset_path = dataset_path
         self.can_batch_eval = can_batch_eval
-        
+
     def check_batch(self, batch, model):
         if batch == 1:
             return batch
