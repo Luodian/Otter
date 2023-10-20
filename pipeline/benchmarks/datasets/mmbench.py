@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from tqdm import tqdm
+from tqdm import tqdm, trange
 from datasets import load_dataset
 from .base_eval_dataset import BaseEvalDataset
 import pytz
@@ -22,7 +22,7 @@ class MMBenchDataset(BaseEvalDataset):
         cache_dir=None,
         default_output_path="./logs",
     ):
-        super().__init__("MMBenchDataset", data_path)
+        super().__init__("MMBenchDataset", data_path, can_batch_eval=True)
         self.version = str(version)
         self.name_converter = {"dev": "validation", "test": "test"}
         self.df = load_dataset("Otter-AI/MMBench", self.version, split=self.name_converter[split], cache_dir=cache_dir).to_pandas()
@@ -65,28 +65,32 @@ class MMBenchDataset(BaseEvalDataset):
         }
         return data
 
-    def _evaluate(self, model):
+    def query_batch(self, model, batch_data):
+        batch_img = batch_data["img"]
+        batch_prompt = [f"{data['hint']} {data['question']} {data['options']}" if pd.notna(data["hint"]) else f"{data['question']} {data['options']}" for data in batch_data]
+        batch_pred_answer = model.generate(batch_prompt, batch_img)
+        return [
+            {
+                "question": data["question"],
+                "answer": data["answer"],
+                **data["options_dict"],
+                "prediction": pred_answer,
+                "hint": data["hint"],
+                "source": data["source"],
+                "split": data["split"],
+                "category": data["category"],
+                "l2-category": data["l2-category"],
+                "index": data["index"],
+            }
+            for data, pred_answer in zip(batch_data, batch_pred_answer)
+        ]
+
+    def _evaluate(self, model, *, batch=1):
         output_file = os.path.join(self.default_output_path, f"{model.name}_mmbench_eval_result_{self.cur_datetime}.xlsx")
         results = []
 
-        for idx in tqdm(range(len(self.df))):
-            cur_data = self.get_data(idx)
-            cur_prompt = f"{cur_data['hint']} {cur_data['question']} {cur_data['options']}" if pd.notna(cur_data["hint"]) else f"{cur_data['question']} {cur_data['options']}"
-            pred_answer = model.generate(cur_prompt, cur_data["img"])
-
-            result = {
-                "question": cur_data["question"],
-                "answer": cur_data["answer"],
-                **cur_data["options_dict"],
-                "prediction": pred_answer,
-                "hint": cur_data["hint"],
-                "source": cur_data["source"],
-                "split": cur_data["split"],
-                "category": cur_data["category"],
-                "l2-category": cur_data["l2-category"],
-                "index": cur_data["index"],
-            }
-            results.append(result)
+        for idx in trange(0, len(self.df), batch):
+            results.extend(self.query_batch(model, self.df[idx : idx + batch]))
 
         df = pd.DataFrame(results)
         with pd.ExcelWriter(output_file, engine="xlsxwriter") as writer:
