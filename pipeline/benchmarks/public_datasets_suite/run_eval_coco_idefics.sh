@@ -44,17 +44,17 @@ python -m pipeline.benchmarks.public_datasets_suite.evaluate \
     --model_path=/data/pufanyi/training_data/checkpoints/idefics-9b-instruct \
     --device_map=auto \
     --precision=fp32 \
+    --eval_vqav2 \
     --eval_ok_vqa \
+    --eval_coco \
+    --eval_flickr30 \
+    --eval_vqav2 \
+    --eval_textvqa \
+    --eval_vizwiz \
+    --eval_hateful_memes \
     --batch_size=8 \
     --device=cuda \
     --results_file=./logs/idefics.json \
-    # --eval_coco \
-    # --eval_vqav2 \
-    # --eval_flickr30 \
-    # --eval_vqav2 \
-    # --eval_textvqa \
-    # --eval_vizwiz \
-    # --eval_hateful_memes \
 
 
 
