@@ -13,7 +13,7 @@ def get_info(info):
     if "name" not in info:
         raise ValueError("Model name is not specified.")
     name = info["name"]
-    info.pop("name")
+    # info.pop("name")
     return name, info
 
 

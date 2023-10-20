@@ -142,7 +142,9 @@ class MimicitDataset(Dataset):
             )
         elif args.model_name == "idefics":
             # since idefics transform will return a [batch, image], we need to squeeze it to match with our uniformed data format
-            self.patch_resize_transform = lambda x: AutoProcessor.from_pretrained("HuggingFaceM4/idefics-9b-instruct").image_processor.preprocess(x).squeeze(0)
+            checkpoint_path = os.environ.get("IDEFICS_LOCAL_PATH", "HuggingFaceM4/idefics-9b-instruct")
+            master_print(f"Local Idefics Checkpoints Path: {checkpoint_path}")
+            self.patch_resize_transform = lambda x: AutoProcessor.from_pretrained(checkpoint_path).image_processor.preprocess(x).squeeze(0)
         assert len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths), f"metas do not have same number"
 
         self.dataset = {}
@@ -226,7 +228,7 @@ class MimicitDataset(Dataset):
             self.images = pd.concat(self.images, axis=0)  # now in memory
             # self.images = self.images
 
-        if args.rank == 0:
+        if args.rank == 0 and args.report_to_wandb:
             # master_print(table)
             wandb_table = wandb.Table(columns=table.field_names)
             for row in table._rows:
@@ -253,6 +255,7 @@ class MimicitDataset(Dataset):
     def pre_question(self, question, keep_symbols=True):
         if keep_symbols is False:
             # question = question.rstrip(",.!?*#:;~").lstrip(",.!?*#:;~")
+            question = re.sub(r'[^\w\s.,?!()"\']', "", question)
             question = question.strip(" ")
             question = re.sub(r"\s{2,}", " ", question)
             question = question.lstrip("\n")
@@ -262,12 +265,19 @@ class MimicitDataset(Dataset):
         return question
 
     def pre_answer(self, answer, keep_symbols=True):
+        # Remove leading and trailing whitespaces
+        answer = answer.strip()
         if keep_symbols is False:
-            answer = answer.strip(" ")
+            # Remove unwanted symbols; keep only alphabets, numbers, and some punctuation.
+            answer = re.sub(r'[^\w\s.,?!()"\']', "", answer)
+            # Replace multiple whitespaces with a single space
             answer = re.sub(r"\s{2,}", " ", answer)
+            # Strip leading and trailing newlines
             answer = answer.lstrip("\n")
             answer = answer.rstrip("\n")
-        answer = answer.strip(" ").strip("\n")
+        # Replace \r\n with \n to make newlines uniform
+        answer = answer.replace("\r\n", "\n")
+
         return answer
 
     def set_epoch(self, epoch, **unused):
@@ -319,8 +329,8 @@ class MimicitDataset(Dataset):
         for idx, cur_instruction_id in enumerate(all_instruction_ids):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
-            cur_instruction = self.pre_question(cur_instruction)
-            cur_answer = self.pre_answer(cur_answer)
+            cur_instruction = self.pre_question(cur_instruction, keep_symbols=self.keep_symbols)
+            cur_answer = self.pre_answer(cur_answer, keep_symbols=self.keep_symbols)
 
             if task_group == "IMAGE_TEXT_IN_CONTEXT":
                 cur_text = self.process_text_formatting(cur_instruction, cur_answer, self.instruction_format, insert_image=True, is_text_only=False)

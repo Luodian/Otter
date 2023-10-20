@@ -20,7 +20,8 @@ class MMBenchDataset(BaseEvalDataset):
         version="20230712",
         split="test",
         cache_dir=None,
-        default_output_path="./logs",
+        default_output_path="./logs/MMBench",
+        debug=False
     ):
         super().__init__("MMBenchDataset", data_path)
         self.version = str(version)
@@ -29,6 +30,7 @@ class MMBenchDataset(BaseEvalDataset):
         self.default_output_path = default_output_path
         self.sys_prompt = sys_prompt
         self.cur_datetime = utc_plus_8_time.strftime("%Y-%m-%d_%H-%M-%S")
+        self.debug = debug
 
     def load_from_df(self, idx, key):
         if key in self.df.columns:
@@ -73,6 +75,10 @@ class MMBenchDataset(BaseEvalDataset):
             cur_data = self.get_data(idx)
             cur_prompt = f"{cur_data['hint']} {cur_data['question']} {cur_data['options']}" if pd.notna(cur_data["hint"]) else f"{cur_data['question']} {cur_data['options']}"
             pred_answer = model.generate(cur_prompt, cur_data["img"])
+
+            if self.debug:
+                print(f"# Query: {cur_prompt}")
+                print(f"# Response: {pred_answer}")
 
             result = {
                 "question": cur_data["question"],

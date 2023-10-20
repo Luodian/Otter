@@ -12,8 +12,9 @@ class PopeDataset(BaseEvalDataset):
         self,
         data_path="Otter-AI/POPE",
         split="test",
-        default_output_path="./logs",
+        default_output_path="./logs/POPE",
         cache_dir=None,
+        batch_gen_size=1,
     ):
         super().__init__("PopeDataset", data_path)
         print("Loading dataset from", data_path)
@@ -22,6 +23,7 @@ class PopeDataset(BaseEvalDataset):
         self.default_output_path = default_output_path
         if not os.path.exists(default_output_path):
             os.makedirs(default_output_path)
+        self.batch_gen_size = batch_gen_size
 
     def parse_pred(self, text):
         if text.find(".") != -1:
@@ -46,37 +48,53 @@ class PopeDataset(BaseEvalDataset):
             "overall": {"TP": 0, "TN": 0, "FP": 0, "FN": 0, "yes_count": 0, "no_count": 0},
         }
 
+        batch_size = self.batch_gen_size
+        num_batches = len(self.data) // batch_size + 1
+
         with tqdm(total=len(self.data), desc="Evaluating") as pbar:
-            for i in range(len(self.data)):
-                data_dict = self.data[i]
-                question = data_dict["question"]
-                answer = data_dict["answer"]
-                image = data_dict["image"]
-                response = model.generate(question, image)
-                pred = self.parse_pred(response)
-                category = data_dict["category"]
+            for i in range(num_batches):
+                start_idx = i * batch_size
+                end_idx = (i + 1) * batch_size
+                batch_data = self.data[start_idx:end_idx]
 
-                if answer == "yes":
-                    metrics[category]["yes_count"] += 1
-                    metrics["overall"]["yes_count"] += 1
+                batch_questions = batch_data["question"]
+                batch_answers = batch_data["answer"]
+                batch_images = batch_data["image"]
+
+                # if model has batch_generate, use it
+                if hasattr(model, "batch_generate") and self.batch_gen_size > 1:
+                    batch_responses = model.batch_generate(batch_questions, batch_images)
                 else:
-                    metrics[category]["no_count"] += 1
-                    metrics["overall"]["no_count"] += 1
+                    batch_responses = [model.generate(question, image) for question, image in zip(batch_questions, batch_images)]
 
-                if pred == answer and pred == "yes":
-                    metrics[category]["TP"] += 1
-                    metrics["overall"]["TP"] += 1
-                elif pred == answer and pred == "no":
-                    metrics[category]["TN"] += 1
-                    metrics["overall"]["TN"] += 1
-                elif pred != answer and pred == "yes":
-                    metrics[category]["FP"] += 1
-                    metrics["overall"]["FP"] += 1
-                else:
-                    metrics[category]["FN"] += 1
-                    metrics["overall"]["FN"] += 1
+                batch_preds = [self.parse_pred(response) for response in batch_responses]
 
-                pbar.update(1)
+                for j in range(self.batch_gen_size):
+                    answer = batch_answers[j]
+                    pred = batch_preds[j]
+                    category = batch_data["category"][j]
+
+                    if answer == "yes":
+                        metrics[category]["yes_count"] += 1
+                        metrics["overall"]["yes_count"] += 1
+                    else:
+                        metrics[category]["no_count"] += 1
+                        metrics["overall"]["no_count"] += 1
+
+                    if pred == answer and pred == "yes":
+                        metrics[category]["TP"] += 1
+                        metrics["overall"]["TP"] += 1
+                    elif pred == answer and pred == "no":
+                        metrics[category]["TN"] += 1
+                        metrics["overall"]["TN"] += 1
+                    elif pred != answer and pred == "yes":
+                        metrics[category]["FP"] += 1
+                        metrics["overall"]["FP"] += 1
+                    else:
+                        metrics[category]["FN"] += 1
+                        metrics["overall"]["FN"] += 1
+
+                pbar.update(batch_size)
 
         for category in metrics:
             print(f"---------- -{category} -----------")
