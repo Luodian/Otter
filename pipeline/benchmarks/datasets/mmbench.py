@@ -20,8 +20,9 @@ class MMBenchDataset(BaseEvalDataset):
         version="20230712",
         split="test",
         cache_dir=None,
-        default_output_path="./logs",
+        default_output_path="./logs/MMBench",
         batch=8,
+        debug=False
     ):
         super().__init__("MMBenchDataset", data_path, max_batch_size=batch)
         self.version = str(version)
@@ -30,6 +31,7 @@ class MMBenchDataset(BaseEvalDataset):
         self.default_output_path = default_output_path
         self.sys_prompt = sys_prompt
         self.cur_datetime = utc_plus_8_time.strftime("%Y-%m-%d_%H-%M-%S")
+        self.debug = debug
 
     def load_from_df(self, idx, key):
         if key in self.df.columns:

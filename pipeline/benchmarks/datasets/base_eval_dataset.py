@@ -42,4 +42,7 @@ def load_dataset(dataset_name: str, dataset_args: Dict[str, str] = {}) -> BaseEv
     dataset_class = getattr(imported_module, dataset_formal_name)
     print(f"Imported class: {dataset_class}")
     # import pdb;pdb.set_trace()
-    return dataset_class(**dataset_args)
+    # get dataset args without "name"
+    init_args = dataset_args.copy()
+    init_args.pop("name")
+    return dataset_class(**init_args)

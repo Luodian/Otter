@@ -58,39 +58,45 @@ Extracted answer: B
 """
 
 
-def get_chat_response(promot, api_key, model="gpt-3.5-turbo", temperature=0, max_tokens=256, n=1, patience=10000000, sleep_time=0):
+import time
+import requests
+import json
+
+
+def get_chat_response(promot, api_key, model="gpt-3.5-turbo", temperature=0, max_tokens=256, n=1, patience=5, sleep_time=5):
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
     messages = [
+        {"role": "system", "content": "You are a helpful AI assistant."},
         {"role": "user", "content": promot},
     ]
+
+    payload = {"model": model, "messages": messages}
+
     while patience > 0:
         patience -= 1
         try:
-            response = openai.ChatCompletion.create(model=model, messages=messages, api_key=api_key, temperature=temperature, max_tokens=max_tokens, n=n)
-            if n == 1:
-                prediction = response["choices"][0]["message"]["content"].strip()
-                if prediction != "" and prediction != None:
-                    return prediction
-            else:
-                prediction = [choice["message"]["content"].strip() for choice in response["choices"]]
-                if prediction[0] != "" and prediction[0] != None:
-                    return prediction
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                data=json.dumps(payload),
+                timeout=30,
+            )
+            response.raise_for_status()
+            response_data = response.json()
+
+            prediction = response_data["choices"][0]["message"]["content"].strip()
+            if prediction != "" and prediction is not None:
+                return prediction
 
         except Exception as e:
             if "Rate limit" not in str(e):
                 print(e)
+            time.sleep(sleep_time)
 
-            if "Please reduce the length of the messages" in str(e):
-                print("!!Reduce promot size")
-                # reduce input prompt and keep the tail
-                new_size = int(len(promot) * 0.9)
-                new_start = len(promot) - new_size
-                promot = promot[new_start:]
-                messages = [
-                    {"role": "user", "content": promot},
-                ]
-
-            if sleep_time > 0:
-                time.sleep(sleep_time)
     return ""
 
 
@@ -101,7 +107,7 @@ def create_test_prompt(demo_prompt, query, response):
     return full_prompt
 
 
-def extract_answer(response, problem, quick_extract=False, api_key=None, pid=None):
+def extract_answer(response, problem, quick_extract=False, api_key=None, pid=None, gpt_model="gpt-4-0613"):
     question_type = problem["question_type"]
     answer_type = problem["answer_type"]
     choices = problem["choices"]
@@ -139,14 +145,15 @@ def extract_answer(response, problem, quick_extract=False, api_key=None, pid=Non
         except:
             pass
 
-    # general extraction
-    try:
-        full_prompt = create_test_prompt(demo_prompt, query, response)
-        extraction = get_chat_response(full_prompt, api_key)
-        return extraction
-    except Exception as e:
-        print(e)
-        print(f"Error in extracting answer for {pid}")
+    else:
+        # general extraction
+        try:
+            full_prompt = create_test_prompt(demo_prompt, query, response)
+            extraction = get_chat_response(full_prompt, api_key=api_key, model=gpt_model, n=1, patience=5, sleep_time=5)
+            return extraction
+        except Exception as e:
+            print(e)
+            print(f"Error in extracting answer for {pid}")
 
     return ""
 
@@ -242,9 +249,10 @@ class MathVistaDataset(BaseEvalDataset):
         self,
         data_path="Otter-AI/MathVista",
         split="test",
-        default_output_path="./logs",
+        default_output_path="./logs/MathVista",
         cache_dir=None,
         api_key=None,
+        gpt_model="gpt-4-0613",
         debug=False,
     ):
         super().__init__("MathVistaDataset", data_path)
@@ -254,13 +262,6 @@ class MathVistaDataset(BaseEvalDataset):
         with open(data_path, "r", encoding="utf-8") as f:
             self.data = json.load(f)
 
-        self.data = {
-            "1": self.data["1"],
-            "2": self.data["2"],
-            "3": self.data["3"],
-            "4": self.data["4"],
-            "5": self.data["5"],
-        }
         self.debug = debug
 
         self.default_output_path = default_output_path
@@ -268,6 +269,7 @@ class MathVistaDataset(BaseEvalDataset):
             os.makedirs(self.default_output_path)
         self.cur_datetime = utc_plus_8_time.strftime("%Y-%m-%d_%H-%M-%S")
         self.api_key = api_key
+        self.gpt_model = gpt_model
 
     def create_query(self, problem, shot_type):
         ### [2] Test query
@@ -329,8 +331,8 @@ class MathVistaDataset(BaseEvalDataset):
         query = query.strip()
         return query
 
-    def _evaluate(self, model):
-        output_file = os.path.join(self.default_output_path, f"{model.name}_mathvista_eval_submit.json")  # directly match Lu Pan's repo format e.g. output_bard.json
+    def evaluate(self, model):
+        output_file = os.path.join(self.default_output_path, f"{model.name}_mathvista_eval_submit_{self.cur_datetime}.json")  # directly match Lu Pan's repo format e.g. output_bard.json
 
         results = {}
 
@@ -353,11 +355,14 @@ class MathVistaDataset(BaseEvalDataset):
 
         with open(output_file, "w") as outfile:
             json.dump(results, outfile)
+
+        results = json.load(open(output_file, "r"))
+
         print(f"MathVista Evaluator: Results saved to {output_file}")
 
         for idx_key in tqdm(self.data):
             response = results[idx_key]["response"]
-            extraction = extract_answer(response, results[idx_key], quick_extract=False, api_key=self.api_key, pid=idx_key)
+            extraction = extract_answer(response, results[idx_key], quick_extract=True, api_key=self.api_key, pid=idx_key, gpt_model=self.gpt_model)
             results[idx_key].update({"extraction": extraction})
             answer = results[idx_key]["answer"]
             choices = results[idx_key]["choices"]
@@ -397,7 +402,17 @@ class MathVistaDataset(BaseEvalDataset):
         # assert len(df) == 1000 # Important!!!
 
         # asign the target keys for evaluation
-        target_keys = ["question_type", "answer_type", "language", "source", "category", "task", "context", "grade", "skills"]
+        target_keys = [
+            "question_type",
+            "answer_type",
+            "language",
+            "source",
+            "category",
+            "task",
+            "context",
+            "grade",
+            "skills",
+        ]
 
         for key in target_keys:
             print(f"\nType: [{key}]")
@@ -424,7 +439,7 @@ class MathVistaDataset(BaseEvalDataset):
             scores[key] = dict(sorted(scores[key].items(), key=lambda item: float(item[1]["accuracy"]), reverse=True))
 
         # save the scores
-        scores_file = os.path.join(self.default_output_path, f"{model.name}_mathvista_eval_score.json")
+        scores_file = os.path.join(self.default_output_path, f"{model.name}_mathvista_eval_score_{self.cur_datetime}.json")
         print(f"MathVista Evaluator: Score results saved to {scores_file}...")
         with open(scores_file, "w") as outfile:
             json.dump(scores, outfile)

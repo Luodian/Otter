@@ -194,18 +194,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 master_print(f"model: {unwrapped_model.__class__.__name__}")
                 master_print(f"model dtype: {unwrapped_model.dtype if hasattr(unwrapped_model, 'dtype') else 'None'}")
 
-            loss_mimicit = forward_pass(
-                args,
-                model,
-                tokenizer,
-                images,
-                input_ids,
-                attention_mask,
-                labels,
-                unwrapped_model,
-                device_id,
-                autocast_type,
-            )
+            loss_mimicit = forward_pass(args, model, tokenizer, images, input_ids, attention_mask, labels, unwrapped_model, device_id, autocast_type)
 
         if accelerator.mixed_precision == "fp16":
             accelerator.backward(loss_mimicit.to(device_id))
@@ -251,30 +240,37 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 mimicit_samples_per_second = args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.val
                 mimicit_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size / step_time_m.val
 
-                wandb.log(
-                    {
-                        "data_time": data_time_m.avg,
-                        "step_time": step_time_m.avg,
-                        "max_tokens": cur_batch_max_tokens,
-                        "mimicit_samples_per_second": mimicit_samples_per_second,
-                        "mimicit_samples_per_second_per_gpu": mimicit_samples_per_second_per_gpu,
-                        "lr": optimizer.param_groups[0]["lr"],
-                    },
-                    commit=False,
-                )
+                # wandb.log(
+                #     {
+                #         "data_time": data_time_m.avg,
+                #         "step_time": step_time_m.avg,
+                #         "max_tokens": cur_batch_max_tokens,
+                #         "mimicit_samples_per_second": mimicit_samples_per_second,
+                #         "mimicit_samples_per_second_per_gpu": mimicit_samples_per_second_per_gpu,
+                #         "lr": optimizer.param_groups[0]["lr"],
+                #     },
+                #     commit=False,
+                # )
                 step_time_m.reset()
                 data_time_m.reset()
 
                 group_name = batch_mimicit["task_group"][0]
                 assert all(item == group_name for item in batch_mimicit["task_group"]), "Not all items in the list are the same"
-                wandb.log(
-                    {
-                        "loss_mimicit": mean_loss,
-                        "global_step": global_step // args.gradient_accumulation_steps,
-                        group_name: mean_loss,
-                    },
-                    commit=True,
-                )
+                if args.report_to_wandb:
+                    wandb.log(
+                        {
+                            "data_time": data_time_m.avg,
+                            "step_time": step_time_m.avg,
+                            "max_tokens": cur_batch_max_tokens,
+                            "mimicit_samples_per_second": mimicit_samples_per_second,
+                            "mimicit_samples_per_second_per_gpu": mimicit_samples_per_second_per_gpu,
+                            "lr": optimizer.param_groups[0]["lr"],
+                            "loss_mimicit": mean_loss,
+                            "global_step": global_step // args.gradient_accumulation_steps,
+                            group_name: mean_loss,
+                        },
+                        commit=True,
+                    )
                 # torch.cuda.empty_cache()
                 # gc.collect()  # forces garbage collection
 
