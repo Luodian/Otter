@@ -25,7 +25,7 @@ class MultiHopBenchDataset(BaseEvalDataset):
             shutil.unpack_archive(os.path.join(cache_path, "images.zip"), video_dir)
 
     def _evaluate(self, model, output_file=None):
-        result = dict()
+        results = dict()
         for cur_data in tqdm(self.df["test"]):
             question_idx = cur_data["question_idx"]
             question = cur_data["question"]
