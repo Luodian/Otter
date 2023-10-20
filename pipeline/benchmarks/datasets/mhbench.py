@@ -50,5 +50,5 @@ class MultiHopBenchDataset(BaseEvalDataset):
 
 
 if __name__ == "__main__":
-    dataset = MHBenchDataset("ZhangYuanhan/multi-hop-reasoning")
+    dataset = MultiHopBenchDataset("ZhangYuanhan/multi-hop-reasoning")
     dataset.evaluate("123")
