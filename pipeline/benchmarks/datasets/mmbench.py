@@ -21,8 +21,9 @@ class MMBenchDataset(BaseEvalDataset):
         split="test",
         cache_dir=None,
         default_output_path="./logs",
+        batch=8,
     ):
-        super().__init__("MMBenchDataset", data_path, can_batch_eval=True)
+        super().__init__("MMBenchDataset", data_path, max_batch_size=batch)
         self.version = str(version)
         self.name_converter = {"dev": "validation", "test": "test"}
         self.df = load_dataset("Otter-AI/MMBench", self.version, split=self.name_converter[split], cache_dir=cache_dir).to_pandas()
@@ -66,7 +67,8 @@ class MMBenchDataset(BaseEvalDataset):
         return data
 
     def query_batch(self, model, batch_data):
-        batch_img = batch_data["img"]
+        batch_data = list(map(self.get_data, batch_data))
+        batch_img = [data["img"] for data in batch_data]
         batch_prompt = [f"{data['hint']} {data['question']} {data['options']}" if pd.notna(data["hint"]) else f"{data['question']} {data['options']}" for data in batch_data]
         batch_pred_answer = model.generate(batch_prompt, batch_img)
         return [
@@ -90,7 +92,7 @@ class MMBenchDataset(BaseEvalDataset):
         results = []
 
         for idx in trange(0, len(self.df), batch):
-            results.extend(self.query_batch(model, self.df[idx : idx + batch]))
+            results.extend(self.query_batch(model, list(range(idx, min(len(self.df), idx + batch)))))
 
         df = pd.DataFrame(results)
         with pd.ExcelWriter(output_file, engine="xlsxwriter") as writer:

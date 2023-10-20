@@ -44,18 +44,18 @@ def get_single_formatted_prompt(question, image=None, answer="") -> List[str]:
         ]
 
 
-def get_formatted_prompt(questions, images, answer=""):
+def get_formatted_prompt(questions, images, answers=""):
     single_prompt = False
     if isinstance(questions, str):
         questions = [questions]
         single_prompt = True
     if isinstance(images, Image.Image):
         images = [images]
-    if isinstance(answer, str):
-        answer = [answer] * len(questions)
+    if isinstance(answers, str):
+        answers = [answers] * len(questions)
     result = []
-    for question, image, answer in zip(questions, images, answer):
-        result.append(get_formatted_prompt(question, image, answer))
+    for question, image, answer in zip(questions, images, answers):
+        result.append(get_single_formatted_prompt(question, image, answer))
     if single_prompt:
         return result[0]
     else:
@@ -63,8 +63,8 @@ def get_formatted_prompt(questions, images, answer=""):
 
 
 class Idefics(BaseModel):
-    def __init__(self, model_path: str = "HuggingFaceM4/idefics-9b-instruct"):
-        super().__init__("idefics", model_path, can_batch_generate=True)
+    def __init__(self, model_path: str = "HuggingFaceM4/idefics-9b-instruct", batch=8):
+        super().__init__("idefics", model_path, max_batch_size=batch)
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
         self.model = IdeficsForVisionText2Text.from_pretrained(model_path, device_map={"": self.device}, torch_dtype=torch.bfloat16).to(self.device)
         self.processor = AutoProcessor.from_pretrained(model_path)
@@ -94,7 +94,7 @@ class Idefics(BaseModel):
             top_p=0.5,
         )
         generated_text = self.processor.batch_decode(generated_ids)
-        results = map(generated_text, lambda text: text.strip().split("Assistant:")[1].replace("<end_of_utterance>", "").strip())
+        results = list(map(lambda text: text.strip().split("Assistant:")[-1].split("<end_of_utterance>")[0].strip(), generated_text))
         if isinstance(question, str):
             return results[0]
         else:
