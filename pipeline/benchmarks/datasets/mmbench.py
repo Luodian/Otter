@@ -70,7 +70,10 @@ class MMBenchDataset(BaseEvalDataset):
         batch_data = list(map(self.get_data, batch_data))
         batch_img = [data["img"] for data in batch_data]
         batch_prompt = [f"{data['hint']} {data['question']} {data['options']}" if pd.notna(data["hint"]) else f"{data['question']} {data['options']}" for data in batch_data]
-        batch_pred_answer = model.generate(batch_prompt, batch_img)
+        if len(batch_prompt) == 1:
+            batch_pred_answer = [model.generate(batch_prompt[0], batch_img[0])]
+        else:
+            batch_pred_answer = model.generate(batch_prompt, batch_img)
         return [
             {
                 "question": data["question"],

@@ -1,6 +1,6 @@
 import os
 import datetime
-from tqdm import tqdm
+from tqdm import tqdm, trange
 from .base_eval_dataset import BaseEvalDataset
 from datasets import load_dataset
 import json
@@ -14,8 +14,9 @@ class PopeDataset(BaseEvalDataset):
         split="test",
         default_output_path="./logs",
         cache_dir=None,
+        batch=8,
     ):
-        super().__init__("PopeDataset", data_path)
+        super().__init__("PopeDataset", data_path, max_batch_size=batch)
         print("Loading dataset from", data_path)
         self.data = load_dataset(data_path, split=split, cache_dir=cache_dir)
         print("Dataset loaded")
@@ -35,7 +36,7 @@ class PopeDataset(BaseEvalDataset):
         else:
             return "yes"
 
-    def _evaluate(self, model):
+    def _evaluate(self, model, batch=1):
         cur_datetime = datetime.datetime.now().strftime("%Y%m%d-%H%M")
         output_path = os.path.join(self.default_output_path, f"pope_{model.name}_test_submit_{cur_datetime}.json")
 
@@ -46,15 +47,17 @@ class PopeDataset(BaseEvalDataset):
             "overall": {"TP": 0, "TN": 0, "FP": 0, "FN": 0, "yes_count": 0, "no_count": 0},
         }
 
-        with tqdm(total=len(self.data), desc="Evaluating") as pbar:
-            for i in range(len(self.data)):
-                data_dict = self.data[i]
-                question = data_dict["question"]
-                answer = data_dict["answer"]
-                image = data_dict["image"]
-                response = model.generate(question, image)
-                pred = self.parse_pred(response)
-                category = data_dict["category"]
+        def generate_batch(batch_data):
+            if len(batch_data["question"]) == 1:
+                batch_responses = [model.generate(batch_data["question"][0], batch_data["image"][0])]
+            else:
+                batch_questions = batch_data["question"]
+                batch_images = batch_data["image"]
+                batch_responses = model.generate(batch_questions, batch_images)
+            for i in range(len(batch_responses)):
+                answer = batch_data["answer"][i]
+                pred = self.parse_pred(batch_responses[i])
+                category = batch_data["category"][i]
 
                 if answer == "yes":
                     metrics[category]["yes_count"] += 1
@@ -76,10 +79,12 @@ class PopeDataset(BaseEvalDataset):
                     metrics[category]["FN"] += 1
                     metrics["overall"]["FN"] += 1
 
-                pbar.update(1)
+        for i in trange(0, len(self.data), batch, desc="Evaluating"):
+            batch_data = self.data[i : i + batch]
+            generate_batch(batch_data)
 
         for category in metrics:
-            print(f"---------- -{category} -----------")
+            print(f"----------- {category} -----------")
 
             TP = metrics[category]["TP"]
             TN = metrics[category]["TN"]
