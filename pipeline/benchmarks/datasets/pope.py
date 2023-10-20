@@ -23,7 +23,6 @@ class PopeDataset(BaseEvalDataset):
         self.default_output_path = default_output_path
         if not os.path.exists(default_output_path):
             os.makedirs(default_output_path)
-        self.batch_gen_size = batch_gen_size
 
     def parse_pred(self, text):
         if text.find(".") != -1:
