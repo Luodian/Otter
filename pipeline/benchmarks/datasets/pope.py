@@ -12,7 +12,7 @@ class PopeDataset(BaseEvalDataset):
         self,
         data_path="Otter-AI/POPE",
         split="test",
-        default_output_path="./logs",
+        default_output_path="./logs/POPE",
         cache_dir=None,
         batch=8,
     ):
@@ -23,6 +23,7 @@ class PopeDataset(BaseEvalDataset):
         self.default_output_path = default_output_path
         if not os.path.exists(default_output_path):
             os.makedirs(default_output_path)
+        self.batch_gen_size = batch_gen_size
 
     def parse_pred(self, text):
         if text.find(".") != -1:
