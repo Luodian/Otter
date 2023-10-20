@@ -12,18 +12,7 @@ utc_plus_8_time = utc_now.astimezone(utc_plus_8)
 
 
 class MMBenchDataset(BaseEvalDataset):
-    def __init__(
-        self,
-        data_path: str = "Otter-AI/MMBench",
-        *,
-        sys_prompt="There are several options:",
-        version="20230712",
-        split="test",
-        cache_dir=None,
-        default_output_path="./logs/MMBench",
-        batch=8,
-        debug=False
-    ):
+    def __init__(self, data_path: str = "Otter-AI/MMBench", *, sys_prompt="There are several options:", version="20230712", split="test", cache_dir=None, default_output_path="./logs/MMBench", batch=8, debug=False):
         super().__init__("MMBenchDataset", data_path, max_batch_size=batch)
         self.version = str(version)
         self.name_converter = {"dev": "validation", "test": "test"}
