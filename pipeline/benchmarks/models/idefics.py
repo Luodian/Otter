@@ -64,7 +64,7 @@ def get_formatted_prompt(questions, images, answer=""):
 
 class Idefics(BaseModel):
     def __init__(self, model_path: str = "HuggingFaceM4/idefics-9b-instruct"):
-        super().__init__("idefics", model_path)
+        super().__init__("idefics", model_path, can_batch_generate=True)
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
         self.model = IdeficsForVisionText2Text.from_pretrained(model_path, device_map={"": self.device}, torch_dtype=torch.bfloat16).to(self.device)
         self.processor = AutoProcessor.from_pretrained(model_path)

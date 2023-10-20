@@ -18,9 +18,10 @@ AVAILABLE_MODELS: Dict[str, str] = {
 
 
 class BaseModel(ABC):
-    def __init__(self, model_name: str, model_path: str):
+    def __init__(self, model_name: str, model_path: str, *, can_batch_generate: bool = False):
         self.name = model_name
         self.model_path = model_path
+        self.can_batch_generate = can_batch_generate
 
     @abstractmethod
     def generate(self, **kwargs):

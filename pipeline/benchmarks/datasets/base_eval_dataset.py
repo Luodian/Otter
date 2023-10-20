@@ -16,12 +16,30 @@ AVAILABLE_EVAL_DATASETS: Dict[str, str] = {
 
 
 class BaseEvalDataset(ABC):
-    def __init__(self, name: str, dataset_path: str):
+    def __init__(self, name: str, dataset_path: str, *, can_batch_eval: bool = False):
         self.name = name
         self.dataset_path = dataset_path
+        self.can_batch_eval = can_batch_eval
+        
+    def check_batch(self, batch, model):
+        if batch == 1:
+            return batch
+        if not self.can_batch_eval:
+            batch = 1
+            print(f"Dataset {self.name} does not support batch evaluation. Batch size is set to 1.")
+        elif not model.can_batch_generate:
+            batch = 1
+            print(f"Model {model.name} does not support batch evaluation. Batch size is set to 1.")
+        return batch
+
+    def evaluate(self, model, **kwargs):
+        batch = kwargs.get("batch", 1)
+        batch = self.check_batch(batch, model)
+        kwargs["batch"] = batch
+        return self._evaluate(model, **kwargs)
 
     @abstractmethod
-    def evaluate(self, model: str, output_file: str):
+    def _evaluate(self, model: str):
         pass
 
 

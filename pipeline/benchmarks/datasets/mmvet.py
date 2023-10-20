@@ -112,7 +112,7 @@ class MMVetDataset(BaseEvalDataset):
         cap_int_score_file = os.path.join(result_path, cap_int_score_file)
         return model_results_file, grade_file, cap_score_file, cap_int_score_file
 
-    def evaluate(self, model):
+    def _evaluate(self, model, batch):
         openai.api_key = self.api_key
 
         model_results_file, grade_file, cap_score_file, cap_int_score_file = self.get_output_file_name(model)

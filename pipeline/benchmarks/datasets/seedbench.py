@@ -16,7 +16,7 @@ class SEEDBenchDataset(BaseEvalDataset):
         if not os.path.exists(default_output_path):
             os.makedirs(default_output_path)
 
-    def evaluate(self, model):
+    def _evaluate(self, model, batch):
         count = 0
         num_correct = 0
         cur_datetime = datetime.datetime.now().strftime("%Y%m%d-%H%M")

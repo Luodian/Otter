@@ -129,7 +129,7 @@ class MMEDataset(BaseEvalDataset):
 
         return metric_dict
 
-    def evaluate(self, model):
+    def _evaluate(self, model, batch):
         model_score_dict = {}
 
         for eval_type in self.category_data.keys():
