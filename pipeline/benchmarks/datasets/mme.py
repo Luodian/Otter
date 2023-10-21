@@ -148,7 +148,7 @@ class MMEDataset(BaseEvalDataset):
 
         return metric_dict
 
-    def evaluate(self, model):
+    def _evaluate(self, model):
         model_score_dict = {}
 
         self.default_output_path = os.path.join(self.default_output_path, f"{model.name}_{self.cur_datetime}")

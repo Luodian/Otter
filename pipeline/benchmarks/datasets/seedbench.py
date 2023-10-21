@@ -16,7 +16,7 @@ class SEEDBenchDataset(BaseEvalDataset):
         if not os.path.exists(default_output_path):
             os.makedirs(default_output_path)
 
-    def evaluate(self, model):
+    def _evaluate(self, model):
         count = 0
         num_correct = 0
         cur_datetime = datetime.datetime.now().strftime("%Y%m%d-%H%M")
@@ -30,25 +30,28 @@ class SEEDBenchDataset(BaseEvalDataset):
                 for cur_idx in range(4):
                     question += f" {option_index[cur_idx]}. {data_dict[f'choice_{option_index[cur_idx].lower()}']}"
 
-                answer = data_dict["answer"]
-                options = [
-                    data_dict["choice_a"],
-                    data_dict["choice_b"],
-                    data_dict["choice_c"],
-                    data_dict["choice_d"],
-                ]
+                    answer = data_dict["answer"]
+                    options = [
+                        data_dict["choice_a"],
+                        data_dict["choice_b"],
+                        data_dict["choice_c"],
+                        data_dict["choice_d"],
+                    ]
 
-                option_losses = []
-                for idx, option in enumerate(options):
-                    option = option_index[idx] + ". " + option
-                    loss = model.eval_forward(question, option, image)
-                    option_losses.append(loss.item())
+                    option_losses = []
+                    for idx, option in enumerate(options):
+                        option = option_index[idx] + ". " + option
+                        loss = model.eval_forward(question, option, image)
+                        option_losses.append(loss.item())
 
-                prediction_idx = np.argmin(option_losses)
-                prediction = ["A", "B", "C", "D"][prediction_idx]
-                if prediction == answer:
-                    num_correct += 1
-                count += 1
+                    prediction_idx = np.argmin(option_losses)
+                    prediction = ["A", "B", "C", "D"][prediction_idx]
+                    if prediction == answer:
+                        num_correct += 1
+                    count += 1
+
+                answer_record = {"question_id": data_dict["question_id"], "prediction": prediction}
+                output_f.write(json.dumps(answer_record) + "\n")
 
                 answer_record = {"question_id": data_dict["question_id"], "prediction": prediction}
                 output_f.write(json.dumps(answer_record) + "\n")
