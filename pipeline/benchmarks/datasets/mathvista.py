@@ -261,17 +261,7 @@ def safe_equal(prediction, answer):
 
 
 class MathVistaDataset(BaseEvalDataset):
-    def __init__(
-        self,
-        data_path="Otter-AI/MathVista",
-        split="test",
-        default_output_path="./logs/MathVista",
-        cache_dir=None,
-        api_key=None,
-        gpt_model="gpt-4-0613",
-        debug=False,
-        quick_extract=False
-    ):
+    def __init__(self, data_path="Otter-AI/MathVista", split="test", default_output_path="./logs/MathVista", cache_dir=None, api_key=None, gpt_model="gpt-4-0613", debug=False, quick_extract=False):
         super().__init__("MathVistaDataset", data_path)
         name_converter = {"dev": "validation", "test": "test"}
         self.data = load_dataset("Otter-AI/MathVista", split=name_converter[split], cache_dir=cache_dir).to_pandas()
