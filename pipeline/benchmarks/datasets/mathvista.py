@@ -331,7 +331,7 @@ class MathVistaDataset(BaseEvalDataset):
         query = query.strip()
         return query
 
-    def evaluate(self, model):
+    def _evaluate(self, model):
         output_file = os.path.join(self.default_output_path, f"{model.name}_mathvista_eval_submit_{self.cur_datetime}.json")  # directly match Lu Pan's repo format e.g. output_bard.json
 
         results = {}
