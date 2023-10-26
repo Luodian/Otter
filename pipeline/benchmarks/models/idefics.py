@@ -46,12 +46,12 @@ def get_single_formatted_prompt(question, image=None, answer="") -> List[str]:
 
 def get_formatted_prompt(questions, images, answers=""):
     single_prompt = False
-    if isinstance(questions, str):
+    if not isinstance(questions, list):
         questions = [questions]
         single_prompt = True
-    if isinstance(images, Image.Image):
+    if not isinstance(images, list):
         images = [images]
-    if isinstance(answers, str):
+    if not isinstance(answers, list):
         answers = [answers] * len(questions)
     result = []
     for question, image, answer in zip(questions, images, answers):
