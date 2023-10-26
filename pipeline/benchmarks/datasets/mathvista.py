@@ -12,6 +12,7 @@ import datetime
 import openai
 import time
 import re
+import io
 from Levenshtein import distance
 
 utc_plus_8 = pytz.timezone("Asia/Singapore")  # You can also use 'Asia/Shanghai', 'Asia/Taipei', etc.
@@ -231,6 +232,21 @@ def normalize_extracted_answer(extraction, choices, question_type, answer_type, 
     return extraction
 
 
+def get_pil_image(raw_image_data) -> Image.Image:
+    if isinstance(raw_image_data, Image.Image):
+        return raw_image_data
+
+    elif isinstance(raw_image_data, dict) and "bytes" in raw_image_data:
+        return Image.open(io.BytesIO(raw_image_data["bytes"]))
+
+    elif isinstance(raw_image_data, str):  # Assuming this is a base64 encoded string
+        image_bytes = base64.b64decode(raw_image_data)
+        return Image.open(io.BytesIO(image_bytes))
+
+    else:
+        raise ValueError("Unsupported image data format")
+
+
 def safe_equal(prediction, answer):
     """
     Check if the prediction is equal to the answer, even if they are of different types
@@ -245,24 +261,18 @@ def safe_equal(prediction, answer):
 
 
 class MathVistaDataset(BaseEvalDataset):
-    def __init__(
-        self,
-        data_path="Otter-AI/MathVista",
-        split="test",
-        default_output_path="./logs/MathVista",
-        cache_dir=None,
-        api_key=None,
-        gpt_model="gpt-4-0613",
-        debug=False,
-    ):
+    def __init__(self, data_path="Otter-AI/MathVista", split="test", default_output_path="./logs/MathVista", cache_dir=None, api_key=None, gpt_model="gpt-4-0613", debug=False, quick_extract=False):
         super().__init__("MathVistaDataset", data_path)
         name_converter = {"dev": "validation", "test": "test"}
-        # self.df = load_dataset("Otter-AI/MathVista", version, split=name_converter[split], cache_dir=cache_dir).to_pandas()
-        data_path = "/home/luodian/projects/Otter/archived/testmini_image_inside.json"
-        with open(data_path, "r", encoding="utf-8") as f:
-            self.data = json.load(f)
+        self.data = load_dataset("Otter-AI/MathVista", split=name_converter[split], cache_dir=cache_dir).to_pandas()
+        if debug:
+            self.data = self.data.sample(5)
+        # data_path = "/home/luodian/projects/Otter/archived/testmini_image_inside.json"
+        # with open(data_path, "r", encoding="utf-8") as f:
+        #     self.data = json.load(f)
 
         self.debug = debug
+        self.quick_extract = quick_extract
 
         self.default_output_path = default_output_path
         if os.path.exists(self.default_output_path) is False:
@@ -291,10 +301,10 @@ class MathVistaDataset(BaseEvalDataset):
                 if answer_type == "integer":
                     hint_text = f"Please answer the question requiring an integer answer and provide the final value, e.g., 1, 2, 3, at the end."
 
-                elif answer_type == "float" and precision == 1:
+                elif answer_type == "float" and str(precision) == "1":
                     hint_text = f"Please answer the question requiring a floating-point number with one decimal place and provide the final value, e.g., 1.2, 1.3, 1.4, at the end."
 
-                elif answer_type == "float" and precision == 2:
+                elif answer_type == "float" and str(precision) == "2":
                     hint_text = f"Please answer the question requiring a floating-point number with two decimal places and provide the final value, e.g., 1.23, 1.34, 1.45, at the end."
 
                 elif answer_type == "list":
@@ -309,7 +319,7 @@ class MathVistaDataset(BaseEvalDataset):
             question_text += f" (Unit: {unit})"
 
         # choices
-        if choices:
+        if choices is not None and len(choices) != 0:
             # choices: (A) 1.2 (B) 1.3 (C) 1.4 (D) 1.5
             texts = ["Choices:"]
             for i, choice in enumerate(choices):
@@ -337,15 +347,18 @@ class MathVistaDataset(BaseEvalDataset):
         results = {}
 
         print(f"Number of test problems in total: {len(self.data)}")
-        for idx_key in tqdm(self.data):
-            query_data = self.data[idx_key]
+        for idx_key, query_data in tqdm(self.data.iterrows(), desc=f"Evaluating {model.name}", total=len(self.data)):
+            # query_data = self.data[idx_key]
             results[idx_key] = {}
             results[idx_key].update(query_data)
-            results[idx_key].pop("base64_image")
+            if results[idx_key]["choices"] is not None:
+                results[idx_key]["choices"] = list(results[idx_key]["choices"])
+            results[idx_key].pop("image")
             # problem = query_data["problem"]
             query = self.create_query(problem=query_data, shot_type="solution")
-            base64_image = query_data["base64_image"]
-            image = Image.open(BytesIO(base64.b64decode(base64_image)))
+            base64_image = query_data["image"]
+            # image = Image.open(BytesIO(base64.b64decode(base64_image)))
+            image = get_pil_image(base64_image)
             response = model.generate(query, image)
             if self.debug:
                 print(f"\n#Query: {query}")
@@ -360,9 +373,10 @@ class MathVistaDataset(BaseEvalDataset):
 
         print(f"MathVista Evaluator: Results saved to {output_file}")
 
-        for idx_key in tqdm(self.data):
+        for idx_key, row in tqdm(self.data.iterrows(), desc=f"Extracting answers from {model.name}", total=len(self.data)):
+            idx_key = str(idx_key)
             response = results[idx_key]["response"]
-            extraction = extract_answer(response, results[idx_key], quick_extract=True, api_key=self.api_key, pid=idx_key, gpt_model=self.gpt_model)
+            extraction = extract_answer(response, results[idx_key], quick_extract=self.quick_extract, api_key=self.api_key, pid=idx_key, gpt_model=self.gpt_model)
             results[idx_key].update({"extraction": extraction})
             answer = results[idx_key]["answer"]
             choices = results[idx_key]["choices"]
@@ -391,8 +405,8 @@ class MathVistaDataset(BaseEvalDataset):
         ## [3] Calculate the fine-grained accuracy scores
 
         # merge the 'metadata' attribute into the data
-        for pid in results:
-            results[pid].update(results[pid].pop("metadata"))
+        # for pid in results:
+        #     results[pid].update(results[pid].pop("metadata"))
 
         # convert the data to a pandas DataFrame
         df = pd.DataFrame(results).T
@@ -421,9 +435,16 @@ class MathVistaDataset(BaseEvalDataset):
                 # the value is a list
                 values = []
                 for i in range(len(df)):
-                    values += df[key][i]
+                    if key in df.keys():
+                        values += df[key][i]
+                    else:
+                        print("Key not found:", key)
+                        continue
                 values = list(set(values))
             else:
+                if key not in df.keys():
+                    print("Key not found:", key)
+                    continue
                 values = df[key].unique()
             # print(values)
 
