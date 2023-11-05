@@ -24,10 +24,10 @@ def get_pil_image(raw_image_data) -> Image.Image:
         raise ValueError("Unsupported image data format")
 
 
-def get_formatted_prompt(question, image=None, answer="") -> List[str]:
+def get_single_formatted_prompt(question, image=None, answer="") -> List[str]:
     if answer == "":
         return [
-            f"User",
+            f"User:",
             get_pil_image(image),
             question,
             "<end_of_utterance>\n",
@@ -44,9 +44,27 @@ def get_formatted_prompt(question, image=None, answer="") -> List[str]:
         ]
 
 
+def get_formatted_prompt(questions, images, answers=""):
+    single_prompt = False
+    if not isinstance(questions, list):
+        questions = [questions]
+        single_prompt = True
+    if not isinstance(images, list):
+        images = [images]
+    if not isinstance(answers, list):
+        answers = [answers] * len(questions)
+    result = []
+    for question, image, answer in zip(questions, images, answers):
+        result.append(get_single_formatted_prompt(question, image, answer))
+    if single_prompt:
+        return result[0]
+    else:
+        return result
+
+
 class Idefics(BaseModel):
-    def __init__(self, model_path: str = "HuggingFaceM4/idefics-9b-instruct"):
-        super().__init__("idefics", model_path)
+    def __init__(self, model_path: str = "HuggingFaceM4/idefics-9b-instruct", batch=8):
+        super().__init__("idefics", model_path, max_batch_size=batch)
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
         self.model = IdeficsForVisionText2Text.from_pretrained(model_path, device_map={"": self.device}, torch_dtype=torch.bfloat16).to(self.device)
         self.processor = AutoProcessor.from_pretrained(model_path)
@@ -61,7 +79,7 @@ class Idefics(BaseModel):
         self.eos_token_id = self.processor.tokenizer(self.processor.tokenizer.eos_token, add_special_tokens=False)["input_ids"][-1]
         self.patch_resize_transform = self.processor.image_processor.preprocess
 
-    def generate(self, question: str, raw_image_data):
+    def generate(self, question, raw_image_data):
         formatted_prompt = get_formatted_prompt(question, raw_image_data)
         inputs = self.processor(formatted_prompt, return_tensors="pt").to(self.device)
         exit_condition = self.processor.tokenizer("<end_of_utterance>", add_special_tokens=False).input_ids
@@ -70,13 +88,17 @@ class Idefics(BaseModel):
             **inputs,
             eos_token_id=exit_condition,
             bad_words_ids=bad_words_ids,
-            max_new_tokens=512,
+            max_new_tokens=768,
             temperature=0.2,
             do_sample=True,
             top_p=0.5,
         )
-        generated_text = self.processor.batch_decode(generated_ids)[0]
-        return generated_text.strip().split("Assistant:")[1].replace("<end_of_utterance>", "").strip()
+        generated_text = self.processor.batch_decode(generated_ids)
+        results = list(map(lambda text: text.strip().split("Assistant:")[-1].split("<end_of_utterance>")[0].strip(), generated_text))
+        if isinstance(question, str):
+            return results[0]
+        else:
+            return results
 
     def prepare_labels(self, input_ids, eos_token_id, answer_token_id, endofchunk_token_id, fake_token_image_token_id, masking_number: int = -100):
         labels = torch.empty(input_ids.shape, dtype=torch.int64)

@@ -24,8 +24,8 @@ class MultiHopBenchDataset(BaseEvalDataset):
         if not os.path.exists(os.path.join(video_dir, "images")):
             shutil.unpack_archive(os.path.join(cache_path, "images.zip"), video_dir)
 
-    def evaluate(self, model, output_file=None):
-        result = dict()
+    def _evaluate(self, model, output_file=None):
+        results = dict()
         for cur_data in tqdm(self.df["test"]):
             question_idx = cur_data["question_idx"]
             question = cur_data["question"]
@@ -50,5 +50,5 @@ class MultiHopBenchDataset(BaseEvalDataset):
 
 
 if __name__ == "__main__":
-    dataset = MHBenchDataset("ZhangYuanhan/multi-hop-reasoning")
+    dataset = MultiHopBenchDataset("ZhangYuanhan/multi-hop-reasoning")
     dataset.evaluate("123")

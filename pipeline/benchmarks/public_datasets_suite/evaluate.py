@@ -53,7 +53,7 @@ parser.add_argument(
 parser.add_argument("--results_file", type=str, default=None, help="JSON file to save results")
 
 # Trial arguments
-parser.add_argument("--shots", nargs="+", default=[0, 4, 8, 16], type=int)
+parser.add_argument("--shots", nargs="+", default=[0, 4, 8], type=int)
 parser.add_argument(
     "--num_trials",
     type=int,
@@ -356,10 +356,17 @@ parser.add_argument(
     help="Don't set device index from local rank (when CUDA_VISIBLE_DEVICES restricted to one per proc).",
 )
 
+parser.add_argument(
+    "--debug_num",
+    default=None,
+    type=int,
+    help="Number of samples to debug on. None for all samples.",
+)
+
 
 def main():
     args, leftovers = parser.parse_known_args()
-    module = importlib.import_module(f"pipeline.eval.models.{args.model}")
+    module = importlib.import_module(f"pipeline.benchmarks.public_datasets_suite.models.{args.model}")
 
     # print("======================================")
     # print(args)
@@ -377,7 +384,7 @@ def main():
     if device_id != torch.device("cpu") and args.world_size > 1:
         eval_model.init_distributed()
 
-    if args.model != "open_flamingo" and args.model != "otter" and args.shots != [0]:
+    if args.model != "open_flamingo" and args.model != "otter" and args.model != "idefics" and args.shots != [0]:
         raise ValueError("Only 0 shot eval is supported for non-open_flamingo models")
 
     if len(args.trial_seeds) != args.num_trials:
@@ -695,6 +702,10 @@ def evaluate_captioning(
     predictions = defaultdict()
 
     np.random.seed(seed + args.rank)  # make sure each worker has a different seed for the random context samples
+
+    if args.debug_num:
+        index = 0
+
     for batch in tqdm(
         test_dataloader,
         desc=f"Running inference {dataset_name.upper()}",
@@ -734,6 +745,12 @@ def evaluate_captioning(
             predictions[sample_id] = {
                 "caption": new_predictions[i],
             }
+
+        if args.debug_num:
+            index += 1
+
+            if index >= args.debug_num:
+                break
 
     # all gather
     all_predictions = [None] * args.world_size

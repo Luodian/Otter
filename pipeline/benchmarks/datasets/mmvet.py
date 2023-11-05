@@ -11,7 +11,14 @@ import numpy as np
 import openai
 import time
 import json
+import pytz
+import datetime
+import openai
+from Levenshtein import distance
 
+utc_plus_8 = pytz.timezone("Asia/Singapore")  # You can also use 'Asia/Shanghai', 'Asia/Taipei', etc.
+utc_now = pytz.utc.localize(datetime.datetime.utcnow())
+utc_plus_8_time = utc_now.astimezone(utc_plus_8)
 
 MM_VET_PROMPT = """Compare the ground truth and prediction from AI models, to give a correctness score for the prediction. <AND> in the ground truth means it is totally right only when all elements in the ground truth are present in the prediction, and <OR> means it is totally right when any one element in the ground truth is present in the prediction. The correctness score is 0.0 (totally wrong), 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, or 1.0 (totally right). Just complete the last space of the correctness score.
 
@@ -40,6 +47,7 @@ class MMVetDataset(BaseEvalDataset):
         num_run: int = 1,
         prompt: str = MM_VET_PROMPT,
         decimail_places: int = 1,  # number of decimal places to round to
+        debug: bool = False,
     ):
         super().__init__("MMVetDataset", data_path)
         self.df = load_dataset(data_path, split=split, cache_dir=cache_dir).to_pandas()
@@ -49,6 +57,8 @@ class MMVetDataset(BaseEvalDataset):
         self.num_run = num_run
         self.decimal_places = decimail_places
         self.api_key = api_key
+        self.cur_datetime = utc_plus_8_time.strftime("%Y-%m-%d_%H-%M-%S")
+        self.debug = debug
         self.prepare()
 
     def prepare(self):
@@ -104,15 +114,15 @@ class MMVetDataset(BaseEvalDataset):
         if not os.path.exists(result_path):
             os.makedirs(result_path)
         model_results_file = os.path.join(result_path, f"{model.name}.json")
-        grade_file = f"{model.name}_{self.gpt_model}-grade-{num_run}runs.json"
+        grade_file = f"{model.name}-{self.gpt_model}-grade-{num_run}runs-{self.cur_datetime}.json"
         grade_file = os.path.join(result_path, grade_file)
-        cap_score_file = f"{model.name}_{self.gpt_model}-cap-score-{num_run}runs.csv"
+        cap_score_file = f"{model.name}-{self.gpt_model}-cap-score-{num_run}runs-{self.cur_datetime}.csv"
         cap_score_file = os.path.join(result_path, cap_score_file)
-        cap_int_score_file = f"{model.name}_{self.gpt_model}-cap-int-score-{num_run}runs.csv"
+        cap_int_score_file = f"{model.name}-{self.gpt_model}-cap-int-score-{num_run}runs-{self.cur_datetime}.csv"
         cap_int_score_file = os.path.join(result_path, cap_int_score_file)
         return model_results_file, grade_file, cap_score_file, cap_int_score_file
 
-    def evaluate(self, model):
+    def _evaluate(self, model):
         openai.api_key = self.api_key
 
         model_results_file, grade_file, cap_score_file, cap_int_score_file = self.get_output_file_name(model)
@@ -132,6 +142,7 @@ class MMVetDataset(BaseEvalDataset):
                         break
             return need_more_runs or len(grade_results) < self.len_data
 
+        print(f"grade results saved to {grade_file}")
         while need_more_runs():
             for j in range(self.num_run):
                 print(f"eval run {j}")
@@ -143,11 +154,23 @@ class MMVetDataset(BaseEvalDataset):
                         continue
 
                     model_pred = model.generate(line["instruction"], line["images"][0])
-                    print(f"# Query: {line['instruction']}")
-                    print(f"# Response: {model_pred}")
-                    print(f"# Ground Truth: {line['answer']}")
+                    if self.debug:
+                        print(f"# Query: {line['instruction']}")
+                        print(f"# Response: {model_pred}")
+                        print(f"# Ground Truth: {line['answer']}")
 
-                    question = self.prompt + "\n" + " | ".join([line["instruction"], line["answer"].replace("<AND>", " <AND> ").replace("<OR>", " <OR> "), model_pred, ""])
+                    question = (
+                        self.prompt
+                        + "\n"
+                        + " | ".join(
+                            [
+                                line["instruction"],
+                                line["answer"].replace("<AND>", " <AND> ").replace("<OR>", " <OR> "),
+                                model_pred,
+                                "",
+                            ]
+                        )
+                    )
                     messages = [
                         {"role": "user", "content": question},
                     ]
@@ -162,7 +185,7 @@ class MMVetDataset(BaseEvalDataset):
 
                     while not grade_sample_run_complete:
                         try:
-                            response = openai.ChatCompletion.create(model=self.gpt_model, max_tokens=3, temperature=temperature, messages=messages)
+                            response = openai.ChatCompletion.create(model=self.gpt_model, max_tokens=3, temperature=temperature, messages=messages, timeout=15)
                             content = response["choices"][0]["message"]["content"]
                             flag = True
                             try_time = 1
@@ -175,7 +198,17 @@ class MMVetDataset(BaseEvalDataset):
                                     flag = False
                                 except:
                                     question = (
-                                        self.prompt + "\n" + " | ".join([line["instruction"], line["answer"].replace("<AND>", " <AND> ").replace("<OR>", " <OR> "), model_pred, ""]) + "\nPredict the correctness of the answer (digit): "
+                                        self.prompt
+                                        + "\n"
+                                        + " | ".join(
+                                            [
+                                                line["instruction"],
+                                                line["answer"].replace("<AND>", " <AND> ").replace("<OR>", " <OR> "),
+                                                model_pred,
+                                                "",
+                                            ]
+                                        )
+                                        + "\nPredict the correctness of the answer (digit): "
                                     )
                                     messages = [
                                         {"role": "user", "content": question},
@@ -193,7 +226,7 @@ class MMVetDataset(BaseEvalDataset):
                         except Exception as e:
                             # gpt4 may have token rate limit
                             print(e)
-                            print("sleep 30s")
+                            print("sleep 15s")
                             time.sleep(15)
 
                     if len(sample_grade["model"]) >= j + 1:
@@ -204,12 +237,13 @@ class MMVetDataset(BaseEvalDataset):
                         sample_grade["model"].append(response["model"])
                         sample_grade["content"].append(content)
                         sample_grade["score"].append(score)
+                        sample_grade["query"] = line["instruction"]
+                        sample_grade["response"] = model_pred
+                        sample_grade["ground_truth"] = line["answer"]
                     grade_results[id] = sample_grade
 
                     with open(grade_file, "w") as f:
                         json.dump(grade_results, f, indent=4)
-
-                    print(f"grade results saved to {grade_file}")
 
         cap_socres = {k: [0.0] * self.num_run for k in self.columns[:-2]}
         self.counter["total"] = self.len_data

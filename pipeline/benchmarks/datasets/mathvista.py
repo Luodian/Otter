@@ -12,6 +12,7 @@ import datetime
 import openai
 import time
 import re
+import io
 from Levenshtein import distance
 
 utc_plus_8 = pytz.timezone("Asia/Singapore")  # You can also use 'Asia/Shanghai', 'Asia/Taipei', etc.
@@ -58,39 +59,46 @@ Extracted answer: B
 """
 
 
-def get_chat_response(promot, api_key, model="gpt-3.5-turbo", temperature=0, max_tokens=256, n=1, patience=10000000, sleep_time=0):
+import time
+import requests
+import json
+import ast
+
+
+def get_chat_response(promot, api_key, model="gpt-3.5-turbo", temperature=0, max_tokens=256, n=1, patience=5, sleep_time=5):
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
     messages = [
+        {"role": "system", "content": "You are a helpful AI assistant."},
         {"role": "user", "content": promot},
     ]
+
+    payload = {"model": model, "messages": messages}
+
     while patience > 0:
         patience -= 1
         try:
-            response = openai.ChatCompletion.create(model=model, messages=messages, api_key=api_key, temperature=temperature, max_tokens=max_tokens, n=n)
-            if n == 1:
-                prediction = response["choices"][0]["message"]["content"].strip()
-                if prediction != "" and prediction != None:
-                    return prediction
-            else:
-                prediction = [choice["message"]["content"].strip() for choice in response["choices"]]
-                if prediction[0] != "" and prediction[0] != None:
-                    return prediction
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                data=json.dumps(payload),
+                timeout=30,
+            )
+            response.raise_for_status()
+            response_data = response.json()
+
+            prediction = response_data["choices"][0]["message"]["content"].strip()
+            if prediction != "" and prediction is not None:
+                return prediction
 
         except Exception as e:
             if "Rate limit" not in str(e):
                 print(e)
+            time.sleep(sleep_time)
 
-            if "Please reduce the length of the messages" in str(e):
-                print("!!Reduce promot size")
-                # reduce input prompt and keep the tail
-                new_size = int(len(promot) * 0.9)
-                new_start = len(promot) - new_size
-                promot = promot[new_start:]
-                messages = [
-                    {"role": "user", "content": promot},
-                ]
-
-            if sleep_time > 0:
-                time.sleep(sleep_time)
     return ""
 
 
@@ -101,7 +109,7 @@ def create_test_prompt(demo_prompt, query, response):
     return full_prompt
 
 
-def extract_answer(response, problem, quick_extract=False, api_key=None, pid=None):
+def extract_answer(response, problem, quick_extract=False, api_key=None, pid=None, gpt_model="gpt-4-0613"):
     question_type = problem["question_type"]
     answer_type = problem["answer_type"]
     choices = problem["choices"]
@@ -129,7 +137,6 @@ def extract_answer(response, problem, quick_extract=False, api_key=None, pid=Non
 
     # quick extraction
     if quick_extract:
-        print("Quickly extracting answer...")
         # The answer is "text". -> "text"
         try:
             result = re.search(r'The answer is "(.*)"\.', response)
@@ -139,14 +146,15 @@ def extract_answer(response, problem, quick_extract=False, api_key=None, pid=Non
         except:
             pass
 
-    # general extraction
-    try:
-        full_prompt = create_test_prompt(demo_prompt, query, response)
-        extraction = get_chat_response(full_prompt, api_key)
-        return extraction
-    except Exception as e:
-        print(e)
-        print(f"Error in extracting answer for {pid}")
+    else:
+        # general extraction
+        try:
+            full_prompt = create_test_prompt(demo_prompt, query, response)
+            extraction = get_chat_response(full_prompt, api_key=api_key, model=gpt_model, n=1, patience=5, sleep_time=5)
+            return extraction
+        except Exception as e:
+            print(e)
+            print(f"Error in extracting answer for {pid}")
 
     return ""
 
@@ -224,6 +232,21 @@ def normalize_extracted_answer(extraction, choices, question_type, answer_type, 
     return extraction
 
 
+def get_pil_image(raw_image_data) -> Image.Image:
+    if isinstance(raw_image_data, Image.Image):
+        return raw_image_data
+
+    elif isinstance(raw_image_data, dict) and "bytes" in raw_image_data:
+        return Image.open(io.BytesIO(raw_image_data["bytes"]))
+
+    elif isinstance(raw_image_data, str):  # Assuming this is a base64 encoded string
+        image_bytes = base64.b64decode(raw_image_data)
+        return Image.open(io.BytesIO(image_bytes))
+
+    else:
+        raise ValueError("Unsupported image data format")
+
+
 def safe_equal(prediction, answer):
     """
     Check if the prediction is equal to the answer, even if they are of different types
@@ -242,32 +265,31 @@ class MathVistaDataset(BaseEvalDataset):
         self,
         data_path="Otter-AI/MathVista",
         split="test",
-        default_output_path="./logs",
+        default_output_path="./logs/MathVista",
         cache_dir=None,
         api_key=None,
+        gpt_model="gpt-4-0613",
         debug=False,
+        quick_extract=False,
     ):
         super().__init__("MathVistaDataset", data_path)
         name_converter = {"dev": "validation", "test": "test"}
-        # self.df = load_dataset("Otter-AI/MathVista", version, split=name_converter[split], cache_dir=cache_dir).to_pandas()
-        data_path = "/home/luodian/projects/Otter/archived/testmini_image_inside.json"
-        with open(data_path, "r", encoding="utf-8") as f:
-            self.data = json.load(f)
+        self.data = load_dataset("Otter-AI/MathVista", split=name_converter[split], cache_dir=cache_dir).to_pandas()
+        if debug:
+            self.data = self.data.sample(5)
+        # data_path = "/home/luodian/projects/Otter/archived/testmini_image_inside.json"
+        # with open(data_path, "r", encoding="utf-8") as f:
+        #     self.data = json.load(f)
 
-        self.data = {
-            "1": self.data["1"],
-            "2": self.data["2"],
-            "3": self.data["3"],
-            "4": self.data["4"],
-            "5": self.data["5"],
-        }
         self.debug = debug
+        self.quick_extract = quick_extract
 
         self.default_output_path = default_output_path
         if os.path.exists(self.default_output_path) is False:
             os.makedirs(self.default_output_path)
         self.cur_datetime = utc_plus_8_time.strftime("%Y-%m-%d_%H-%M-%S")
         self.api_key = api_key
+        self.gpt_model = gpt_model
 
     def create_query(self, problem, shot_type):
         ### [2] Test query
@@ -289,10 +311,10 @@ class MathVistaDataset(BaseEvalDataset):
                 if answer_type == "integer":
                     hint_text = f"Please answer the question requiring an integer answer and provide the final value, e.g., 1, 2, 3, at the end."
 
-                elif answer_type == "float" and precision == 1:
+                elif answer_type == "float" and str(precision) == "1":
                     hint_text = f"Please answer the question requiring a floating-point number with one decimal place and provide the final value, e.g., 1.2, 1.3, 1.4, at the end."
 
-                elif answer_type == "float" and precision == 2:
+                elif answer_type == "float" and str(precision) == "2":
                     hint_text = f"Please answer the question requiring a floating-point number with two decimal places and provide the final value, e.g., 1.23, 1.34, 1.45, at the end."
 
                 elif answer_type == "list":
@@ -307,7 +329,7 @@ class MathVistaDataset(BaseEvalDataset):
             question_text += f" (Unit: {unit})"
 
         # choices
-        if choices:
+        if choices is not None and len(choices) != 0:
             # choices: (A) 1.2 (B) 1.3 (C) 1.4 (D) 1.5
             texts = ["Choices:"]
             for i, choice in enumerate(choices):
@@ -329,35 +351,49 @@ class MathVistaDataset(BaseEvalDataset):
         query = query.strip()
         return query
 
-    def evaluate(self, model):
-        output_file = os.path.join(self.default_output_path, f"{model.name}_mathvista_eval_submit.json")  # directly match Lu Pan's repo format e.g. output_bard.json
+    def _evaluate(self, model):
+        output_file = os.path.join(self.default_output_path, f"{model.name}_mathvista_eval_submit_{self.cur_datetime}.json")  # directly match Lu Pan's repo format e.g. output_bard.json
 
         results = {}
 
         print(f"Number of test problems in total: {len(self.data)}")
-        for idx_key in tqdm(self.data):
-            query_data = self.data[idx_key]
+        for idx_key, query_data in tqdm(self.data.iterrows(), desc=f"Evaluating {model.name}", total=len(self.data)):
+            # query_data = self.data[idx_key]
             results[idx_key] = {}
             results[idx_key].update(query_data)
-            results[idx_key].pop("base64_image")
+            if results[idx_key]["choices"] is not None:
+                results[idx_key]["choices"] = list(results[idx_key]["choices"])
+            results[idx_key].pop("image")
             # problem = query_data["problem"]
             query = self.create_query(problem=query_data, shot_type="solution")
-            base64_image = query_data["base64_image"]
-            image = Image.open(BytesIO(base64.b64decode(base64_image)))
+            base64_image = query_data["image"]
+            # image = Image.open(BytesIO(base64.b64decode(base64_image)))
+            image = get_pil_image(base64_image)
             response = model.generate(query, image)
             if self.debug:
-                print(f"\n#Query: {query}")
-                print(f"\n#Response: {response}")
+                print(f"\n# Query: {query}")
+                print(f"\n# Response: {response}")
             results[idx_key].update({"query": query})
             results[idx_key].update({"response": response})
 
         with open(output_file, "w") as outfile:
             json.dump(results, outfile)
+
+        results = json.load(open(output_file, "r"))
+
         print(f"MathVista Evaluator: Results saved to {output_file}")
 
-        for idx_key in tqdm(self.data):
+        for idx_key, row in tqdm(self.data.iterrows(), desc=f"Extracting answers from {model.name}", total=len(self.data)):
+            idx_key = str(idx_key)
             response = results[idx_key]["response"]
-            extraction = extract_answer(response, results[idx_key], quick_extract=False, api_key=self.api_key, pid=idx_key)
+            extraction = extract_answer(
+                response,
+                results[idx_key],
+                quick_extract=self.quick_extract,
+                api_key=self.api_key,
+                pid=idx_key,
+                gpt_model=self.gpt_model,
+            )
             results[idx_key].update({"extraction": extraction})
             answer = results[idx_key]["answer"]
             choices = results[idx_key]["choices"]
@@ -384,47 +420,61 @@ class MathVistaDataset(BaseEvalDataset):
 
         scores = {"average": {"accuracy": accuracy, "correct": correct, "total": total}}
         ## [3] Calculate the fine-grained accuracy scores
-
         # merge the 'metadata' attribute into the data
-        for pid in results:
-            results[pid].update(results[pid].pop("metadata"))
+        success_parse = True
+        try:
+            for pid in results:
+                cur_meta = results[pid]["metadata"]
+                cur_meta_dict = ast.literal_eval(cur_meta)
+                results[pid].update(cur_meta_dict)
+        except:
+            success_parse = False
+            # results[pid].update(results[pid].pop("metadata"))
 
         # convert the data to a pandas DataFrame
         df = pd.DataFrame(results).T
 
-        print(len(df))
         print("Number of test problems:", len(df))
         # assert len(df) == 1000 # Important!!!
 
-        # asign the target keys for evaluation
-        target_keys = ["question_type", "answer_type", "language", "source", "category", "task", "context", "grade", "skills"]
+        if success_parse:
+            # asign the target keys for evaluation
+            target_keys = [
+                "question_type",
+                "answer_type",
+                "language",
+                "source",
+                "category",
+                "task",
+                "context",
+                "grade",
+                "skills",
+            ]
 
-        for key in target_keys:
-            print(f"\nType: [{key}]")
-            # get the unique values of the key
-            if key == "skills":
-                # the value is a list
-                values = []
-                for i in range(len(df)):
-                    values += df[key][i]
-                values = list(set(values))
-            else:
-                values = df[key].unique()
-            # print(values)
+            for key in target_keys:
+                print(f"\nType: [{key}]")
+                # get the unique values of the key
+                if key == "skills":
+                    # the value is a list
+                    values = []
+                    for i in range(len(df)):
+                        values += df[key][i]
+                    values = list(set(values))
+                else:
+                    values = df[key].unique()
+                # calculate the accuracy for each value
+                scores[key] = {}
+                for value in values:
+                    correct, total, acc = get_acc_with_contion(df, key, value)
+                    if total > 0:
+                        print(f"[{value}]: {acc}% ({correct}/{total})")
+                        scores[key][value] = {"accuracy": acc, "correct": correct, "total": total}
 
-            # calculate the accuracy for each value
-            scores[key] = {}
-            for value in values:
-                correct, total, acc = get_acc_with_contion(df, key, value)
-                if total > 0:
-                    print(f"[{value}]: {acc}% ({correct}/{total})")
-                    scores[key][value] = {"accuracy": acc, "correct": correct, "total": total}
-
-            # sort the scores by accuracy
-            scores[key] = dict(sorted(scores[key].items(), key=lambda item: float(item[1]["accuracy"]), reverse=True))
+                # sort the scores by accuracy
+                scores[key] = dict(sorted(scores[key].items(), key=lambda item: float(item[1]["accuracy"]), reverse=True))
 
         # save the scores
-        scores_file = os.path.join(self.default_output_path, f"{model.name}_mathvista_eval_score.json")
+        scores_file = os.path.join(self.default_output_path, f"{model.name}_mathvista_eval_score_{self.cur_datetime}.json")
         print(f"MathVista Evaluator: Score results saved to {scores_file}...")
         with open(scores_file, "w") as outfile:
             json.dump(scores, outfile)

@@ -221,37 +221,45 @@ def save_checkpoint(epoch, model, args, accelerator, unwrapped_model=None, globa
                 os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
 
 
+def save_checkpoint(checkpoint_dict, save_path, is_main_process, save_function):
+    """Helper function to save the checkpoint."""
+    save_function(checkpoint_dict, f"{save_path}/final_weights.pt", is_main_process=is_main_process)
+
+
+def save_pretrained(component, save_path, is_main_process, save_function):
+    """Helper function to save pretrained components."""
+    component.save_pretrained(save_path, is_main_process=is_main_process, save_function=save_function)
+
+
 def save_final_weights(model, args, accelerator, processor=None, tokenizer=None):
     """Save final weights of the model."""
     unwrapped_model = accelerator.unwrap_model(model)
+    is_main_process = accelerator.is_main_process
+    save_path = args.external_save_dir
+    model_name = args.model_name.lower()
 
     # Save based on the distributed type
     if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
         checkpoint_dict = accelerator.get_state_dict(model)
-        unwrapped_model.config.save_pretrained(args.external_save_dir)
-        if args.rank == 0:
-            if args.save_hf_model:
-                unwrapped_model.save_pretrained(f"{args.external_save_dir}", is_main_process=accelerator.is_main_process, save_function=accelerator.save, state_dict=checkpoint_dict)
-                if args.model_name == "idefics":
-                    processor.save_pretrained(f"{args.external_save_dir}", is_main_process=accelerator.is_main_process, save_function=accelerator.save)
-                if args.model_name == "llama2":
-                    tokenizer.save_pretrained(f"{args.external_save_dir}", is_main_process=accelerator.is_main_process, save_function=accelerator.save)
-            else:
-                trainable_params_name = [name for name, p in unwrapped_model.named_parameters() if p.requires_grad]
-                for name in list(checkpoint_dict.keys()):
-                    if name not in trainable_params_name:
-                        del checkpoint_dict[name]
-                accelerator.save(checkpoint_dict, f"{args.external_save_dir}/final_weights.pt")
     else:
         checkpoint_dict = get_checkpoint(model=unwrapped_model)
-        accelerator.save(checkpoint_dict, f"{args.external_save_dir}/final_weights.pt")
-        unwrapped_model.config.save_pretrained(args.external_save_dir)
-        if args.save_hf_model:
-            unwrapped_model.save_pretrained(f"{args.external_save_dir}")
-            if args.model_name == "idefics":
-                processor.save_pretrained(f"{args.external_save_dir}", is_main_process=accelerator.is_main_process, save_function=accelerator.save)
-            if args.model_name == "llama2":
-                tokenizer.save_pretrained(f"{args.external_save_dir}", is_main_process=accelerator.is_main_process, save_function=accelerator.save)
+
+    unwrapped_model.config.save_pretrained(save_path)
+
+    if args.save_hf_model:
+        save_pretrained(unwrapped_model, save_path, is_main_process, accelerator.save)
+
+        if "idefics" in model_name or "fuyu" in model_name:
+            save_pretrained(processor, save_path, is_main_process, accelerator.save)
+
+        if "llama2" in model_name:
+            save_pretrained(tokenizer, save_path, is_main_process, accelerator.save)
+    else:
+        if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
+            trainable_params_name = [name for name, p in unwrapped_model.named_parameters() if p.requires_grad]
+            checkpoint_dict = {k: v for k, v in checkpoint_dict.items() if k in trainable_params_name}
+
+        save_checkpoint(checkpoint_dict, save_path, is_main_process, accelerator.save)
 
 
 def get_weights_for_dataloaders(dataloaders):
@@ -295,3 +303,18 @@ def find_and_remove_tokens(input_tensor, labels_tensor, attention_mask_tensor, t
     new_attention_mask = torch.nn.utils.rnn.pad_sequence(new_attention_mask_list, batch_first=True, padding_value=0)
 
     return new_input, new_labels, new_attention_mask
+
+
+def delete_tensors_from_dict(d):
+    """Recursively delete tensors from a nested dictionary."""
+    keys_to_delete = []
+    for k, v in d.items():
+        if isinstance(v, torch.Tensor):
+            keys_to_delete.append(k)
+        elif isinstance(v, list):
+            new_list = [item for item in v if not isinstance(item, torch.Tensor)]
+            d[k] = new_list
+        elif isinstance(v, dict):
+            delete_tensors_from_dict(v)
+    for key in keys_to_delete:
+        del d[key]

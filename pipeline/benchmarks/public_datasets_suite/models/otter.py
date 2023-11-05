@@ -4,9 +4,9 @@ from PIL import Image
 import torch
 import transformers
 
-from pipeline.eval.eval_model import BaseEvalModel
+from pipeline.benchmarks.public_datasets_suite.eval_model import BaseEvalModel
 from contextlib import suppress
-from pipeline.eval.models.utils import unwrap_model
+from pipeline.benchmarks.public_datasets_suite.models.utils import unwrap_model
 from otter_ai import OtterForConditionalGeneration
 import os
 
@@ -114,7 +114,13 @@ class EvalModel(BaseEvalModel):
 
         outputs = outputs[:, len(input_ids[0]) :]
 
-        return self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
+        result = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
+
+        result = list(map(lambda text: text.strip(), result))
+
+        # print(result)
+
+        return result
 
     def get_logits(
         self,

@@ -144,5 +144,12 @@ pipeline/benchmarks/models/LLaMA_Adapter
 shared_scripts/gcp_instance/**
 shared_scripts/shai_instance/**
 pipeline/benchmarks/models/Video_ChatGPT
+pipeline/benchmarks/models/LLaVA
+pipeline/benchmarks/models/llava
 pipeline/benchmarks/evaluation_result
+pipeline/serve/user_logs
 config.yaml
+
+azure_storage/
+checkpoints/
+*.ttf
