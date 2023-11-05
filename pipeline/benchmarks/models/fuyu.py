@@ -1,4 +1,7 @@
-from transformers import FuyuForCausalLM, AutoTokenizer, FuyuProcessor, FuyuImageProcessor
+from typing import List
+from transformers import AutoTokenizer, FuyuImageProcessor
+from transformers import FuyuForCausalLM
+from src.otter_ai.models.fuyu.processing_fuyu import FuyuProcessor
 from PIL import Image
 from .base_model import BaseModel
 import torch
@@ -26,25 +29,36 @@ def get_pil_image(raw_image_data) -> Image.Image:
 
 
 class Fuyu(BaseModel):
-    def __init__(self, model_path: str = "adept/fuyu-8b"):
+    def __init__(self, model_path: str = "adept/fuyu-8b", cuda_id: int = 0, resolution: int = -1, max_new_tokens=256):
         super().__init__("fuyu", model_path)
-        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        self.model = FuyuForCausalLM.from_pretrained(model_path).to(self.device)
-        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+        self.resolution = resolution
+        if self.resolution == -1:
+            assert False
+        # print resolution
+        print(f"Test resolution: {self.resolution}")
+        self.device = f"cuda:{cuda_id}" if torch.cuda.is_available() else "cpu"
+        self.model = FuyuForCausalLM.from_pretrained(model_path, torch_dtype=torch.bfloat16).to(self.device)
+        self.tokenizer = AutoTokenizer.from_pretrained("adept/fuyu-8b")
         self.image_processor = FuyuImageProcessor()
         self.processor = FuyuProcessor(image_processor=self.image_processor, tokenizer=self.tokenizer)
+        self.max_new_tokens = max_new_tokens
+        self.bad_words_list = ["User:", "Assistant:"]
+        self.bad_words_ids = self.tokenizer(self.bad_words_list, add_special_tokens=False).input_ids
 
     def generate(self, text_prompt: str, raw_image_data: str):
         raw_image_data = get_pil_image(raw_image_data)
-        # make sure the image is in RGB format and resize to match the width
-        max_height, max_width = 1080, 1920
         raw_image_data = raw_image_data.convert("RGB")
+        # make sure the image is in RGB format and resize to match the width
+
+        max_height, max_width = self.resolution, self.resolution
         raw_image_data.thumbnail((max_width, max_height), Image.ANTIALIAS)
+
+        # formated_prompt = f"User: {text_prompt} Assistant:"
         model_inputs = self.processor(text=text_prompt, images=[raw_image_data], device=self.device)
         for k, v in model_inputs.items():
-            model_inputs[k] = v.to(self.device)
-
-        generation_output = self.model.generate(**model_inputs, max_new_tokens=1024, pad_token_id=self.tokenizer.eos_token_id)
+            model_inputs[k] = v.to(self.device, non_blocking=True) if isinstance(v, torch.Tensor) else [vv.to(self.device, non_blocking=True) for vv in v]
+        model_inputs["image_patches"][0] = model_inputs["image_patches"][0].to(dtype=next(self.model.parameters()).dtype)
+        generation_output = self.model.generate(**model_inputs, max_new_tokens=self.max_new_tokens, pad_token_id=self.tokenizer.eos_token_id, bad_words_ids=self.bad_words_ids)
         generation_text = self.processor.batch_decode(generation_output, skip_special_tokens=True)
         return generation_text[0].split("\x04")[1].strip(" ").strip("\n")
 
@@ -52,18 +66,21 @@ class Fuyu(BaseModel):
         # Similar to the Idefics' eval_forward but adapted for Fuyu
         pass
 
-    def batch_generate(self, batch_text_prompts: list[str], batch_raw_image_data: list[Image.Image]):
+    def batch_generate(self, batch_text_prompts: List[str], batch_raw_image_data: List[Image.Image]):
         batch_raw_image_data = [image.convert("RGB") for image in batch_raw_image_data]
+        for raw_image_data in batch_raw_image_data:
+            max_height, max_width = self.resolution, self.resolution
+            raw_image_data.thumbnail((max_width, max_height), Image.ANTIALIAS)
         # Prepare the inputs for the model
         model_inputs = self.processor(text=batch_text_prompts, images=batch_raw_image_data, device=self.device)
 
         for k, v in model_inputs.items():
-            model_inputs[k] = v.to(self.device)
+            model_inputs[k] = v.to(self.device, non_blocking=True) if isinstance(v, torch.Tensor) else [vv.to(self.device, non_blocking=True) for vv in v]
 
         # Forward pass to generate the batch output
         generation_output = self.model.generate(
             **model_inputs,
-            max_new_tokens=1024,
+            max_new_tokens=self.max_new_tokens,
             pad_token_id=self.tokenizer.eos_token_id
             # Add any other parameters similar to Idefics.generate
         )

@@ -129,7 +129,7 @@ class MimicitDataset(Dataset):
         self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content. You need to answer user's questions with plans and Python codes as response.\n<</SYS>>\n\n"
 
         (self.mean, self.std) = (IDEFICS_STANDARD_MEAN, IDEFICS_STANDARD_STD) if args.model_name == "idefics" else (FLAMINGO_MEAN, FLAMINGO_STD)
-        if args.model_name == "otter":
+        if args.model_name == "otter" or args.model_name == "fuyu":
             self.patch_resize_transform = transforms.Compose(
                 [
                     transforms.Resize(
@@ -199,8 +199,10 @@ class MimicitDataset(Dataset):
             # truncated_mimicit_path = truncate_text(cur_mimicit_path)
             # truncated_train_config_path = truncate_text(cur_train_config_path)
             # truncated_images_path = truncate_text(cur_images_path)
-            # if len(task_desc) > 0:  # if with multiple task descriptions, join them with comma
-            #     task_desc = ",".join(task_desc)
+            if len(task_desc) > 0:  # if with multiple task descriptions, join them with comma
+                task_desc = ",".join(task_desc)
+
+            # master_print(task_desc)
             # truncated_task_desc = truncate_text(task_desc)
 
             table.add_row(
@@ -210,7 +212,7 @@ class MimicitDataset(Dataset):
                     cur_train_config_path if cur_train_config_path != "" else "None",
                     cur_images_path if cur_images_path != "" else "None",
                     len(resampled_train),
-                    task_desc,
+                    task_desc if task_desc != "" else "None",
                 ]
             )
 
@@ -302,8 +304,11 @@ class MimicitDataset(Dataset):
             image_placeholder = "<image>" if not is_text_only else ""
             prefix = f"{image_placeholder}User:" if insert_image else "User:"
             return f"{prefix}{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
+        elif instruction_format == "fuyu":
+            return f"User:{cur_instruction} Assistant:\x04 {cur_answer}"
 
     def process_images(self, image_ids, is_video=False):
+        pil_images = []
         patch_images = torch.tensor([])
         if is_video:
             image_ids = self.resample_frames_fn(image_ids, self.resample_frames)
@@ -311,16 +316,19 @@ class MimicitDataset(Dataset):
         for cur_image_id in image_ids:
             cur_image_str = self.images.loc[cur_image_id]["base64"]
             cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image_str))).convert("RGB")
-            cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
-            if len(patch_images) == 0:
-                patch_images = cur_patch_image
+            if self.args.model_name == self.args.model_name == "fuyu":
+                pil_images.append(cur_image)  # fuyu doesnt need following process.
             else:
-                patch_images = torch.cat((patch_images, cur_patch_image))
+                cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
+                if len(patch_images) == 0:
+                    patch_images = cur_patch_image
+                else:
+                    patch_images = torch.cat((patch_images, cur_patch_image))
 
         if is_video:
             patch_images = patch_images.unsqueeze(0)
 
-        return patch_images
+        return pil_images, patch_images
 
     def process_general(self, instruction_id, image_ids, in_context_example_ids, task_group):
         all_texts = ""
@@ -345,16 +353,18 @@ class MimicitDataset(Dataset):
                 )
             all_texts += cur_text
 
-        all_texts = all_texts.rstrip("\n")
-        patch_images = torch.tensor([])
+        # all_texts = all_texts.rstrip("\n")
+        # patch_images = torch.tensor([])
         if task_group == "TEXT_ONLY":
             patch_images = torch.zeros(3, 224, 224).unsqueeze(0).unsqueeze(0)
+            pil_images = [Image.fromarray(patch_images[0, 0].numpy().astype(np.uint8).transpose(1, 2, 0))]
         elif task_group == "IMAGE_TEXT_IN_CONTEXT" or task_group == "IMAGE_TEXT":
-            patch_images = self.process_images(image_ids, is_video=False).unsqueeze(1)
+            pil_images, patch_images = self.process_images(image_ids, is_video=False)
+            patch_images = patch_images.unsqueeze(0)
         elif task_group == "VIDEO_TEXT":
-            patch_images = self.process_images(image_ids, is_video=True)
+            pil_images, patch_images = self.process_images(image_ids, is_video=True)
 
-        return patch_images, all_texts.rstrip("\n")
+        return pil_images, patch_images, all_texts.rstrip("\n")
 
     def process_image_text_pair(self, index):
         cur_train_id = self.train_data_list[index]
@@ -383,7 +393,7 @@ class MimicitDataset(Dataset):
 
         try:
             if self.task_group in process_mapping:
-                patch_images, all_texts = self.process_general(instruction_id, image_ids, in_context_example_ids, self.task_group)
+                pil_images, patch_images, all_texts = self.process_general(instruction_id, image_ids, in_context_example_ids, self.task_group)
         except Exception as e:
             print(f"Error: {e}")
             print(f"cur_train_id: {cur_train_id}")
@@ -391,6 +401,9 @@ class MimicitDataset(Dataset):
             print(f"instruction_id: {instruction_id}")
             print(f"image_ids: {image_ids}")
             print(f"in_context_example_ids: {in_context_example_ids}")
+            import pdb
+
+            pdb.set_trace()
             exit()
 
         if cur_task_desc != "" and self.args.with_task_description:
@@ -420,6 +433,7 @@ class MimicitDataset(Dataset):
             "patch_images": patch_images,
             "task_group": self.task_group,
             "full_text": all_texts,
+            "pil_images": pil_images,
         }
         return example
 
@@ -437,7 +451,7 @@ class MimicitDataset(Dataset):
                 return self.__getitem__(index + 1)
         return pair_sample
 
-    def collate(self, samples):
+    def collate(self, samples, fuyu_processor=None, resolution=None):
         """Merge samples of different tasks to form two mini-batches.
         Args:
             samples (List[Tuple]): samples to collate
@@ -454,7 +468,24 @@ class MimicitDataset(Dataset):
             pad_idx=self.tokenizer.pad_token_id,
             eos_idx=self.tokenizer.eos_token_id,
         )
+
+        if fuyu_processor:
+            fuyu_data = prepare_fuyu(self.args, fuyu_processor, res_v1, resolution)
+            res_v1["fuyu_data"] = fuyu_data
         return res_v1
+
+
+def prepare_fuyu(args, fuyu_processor, batch_data, resolution):
+    if args.dynamic_resolution:
+        resolution = random.choice([(448, 448), (512, 512), (768, 768)])
+    pil_images = [img[0].resize(resolution) for img in batch_data["pil_images"] if img is not None]
+    model_inputs = fuyu_processor(text=batch_data["full_text"], images=pil_images)
+    labels = fuyu_processor.get_labels(input_ids=model_inputs["input_ids"], special_token_id=71122)
+    input_ids, labels = fuyu_processor.find_and_remove_tokens(input_ids=model_inputs["input_ids"], labels=labels, token_id=71122)
+    model_inputs["input_ids"] = input_ids
+    model_inputs["labels"] = labels
+    del batch_data["pil_images"]
+    return model_inputs
 
 
 def collate_fn(samples, pad_idx, eos_idx):
@@ -479,13 +510,13 @@ def collate_fn(samples, pad_idx, eos_idx):
 
     batch = {
         "id": ids,
-        "nsentences": len(samples),
         "task_group": task_groups,
         "net_input": {
             "input_ids": src_tokens,
             "attention_masks": src_tokens_masks,
         },
         "full_text": [s["full_text"] for s in samples],
+        "pil_images": [s["pil_images"] for s in samples],
     }
     # larger_incontext_num = max([s["patch_images"].size(0) for s in samples])
     try:
@@ -514,6 +545,9 @@ def collate_tokens(
     size = size if pad_to_length is None else max(size, pad_to_length)
     if pad_to_multiple != 1 and size % pad_to_multiple != 0:
         size = int(((size - 0.1) // pad_to_multiple + 1) * pad_to_multiple)
+
+    if pad_idx is None:
+        pad_idx = eos_idx
 
     def copy_tensor(src, dst):
         assert dst.numel() == src.numel()

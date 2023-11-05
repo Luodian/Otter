@@ -47,6 +47,7 @@ class MMVetDataset(BaseEvalDataset):
         num_run: int = 1,
         prompt: str = MM_VET_PROMPT,
         decimail_places: int = 1,  # number of decimal places to round to
+        debug: bool = False,
     ):
         super().__init__("MMVetDataset", data_path)
         self.df = load_dataset(data_path, split=split, cache_dir=cache_dir).to_pandas()
@@ -57,6 +58,7 @@ class MMVetDataset(BaseEvalDataset):
         self.decimal_places = decimail_places
         self.api_key = api_key
         self.cur_datetime = utc_plus_8_time.strftime("%Y-%m-%d_%H-%M-%S")
+        self.debug = debug
         self.prepare()
 
     def prepare(self):
@@ -140,6 +142,7 @@ class MMVetDataset(BaseEvalDataset):
                         break
             return need_more_runs or len(grade_results) < self.len_data
 
+        print(f"grade results saved to {grade_file}")
         while need_more_runs():
             for j in range(self.num_run):
                 print(f"eval run {j}")
@@ -151,9 +154,10 @@ class MMVetDataset(BaseEvalDataset):
                         continue
 
                     model_pred = model.generate(line["instruction"], line["images"][0])
-                    print(f"# Query: {line['instruction']}")
-                    print(f"# Response: {model_pred}")
-                    print(f"# Ground Truth: {line['answer']}")
+                    if self.debug:
+                        print(f"# Query: {line['instruction']}")
+                        print(f"# Response: {model_pred}")
+                        print(f"# Ground Truth: {line['answer']}")
 
                     question = (
                         self.prompt
@@ -233,12 +237,13 @@ class MMVetDataset(BaseEvalDataset):
                         sample_grade["model"].append(response["model"])
                         sample_grade["content"].append(content)
                         sample_grade["score"].append(score)
+                        sample_grade["query"] = line["instruction"]
+                        sample_grade["response"] = model_pred
+                        sample_grade["ground_truth"] = line["answer"]
                     grade_results[id] = sample_grade
 
                     with open(grade_file, "w") as f:
                         json.dump(grade_results, f, indent=4)
-
-                    print(f"grade results saved to {grade_file}")
 
         cap_socres = {k: [0.0] * self.num_run for k in self.columns[:-2]}
         self.counter["total"] = self.len_data

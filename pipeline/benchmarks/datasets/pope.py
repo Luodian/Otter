@@ -14,15 +14,16 @@ class PopeDataset(BaseEvalDataset):
         split="test",
         default_output_path="./logs/POPE",
         cache_dir=None,
-        batch=8,
+        batch_size=1,
     ):
-        super().__init__("PopeDataset", data_path, max_batch_size=batch)
+        super().__init__("PopeDataset", data_path, max_batch_size=batch_size)
         print("Loading dataset from", data_path)
         self.data = load_dataset(data_path, split=split, cache_dir=cache_dir)
         print("Dataset loaded")
         self.default_output_path = default_output_path
         if not os.path.exists(default_output_path):
             os.makedirs(default_output_path)
+        self.batch_gen_size = batch_size
 
     def parse_pred(self, text):
         if text.find(".") != -1:

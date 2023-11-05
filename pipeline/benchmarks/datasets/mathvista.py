@@ -62,6 +62,7 @@ Extracted answer: B
 import time
 import requests
 import json
+import ast
 
 
 def get_chat_response(promot, api_key, model="gpt-3.5-turbo", temperature=0, max_tokens=256, n=1, patience=5, sleep_time=5):
@@ -136,7 +137,6 @@ def extract_answer(response, problem, quick_extract=False, api_key=None, pid=Non
 
     # quick extraction
     if quick_extract:
-        print("Quickly extracting answer...")
         # The answer is "text". -> "text"
         try:
             result = re.search(r'The answer is "(.*)"\.', response)
@@ -261,7 +261,17 @@ def safe_equal(prediction, answer):
 
 
 class MathVistaDataset(BaseEvalDataset):
-    def __init__(self, data_path="Otter-AI/MathVista", split="test", default_output_path="./logs/MathVista", cache_dir=None, api_key=None, gpt_model="gpt-4-0613", debug=False, quick_extract=False):
+    def __init__(
+        self,
+        data_path="Otter-AI/MathVista",
+        split="test",
+        default_output_path="./logs/MathVista",
+        cache_dir=None,
+        api_key=None,
+        gpt_model="gpt-4-0613",
+        debug=False,
+        quick_extract=False,
+    ):
         super().__init__("MathVistaDataset", data_path)
         name_converter = {"dev": "validation", "test": "test"}
         self.data = load_dataset("Otter-AI/MathVista", split=name_converter[split], cache_dir=cache_dir).to_pandas()
@@ -361,8 +371,8 @@ class MathVistaDataset(BaseEvalDataset):
             image = get_pil_image(base64_image)
             response = model.generate(query, image)
             if self.debug:
-                print(f"\n#Query: {query}")
-                print(f"\n#Response: {response}")
+                print(f"\n# Query: {query}")
+                print(f"\n# Response: {response}")
             results[idx_key].update({"query": query})
             results[idx_key].update({"response": response})
 
@@ -376,7 +386,14 @@ class MathVistaDataset(BaseEvalDataset):
         for idx_key, row in tqdm(self.data.iterrows(), desc=f"Extracting answers from {model.name}", total=len(self.data)):
             idx_key = str(idx_key)
             response = results[idx_key]["response"]
-            extraction = extract_answer(response, results[idx_key], quick_extract=self.quick_extract, api_key=self.api_key, pid=idx_key, gpt_model=self.gpt_model)
+            extraction = extract_answer(
+                response,
+                results[idx_key],
+                quick_extract=self.quick_extract,
+                api_key=self.api_key,
+                pid=idx_key,
+                gpt_model=self.gpt_model,
+            )
             results[idx_key].update({"extraction": extraction})
             answer = results[idx_key]["answer"]
             choices = results[idx_key]["choices"]
@@ -403,61 +420,58 @@ class MathVistaDataset(BaseEvalDataset):
 
         scores = {"average": {"accuracy": accuracy, "correct": correct, "total": total}}
         ## [3] Calculate the fine-grained accuracy scores
-
         # merge the 'metadata' attribute into the data
-        # for pid in results:
-        #     results[pid].update(results[pid].pop("metadata"))
+        success_parse = True
+        try:
+            for pid in results:
+                cur_meta = results[pid]["metadata"]
+                cur_meta_dict = ast.literal_eval(cur_meta)
+                results[pid].update(cur_meta_dict)
+        except:
+            success_parse = False
+            # results[pid].update(results[pid].pop("metadata"))
 
         # convert the data to a pandas DataFrame
         df = pd.DataFrame(results).T
 
-        print(len(df))
         print("Number of test problems:", len(df))
         # assert len(df) == 1000 # Important!!!
 
-        # asign the target keys for evaluation
-        target_keys = [
-            "question_type",
-            "answer_type",
-            "language",
-            "source",
-            "category",
-            "task",
-            "context",
-            "grade",
-            "skills",
-        ]
+        if success_parse:
+            # asign the target keys for evaluation
+            target_keys = [
+                "question_type",
+                "answer_type",
+                "language",
+                "source",
+                "category",
+                "task",
+                "context",
+                "grade",
+                "skills",
+            ]
 
-        for key in target_keys:
-            print(f"\nType: [{key}]")
-            # get the unique values of the key
-            if key == "skills":
-                # the value is a list
-                values = []
-                for i in range(len(df)):
-                    if key in df.keys():
+            for key in target_keys:
+                print(f"\nType: [{key}]")
+                # get the unique values of the key
+                if key == "skills":
+                    # the value is a list
+                    values = []
+                    for i in range(len(df)):
                         values += df[key][i]
-                    else:
-                        print("Key not found:", key)
-                        continue
-                values = list(set(values))
-            else:
-                if key not in df.keys():
-                    print("Key not found:", key)
-                    continue
-                values = df[key].unique()
-            # print(values)
+                    values = list(set(values))
+                else:
+                    values = df[key].unique()
+                # calculate the accuracy for each value
+                scores[key] = {}
+                for value in values:
+                    correct, total, acc = get_acc_with_contion(df, key, value)
+                    if total > 0:
+                        print(f"[{value}]: {acc}% ({correct}/{total})")
+                        scores[key][value] = {"accuracy": acc, "correct": correct, "total": total}
 
-            # calculate the accuracy for each value
-            scores[key] = {}
-            for value in values:
-                correct, total, acc = get_acc_with_contion(df, key, value)
-                if total > 0:
-                    print(f"[{value}]: {acc}% ({correct}/{total})")
-                    scores[key][value] = {"accuracy": acc, "correct": correct, "total": total}
-
-            # sort the scores by accuracy
-            scores[key] = dict(sorted(scores[key].items(), key=lambda item: float(item[1]["accuracy"]), reverse=True))
+                # sort the scores by accuracy
+                scores[key] = dict(sorted(scores[key].items(), key=lambda item: float(item[1]["accuracy"]), reverse=True))
 
         # save the scores
         scores_file = os.path.join(self.default_output_path, f"{model.name}_mathvista_eval_score_{self.cur_datetime}.json")

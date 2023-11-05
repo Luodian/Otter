@@ -18,6 +18,8 @@ class MMBenchDataset(BaseEvalDataset):
         self.name_converter = {"dev": "validation", "test": "test"}
         self.df = load_dataset("Otter-AI/MMBench", self.version, split=self.name_converter[split], cache_dir=cache_dir).to_pandas()
         self.default_output_path = default_output_path
+        if os.path.exists(self.default_output_path) is False:
+            os.makedirs(self.default_output_path)
         self.sys_prompt = sys_prompt
         self.cur_datetime = utc_plus_8_time.strftime("%Y-%m-%d_%H-%M-%S")
         self.debug = debug

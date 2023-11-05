@@ -14,6 +14,11 @@ AVAILABLE_MODELS: Dict[str, str] = {
     "frozen_bilm": "FrozenBilm",
     "idefics": "Idefics",
     "fuyu": "Fuyu",
+    "otterbite": "OtterBite",
+    "instructblip": "InstructBLIP",
+    "qwen_vl": "QwenVL",
+    "llava_model": "LLaVA_Model",
+    "instructblip": "InstructBLIP",
 }
 
 
@@ -39,4 +44,5 @@ def load_model(model_name: str, model_args: Dict[str, str]) -> BaseModel:
     imported_module = importlib.import_module(module_path)
     model_class = getattr(imported_module, model_formal_name)
     print(f"Imported class: {model_class}")
+    model_args.pop("name")
     return model_class(**model_args)

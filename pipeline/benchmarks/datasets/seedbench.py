@@ -53,12 +53,15 @@ class SEEDBenchDataset(BaseEvalDataset):
                 answer_record = {"question_id": data_dict["question_id"], "prediction": prediction}
                 output_f.write(json.dumps(answer_record) + "\n")
 
-                answer_record = {"question_id": data_dict["question_id"], "prediction": prediction}
-                output_f.write(json.dumps(answer_record) + "\n")
+            answer_record = {"question_id": data_dict["question_id"], "prediction": prediction}
+            output_f.write(json.dumps(answer_record) + "\n")
 
-                accuracy = num_correct / count * 100
-                pbar.set_postfix(accuracy=f"{accuracy:.2f}")
-                pbar.update(1)
+            answer_record = {"question_id": data_dict["question_id"], "prediction": prediction}
+            output_f.write(json.dumps(answer_record) + "\n")
+
+            accuracy = num_correct / count * 100
+            pbar.set_postfix(accuracy=f"{accuracy:.2f}")
+            pbar.update(1)
 
         accuracy = num_correct / count * 100
         print(f"Accuracy: {accuracy:.2f}%")

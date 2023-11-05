@@ -1,0 +1,97 @@
+## OtterHD
+
+
+
+<p align="center" width="100%">
+<img src="https://i.postimg.cc/02Vj5HDr/Screenshot-2023-11-05-at-3-50-15-PM.png"  width="80%" height="80%">
+</p>
+
+<div>
+<div align="center">
+    <a href='https://brianboli.com/' target='_blank'>Bo Li<sup>*</sup></a>&emsp;
+    <a href='https://veiled-texture-20c.notion.site/Peiyuan-Zhang-ab24b48621c9491db767a76df860873a?pvs=4' target='_blank'>Peiyuan Zhang<sup>*</sup></a>&emsp;
+    </br>
+    <a href='https://jingkang50.github.io/' target='_blank'>Jingkang Yang<sup>♠</sup></a>&emsp;
+    <a href='https://zhangyuanhan-ai.github.io/' target='_blank'>Yuanhan Zhang<sup>♠</sup></a>&emsp;
+    <a href='https://pufanyi.github.io/' target='_blank'>Fanyi Pu<sup>♠</sup></a>&emsp;
+    <a href='https://liuziwei7.github.io/' target='_blank'>Ziwei Liu<sup>&#x2709</sup></a>
+</div>
+<div>
+<div align="center">
+    S-Lab, Nanyang Technological University&emsp;
+    </br>
+    <sup>*</sup> Equal Contribution&emsp;
+    <sup>♠</sup> Equal appreciation on assistance&emsp;
+    <sup>&#x2709</sup> Corresponding Author
+</div>
+
+**[Technical Report](link)**
+
+**Interactive Demo:**  [OtterHD](https://huggingface.co/spaces/Otter-AI/OtterHD-8B-demo) 
+
+We introduce OtterHD-8B, a multimodal model fine-tuned from Fuyu-8B to facilitate a more fine-grained interpretation of high-resolution visual input without requiring a vision encoder. OtterHD-8B also supports flexible input sizes at test time, ensuring adaptability to diverse inference budgets. To finetune OtterHD, We compiled a total of 370K image-text pairs sourced from the following public datasets: LLaVA-Instruct, LLaVA-RLHF, VQAv2, GQA, OKVQA, OCRVQA, A-OKVQA, COCO-GOI, COCO-Caption, TextQA, RefCOCO, COCO-ITM, and ImageNet. During training, we randomly resize the input image to the size of [418, 512, 768, 1024] uniformly. We find that the resulting model is able to generalize to even higher resolution.
+<p align="center" width="100%">
+<img src="https://i.postimg.cc/C1Ypqkqd/Screenshot-2023-11-05-at-4-12-36-PM.png"  width="80%" height="80%">
+</p>
+
+### How to Finetune 
+
+```bash
+srun accelerate launch \
+--config_file=pipeline/accelerate_configs/accelerate_config_zero2.yaml \
+--num_processes=5 \
+--main_process_port=25000 \
+pipeline/train/instruction_following.py \
+--pretrained_model_name_or_path=azure_storage/fuyu-8b \
+--training_data_yaml=shared_scripts/Demo_Data.yaml \
+--model_name=fuyu \
+--instruction_format=fuyu \
+--batch_size=2 \
+--gradient_accumulation_steps=4 \
+--num_epochs=8 \
+--wandb_entity=lance777 \
+--external_save_dir=./checkpoints \
+--save_hf_model \
+--run_name=Fuyu-M3IT \
+--wandb_project=Fuyu \
+--report_to_wandb \
+--workers=1 \
+--lr_scheduler=linear \
+--learning_rate=1e-5 \
+--warmup_steps_ratio=0.01 \
+--dynamic_resolution \
+--weight_decay 0.1 \
+```
+
+## MagnifierBench
+<p align="center" width="100%">
+<img src="https://i.postimg.cc/fL8pSXK7/Screenshot-2023-11-05-at-3-52-58-PM.png"  width="80%" height="80%">
+</p>
+<div align="center">
+<a href='https://huggingface.co/datasets/Otter-AI/MagnifierBench' target='_blank'>Huggingface Dataset</a>
+</div>
+
+
+The human visual system can naturally perceive the details of small objects within a wide field of view, but current benchmarks for testing LMMs have not specifically focused on assessing this ability. This may be because the input sizes of mainstream Vision-Language models are constrained to relatively small resolutions. With the advent of the Fuyu and OtterHD models, we can extend the input resolution to a much larger range. Therefore, there is an urgent need for a benchmark that can test the ability to discern the details of small objects (often 1% image size) in high-resolution input images.
+
+### Evaluation 
+Create a yaml file with below content:
+```yaml
+datasets:
+  - name: magnifierbench
+    split: test
+    data_path: Otter-AI/MagnifierBench
+    prompt: Answer with the option letter from the given choices directly.
+    api_key: [You GPT-4 API]
+models:
+  - name: fuyu
+    model_path: azure_storage/fuyu-8b
+    resolution: 1440
+```
+
+Then run
+
+```python
+srun python -m pipeline.benchmarks.evaluate --confg [path to your config file]
+
+```

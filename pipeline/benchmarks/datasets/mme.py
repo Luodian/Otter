@@ -177,8 +177,8 @@ class MMEDataset(BaseEvalDataset):
                         gt_ans = item["answer"].lower().strip().replace(".", "")
                         response = model.generate(question, image)
                         if self.debug:
-                            print(f"\n#Query: {question}")
-                            print(f"\n#Response: {response}")
+                            print(f"\n# Query: {question}")
+                            print(f"\n# Response: {response}")
                         pred_ans = self.parse_pred_ans(response)
 
                         assert gt_ans in ["yes", "no"]

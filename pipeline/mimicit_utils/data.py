@@ -665,6 +665,10 @@ def preload_dataset(args):
     return dataset_info
 
 
+from src.otter_ai.models.fuyu.processing_fuyu import FuyuProcessor
+from functools import partial
+
+
 def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     args.task = "pretrain"
@@ -691,6 +695,10 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
         sampler = RandomSampler(dataset, replacement=True, num_samples=len(dataset))
         if args.distributed_type == "DEEPSPEED" or args.distributed_type == "MULTI_GPU":
             sampler = DistributedProxySampler(sampler, num_replicas=args.world_size, rank=args.rank)
+        if isinstance(image_processor, FuyuProcessor):
+            collate_fn = partial(dataset.collate, fuyu_processor=image_processor, resolution=args.image_resolution)
+        else:
+            collate_fn = dataset.collate
         dataloader = torch.utils.data.DataLoader(
             dataset,
             sampler=sampler,
@@ -698,7 +706,7 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
             num_workers=args.workers,
             pin_memory=True,
             drop_last=True,
-            collate_fn=dataset.collate,
+            collate_fn=collate_fn,
         )
         dataloaders.append(dataloader)
 

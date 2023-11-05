@@ -4,6 +4,14 @@ import os
 from pipeline.train.distributed import world_info_from_env
 
 
+def parse_tuple(string):
+    try:
+        x, y = map(int, string.split(","))
+        return (x, y)
+    except:
+        raise argparse.ArgumentTypeError("Invalid tuple format. Expected 'x,y'")
+
+
 def parse_args():
     """
     Parse the command line arguments and perform the initial setup.
@@ -27,14 +35,14 @@ def parse_args():
         "--model_name",
         type=str,
         default="otter",
-        choices=["otter", "flamingo", "idefics", "llama2", "debug_model"],
+        choices=["otter", "flamingo", "idefics", "llama2", "debug_model", "fuyu"],
         help="otters or flamingo",
     )
     parser.add_argument(
         "--instruction_format",
         type=str,
         default="simple",
-        choices=["simple", "llama2", "idefics"],
+        choices=["simple", "llama2", "idefics", "fuyu"],
         help="simple is for mpt/llama1, rest are in different instruction templates.",
     )
     parser.add_argument(
@@ -56,6 +64,12 @@ def parse_args():
     parser.add_argument("--save_steps_interval", type=int, default=-1)
     parser.add_argument(
         "--pretrained_model_name_or_path",
+        type=str,
+        help="path to huggingface model or model identifier from local path or huggingface.co",
+        default=None,
+    )
+    parser.add_argument(
+        "--peft_model_name_or_path",
         type=str,
         help="path to huggingface model or model identifier from local path or huggingface.co",
         default=None,
@@ -161,8 +175,19 @@ def parse_args():
         default=False,
         help="resize embedding layer to match the vocabulary size.",
     )
+    parser.add_argument("--image_resolution", type=parse_tuple, default=(224, 224), help="image resolution for the model in format: x,y")
     parser.add_argument(
         "--with_task_description",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--enable_lora",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--dynamic_resolution",
         action="store_true",
         default=False,
     )

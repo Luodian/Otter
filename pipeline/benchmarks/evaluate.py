@@ -117,12 +117,9 @@ if __name__ == "__main__":
         print()
 
         for model_info in model_infos:
-            kwargs = {}
-            if "model_path" in model_info:
-                kwargs["model_path"] = model_info["model_path"]
-            print("\nMODEL:", model_info["name"])
+            print("\nMODEL INFO:", model_info)
             print("-" * 80)
-            model = load_model(model_info["name"], kwargs)
+            model = load_model(model_info["name"], model_info)
 
             dataset_count = 0
             for dataset in load_datasets(dataset_infos):
