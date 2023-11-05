@@ -41,7 +41,7 @@ accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_
     --machine_rank $THEID --main_process_ip $MASTER_ADDR --main_process_port $MASTER_PORT \
     --num_machines=${COUNT_NODE} --num_processes=${GPU} \
     pipeline/train/instruction_following.py \
-    --pretrained_model_name_or_path=/mnt/petrelfs/zhangyuanhan/Otter/checkpoint/adept-fuyu-8b \
+    --pretrained_model_name_or_path=adept/fuyu-8b \
     --training_data_yaml=./Demo_Data.yaml \
     --model_name=fuyu \
     --instruction_format=fuyu \
