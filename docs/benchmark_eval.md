@@ -21,6 +21,7 @@ And following models:
 - Idefics
 - LLaMA-Adapter
 - Qwen-VL
+
 many more, see `/pipeline/benchmarks/models`
 
 Create a yaml file `benchmark.yaml` with below content:
