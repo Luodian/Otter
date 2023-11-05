@@ -22,10 +22,10 @@
     <sup>♠</sup> Co-Project Lead&emsp;
     <sup>*</sup> Equal Contribution&emsp;
     <sup>&#x2709</sup> Corresponding Author
-    
+
 </div> -->
- 
- -----------------
+
+---
 
 ![](https://img.shields.io/badge/otter-v0.2-darkcyan)
 ![](https://img.shields.io/github/stars/luodian/otter?style=social)
@@ -36,40 +36,44 @@
 
 [Otter Paper](https://arxiv.org/abs/2305.03726) | [OtterHD Paper (ready soon)]() | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425)
 
-**Corresponding Checkpoints:**  
+**Corresponding Checkpoints:**
+
 - [Otter-AI/OtterHD-8B](https://huggingface.co/Otter-AI/OtterHD-8B)
-- [luodian/OTTER-Image-MPT7B](https://huggingface.co/luodian/OTTER-Image-MPT7B) 
+- [luodian/OTTER-Image-MPT7B](https://huggingface.co/luodian/OTTER-Image-MPT7B)
 - [luodian/OTTER-Video-LLaMA7B-DenseCaption](https://huggingface.co/luodian/OTTER-Video-LLaMA7B-DenseCaption)
 - More at [Otter-AI](https://huggingface.co/Otter-AI)
 
 For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.org.cn/header/openxlab_models.svg)](https://openxlab.org.cn/models/detail/YuanhanZhang/OTTER-Image-MPT7B) | [![Open in OpenXLab](https://cdn-static.openxlab.org.cn/header/openxlab_models.svg)](https://openxlab.org.cn/models/detail/YuanhanZhang/OTTER-Video-LLaMA7B-DenseCaption)
-
 
 **Disclaimer:** The code may not be perfectly polished and refactored, but **all opensourced codes are tested and runnable** as we also use the code to support our research. If you have any questions, please feel free to open an issue. We are eagerly looking forward to suggestions and PRs to improve the code quality.
 
 ## 🦾 Update
 
 **[2023-11]**
+
 1. 🦦 Added [OtterHD](./docs/OtterHD.md), a multimodal fine-tuned from [Fuyu-8B](https://huggingface.co/adept/fuyu-8b) to facilitate a more fine-grained interpretation of high-resolution visual input without a vision encoder. We've opensourced the finetune script for Fuyu-8B and improve training throughput by 4-5 times faster with [Flash-Attention-2](https://github.com/Dao-AILab/flash-attention). Try our finetune script at [OtterHD](./docs/OtterHD.md).
-2. 🔍 Added [MagnifierBench](./docs/OtterHD.md), an evaluation benchmark tailored to assess whether the model can identify the tiny objects' information (1% image size) and spatial relationships. 
+2. 🔍 Added [MagnifierBench](./docs/OtterHD.md), an evaluation benchmark tailored to assess whether the model can identify the tiny objects' information (1% image size) and spatial relationships.
 3. Improved pipeline for [Pretrain](pipeline/train/pretraining.py)/[SFT](pipeline/train/instruction_following.py)/[RLHF]() with (part of) current leading LMMs.
-    1. Models Interface: [Otter](https://arxiv.org/abs/2305.03726)/[Idefics](https://huggingface.co/HuggingFaceM4/idefics-80b-instruct)/[Fuyu](https://huggingface.co/adept/fuyu-8b)
-    2. Training Datasets Interface: (Pretrain) MMC4/LAION2B/CC3M/CC12M, (SFT) MIMIC-IT/M3IT/LLAVAR/LRV
-    3. [Benchmark Interface](https://huggingface.co/Otter-AI): MagnifierBench/MMBench/MM-VET/MathVista/POPE/MME/SicenceQA/SeedBench. Run them can be in one-click, please see [Benchmark](./docs/benchmark_eval.md) for details.
-    4. Code refactorization for organizing multiple datasets with integrated yaml file, see details at [managing datasets in MIMIC-IT format](docs/mimicit_format.md)
+   1. Models Interface: [Otter](https://arxiv.org/abs/2305.03726)/[Idefics](https://huggingface.co/HuggingFaceM4/idefics-80b-instruct)/[Fuyu](https://huggingface.co/adept/fuyu-8b)
+   2. Training Datasets Interface: (Pretrain) MMC4/LAION2B/CC3M/CC12M, (SFT) MIMIC-IT/M3IT/LLAVAR/LRV
+   3. [Benchmark Interface](https://huggingface.co/Otter-AI): MagnifierBench/MMBench/MM-VET/MathVista/POPE/MME/SicenceQA/SeedBench. Run them can be in one-click, please see [Benchmark](./docs/benchmark_eval.md) for details.
+   4. Code refactorization for organizing multiple datasets with integrated yaml file, see details at [managing datasets in MIMIC-IT format](docs/mimicit_format.md)
 
 **[2023-08]**
+
 1. Added Support for using Azure, Anthropic, Palm, Cohere models for Self-Instruct with Syphus pipeline, for information on usage modify [this line](https://github.com/Luodian/Otter/blob/16d73b399fac6352ebff7504b1acb1f228fbf3f4/mimic-it/syphus/file_utils.py#L53) with your selected model and set your API keys in the environment. For more information see [LiteLLM](https://github.com/BerriAI/litellm/)
 
 **[2023-07]**
+
 1. 🤗 Checkout [MIMIC-IT](https://huggingface.co/datasets/pufanyi/MIMICIT) on Huggingface datasets.
 2. 🥚 Update [Eggs](./mimic-it/README.md/#eggs) section for downloading MIMIC-IT dataset.
-3. 🥃 Contact us **if you wish to develop Otter for your scenarios** (for satellite images or funny videos?). We aim to support and assist with Otter's diverse use cases. OpenFlamingo and Otter are strong models with the [Flamingo](https://www.deepmind.com/blog/tackling-multiple-tasks-with-a-single-visual-language-model)'s excellently designed architecture that accepts multiple images/videos or other modality inputs. Let's build more interesting models together. 
+3. 🥃 Contact us **if you wish to develop Otter for your scenarios** (for satellite images or funny videos?). We aim to support and assist with Otter's diverse use cases. OpenFlamingo and Otter are strong models with the [Flamingo](https://www.deepmind.com/blog/tackling-multiple-tasks-with-a-single-visual-language-model)'s excellently designed architecture that accepts multiple images/videos or other modality inputs. Let's build more interesting models together.
 
 **[2023-06]**
+
 1. 🧨 [Download MIMIC-IT Dataset](https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/Eo9bgNV5cjtEswfA-HfjNNABiKsjDzSWAl5QYAlRZPiuZA?e=M9isDT). For more details on navigating the dataset, please refer to [MIMIC-IT Dataset README](mimic-it/README.md).
 2. 🏎️ [Run Otter Locally](./pipeline/demo). You can run our model locally with at least 16G GPU mem for tasks like image/video tagging and captioning and identifying harmful content. We fix a bug related to video inference where `frame tensors` were mistakenly unsqueezed to a wrong `vision_x`.
-    > Make sure to adjust the `sys.path.append("../..")` correctly to access `otter.modeling_otter` in order to launch the model.
+   > Make sure to adjust the `sys.path.append("../..")` correctly to access `otter.modeling_otter` in order to launch the model.
 3. 🤗 Check our [paper](https://arxiv.org/abs/2306.05425) introducing MIMIC-IT in details. Meet MIMIC-IT, the first multimodal in-context instruction tuning dataset with 2.8M instructions! From general scene understanding to spotting subtle differences and enhancing egocentric view comprehension for AR headsets, our MIMIC-IT dataset has it all.
 <!-- 6. 🤗 Stay tuned for our upcoming Otter Model v0.2, trained on the MIMIC-IT dataset! With the ability to understand daily scenes, reason in context, spot differences in observations, and act as an egocentric assistant. Checkout conceptual demo video at [Youtube](https://www.youtube.com/watch?v=K8o_LKGQJhs) or [Bilibili](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)! -->
 
@@ -86,7 +90,7 @@ For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.
 
 ## 🦦 Why In-Context Instruction Tuning?
 
-Large Language Models (LLMs) have demonstrated exceptional universal aptitude as few/zero-shot learners for numerous tasks, owing to their pre-training on extensive text data. Among these LLMs, GPT-3 stands out as a prominent model with significant capabilities. Additionally, variants of GPT-3, namely InstructGPT and ChatGPT, have proven effective in interpreting natural language instructions to perform complex real-world tasks, thanks to instruction tuning. 
+Large Language Models (LLMs) have demonstrated exceptional universal aptitude as few/zero-shot learners for numerous tasks, owing to their pre-training on extensive text data. Among these LLMs, GPT-3 stands out as a prominent model with significant capabilities. Additionally, variants of GPT-3, namely InstructGPT and ChatGPT, have proven effective in interpreting natural language instructions to perform complex real-world tasks, thanks to instruction tuning.
 
 Motivated by the upstream interleaved format pretraining of the Flamingo model, we present 🦦 Otter, a multi-modal model based on OpenFlamingo (the open-sourced version of DeepMind's Flamingo). We train our Otter in an in-context instruction tuning way on our proposed **MI**-**M**odal **I**n-**C**ontext **I**nstruction **T**uning (**MIMIC-IT**) dataset. Otter showcases improved instruction-following and in-context learning ability in both images and videos.
 
@@ -102,10 +106,9 @@ MIMIC-IT enables the application of egocentric visual assistant model that can s
 <img src="https://i.postimg.cc/RCGp0vQ1/syphus.png"  width="80%" height="80%">
 </p>
 
-We also introduce **Syphus**, an automated pipeline for generating high-quality instruction-response pairs in multiple languages. Building upon the framework proposed by LLaVA, we utilize ChatGPT to generate instruction-response pairs based on visual content. To ensure the quality of the generated instruction-response pairs, our pipeline incorporates system messages, visual annotations, and in-context examples as prompts for ChatGPT. 
+We also introduce **Syphus**, an automated pipeline for generating high-quality instruction-response pairs in multiple languages. Building upon the framework proposed by LLaVA, we utilize ChatGPT to generate instruction-response pairs based on visual content. To ensure the quality of the generated instruction-response pairs, our pipeline incorporates system messages, visual annotations, and in-context examples as prompts for ChatGPT.
 
 For more details, please check the [MIMIC-IT dataset](mimic-it/README.md).
-
 
 ## 🤖 Otter Model Details
 
@@ -115,7 +118,7 @@ For more details, please check the [MIMIC-IT dataset](mimic-it/README.md).
 
 Otter is designed to support multi-modal in-context instruction tuning based on the OpenFlamingo model, which involves conditioning the language model on the corresponding media, such as an image that corresponds to a caption or an instruction-response pair.
 
-We train Otter on MIMIC-IT dataset with approximately 2.8 million in-context instruction-response pairs, which are structured into a cohesive template to facilitate various tasks. Otter supports videos inputs (frames are arranged as original Flamingo's implementation) and multiple images inputs as in-context examples, which is **the first multi-modal instruction tuned model**. 
+We train Otter on MIMIC-IT dataset with approximately 2.8 million in-context instruction-response pairs, which are structured into a cohesive template to facilitate various tasks. Otter supports videos inputs (frames are arranged as original Flamingo's implementation) and multiple images inputs as in-context examples, which is **the first multi-modal instruction tuned model**.
 
 The following template encompasses images, user instructions, and model-generated responses, utilizing the `User` and `GPT` role labels to enable seamless user-assistant interactions.
 
@@ -123,7 +126,7 @@ The following template encompasses images, user instructions, and model-generate
 prompt = f"<image>User: {instruction} GPT:<answer> {response}<endofchunk>"
 ```
 
-Training the Otter model on the MIMIC-IT dataset allows it to acquire different capacities, as demonstrated by the LA and SD tasks. Trained on the LA task, the model exhibits exceptional scene comprehension, reasoning abilities, and multi-round conversation capabilities. 
+Training the Otter model on the MIMIC-IT dataset allows it to acquire different capacities, as demonstrated by the LA and SD tasks. Trained on the LA task, the model exhibits exceptional scene comprehension, reasoning abilities, and multi-round conversation capabilities.
 
 ```python
 # multi-round of conversation
@@ -138,6 +141,7 @@ prompt = f"<image>User:{ict_first_instruction} GPT: <answer>{ict_first_response}
 ```
 
 For more details, please refer to our [paper](https://arxiv.org/abs/2306.05425)'s appendix for other tasks.
+
 ## 🗂️ Environments
 
 1. Compare cuda version returned by nvidia-smi and nvcc --version. They need to match. Or at least, the version get by nvcc --version should be <= the version get by nvidia-smi.
@@ -148,7 +152,7 @@ After configuring environment, you can use the 🦩 Flamingo model / 🦦 Otter 
 
 ## ☄️ Training
 
-Otter is trained based on OpenFlamingo. You may need to use converted weights at [luodian/OTTER-9B-INIT](https://huggingface.co/luodian/OTTER-9B-INIT) or [luodian/OTTER-MPT7B-Init](https://huggingface.co/luodian/OTTER-MPT7B-Init). They are respectively converted from [OpenFlamingo-LLaMA7B-v1](https://huggingface.co/openflamingo/OpenFlamingo-9B) and [OpenFlamingo-MPT7B-v2](https://huggingface.co/openflamingo/OpenFlamingo-9B-vitl-mpt7b), we added a `<answer>` token for Otter's downstream instruction tuning. 
+Otter is trained based on OpenFlamingo. You may need to use converted weights at [luodian/OTTER-9B-INIT](https://huggingface.co/luodian/OTTER-9B-INIT) or [luodian/OTTER-MPT7B-Init](https://huggingface.co/luodian/OTTER-MPT7B-Init). They are respectively converted from [OpenFlamingo-LLaMA7B-v1](https://huggingface.co/openflamingo/OpenFlamingo-9B) and [OpenFlamingo-MPT7B-v2](https://huggingface.co/openflamingo/OpenFlamingo-9B-vitl-mpt7b), we added a `<answer>` token for Otter's downstream instruction tuning.
 
 You may also use any trained Otter weights to start with your training on top of ours, see them at [Otter Weights](https://huggingface.co/luodian). You can refer to [MIMIC-IT](https://github.com/Luodian/Otter/tree/main/mimic-it) for preparing image/instruction/train json files.
 
@@ -186,6 +190,7 @@ accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_
 ## 📑 Citation
 
 If you found this repository useful, please consider citing:
+
 ```
 @article{li2023otter,
   title={Otter: A Multi-Modal Model with In-Context Instruction Tuning},
