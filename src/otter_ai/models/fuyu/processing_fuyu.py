@@ -376,10 +376,7 @@ class FuyuProcessor(ProcessorMixin):
                 if key == "input_ids":
                     num_padding_tokens = max_length_input_ids - tensor.shape[1]
                     padded_input_ids = torch.cat(
-                        [
-                            tensor,
-                            torch.full((tensor.shape[0], num_padding_tokens), self.pad_token_id, dtype=torch.long)
-                        ],
+                        [tensor, torch.full((tensor.shape[0], num_padding_tokens), self.pad_token_id, dtype=torch.long)],
                         dim=1,
                     )
                     batched_inputs[key].append(padded_input_ids)
@@ -397,10 +394,7 @@ class FuyuProcessor(ProcessorMixin):
                 else:  # for image_patches_indices
                     num_padding_indices = max_length_image_patch_indices - tensor.shape[1]
                     padded_indices = torch.cat(
-                        [
-                            tensor,
-                            torch.full((tensor.shape[0], num_padding_indices), self.dummy_image_index, dtype=torch.long)
-                        ],
+                        [tensor, torch.full((tensor.shape[0], num_padding_indices), self.dummy_image_index, dtype=torch.long)],
                         dim=1,
                     )
                     batched_inputs[key].append(padded_indices)

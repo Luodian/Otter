@@ -57,6 +57,10 @@ For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.
 
 **Contact: Leave issue or `drluodian@gmail.com/YUANHAN002@e.ntu.edu.sg`. We are on call to respond.**
 
+**[2023-11]**
+1. Added [OtterHD](./OtterHD.md), a multimodal fine-tuned from Fuyu-8B to facilitate a more fine-grained interpretation of high-resolution visual input without a vision encoder. You can play with the interactive demo [here](https://huggingface.co/spaces/Otter-AI/OtterHD-8B-demo).
+2. Added [MagnifierBench](./OtterHD.md), an evaluation benchmark tailored to assess whether the model can identify the tiny objects' information (1% image size) and spatial relationships. 
+
 **[2023-08]**
 1. Added Support for using Azure, Anthropic, Palm, Cohere models, for information on usage modify [this line](https://github.com/Luodian/Otter/blob/16d73b399fac6352ebff7504b1acb1f228fbf3f4/mimic-it/syphus/file_utils.py#L53) with your selected model and set your API keys in the environment. For more information see [LiteLLM](https://github.com/BerriAI/litellm/)
 

@@ -1,5 +1,6 @@
+from typing import List
 from transformers import AutoTokenizer, FuyuImageProcessor
-from src.otter_ai.models.fuyu.modeling_fuyu import FuyuForCausalLM
+from transformers import FuyuForCausalLM
 from src.otter_ai.models.fuyu.processing_fuyu import FuyuProcessor
 from PIL import Image
 from .base_model import BaseModel
@@ -35,7 +36,7 @@ class Fuyu(BaseModel):
         self.model = FuyuForCausalLM.from_pretrained(model_path, torch_dtype=torch.bfloat16).to(self.device)
         self.tokenizer = AutoTokenizer.from_pretrained("adept/fuyu-8b")
         self.image_processor = FuyuImageProcessor()
-        self.processor = FuyuProcessor(image_processor=self.image_processor, tokenizer=self.tokenizer, max_new_token=max_new_tokens)
+        self.processor = FuyuProcessor(image_processor=self.image_processor, tokenizer=self.tokenizer)
         self.max_new_tokens = max_new_tokens
         self.bad_words_list = ["User:", "Assistant:"]
         self.bad_words_ids = self.tokenizer(self.bad_words_list, add_special_tokens=False).input_ids
@@ -45,10 +46,12 @@ class Fuyu(BaseModel):
         raw_image_data = raw_image_data.convert("RGB")
         # make sure the image is in RGB format and resize to match the width
         if self.resolution != -1:
-            max_height, max_width = self.resolution, self.resolution
-            raw_image_data.thumbnail((max_width, max_height), Image.ANTIALIAS)
-        elif max(raw_image_data.size) > 1080:
-            raw_image_data.thumbnail((1080, 1080), Image.ANTIALIAS)
+            width, height = raw_image_data.size
+            short_edge = min(width, height)
+            scaling_factor = self.resolution / short_edge
+            new_width = math.ceil(width * scaling_factor)
+            new_height = math.ceil(height * scaling_factor)
+            raw_image_data = raw_image_data.resize((new_width, new_height), Image.ANTIALIAS)
         # formated_prompt = f"User: {text_prompt} Assistant:"
         model_inputs = self.processor(text=text_prompt, images=[raw_image_data], device=self.device)
         for k, v in model_inputs.items():
