@@ -14,7 +14,7 @@ AVAILABLE_MODELS: Dict[str, str] = {
     "frozen_bilm": "FrozenBilm",
     "idefics": "Idefics",
     "fuyu": "Fuyu",
-    "otterbite": "OtterBite",
+    "otterhd": "OtterHD",
     "instructblip": "InstructBLIP",
     "qwen_vl": "QwenVL",
     "llava_model": "LLaVA_Model",

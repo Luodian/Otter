@@ -6,7 +6,7 @@ import sys
 import requests
 import yaml
 
-from .demo_models import TestIdefics, TestOtter, TestOtterBite
+from .demo_models import TestIdefics, TestOtter, TestOtterHD
 from .demo_utils import get_image, print_colored
 
 requests.packages.urllib3.disable_warnings()
@@ -75,8 +75,8 @@ def main():
     args = parse_args()
     if args.model_name == "otter":
         model = TestOtter(checkpoint=args.checkpoint)
-    elif args.model_name == "otterbite":
-        model = TestOtterBite(checkpoint=args.checkpoint)
+    elif args.model_name == "otterhd":
+        model = TestOtterHD(checkpoint=args.checkpoint)
     elif args.model_name == "idefics":
         model = TestIdefics(checkpoint=args.checkpoint)
 

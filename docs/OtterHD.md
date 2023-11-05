@@ -3,7 +3,7 @@
 
 
 <p align="center" width="100%">
-<img src="https://i.postimg.cc/02Vj5HDr/Screenshot-2023-11-05-at-3-50-15-PM.png"  width="80%" height="80%">
+<img src="https://i.postimg.cc/1zhXhzTr/otterhd-title.png"  width="80%" height="80%">
 </p>
 
 <div>
@@ -25,34 +25,36 @@
     <sup>&#x2709</sup> Corresponding Author
 </div>
 
-**[Technical Report](link)**
 
-**Interactive Demo:**  [OtterHD](https://huggingface.co/spaces/Otter-AI/OtterHD-8B-demo) 
+[Technical Report](link) | [Demo](https://huggingface.co/spaces/Otter-AI/OtterHD-8B-demo) | [Benchmarks](https://huggingface.co/spaces/Otter-AI)
 
-We introduce OtterHD-8B, a multimodal model fine-tuned from Fuyu-8B to facilitate a more fine-grained interpretation of high-resolution visual input without requiring a vision encoder. OtterHD-8B also supports flexible input sizes at test time, ensuring adaptability to diverse inference budgets. To finetune OtterHD, We compiled a total of 370K image-text pairs sourced from the following public datasets: LLaVA-Instruct, LLaVA-RLHF, VQAv2, GQA, OKVQA, OCRVQA, A-OKVQA, COCO-GOI, COCO-Caption, TextQA, RefCOCO, COCO-ITM, and ImageNet. During training, we randomly resize the input image to the size of [418, 512, 768, 1024] uniformly. We find that the resulting model is able to generalize to even higher resolution.
+We introduce OtterHD-8B, a multimodal model fine-tuned from Fuyu-8B to facilitate a more fine-grained interpretation of high-resolution visual input without requiring a vision encoder. OtterHD-8B also supports flexible input sizes at test time, ensuring adaptability to diverse inference budgets. 
+
+We improve the native HuggingFace implementation of Fuyu-8B is highly unoptimized with [FlashAttention-2](https://github.com/Dao-AILab/flash-attention) and other fused operators including fused layernorm, fused square ReLU, and fused rotary positional embedding. Fuyu's simplified architecture facilitates us to do this in a fairly convenient way. As illustrated in the following, the modifications substantially enhance GPU utilization and training throughput. 
+
 <p align="center" width="100%">
-<img src="https://i.postimg.cc/C1Ypqkqd/Screenshot-2023-11-05-at-4-12-36-PM.png"  width="80%" height="80%">
+<img src="https://i.postimg.cc/c43PkMqC/tokens-throughput.png"  width="80%" height="80%">
 </p>
 
 ### How to Finetune 
 
 ```bash
-srun accelerate launch \
+accelerate launch \
 --config_file=pipeline/accelerate_configs/accelerate_config_zero2.yaml \
 --num_processes=5 \
 --main_process_port=25000 \
 pipeline/train/instruction_following.py \
---pretrained_model_name_or_path=azure_storage/fuyu-8b \
---training_data_yaml=shared_scripts/Demo_Data.yaml \
+--pretrained_model_name_or_path=adept/fuyu-8b \
+--training_data_yaml=./Demo_Data.yaml \
 --model_name=fuyu \
 --instruction_format=fuyu \
---batch_size=2 \
+--batch_size=8 \
 --gradient_accumulation_steps=4 \
---num_epochs=8 \
---wandb_entity=lance777 \
+--num_epochs=3 \
+--wandb_entity=NamePlaceHolder \
 --external_save_dir=./checkpoints \
 --save_hf_model \
---run_name=Fuyu-M3IT \
+--run_name=Fuyu-NamePlaceHolder \
 --wandb_project=Fuyu \
 --report_to_wandb \
 --workers=1 \
@@ -67,10 +69,6 @@ pipeline/train/instruction_following.py \
 <p align="center" width="100%">
 <img src="https://i.postimg.cc/fL8pSXK7/Screenshot-2023-11-05-at-3-52-58-PM.png"  width="80%" height="80%">
 </p>
-<div align="center">
-<a href='https://huggingface.co/datasets/Otter-AI/MagnifierBench' target='_blank'>Huggingface Dataset</a>
-</div>
-
 
 The human visual system can naturally perceive the details of small objects within a wide field of view, but current benchmarks for testing LMMs have not specifically focused on assessing this ability. This may be because the input sizes of mainstream Vision-Language models are constrained to relatively small resolutions. With the advent of the Fuyu and OtterHD models, we can extend the input resolution to a much larger range. Therefore, there is an urgent need for a benchmark that can test the ability to discern the details of small objects (often 1% image size) in high-resolution input images.
 

@@ -140,7 +140,7 @@ class TestIdefics:
             return f"User:<fake_token_around_image><image><fake_token_around_image>{question}<end_of_utterance>\nAssistant:"
 
 
-class TestOtterBite:
+class TestOtterHD:
     def __init__(self, checkpoint: str = "adept/fuyu-8b", cuda_id: int = 0, resolution: int = 336, max_new_tokens=256):
         self.resolution = resolution
         self.device = f"cuda:{cuda_id}" if torch.cuda.is_available() else "cpu"
