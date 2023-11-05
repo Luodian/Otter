@@ -30,7 +30,7 @@
 
 We introduce OtterHD-8B, a multimodal model fine-tuned from Fuyu-8B to facilitate a more fine-grained interpretation of high-resolution visual input without requiring a vision encoder. OtterHD-8B also supports flexible input sizes at test time, ensuring adaptability to diverse inference budgets. 
 
-We improve the native HuggingFace implementation of Fuyu-8B is highly unoptimized with [FlashAttention-2](https://github.com/Dao-AILab/flash-attention) and other fused operators including fused layernorm, fused square ReLU, and fused rotary positional embedding. Fuyu's simplified architecture facilitates us to do this in a fairly convenient way. As illustrated in the following, the modifications substantially enhance GPU utilization and training throughput. 
+We improve the native HuggingFace implementation of Fuyu-8B is highly unoptimized with [FlashAttention-2](https://github.com/Dao-AILab/flash-attention) and other fused operators including fused layernorm, fused square ReLU, and fused rotary positional embedding. Fuyu's simplified architecture facilitates us to do this in a fairly convenient way. As illustrated in the following, the modifications substantially enhance GPU utilization and training throughput. Checkout the details at [here](src/otter_ai/models/fuyu/modeling_fuyu.py)
 
 <p align="center" width="100%">
 <img src="https://i.postimg.cc/c43PkMqC/tokens-throughput.png"  width="80%" height="80%">
@@ -51,10 +51,10 @@ pipeline/train/instruction_following.py \
 --batch_size=8 \
 --gradient_accumulation_steps=4 \
 --num_epochs=3 \
---wandb_entity=NamePlaceHolder \
+--wandb_entity=ntu-slab \
 --external_save_dir=./checkpoints \
 --save_hf_model \
---run_name=Fuyu-NamePlaceHolder \
+--run_name=OtterHD_Tester \
 --wandb_project=Fuyu \
 --report_to_wandb \
 --workers=1 \

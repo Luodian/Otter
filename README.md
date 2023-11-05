@@ -169,23 +169,33 @@ You may also use any trained Otter weights to start with your training on top of
 
 ```bash
 export PYTHONPATH=.
+RUN_NAME="Otter_MPT7B"
+GPU=8
+WORKERS=$((${GPU}*2))
 
-accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_fsdp.yaml \
-pipeline/train/instruction_following.py \
---pretrained_model_name_or_path=luodian/OTTER-LLaMA7B-INIT  \ # or --pretrained_model_name_or_path=luodian/OTTER-MPT7B-Init
---mimicit_path="path/to/DC_instruction.json" \
---images_path="path/to/DC.json" \
---train_config_path="path/to/DC_train.json" \
---batch_size=4 \
---num_epochs=9 \
---report_to_wandb \
---wandb_entity=ntu-slab \
---run_name=OTTER-LLaMA7B-densecaption \
---wandb_project=OTTER-LLaMA7B \
---workers=1 \
---lr_scheduler=cosine \
---learning_rate=1e-5 \
---warmup_steps_ratio=0.01 \
+echo "Using ${GPU} GPUs and ${WORKERS} workers"
+echo "Running ${RUN_NAME}"
+
+accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_zero3.yaml \
+    --num_processes=${GPU} \
+    pipeline/train/instruction_following.py \
+    --pretrained_model_name_or_path=luodian/OTTER-MPT7B-Init \
+    --model_name=otter \
+    --instruction_format=simple \
+    --training_data_yaml=./shared_scripts/Demo_Data.yaml \
+    --batch_size=8 \
+    --num_epochs=3 \
+    --report_to_wandb \
+    --wandb_entity=ntu-slab \
+    --external_save_dir=./checkpoints \
+    --run_name=${RUN_NAME} \
+    --wandb_project=Otter_MPTV \
+    --workers=${WORKERS} \
+    --lr_scheduler=cosine \
+    --learning_rate=2e-5 \
+    --warmup_steps_ratio=0.01 \
+    --save_hf_model \
+    --max_seq_len=1024 \
 ```
 
 ## 📑 Citation
