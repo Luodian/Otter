@@ -2,7 +2,7 @@
 
 We mainly use one integrate dataset format and we refer it to MIMIC-IT format since.
 
-The mimic-it format contains the following data yaml file
+The mimic-it format contains the following data yaml file. Within this data yaml file, you could assign the path of the instruction json file and the image parquet file, and also the number of samples you want to use. The number of samples within each group will be uniformly sampled, and the `number_samples / total_numbers`` will decide sampling ratio of each dataset.
 
 ```yaml
 IMAGE_TEXT:

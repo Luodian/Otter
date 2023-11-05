@@ -56,7 +56,7 @@ For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.
     1. Models Interface: [Otter](https://arxiv.org/abs/2305.03726)/[Idefics](https://huggingface.co/HuggingFaceM4/idefics-80b-instruct)/[Fuyu](https://huggingface.co/adept/fuyu-8b)
     2. Training Datasets Interface: (Pretrain) MMC4/LAION2B/CC3M/CC12M, (SFT) MIMIC-IT/M3IT/LLAVAR/LRV
     3. [Benchmark Interface](https://huggingface.co/Otter-AI): MagnifierBench/MMBench/MM-VET/MathVista/POPE/MME/SicenceQA/SeedBench. Run them can be in one-click, please see [Benchmark](./docs/benchmark_eval.md) for details.
-    4. Code refactorization for organizing multiple datasets, see details at [managing datasets in MIMIC-IT format](docs/mimicit_format.md)
+    4. Code refactorization for organizing multiple datasets with integrated yaml file, see details at [managing datasets in MIMIC-IT format](docs/mimicit_format.md)
 
 **[2023-08]**
 1. Added Support for using Azure, Anthropic, Palm, Cohere models for Self-Instruct with Syphus pipeline, for information on usage modify [this line](https://github.com/Luodian/Otter/blob/16d73b399fac6352ebff7504b1acb1f228fbf3f4/mimic-it/syphus/file_utils.py#L53) with your selected model and set your API keys in the environment. For more information see [LiteLLM](https://github.com/BerriAI/litellm/)
