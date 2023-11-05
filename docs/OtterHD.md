@@ -30,12 +30,25 @@
 
 We introduce OtterHD-8B, a multimodal model fine-tuned from [Fuyu-8B](https://huggingface.co/adept/fuyu-8b) to facilitate a more fine-grained interpretation of high-resolution visual input without requiring a vision encoder. OtterHD-8B also supports flexible input sizes at test time, ensuring adaptability to diverse inference budgets. 
 
-We improve the native HuggingFace implementation of Fuyu-8B is highly unoptimized with [FlashAttention-2](https://github.com/Dao-AILab/flash-attention) and other fused operators including fused layernorm, fused square ReLU, and fused rotary positional embedding. Fuyu's simplified architecture facilitates us to do this in a fairly convenient way. As illustrated in the following, the modifications substantially enhance GPU utilization and training throughput. Checkout the details at [here](src/otter_ai/models/fuyu/modeling_fuyu.py)
+We improve the native HuggingFace implementation of Fuyu-8B is highly unoptimized with [FlashAttention-2](https://github.com/Dao-AILab/flash-attention) and other fused operators including fused layernorm, fused square ReLU, and fused rotary positional embedding. Fuyu's simplified architecture facilitates us to do this in a fairly convenient way. As illustrated in the following, the modifications substantially enhance GPU utilization and training throughput. Checkout the details at [here](../src/otter_ai/models/fuyu/modeling_fuyu.py)
 
 <p align="center" width="100%">
 <img src="https://i.postimg.cc/c43PkMqC/tokens-throughput.png"  width="80%" height="80%">
 </p>
 
+### Installation
+On top of the regular Otter environment, we need to install Flash-Attention 2 and other fused operators:
+```bash
+pip uninstall -y ninja && pip install ninja
+git clone https://github.com/Dao-AILab/flash-attention
+cd flash-attention
+python setup.py install
+cd csrc/rotary && pip install .
+cd ../csrc/fused_dense_lib && pip install .
+cd ../layer_norm && pip install .
+cd ../xentropy && pip install .
+cd ../.. && rm -rf flash-attention
+```
 ### How to Finetune 
 
 ```bash
