@@ -406,7 +406,7 @@ class FuyuProcessor(ProcessorMixin):
             batched_inputs[key] = torch.cat(batched_inputs[key], dim=0)
 
         return batched_inputs
-    
+
     def _left_pad_inputs_with_attention_mask(self, model_inputs: List[Dict], return_attention_mask: bool):
         max_length_input_ids = max(entry["input_ids"].shape[1] for entry in model_inputs)
         max_length_image_patch_indices = max(entry["image_patches_indices"].shape[1] for entry in model_inputs)

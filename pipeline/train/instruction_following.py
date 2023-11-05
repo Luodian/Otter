@@ -65,8 +65,9 @@ except ImportError:
     print("IdeficsForVisionText2Text does not exist")
     IdeficsForVisionText2Text = type(None)
 
-# from memory_profiler import profile 
+# from memory_profiler import profile
 # fp = open("memory_report.log", "w+")
+
 
 # @profile(stream=fp)
 def forward_pass(args, model, tokenizer, images, input_ids, attention_mask, labels, device_id, autocast_type, batch_mimicit):
@@ -288,7 +289,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                     ]
                 }
             )
-            
+
         if args.rank == 0 and global_step != 0 and (args.save_steps_interval != -1) and (global_step % args.save_steps_interval == 0):
             save_checkpoint(epoch=None, global_step=global_step, model=model, args=args, accelerator=accelerator)
 
