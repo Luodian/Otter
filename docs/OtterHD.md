@@ -28,7 +28,7 @@
 
 [Technical Report](link) | [Demo](https://huggingface.co/spaces/Otter-AI/OtterHD-8B-demo) | [Benchmarks](https://huggingface.co/spaces/Otter-AI)
 
-We introduce OtterHD-8B, a multimodal model fine-tuned from Fuyu-8B to facilitate a more fine-grained interpretation of high-resolution visual input without requiring a vision encoder. OtterHD-8B also supports flexible input sizes at test time, ensuring adaptability to diverse inference budgets. 
+We introduce OtterHD-8B, a multimodal model fine-tuned from [Fuyu-8B](https://huggingface.co/adept/fuyu-8b) to facilitate a more fine-grained interpretation of high-resolution visual input without requiring a vision encoder. OtterHD-8B also supports flexible input sizes at test time, ensuring adaptability to diverse inference budgets. 
 
 We improve the native HuggingFace implementation of Fuyu-8B is highly unoptimized with [FlashAttention-2](https://github.com/Dao-AILab/flash-attention) and other fused operators including fused layernorm, fused square ReLU, and fused rotary positional embedding. Fuyu's simplified architecture facilitates us to do this in a fairly convenient way. As illustrated in the following, the modifications substantially enhance GPU utilization and training throughput. Checkout the details at [here](src/otter_ai/models/fuyu/modeling_fuyu.py)
 
