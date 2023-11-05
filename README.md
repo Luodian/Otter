@@ -34,23 +34,16 @@
 ![](https://img.shields.io/badge/code%20style-black-000000.svg)
 [![litellm](https://img.shields.io/badge/%20%F0%9F%9A%85%20liteLLM-OpenAI%7CAzure%7CAnthropic%7CPalm%7CCohere-blue?color=green)](https://github.com/BerriAI/litellm)
 
-[Otter Paper](https://arxiv.org/abs/2305.03726) | [OtterHD Paper]() | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425) | [MIMIC-IT Dataset](mimic-it/README.md)
-
-<!-- **Video Demo:** [Otter's Conceptual Demo Video](https://www.youtube.com/watch?v=K8o_LKGQJhs) | [Bilibili 哔哩哔哩](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)
-
-**Interactive Demo:**  [Otter-Image](https://otter.cliangyu.com/) | [Otter-Video](https://ottervideo.cliangyu.com/)
-> Our models would be sometimes offline due to GPU limitation (if we need to train new models lol). You can refer to 🏎️ [Run Otter Locally](./pipeline/demo) to try Otter-Image and Otter-Video more smoothly on your local machine, with at least 16G GPU mem (BF16/FP16 Mode) to help your tasks like image/video tagging, captioning or identifying harmful content. -->
+[Otter Paper](https://arxiv.org/abs/2305.03726) | [OtterHD Paper (ready soon)]() | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425)
 
 **Corresponding Checkpoints:**  
 - [Otter-AI/OtterHD-8B](https://huggingface.co/Otter-AI/OtterHD-8B)
 - [luodian/OTTER-Image-MPT7B](https://huggingface.co/luodian/OTTER-Image-MPT7B) 
 - [luodian/OTTER-Video-LLaMA7B-DenseCaption](https://huggingface.co/luodian/OTTER-Video-LLaMA7B-DenseCaption)
+- More at [Otter-AI](https://huggingface.co/Otter-AI)
 
 For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.org.cn/header/openxlab_models.svg)](https://openxlab.org.cn/models/detail/YuanhanZhang/OTTER-Image-MPT7B) | [![Open in OpenXLab](https://cdn-static.openxlab.org.cn/header/openxlab_models.svg)](https://openxlab.org.cn/models/detail/YuanhanZhang/OTTER-Video-LLaMA7B-DenseCaption)
-<!-- > **Otter-Image** supports multiple images input as in-context examples, which is **the first multi-modal instruction tuned model** that supports to organize inputs this way.
-> **Otter-Video** supports videos inputs (frames are arranged as original Flamingo's implementation) and multiple images inputs (they serve as in-context examples for each other). -->
 
-<!-- **Eval Results:** [Multi-Modal Arena](http://vlarena.opengvlab.com/) | [MLLM Evaluation Benchmark](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation) | [OpenCompass-MMBench](https://opencompass.org.cn/leaderboard-multimodal) -->
 
 **Disclaimer:** The code may not be fully polished and refactored, but all opensourced codes are tested and runnable as we also use the code to support our research. If you have any questions, please feel free to open an issue. We are eagerly looking forward to suggestions and PRs to improve the code quality.
 
@@ -62,7 +55,7 @@ For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.
 3. Improved pipeline for [Pretrain](pipeline/train/pretraining.py)/[SFT](pipeline/train/instruction_following.py)/[RLHF]() with (part of) current leading LMMs.
     1. Models Interface: [Otter](https://arxiv.org/abs/2305.03726)/[Idefics](https://huggingface.co/HuggingFaceM4/idefics-80b-instruct)/[Fuyu](https://huggingface.co/adept/fuyu-8b)
     2. Training Datasets Interface: (Pretrain) MMC4/LAION2B/CC3M/CC12M, (SFT) MIMIC-IT/M3IT/LLAVAR/LRV
-    3. [One-click Benchmark Interface](https://huggingface.co/Otter-AI): MagnifierBench/MMBench/MM-VET/MathVista/POPE/MME/SicenceQA/SeedBench
+    3. [Benchmark Interface](https://huggingface.co/Otter-AI): MagnifierBench/MMBench/MM-VET/MathVista/POPE/MME/SicenceQA/SeedBench. Run them can be in one-click, please see [Benchmark](./docs/benchmark_eval.md) for details.
     4. Code refactorization for organizing multiple datasets, see details at [managing datasets in MIMIC-IT format](docs/mimicit_format.md)
 
 **[2023-08]**

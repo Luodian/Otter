@@ -5,7 +5,6 @@ from typing import Dict, List, Any
 import importlib
 
 AVAILABLE_EVAL_DATASETS: Dict[str, str] = {
-    "mhbench": "MultiHopBenchDataset",
     "mmbench": "MMBenchDataset",
     "mme": "MMEDataset",
     "mathvista": "MathVistaDataset",

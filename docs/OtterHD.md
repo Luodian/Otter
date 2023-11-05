@@ -73,7 +73,7 @@ pipeline/train/instruction_following.py \
 The human visual system can naturally perceive the details of small objects within a wide field of view, but current benchmarks for testing LMMs have not specifically focused on assessing this ability. This may be because the input sizes of mainstream Vision-Language models are constrained to relatively small resolutions. With the advent of the Fuyu and OtterHD models, we can extend the input resolution to a much larger range. Therefore, there is an urgent need for a benchmark that can test the ability to discern the details of small objects (often 1% image size) in high-resolution input images.
 
 ### Evaluation 
-Create a yaml file with below content:
+Create a yaml file `benchmark.yaml` with below content:
 ```yaml
 datasets:
   - name: magnifierbench
@@ -90,6 +90,5 @@ models:
 Then run
 
 ```python
-srun python -m pipeline.benchmarks.evaluate --confg [path to your config file]
-
+python -m pipeline.benchmarks.evaluate --confg benchmark.yaml
 ```
