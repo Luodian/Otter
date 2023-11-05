@@ -69,13 +69,7 @@ For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.
 1. Added Support for using Azure, Anthropic, Palm, Cohere models for Self-Instruct with Syphus pipeline, for information on usage modify [this line](https://github.com/Luodian/Otter/blob/16d73b399fac6352ebff7504b1acb1f228fbf3f4/mimic-it/syphus/file_utils.py#L53) with your selected model and set your API keys in the environment. For more information see [LiteLLM](https://github.com/BerriAI/litellm/)
 
 **[2023-07]**
-1. 🧨 Feature Updates:
-    - DeepSpeed ZeRo2 Integration + DDP Training
-    - Support Flamingo pretraining on Laion400M/CC3M.
-    - Add LoRA support for tuning LLM decoder.
-    - Integration of multiple LLMs (Vicuna, MPT, LLama2, Falcon)
-2. 🤗 Checkout [MIMIC-IT](https://huggingface.co/datasets/pufanyi/MIMICIT) on Huggingface datasets.
-1. 🦦 Checkout our [Otter-MPT7B Image Demo](https://otter.cliangyu.com/). We update the model by incoporating OpenFlamingv2 and specifically tune it to enable generation abilities for both long and short answers.
+1. 🤗 Checkout [MIMIC-IT](https://huggingface.co/datasets/pufanyi/MIMICIT) on Huggingface datasets.
 2. 🥚 Update [Eggs](./mimic-it/README.md/#eggs) section for downloading MIMIC-IT dataset.
 3. 🥃 Contact us **if you wish to develop Otter for your scenarios** (for satellite images or funny videos?). We aim to support and assist with Otter's diverse use cases. OpenFlamingo and Otter are strong models with the [Flamingo](https://www.deepmind.com/blog/tackling-multiple-tasks-with-a-single-visual-language-model)'s excellently designed architecture that accepts multiple images/videos or other modality inputs. Let's build more interesting models together. 
 
