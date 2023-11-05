@@ -41,7 +41,7 @@ We improve the native HuggingFace implementation of Fuyu-8B is highly unoptimize
 ```bash
 accelerate launch \
 --config_file=pipeline/accelerate_configs/accelerate_config_zero2.yaml \
---num_processes=5 \
+--num_processes=8 \
 --main_process_port=25000 \
 pipeline/train/instruction_following.py \
 --pretrained_model_name_or_path=adept/fuyu-8b \
@@ -49,7 +49,7 @@ pipeline/train/instruction_following.py \
 --model_name=fuyu \
 --instruction_format=fuyu \
 --batch_size=8 \
---gradient_accumulation_steps=4 \
+--gradient_accumulation_steps=2 \
 --num_epochs=3 \
 --wandb_entity=ntu-slab \
 --external_save_dir=./checkpoints \
