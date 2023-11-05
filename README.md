@@ -41,7 +41,7 @@
 - [Otter-AI/OtterHD-8B](https://huggingface.co/Otter-AI/OtterHD-8B)
 - [luodian/OTTER-Image-MPT7B](https://huggingface.co/luodian/OTTER-Image-MPT7B)
 - [luodian/OTTER-Video-LLaMA7B-DenseCaption](https://huggingface.co/luodian/OTTER-Video-LLaMA7B-DenseCaption)
-- More at [Otter-AI](https://huggingface.co/Otter-AI)
+- [More at Otter-AI](https://huggingface.co/Otter-AI)
 
 For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.org.cn/header/openxlab_models.svg)](https://openxlab.org.cn/models/detail/YuanhanZhang/OTTER-Image-MPT7B) | [![Open in OpenXLab](https://cdn-static.openxlab.org.cn/header/openxlab_models.svg)](https://openxlab.org.cn/models/detail/YuanhanZhang/OTTER-Video-LLaMA7B-DenseCaption)
 
