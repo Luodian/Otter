@@ -60,10 +60,10 @@ For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.
 1. Added [OtterHD](./docs/OtterHD.md), a multimodal fine-tuned from [Fuyu-8B](https://huggingface.co/adept/fuyu-8b) to facilitate a more fine-grained interpretation of high-resolution visual input without a vision encoder. We've opensourced the finetune script for Fuyu-8B and improve training throughput by 4-5 times faster with [Flash-Attention-2](https://github.com/Dao-AILab/flash-attention). You can play with the interactive demo [here](https://huggingface.co/spaces/Otter-AI/OtterHD-8B-demo).
 2. Added [MagnifierBench](./docs/OtterHD.md), an evaluation benchmark tailored to assess whether the model can identify the tiny objects' information (1% image size) and spatial relationships. 
 3. Improved pipeline for [Pretrain](pipeline/train/pretraining.py)/[SFT](pipeline/train/instruction_following.py)/[RLHF]() with (part of) current leading LMMs.
-- Models Interface: [Otter](https://arxiv.org/abs/2305.03726)/[Idefics](https://huggingface.co/HuggingFaceM4/idefics-80b-instruct)/[Fuyu](https://huggingface.co/adept/fuyu-8b)
-- Training Datasets Interface: (Pretrain) MMC4/LAION2B/CC3M/CC12M, (SFT) MIMIC-IT/M3IT/LLAVAR/LRV
-- [One-click Benchmark Interface](https://huggingface.co/Otter-AI): MagnifierBench/MMBench/MM-VET/MathVista/POPE/MME/SicenceQA/SeedBench
-- Code refactorization for organizing multiple datasets, see details at [managing datasets in MIMIC-IT format](docs/mimicit_format.md)
+    - Models Interface: [Otter](https://arxiv.org/abs/2305.03726)/[Idefics](https://huggingface.co/HuggingFaceM4/idefics-80b-instruct)/[Fuyu](https://huggingface.co/adept/fuyu-8b)
+    - Training Datasets Interface: (Pretrain) MMC4/LAION2B/CC3M/CC12M, (SFT) MIMIC-IT/M3IT/LLAVAR/LRV
+    - [One-click Benchmark Interface](https://huggingface.co/Otter-AI): MagnifierBench/MMBench/MM-VET/MathVista/POPE/MME/SicenceQA/SeedBench
+    - Code refactorization for organizing multiple datasets, see details at [managing datasets in MIMIC-IT format](docs/mimicit_format.md)
 
 **[2023-08]**
 1. Added Support for using Azure, Anthropic, Palm, Cohere models for Self-Instruct with Syphus pipeline, for information on usage modify [this line](https://github.com/Luodian/Otter/blob/16d73b399fac6352ebff7504b1acb1f228fbf3f4/mimic-it/syphus/file_utils.py#L53) with your selected model and set your API keys in the environment. For more information see [LiteLLM](https://github.com/BerriAI/litellm/)
