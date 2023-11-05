@@ -45,7 +45,7 @@
 For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.org.cn/header/openxlab_models.svg)](https://openxlab.org.cn/models/detail/YuanhanZhang/OTTER-Image-MPT7B) | [![Open in OpenXLab](https://cdn-static.openxlab.org.cn/header/openxlab_models.svg)](https://openxlab.org.cn/models/detail/YuanhanZhang/OTTER-Video-LLaMA7B-DenseCaption)
 
 
-**Disclaimer:** The code may not be fully polished and refactored, but all opensourced codes are tested and runnable as we also use the code to support our research. If you have any questions, please feel free to open an issue. We are eagerly looking forward to suggestions and PRs to improve the code quality.
+**Disclaimer:** The code may not be perfectly polished and refactored, but **all opensourced codes are tested and runnable** as we also use the code to support our research. If you have any questions, please feel free to open an issue. We are eagerly looking forward to suggestions and PRs to improve the code quality.
 
 ## 🦾 Update
 
