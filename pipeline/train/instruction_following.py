@@ -370,8 +370,8 @@ def main():
                 past_special_tokens = processor.tokenizer.special_tokens_map["additional_special_tokens"]
                 processor.tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"] + past_special_tokens})
 
-            image_processor = processor.image_processor
-            tokenizer = processor.tokenizer
+            image_processor = args.image_processor = processor.image_processor
+            tokenizer = args.tokenizer = processor.tokenizer
             # make embedding size divisible by 64 for hardware compatiblity https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html#requirements-tc
             # resize_token_embedding is not for parameter sharing in deepspeed !!!!
         elif args.model_name.lower() == "llama2":
