@@ -80,10 +80,7 @@ def generic_param_init_fn_(
 
     if init_div_is_residual is not False:
         if verbose > 1:
-            warnings.warn(
-                f"Initializing _is_residual layers then dividing them by {div_is_residual}."
-                + f"set `init_div_is_residual: false` in model config to disable this."
-            )
+            warnings.warn(f"Initializing _is_residual layers then dividing them by {div_is_residual}." + f"set `init_div_is_residual: false` in model config to disable this.")
 
     if isinstance(module, nn.Linear):
         # Linear

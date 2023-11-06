@@ -265,11 +265,7 @@ class MultiheadAttention(nn.Module):
         elif self.attn_impl == "torch":
             self.attn_fn = scaled_multihead_dot_product_attention
             if torch.cuda.is_available():
-                warnings.warn(
-                    "Using `attn_impl: torch`. If your model does not use `alibi` or "
-                    + "`prefix_lm` we recommend using `attn_impl: flash` otherwise "
-                    + "we recommend using `attn_impl: triton`."
-                )
+                warnings.warn("Using `attn_impl: torch`. If your model does not use `alibi` or " + "`prefix_lm` we recommend using `attn_impl: flash` otherwise " + "we recommend using `attn_impl: triton`.")
         else:
             raise ValueError(f"{attn_impl=} is an invalid setting.")
 
