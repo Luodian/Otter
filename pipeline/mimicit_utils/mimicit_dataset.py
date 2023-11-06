@@ -231,6 +231,7 @@ class MimicitDataset(Dataset):
             wandb_table = wandb.Table(columns=table.field_names)
             for row in table._rows:
                 wandb_table.add_data(*row)
+                master_print(str(row))
             wandb.log({f"{self.task_group} Task Table": wandb_table})
 
         self.bos_item = torch.LongTensor([args.tokenizer.bos_token_id])
