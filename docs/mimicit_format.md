@@ -5,11 +5,11 @@ We mainly use one integrate dataset format and we refer it to MIMIC-IT format si
 The mimic-it format contains the following data yaml file. Within this data yaml file, you could assign the path of the instruction json file and the image parquet file, and also the number of samples you want to use. The number of samples within each group will be uniformly sampled, and the `number_samples / total_numbers`` will decide sampling ratio of each dataset.
 
 ```yaml
-IMAGE_TEXT:
-  LADD:
-    mimicit_path: azure_storage/json/LA/LADD_instructions.json
-    images_path: azure_storage/Parquets/LA.parquet
-    num_samples: -1
+IMAGE_TEXT: # Group name should be in [IMAGE_TEXT, TEXT_ONLY, IMAGE_TEXT_IN_CONTEXT]
+  LADD: # Dataset name can be assigned at any name you want
+    mimicit_path: azure_storage/json/LA/LADD_instructions.json # Path of the instruction json file
+    images_path: azure_storage/Parquets/LA.parquet # Path of the image parquet file
+    num_samples: -1 # Number of samples you want to use, -1 means use all samples, if not set, default is -1.
   LACR_T2T:
     mimicit_path: azure_storage/json/LA/LACR_T2T_instructions.json
     images_path: azure_storage/Parquets/LA.parquet

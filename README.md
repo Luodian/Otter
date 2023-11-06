@@ -1,5 +1,5 @@
 <p align="center" width="100%">
-<img src="https://i.postimg.cc/nzwTx1S6/brand-title.png"  width="80%" height="80%">
+<img src="https://i.postimg.cc/BnKgFkPq/brand-title.png"  width="80%" height="80%">
 </p>
 
 <!-- <div>
@@ -26,15 +26,13 @@
 </div> -->
 
 ---
-
-![](https://img.shields.io/badge/otter-v0.2-darkcyan)
+![](https://img.shields.io/badge/otter-v0.3-darkcyan)
+[![Twitter](https://img.shields.io/twitter/url/https/twitter.com/cloudposse.svg?style=social&label=Follow%20%40Us)](https://twitter.com/BoLi68567011)
 ![](https://img.shields.io/github/stars/luodian/otter?style=social)
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FLuodian%2Fotter&count_bg=%23FFA500&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false)](https://hits.seeyoufarm.com)
-![](https://black.readthedocs.io/en/stable/_static/license.svg)
-![](https://img.shields.io/badge/code%20style-black-000000.svg)
 [![litellm](https://img.shields.io/badge/%20%F0%9F%9A%85%20liteLLM-OpenAI%7CAzure%7CAnthropic%7CPalm%7CCohere-blue?color=green)](https://github.com/BerriAI/litellm)
 
-[Otter Paper](https://arxiv.org/abs/2305.03726) | [OtterHD Paper (ready soon)]() | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425)
+[Otter Paper](https://arxiv.org/abs/2305.03726) | [OtterHD Paper]() | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425)
 
 **Corresponding Checkpoints:**
 
@@ -49,21 +47,38 @@ For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.
 
 ## 🦾 Update
 
-**[2023-11]**
+**[2023-11]: Anouncing OtterHD-8B, improved from Fuyu-8B. Checkout [OtterHD](./docs/OtterHD.md) for details.**
+
+<div style="text-align:center">
+<img src="https://i.postimg.cc/dtxQQzt6/demo0.png"  width="100%" height="100%">
+</div>
 
 1. 🦦 Added [OtterHD](./docs/OtterHD.md), a multimodal fine-tuned from [Fuyu-8B](https://huggingface.co/adept/fuyu-8b) to facilitate a more fine-grained interpretation of high-resolution visual input without a vision encoder. We've opensourced the finetune script for Fuyu-8B and improve training throughput by 4-5 times faster with [Flash-Attention-2](https://github.com/Dao-AILab/flash-attention). Try our finetune script at [OtterHD](./docs/OtterHD.md).
 2. 🔍 Added [MagnifierBench](./docs/OtterHD.md), an evaluation benchmark tailored to assess whether the model can identify the tiny objects' information (1% image size) and spatial relationships.
-3. Improved pipeline for [Pretrain](pipeline/train/pretraining.py)/[SFT](pipeline/train/instruction_following.py)/[RLHF]() with (part of) current leading LMMs.
-   1. Models: [Otter](https://arxiv.org/abs/2305.03726)/[Idefics](https://huggingface.co/HuggingFaceM4/idefics-80b-instruct)/[Fuyu](https://huggingface.co/adept/fuyu-8b)
-   2. Training Datasets: (Pretrain) MMC4/LAION2B/CC3M/CC12M, (SFT) MIMIC-IT/M3IT/LLAVAR/LRV/SVIT...
-   3. [Benchmark Interface](https://huggingface.co/Otter-AI): MagnifierBench/MMBench/MM-VET/MathVista/POPE/MME/SicenceQA/SeedBench. Run them can be in one-click, please see [Benchmark](./docs/benchmark_eval.md) for details.
-   4. Code refactorization for organizing multiple datasets with integrated yaml file, see details at [managing datasets in MIMIC-IT format](docs/mimicit_format.md)
+3. Improved pipeline for [Pretrain](pipeline/train/pretraining.py) | [SFT](pipeline/train/instruction_following.py) | [RLHF]() with (part of) current leading LMMs.
+   1. **Models**: [Otter](https://arxiv.org/abs/2305.03726) | [OpenFlamingo](https://arxiv.org/abs/2308.01390) | [Idefics](https://huggingface.co/HuggingFaceM4/idefics-80b-instruct) | [Fuyu](https://huggingface.co/adept/fuyu-8b)
+   2. **Training Datasets Interface**: (Pretrain) MMC4 | LAION2B | CC3M | CC12M, (SFT) MIMIC-IT | M3IT | LLAVAR | LRV | SVIT...
+    - *We tested above datasets for both pretraining and instruction tuning with OpenFlamingo and Otter. We also tested the datasets with Idefics and Fuyu for instruction tuning. We will opensource the training scripts gradually.*
+   3. [**Benchmark Interface**](https://huggingface.co/Otter-AI): MagnifierBench/MMBench/MM-VET/MathVista/POPE/MME/SicenceQA/SeedBench. Run them can be in one-click, please see [Benchmark](./docs/benchmark_eval.md) for details.
+   4. **Code refactorization** for **organizing multiple groups of datasets with integrated yaml file**, see details at [managing datasets in MIMIC-IT format](docs/mimicit_format.md). For example, 
+    ```yaml
+        IMAGE_TEXT: # Group name should be in [IMAGE_TEXT, TEXT_ONLY, IMAGE_TEXT_IN_CONTEXT]
+            LADD: # Dataset name can be assigned at any name you want
+                mimicit_path: azure_storage/json/LA/LADD_instructions.json # Path of the instruction json file
+                images_path: azure_storage/Parquets/LA.parquet # Path of the image parquet file
+                num_samples: -1 # Number of samples you want to use, -1 means use all samples, if not set, default is -1.
+            M3IT_CAPTIONING:
+                mimicit_path: azure_storage/json/M3IT/captioning/coco/coco_instructions.json
+                images_path: azure_storage/Parquets/coco.parquet
+                num_samples: 20000
+    ```
+   *This is a major change and would result previous code not runnable, please check the details.*
 
 **[2023-08]**
 
 1. Added Support for using Azure, Anthropic, Palm, Cohere models for Self-Instruct with Syphus pipeline, for information on usage modify [this line](https://github.com/Luodian/Otter/blob/16d73b399fac6352ebff7504b1acb1f228fbf3f4/mimic-it/syphus/file_utils.py#L53) with your selected model and set your API keys in the environment. For more information see [LiteLLM](https://github.com/BerriAI/litellm/)
 
-**[2023-07]**
+**[2023-07]: Anouncing MIMIC-IT dataset for multiple interleaved image-text/video instruction tuning.**
 
 1. 🤗 Checkout [MIMIC-IT](https://huggingface.co/datasets/pufanyi/MIMICIT) on Huggingface datasets.
 2. 🥚 Update [Eggs](./mimic-it/README.md/#eggs) section for downloading MIMIC-IT dataset.
