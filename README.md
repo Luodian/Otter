@@ -30,8 +30,6 @@
 ![](https://img.shields.io/badge/otter-v0.3-darkcyan)
 ![](https://img.shields.io/github/stars/luodian/otter?style=social)
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FLuodian%2Fotter&count_bg=%23FFA500&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false)](https://hits.seeyoufarm.com)
-<!-- ![](https://black.readthedocs.io/en/stable/_static/license.svg) -->
-<!-- ![](https://img.shields.io/badge/code%20style-black-000000.svg) -->
 [![litellm](https://img.shields.io/badge/%20%F0%9F%9A%85%20liteLLM-OpenAI%7CAzure%7CAnthropic%7CPalm%7CCohere-blue?color=green)](https://github.com/BerriAI/litellm)
 
 [Otter Paper](https://arxiv.org/abs/2305.03726) | [OtterHD Paper (ready soon)]() | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425)
