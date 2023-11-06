@@ -26,8 +26,8 @@
 </div> -->
 
 ---
-
-![](https://img.shields.io/badge/otter-v0.2-darkcyan)
+[![Twitter](https://img.shields.io/twitter/url/https/twitter.com/cloudposse.svg?style=social&label=Follow%20%40cloudposse)](https://twitter.com/BoLi68567011)
+![](https://img.shields.io/badge/otter-v0.3-darkcyan)
 ![](https://img.shields.io/github/stars/luodian/otter?style=social)
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FLuodian%2Fotter&count_bg=%23FFA500&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false)](https://hits.seeyoufarm.com)
 ![](https://black.readthedocs.io/en/stable/_static/license.svg)
