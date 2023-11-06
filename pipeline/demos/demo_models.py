@@ -148,7 +148,7 @@ class TestOtterHD:
         self.model.eval()
         self.tokenizer = AutoTokenizer.from_pretrained("adept/fuyu-8b")
         self.image_processor = FuyuImageProcessor()
-        self.processor = FuyuProcessor(image_processor=self.image_processor, tokenizer=self.tokenizer, max_new_token=max_new_tokens)
+        self.processor = FuyuProcessor(image_processor=self.image_processor, tokenizer=self.tokenizer)
         self.max_new_tokens = max_new_tokens
         self.bad_words_list = ["User:", "Assistant:"]
         self.bad_words_ids = self.tokenizer(self.bad_words_list, add_special_tokens=False).input_ids

@@ -79,6 +79,8 @@ def main():
         model = TestOtterHD(checkpoint=args.checkpoint)
     elif args.model_name == "idefics":
         model = TestIdefics(checkpoint=args.checkpoint)
+    else:
+        raise NotImplementedError(f"model_name: {args.model_name} is not implemented.")
 
     if args.yaml_file:
         eval_yaml(args, args.yaml_file, model)
