@@ -95,11 +95,27 @@ class MagnifierBenchDataset(BaseEvalDataset):
         self.debug = debug
         self.prompt = prompt
         self.api_key = api_key
-
-    def parse_pred_ans(self, pred_ans):
+        
+    def parse_pred_ans(self, pred_ans, question):
+        match = re.search(r"The answer is ([A-D])", pred_ans)
+        if match:
+            return match.group(1)
         choices = ["A", "B", "C", "D"]
         for selection in choices:
-            if pred_ans.strip().startswith(selection):
+            if selection in pred_ans:
+                return selection
+        pattern = "A\\. (.+?), B\\. (.+?), C\\. (.+?), D\\. (.+)"
+        matches = re.search(pattern, question)
+        if matches:
+            options = {"A": matches.group(1), "B": matches.group(2), "C": matches.group(3), "D": matches.group(4)}
+            for c, option in options.items():
+                option = option.strip()
+                if option.endswith(".") or option.endswith(",") or option.endswith("?"):
+                    option = option[:-1]
+                if option.upper() in pred_ans.upper():
+                    return c
+        for selection in choices:
+            if selection in pred_ans.upper():
                 return selection
         return "other"
 
