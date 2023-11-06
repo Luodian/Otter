@@ -494,14 +494,6 @@ def main():
     else:
         model, optimizer, lr_scheduler, mimicit_loaders = accelerator.prepare(model, optimizer, lr_scheduler, mimicit_loaders)
 
-    save_final_weights(
-        model,
-        args,
-        accelerator,
-        processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
-        tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
-    )
-    master_print(f"Saved checkpoint at epoch 0.")
     model.train()
     # Main Training Loop
     for epoch in range(resume_from_epoch, args.num_epochs):
