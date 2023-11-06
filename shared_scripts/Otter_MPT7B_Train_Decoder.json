@@ -1,6 +1,6 @@
 {
     "_commit_hash": null,
-    "_name_or_path": "/mnt/petrelfs/zhangyuanhan/weights/flamingo-mpt-7B",
+    "_name_or_path": "luodian/OTTER-MPT7B-Init",
     "architectures": [
         "OtterForConditionalGeneration"
     ],
