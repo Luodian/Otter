@@ -37,6 +37,7 @@ echo $THEID
 pkill python
 
 
+# --customized_config=./shared_scripts/Otter_MPT7B_Train_Decoder.json
 accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_zero2.yaml \
     --machine_rank $THEID --main_process_ip $MASTER_ADDR --main_process_port $MASTER_PORT \
     --num_machines=${COUNT_NODE} --num_processes=${GPU} \
