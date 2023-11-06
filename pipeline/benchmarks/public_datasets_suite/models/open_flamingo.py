@@ -3,9 +3,9 @@ from typing import List
 from PIL import Image
 import torch
 
-from open_flamingo.eval.eval_model import BaseEvalModel
-from contextlib import suppress
-from open_flamingo.eval.models.utils import unwrap_model
+from pipeline.benchmarks.public_datasets_suite.eval_model import BaseEvalModel
+from pipeline.benchmarks.public_datasets_suite.models.utils import unwrap_model
+from otter_ai import FlamingoForConditionalGeneration
 
 
 class EvalModel(BaseEvalModel):

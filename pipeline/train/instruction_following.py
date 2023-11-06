@@ -21,11 +21,13 @@ from transformers import (
     get_cosine_schedule_with_warmup,
     get_linear_schedule_with_warmup,
 )
-
+from peft import LoraConfig, TaskType, get_peft_model, PeftModel
 import wandb
 
 sys.path.append("../..")
-from transformers import AutoProcessor
+from transformers import AutoProcessor, AutoTokenizer, FuyuImageProcessor
+from src.otter_ai.models.fuyu.modeling_fuyu import FuyuForCausalLM
+from src.otter_ai.models.fuyu.processing_fuyu import FuyuProcessor
 
 from pipeline.mimicit_utils.data import get_data
 from pipeline.train.train_args import parse_args
@@ -41,10 +43,9 @@ from pipeline.train.train_utils import (
     get_weights_for_dataloaders,
     get_next_dataloader,
     find_and_remove_tokens,
+    delete_tensors_from_dict,
 )
 from src.otter_ai.models.flamingo.modeling_flamingo import FlamingoForConditionalGeneration
-
-# import from src, not from pip package for training & debugging
 from src.otter_ai.models.otter.modeling_otter import OtterForConditionalGeneration
 from transformers import LlamaForCausalLM, AutoTokenizer
 
@@ -64,9 +65,18 @@ except ImportError:
     print("IdeficsForVisionText2Text does not exist")
     IdeficsForVisionText2Text = type(None)
 
+# from memory_profiler import profile
+# fp = open("memory_report.log", "w+")
 
-def forward_pass(args, model, tokenizer, images, input_ids, attention_mask, labels, unwrapped_model, device_id, autocast_type):
-    if args.model_name == "idefics":
+
+# @profile(stream=fp)
+def forward_pass(args, model, tokenizer, images, input_ids, attention_mask, labels, device_id, autocast_type, batch_mimicit):
+    if args.model_name == "fuyu":
+        model_inputs = batch_mimicit.pop("fuyu_data")
+        for k, v in model_inputs.items():
+            model_inputs[k] = v.to(device_id, non_blocking=True) if isinstance(v, torch.Tensor) else [vv.to(device_id, non_blocking=True) for vv in v]
+        loss_mimicit = model(**model_inputs)[0]
+    elif args.model_name == "idefics":
         # only for image model
         max_num_images = images.shape[1]
         pure_text = torch.all(images == 0)
@@ -106,8 +116,7 @@ def forward_pass(args, model, tokenizer, images, input_ids, attention_mask, labe
 def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
     dataloader_iterators = [cycle(dataloader) for dataloader in mimicit_loaders]
     weights = get_weights_for_dataloaders(mimicit_loaders)
-    num_batches_per_epoch = sum(len(dataloader) for dataloader in mimicit_loaders)
-    total_training_steps = args.num_epochs * num_batches_per_epoch
+    num_batches_per_epoch = sum(len(dataloader) for dataloader in mimicit_loaders) // args.gradient_accumulation_steps
 
     # Special Design for Idefics Model's prompt strategy
     if args.model_name.lower() == "idefics":
@@ -134,63 +143,63 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     autocast_type = torch.bfloat16 if accelerator.mixed_precision == "bf16" else torch.float32
 
     # loop through different groups of dataloader
-    for num_steps in tqdm(range(total_training_steps), disable=args.rank != 0, initial=(epoch * num_batches_per_epoch)):
+    for num_steps in tqdm(range(args.total_training_steps), disable=args.rank != 0, initial=(epoch * num_batches_per_epoch)):
         if num_steps == num_batches_per_epoch:
             break
         data_time_m.update(time.time() - end)
         dataloader_iterator = get_next_dataloader(dataloader_iterators, weights)
         batch_mimicit = next(dataloader_iterator)  # Fetch a batch from the chosen dataloader
         global_step = num_steps + epoch * num_batches_per_epoch
+
         #### MIMIC-IT FORWARD PASS ####
-        images = batch_mimicit["net_input"]["patch_images"].to(device_id, non_blocking=True)
-        input_ids = batch_mimicit["net_input"]["input_ids"].to(device_id, non_blocking=True)
-        attention_mask = batch_mimicit["net_input"]["attention_masks"].to(device_id, non_blocking=True)
+        net_input = batch_mimicit.pop("net_input")
+        images = net_input.pop("patch_images").to(device_id, non_blocking=True)
+        input_ids = net_input.pop("input_ids").to(device_id, non_blocking=True)
+        attention_mask = net_input.pop("attention_masks").to(device_id, non_blocking=True)
+        labels = None  # placeholder to avoid error
 
-        def masking(masking_number: int = -100):
-            labels = torch.empty(input_ids.shape, dtype=torch.int64).to(device_id, non_blocking=True)
-            for i in range(input_ids.shape[0]):
-                labels[i] = torch.where(input_ids[i] == eos_token_id, eos_token_id, masking_number)
-                answer_token_ids_all = torch.where(input_ids[i] == answer_token_id)[0]
-                endofchunk_token_ids_all = torch.where(input_ids[i] == endofchunk_token_id)[0]
+        if args.model_name != "fuyu":  # design fuyu's process into it's processor, a way better design than following code.
 
-                j = 0  # Counter for endofchunk_token_ids
-                for answer_token_idx in answer_token_ids_all:
-                    # Find the closest endofchunk_token_id that is greater than answer_token_id
-                    while j < len(endofchunk_token_ids_all) and endofchunk_token_ids_all[j] < answer_token_idx:
-                        j += 1
+            def masking(masking_number: int = -100):
+                labels = torch.empty(input_ids.shape, dtype=torch.int64).to(device_id, non_blocking=True)
+                for i in range(input_ids.shape[0]):
+                    labels[i] = torch.where(input_ids[i] == eos_token_id, eos_token_id, masking_number)
+                    answer_token_ids_all = torch.where(input_ids[i] == answer_token_id)[0]
+                    endofchunk_token_ids_all = torch.where(input_ids[i] == endofchunk_token_id)[0]
 
-                    if j < len(endofchunk_token_ids_all):
-                        endofchunk_token_idx = endofchunk_token_ids_all[j]
+                    j = 0  # Counter for endofchunk_token_ids
+                    for answer_token_idx in answer_token_ids_all:
+                        # Find the closest endofchunk_token_id that is greater than answer_token_id
+                        while j < len(endofchunk_token_ids_all) and endofchunk_token_ids_all[j] < answer_token_idx:
+                            j += 1
+
+                        if j < len(endofchunk_token_ids_all):
+                            endofchunk_token_idx = endofchunk_token_ids_all[j]
+                            labels[i, answer_token_idx + 1 : endofchunk_token_idx + 1] = input_ids[i, answer_token_idx + 1 : endofchunk_token_idx + 1]
+
+                            # Increment j for the next iteration
+                            j += 1
+
+                    for answer_token_idx, endofchunk_token_idx in zip(answer_token_ids_all, endofchunk_token_ids_all):
                         labels[i, answer_token_idx + 1 : endofchunk_token_idx + 1] = input_ids[i, answer_token_idx + 1 : endofchunk_token_idx + 1]
 
-                        # Increment j for the next iteration
-                        j += 1
+                labels[:, 0] = masking_number
+                if args.model_name == "idefics" and fake_token_image_exists:
+                    labels[labels == fake_token_image_token_id] = masking_number
 
-                for answer_token_idx, endofchunk_token_idx in zip(answer_token_ids_all, endofchunk_token_ids_all):
-                    labels[i, answer_token_idx + 1 : endofchunk_token_idx + 1] = input_ids[i, answer_token_idx + 1 : endofchunk_token_idx + 1]
+                return labels
 
-            labels[:, 0] = masking_number
-            if args.model_name == "idefics" and fake_token_image_exists:
-                labels[labels == fake_token_image_token_id] = masking_number
+            labels = masking()
 
-            return labels
+            if args.remove_answer_token:
+                input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, answer_token_id, tokenizer)  # find and remove certain tokens from input_ids, labels, and attention_mask
 
-        labels = masking()
+            if args.remove_eos_token:
+                input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, endofchunk_token_id, tokenizer)
 
-        if args.remove_answer_token:
-            input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, answer_token_id, tokenizer)  # find and remove certain tokens from input_ids, labels, and attention_mask
-
-        if args.remove_eos_token:
-            input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, endofchunk_token_id, tokenizer)
-
-        with accelerator.autocast():
-            unwrapped_model = accelerator.unwrap_model(model)
+        with accelerator.accumulate(model):
             if num_steps == 0:
-                # info check
-                master_print(f"Device: {device_id}, input_ids: {input_ids.shape}")
-                master_print(f"Device: {device_id}, images: {images.shape}")
-                master_print(f"Device: {device_id}, attention_mask: {attention_mask.shape}")
-                master_print(f"Device: {device_id}, labels: {labels.shape}")
+                unwrapped_model = accelerator.unwrap_model(model)
                 master_print(f"model: {unwrapped_model.__class__.__name__}")
                 master_print(f"model dtype: {unwrapped_model.dtype if hasattr(unwrapped_model, 'dtype') else 'None'}")
 
@@ -202,81 +211,84 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 input_ids,
                 attention_mask,
                 labels,
-                unwrapped_model,
                 device_id,
                 autocast_type,
+                batch_mimicit,
             )
 
-        if accelerator.mixed_precision == "fp16":
-            accelerator.backward(loss_mimicit.to(device_id))
-        else:
-            accelerator.backward(loss_mimicit)
+            if accelerator.mixed_precision == "fp16":
+                accelerator.backward(loss_mimicit.to(device_id))
+            else:
+                accelerator.backward(loss_mimicit)
 
-        #### BACKWARD PASS ####
-        mean_loss = loss_mimicit.detach().mean()
-        cur_batch_max_tokens = input_ids.shape[1]
+            #### BACKWARD PASS ####
+            mean_loss = loss_mimicit.detach().mean()
+            cur_batch_max_tokens = input_ids.shape[1]
 
-        def mask_embedding(m):
-            if m.weight.requires_grad:
-                zero_mask = torch.zeros_like(m.weight.grad)
-                zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
-                # zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
-                # zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
-                m.weight.grad = m.weight.grad * zero_mask
+            def mask_embedding(m):
+                if m.weight.requires_grad:
+                    zero_mask = torch.zeros_like(m.weight.grad)
+                    zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
+                    # zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
+                    # zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
+                    m.weight.grad = m.weight.grad * zero_mask
 
-        if args.mask_lm_head and args.distributed_type != "DEEPSPEED":
-            unwrapped_model = accelerator.unwrap_model(model)
-            if isinstance(unwrapped_model, IdeficsForVisionText2Text):
-                unwrapped_model.lm_head.apply(mask_embedding)
-            elif unwrapped_model.lang_encoder.__class__.__name__ in ["MPTForCausalLM", "MosaicGPT"]:
-                unwrapped_model.lang_encoder.transformer.wte.apply(mask_embedding)
-            elif "LlamaForCausalLM" in unwrapped_model.lang_encoder.__class__.__name__:
-                unwrapped_model.lang_encoder.model.embed_tokens.apply(mask_embedding)
-                unwrapped_model.lang_encoder.lm_head.apply(mask_embedding)
+            if args.mask_lm_head and args.distributed_type != "DEEPSPEED":
+                unwrapped_model = accelerator.unwrap_model(model)
+                if isinstance(unwrapped_model, IdeficsForVisionText2Text):
+                    unwrapped_model.lm_head.apply(mask_embedding)
+                elif unwrapped_model.lang_encoder.__class__.__name__ in ["MPTForCausalLM", "MosaicGPT"]:
+                    unwrapped_model.lang_encoder.transformer.wte.apply(mask_embedding)
+                elif "LlamaForCausalLM" in unwrapped_model.lang_encoder.__class__.__name__:
+                    unwrapped_model.lang_encoder.model.embed_tokens.apply(mask_embedding)
+                    unwrapped_model.lang_encoder.lm_head.apply(mask_embedding)
 
-        if accelerator.sync_gradients:
-            accelerator.clip_grad_norm_(model.parameters(), 1.0)
+            if accelerator.sync_gradients:
+                accelerator.clip_grad_norm_(model.parameters(), 1.0)
 
-        optimizer.step()
-        lr_scheduler.step()
-        optimizer.zero_grad()
+            optimizer.step()
+            lr_scheduler.step()
+            optimizer.zero_grad()
 
-        # step time and reset end outside of rank 0
-        step_time_m.update(time.time() - end)
-        end = time.time()
-
-        if accelerator.sync_gradients:
-            if args.rank == 0 and args.report_to_wandb:
+            # step time and reset end outside of rank 0
+            step_time_m.update(time.time() - end)
+            end = time.time()
+            if accelerator.sync_gradients and args.rank == 0 and args.report_to_wandb:
                 # compute within rank 0
-                mimicit_samples_per_second = args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.val
-                mimicit_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size / step_time_m.val
-
-                wandb.log(
-                    {
-                        "data_time": data_time_m.avg,
-                        "step_time": step_time_m.avg,
-                        "max_tokens": cur_batch_max_tokens,
-                        "mimicit_samples_per_second": mimicit_samples_per_second,
-                        "mimicit_samples_per_second_per_gpu": mimicit_samples_per_second_per_gpu,
-                        "lr": optimizer.param_groups[0]["lr"],
-                    },
-                    commit=False,
-                )
+                mimicit_samples_per_second = args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.sum
+                mimicit_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size / step_time_m.sum
                 step_time_m.reset()
                 data_time_m.reset()
 
                 group_name = batch_mimicit["task_group"][0]
                 assert all(item == group_name for item in batch_mimicit["task_group"]), "Not all items in the list are the same"
-                wandb.log(
-                    {
-                        "loss_mimicit": mean_loss,
-                        "global_step": global_step // args.gradient_accumulation_steps,
-                        group_name: mean_loss,
-                    },
-                    commit=True,
-                )
-                # torch.cuda.empty_cache()
-                # gc.collect()  # forces garbage collection
+                if args.report_to_wandb:
+                    wandb.log(
+                        {
+                            "data_time": data_time_m.avg,
+                            "step_time": step_time_m.avg,
+                            "max_tokens": cur_batch_max_tokens,
+                            "mimicit_samples_per_second": mimicit_samples_per_second,
+                            "mimicit_samples_per_second_per_gpu": mimicit_samples_per_second_per_gpu,
+                            "lr": optimizer.param_groups[0]["lr"],
+                            "loss_mimicit": mean_loss,
+                            "global_step": global_step // args.gradient_accumulation_steps,
+                            group_name: mean_loss,
+                        },
+                        commit=True,
+                    )
+
+            delete_tensors_from_dict(batch_mimicit)
+            delete_tensors_from_dict(
+                {
+                    "other": [
+                        images,
+                        input_ids,
+                        attention_mask,
+                        labels,
+                    ]
+                }
+            )
 
         if args.rank == 0 and global_step != 0 and (args.save_steps_interval != -1) and (global_step % args.save_steps_interval == 0):
             save_checkpoint(epoch=None, global_step=global_step, model=model, args=args, accelerator=accelerator)
@@ -284,6 +296,13 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         # Log loss to console
         if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
             print(f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss MIMIC-IT: {mean_loss.item():.3f}")
+            # reset to avoid CPU oom
+            loss_mimicit = None
+            batch_mimicit = None
+            gc.collect()
+            torch.cuda.empty_cache()
+
+    del unwrapped_model
 
 
 def main():
@@ -345,11 +364,8 @@ def main():
             )
             if args.gradient_checkpointing:
                 model.gradient_checkpointing_enable()
-            try:
-                processor = AutoProcessor.from_pretrained(args.pretrained_model_name_or_path, legacy=False)
-            except OSError:
-                processor = AutoProcessor.from_pretrained("HuggingfaceM4/idefics-9b-instruct", legacy=False)
 
+            processor = AutoProcessor.from_pretrained(args.pretrained_model_name_or_path, legacy=False)
             if "<answer>" not in processor.tokenizer.special_tokens_map["additional_special_tokens"]:
                 past_special_tokens = processor.tokenizer.special_tokens_map["additional_special_tokens"]
                 processor.tokenizer.add_special_tokens({"additional_special_tokens": ["<answer>"] + past_special_tokens})
@@ -373,6 +389,33 @@ def main():
 
             args.tokenizer = tokenizer
             image_processor = None
+
+        elif args.model_name.lower() == "fuyu":
+            tokenizer = AutoTokenizer.from_pretrained(args.pretrained_model_name_or_path)
+            image_processor = FuyuImageProcessor()
+            processor = FuyuProcessor(image_processor=image_processor, tokenizer=tokenizer)
+            # Peiyuan: should rewrite this portion. Right now too ugly.
+            image_processor = processor
+            model = FuyuForCausalLM.from_pretrained(args.pretrained_model_name_or_path, **kwargs)
+            args.processor = processor
+
+            if args.enable_lora:
+                if args.peft_model_name_or_path:
+                    master_print(f"Loading finetuned LoRA model from {args.peft_model_name_or_path}")
+                    model = PeftModel.from_pretrained(model, args.peft_model_name_or_path)
+                    model = model.merge_and_unload()
+
+                lora_config = LoraConfig(
+                    r=64,
+                    lora_alpha=32,
+                    lora_dropout=0.05,
+                    task_type=TaskType.CAUSAL_LM,
+                    target_modules=["query_key_value", "dense", "dense_h_to_4h", "dense_4h_to_h", "lm_head"],
+                )
+                master_print(f"Init LoRA model with config {lora_config}")
+                model = get_peft_model(model, lora_config)
+                model.print_trainable_parameters()
+
         elif args.model_name.lower() == "debug_model":
             model = torch.nn.Linear(100, 100)
             tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-chat-hf")
@@ -390,11 +433,7 @@ def main():
     if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
         params_to_gather = [p for name, p in model.named_parameters() if p.requires_grad]
         with deepspeed.zero.GatheredParameters(params_to_gather, modifier_rank=0):
-            if torch.distributed.get_rank() == 0:
-                print(
-                    device_id,
-                    f"Zero3 Optimization: Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B",
-                )
+            master_print(device_id, f"Zero3 Optimization: Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
     if args.trained_ckpt is not None:
         train_ckpt = torch.load(args.trained_ckpt, map_location="cpu")
@@ -429,18 +468,20 @@ def main():
         print(f"Total training steps: {total_training_steps}")
 
     args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
+    args.warmup_steps = args.warmup_steps // args.gradient_accumulation_steps
+    args.total_training_steps = total_training_steps // args.gradient_accumulation_steps
 
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
             optimizer,
-            num_warmup_steps=args.warmup_steps // args.gradient_accumulation_steps,
-            num_training_steps=total_training_steps // args.gradient_accumulation_steps,
+            num_warmup_steps=args.warmup_steps,
+            num_training_steps=args.total_training_steps,
         )
     elif args.lr_scheduler == "cosine":
         lr_scheduler = get_cosine_schedule_with_warmup(
             optimizer,
-            num_warmup_steps=args.warmup_steps // args.gradient_accumulation_steps,
-            num_training_steps=total_training_steps // args.gradient_accumulation_steps,
+            num_warmup_steps=args.warmup_steps,
+            num_training_steps=args.total_training_steps,
         )
     elif args.lr_scheduler == "constant":
         lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps)
@@ -453,13 +494,17 @@ def main():
     else:
         model, optimizer, lr_scheduler, mimicit_loaders = accelerator.prepare(model, optimizer, lr_scheduler, mimicit_loaders)
 
+    save_final_weights(
+        model,
+        args,
+        accelerator,
+        processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
+        tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
+    )
+    master_print(f"Saved checkpoint at epoch 0.")
     model.train()
-
     # Main Training Loop
     for epoch in range(resume_from_epoch, args.num_epochs):
-        for dataloader in mimicit_loaders:
-            dataloader.dataset.set_epoch(epoch)
-
         train_one_epoch(
             args=args,
             model=model,
@@ -473,15 +518,16 @@ def main():
             wandb=wandb,
         )
         accelerator.wait_for_everyone()
-        if args.save_ckpt_each_epoch:
+        if args.save_ckpt_each_epoch and args.rank == 0:
             # save_checkpoint(epoch, model, args, accelerator)
             save_final_weights(
                 model,
                 args,
                 accelerator,
-                processor=processor if "idefics" in args.model_name.lower() else None,
+                processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
                 tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
             )
+            master_print(f"Saved checkpoint at epoch {epoch+1}.")
         accelerator.wait_for_everyone()
 
     # Save the final weights
@@ -489,7 +535,7 @@ def main():
         model,
         args,
         accelerator,
-        processor=processor if "idefics" in args.model_name.lower() else None,
+        processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
         tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
     )
     # accelerator.wait_for_everyone()

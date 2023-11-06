@@ -16,7 +16,21 @@ utc_plus_8 = pytz.timezone("Asia/Singapore")  # You can also use 'Asia/Shanghai'
 utc_now = pytz.utc.localize(datetime.datetime.utcnow())
 utc_plus_8_time = utc_now.astimezone(utc_plus_8)
 
-eval_type_dict = {"Perception": ["existence", "count", "position", "color", "posters", "celebrity", "scene", "landmark", "artwork", "ocr"], "Cognition": ["commonsense", "numerical", "text", "code"]}
+eval_type_dict = {
+    "Perception": [
+        "existence",
+        "count",
+        "position",
+        "color",
+        "posters",
+        "celebrity",
+        "scene",
+        "landmark",
+        "artwork",
+        "ocr",
+    ],
+    "Cognition": ["commonsense", "numerical", "text", "code"],
+}
 
 
 class MMEDataset(BaseEvalDataset):
@@ -25,15 +39,20 @@ class MMEDataset(BaseEvalDataset):
         image = Image.open(io.BytesIO(image_data))
         return image
 
-    def __init__(self, data_path: str = "Otter-AI/MME", *, cache_dir: Union[str, None] = None, default_output_path: str = "./logs/MME", split: str = "test", debug: bool = False):
+    def __init__(
+        self,
+        data_path: str = "Otter-AI/MME",
+        *,
+        cache_dir: Union[str, None] = None,
+        default_output_path: str = "./logs/MME",
+        split: str = "test",
+        debug: bool = False,
+    ):
         super().__init__("MMEDataset", data_path)
 
+        self.default_output_path = default_output_path
         self.cur_datetime = utc_plus_8_time.strftime("%Y-%m-%d_%H-%M-%S")
-        self.default_output_path = os.path.join(default_output_path, self.cur_datetime)
-        if not os.path.exists(self.default_output_path):
-            os.makedirs(self.default_output_path)
-
-        self.data = load_dataset("Otter-AI/MME", split=split, cache_dir=cache_dir)
+        self.data = load_dataset(data_path, split=split, cache_dir=cache_dir)
         self.debug = debug
 
         self.category_data = {}
@@ -129,8 +148,12 @@ class MMEDataset(BaseEvalDataset):
 
         return metric_dict
 
-    def evaluate(self, model):
+    def _evaluate(self, model):
         model_score_dict = {}
+
+        self.default_output_path = os.path.join(self.default_output_path, f"{model.name}_{self.cur_datetime}")
+        if not os.path.exists(self.default_output_path):
+            os.makedirs(self.default_output_path)
 
         for eval_type in self.category_data.keys():
             print("===========", eval_type, "===========")
@@ -154,8 +177,8 @@ class MMEDataset(BaseEvalDataset):
                         gt_ans = item["answer"].lower().strip().replace(".", "")
                         response = model.generate(question, image)
                         if self.debug:
-                            print(f"\n#Query: {question}")
-                            print(f"\n#Response: {response}")
+                            print(f"\n# Query: {question}")
+                            print(f"\n# Response: {response}")
                         pred_ans = self.parse_pred_ans(response)
 
                         assert gt_ans in ["yes", "no"]

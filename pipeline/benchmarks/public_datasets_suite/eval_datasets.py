@@ -5,7 +5,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.datasets import ImageFolder
 
-from pipeline.eval.classification_utils import IMAGENET_1K_CLASS_ID_TO_LABEL
+from pipeline.benchmarks.public_datasets_suite.classification_utils import IMAGENET_1K_CLASS_ID_TO_LABEL
 
 
 class CaptionDataset(Dataset):

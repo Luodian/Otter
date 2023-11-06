@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Set environment variables
-export PYTHONPATH=../..:$PYTHONPATH
+export PYTHONPATH=../../..:$PYTHONPATH
 export CUDA_VISIBLE_DEVICES=3
 
 # Run the Python script with the specified arguments
-python -m pipeline.eval.evaluate \
+python -m pipeline.benchmarks.public_datasets_suite.evaluate \
     --vqav2_train_image_dir_path=/data/pufanyi/download/lavis/coco/images/train2014 \
     --vqav2_train_annotations_json_path=/data/pufanyi/download/lavis/vqav2/annotations/v2_mscoco_train2014_annotations.json \
     --vqav2_train_questions_json_path=/data/pufanyi/download/lavis/vqav2/annotations/v2_OpenEnded_mscoco_train2014_questions.json \
@@ -40,19 +40,21 @@ python -m pipeline.eval.evaluate \
     --hateful_memes_image_dir_path=/data/pufanyi/download/lavis/hateful_memes/img \
     --hateful_memes_train_annotations_json_path=/data/pufanyi/download/lavis/hateful_memes/train.json \
     --hateful_memes_test_annotations_json_path=/data/pufanyi/download/lavis/hateful_memes/dev.json \
-    --model=otter \
-    --model_path=/data/bli/checkpoints/OTTER-Image-MPT7B \
-    --checkpoint_path=/data/bli/checkpoints/OTTER-Image-MPT7B/final_weights.pt \
+    --model=idefics \
+    --model_path=/data/pufanyi/training_data/checkpoints/idefics-9b-instruct \
     --device_map=auto \
     --precision=fp32 \
-    --batch_size=8 \
-    --eval_coco \
     --eval_vqav2 \
-    --eval_flickr30 \
     --eval_ok_vqa \
+    --eval_coco \
+    --eval_flickr30 \
+    --eval_vqav2 \
     --eval_textvqa \
     --eval_vizwiz \
     --eval_hateful_memes \
+    --batch_size=8 \
+    --device=cuda \
+    --results_file=./logs/idefics.json \
 
 
 

@@ -13,7 +13,7 @@ def get_info(info):
     if "name" not in info:
         raise ValueError("Model name is not specified.")
     name = info["name"]
-    info.pop("name")
+    # info.pop("name")
     return name, info
 
 
@@ -107,6 +107,9 @@ if __name__ == "__main__":
             model_infos = [{"name": name} for name in model_names]
         dataset_infos = [{"name": dataset_name, "cache_dir": phrased_args.cache_dir} for dataset_name in phrased_args.datasets.split(",")]
 
+    if not os.path.exists(os.path.dirname(phrased_args.output)):
+        os.makedirs(os.path.dirname(phrased_args.output))
+
     with open(phrased_args.output, "w") as outfile, contextlib.redirect_stdout(DualOutput(outfile, sys.stdout)):
         print("=" * 80)
         print(" " * 30 + "EVALUATION REPORT")
@@ -114,12 +117,9 @@ if __name__ == "__main__":
         print()
 
         for model_info in model_infos:
-            kwargs = {}
-            if "model_path" in model_info:
-                kwargs["model_path"] = model_info["model_path"]
-            print("\nMODEL:", model_info["name"])
+            print("\nMODEL INFO:", model_info)
             print("-" * 80)
-            model = load_model(model_info["name"], kwargs)
+            model = load_model(model_info["name"], model_info)
 
             dataset_count = 0
             for dataset in load_datasets(dataset_infos):

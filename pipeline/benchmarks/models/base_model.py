@@ -13,14 +13,20 @@ AVAILABLE_MODELS: Dict[str, str] = {
     "otter_image": "OtterImage",
     "frozen_bilm": "FrozenBilm",
     "idefics": "Idefics",
-    "idefics_otter": "IdeficsOtter",
+    "fuyu": "Fuyu",
+    "otterhd": "OtterHD",
+    "instructblip": "InstructBLIP",
+    "qwen_vl": "QwenVL",
+    "llava_model": "LLaVA_Model",
+    "instructblip": "InstructBLIP",
 }
 
 
 class BaseModel(ABC):
-    def __init__(self, model_name: str, model_path: str):
+    def __init__(self, model_name: str, model_path: str, *, max_batch_size: int = 1):
         self.name = model_name
         self.model_path = model_path
+        self.max_batch_size = max_batch_size
 
     @abstractmethod
     def generate(self, **kwargs):
@@ -38,4 +44,5 @@ def load_model(model_name: str, model_args: Dict[str, str]) -> BaseModel:
     imported_module = importlib.import_module(module_path)
     model_class = getattr(imported_module, model_formal_name)
     print(f"Imported class: {model_class}")
+    model_args.pop("name")
     return model_class(**model_args)

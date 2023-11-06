@@ -2,17 +2,26 @@ import numpy as np
 from tqdm import tqdm
 from .base_eval_dataset import BaseEvalDataset
 from datasets import load_dataset
+import json
+import os
+import datetime
 
 
 class SEEDBenchDataset(BaseEvalDataset):
-    def __init__(self, data_path: str = "Otter-AI/SEEDBench", split="test", cache_dir=None):
+    def __init__(self, data_path: str = "Otter-AI/SEEDBench", split="test", default_output_path="./logs", cache_dir=None):
         super().__init__("SEEDBenchDataset", data_path)
         print("Loading dataset from", data_path)
         self.data = load_dataset(data_path, split=split, cache_dir=cache_dir)
+        self.default_output_path = default_output_path
+        if not os.path.exists(default_output_path):
+            os.makedirs(default_output_path)
 
-    def evaluate(self, model):
+    def _evaluate(self, model):
         count = 0
         num_correct = 0
+        cur_datetime = datetime.datetime.now().strftime("%Y%m%d-%H%M")
+        output_path = os.path.join(self.default_output_path, f"seedbench_{model.name}_test_submit_{cur_datetime}.json")
+        output_f = open(output_path, "a")
         with tqdm(total=len(self.data), desc="Evaluating") as pbar:
             for data_dict in self.data:
                 image = data_dict["image"]
@@ -41,9 +50,15 @@ class SEEDBenchDataset(BaseEvalDataset):
                     num_correct += 1
                 count += 1
 
-                accuracy = num_correct / count * 100
-                pbar.set_postfix(accuracy=f"{accuracy:.2f}")
-                pbar.update(1)
+            answer_record = {"question_id": data_dict["question_id"], "prediction": prediction}
+            output_f.write(json.dumps(answer_record) + "\n")
+
+            answer_record = {"question_id": data_dict["question_id"], "prediction": prediction}
+            output_f.write(json.dumps(answer_record) + "\n")
+
+            accuracy = num_correct / count * 100
+            pbar.set_postfix(accuracy=f"{accuracy:.2f}")
+            pbar.update(1)
 
         accuracy = num_correct / count * 100
         print(f"Accuracy: {accuracy:.2f}%")
