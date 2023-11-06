@@ -95,7 +95,7 @@ class MagnifierBenchDataset(BaseEvalDataset):
         self.debug = debug
         self.prompt = prompt
         self.api_key = api_key
-        
+
     def parse_pred_ans(self, pred_ans, question):
         match = re.search(r"The answer is ([A-D])", pred_ans)
         if match:

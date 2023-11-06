@@ -488,7 +488,7 @@ def main():
 
     if args.rank == 0 and args.report_to_wandb:
         wandb.config.update(vars(args))
-    
+
     if accelerator.distributed_type == "DEEPSPEED" or accelerator.distributed_type == "MULTI_GPU":
         model, optimizer = accelerator.prepare(model, optimizer)
     else:

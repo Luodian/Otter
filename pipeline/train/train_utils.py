@@ -254,7 +254,7 @@ def save_final_weights(model, args, accelerator, processor=None, tokenizer=None)
             checkpoint_dict = accelerator.get_state_dict(model)
         else:
             checkpoint_dict = get_checkpoint(model=unwrapped_model)
-            
+
         if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
             trainable_params_name = [name for name, p in unwrapped_model.named_parameters() if p.requires_grad]
             checkpoint_dict = {k: v for k, v in checkpoint_dict.items() if k in trainable_params_name}
