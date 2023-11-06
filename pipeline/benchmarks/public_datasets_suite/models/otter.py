@@ -6,11 +6,7 @@ import transformers
 
 from pipeline.benchmarks.public_datasets_suite.eval_model import BaseEvalModel
 from contextlib import suppress
-<<<<<<< HEAD:pipeline/benchmarks/public_datasets_suite/models/otter.py
 from pipeline.benchmarks.public_datasets_suite.models.utils import unwrap_model
-=======
-from pipeline.eval.models.utils import unwrap_model
->>>>>>> 0d12192f665f5e9da1ecb2f23d6a360eb7753771:pipeline/eval/models/otter.py
 from otter_ai import OtterForConditionalGeneration
 import os
 
