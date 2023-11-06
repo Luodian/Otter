@@ -143,8 +143,8 @@ class MimicitDataset(Dataset):
         elif args.model_name == "idefics":
             checkpoint_path = os.environ.get("IDEFICS_LOCAL_PATH", "HuggingFaceM4/idefics-9b-instruct")
             master_print(f"Local Idefics Checkpoints Path: {checkpoint_path}")
-            image_processor = AutoProcessor.from_pretrained(checkpoint_path).image_processor
-            self.patch_resize_transform = lambda x: image_processor.preprocess(x).squeeze(0)
+            self.image_processor = AutoProcessor.from_pretrained(checkpoint_path).image_processor
+            self.patch_resize_transform = lambda x: self.image_processor.preprocess(x).squeeze(0)
 
         assert len(self.mimicit_paths) == len(self.images_paths) == len(self.train_config_paths), f"metas do not have same number"
 
