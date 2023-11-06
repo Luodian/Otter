@@ -228,7 +228,7 @@ def save_checkpoint(checkpoint_dict, save_path, is_main_process, save_function):
 
 def save_pretrained(component, save_path, is_main_process, save_function):
     """Helper function to save pretrained components."""
-    component.save_pretrained(save_path, is_main_process=is_main_process, save_function=save_function)
+    component.save_pretrained(save_path, is_main_process=is_main_process, save_function=save_function, safe_serialization=False)
 
 
 def save_final_weights(model, args, accelerator, processor=None, tokenizer=None):
@@ -237,12 +237,6 @@ def save_final_weights(model, args, accelerator, processor=None, tokenizer=None)
     is_main_process = accelerator.is_main_process
     save_path = args.external_save_dir
     model_name = args.model_name.lower()
-
-    # Save based on the distributed type
-    if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
-        checkpoint_dict = accelerator.get_state_dict(model)
-    else:
-        checkpoint_dict = get_checkpoint(model=unwrapped_model)
 
     unwrapped_model.config.save_pretrained(save_path)
 
@@ -255,6 +249,12 @@ def save_final_weights(model, args, accelerator, processor=None, tokenizer=None)
         if "llama2" in model_name:
             save_pretrained(tokenizer, save_path, is_main_process, accelerator.save)
     else:
+        # Save based on the distributed type
+        if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
+            checkpoint_dict = accelerator.get_state_dict(model)
+        else:
+            checkpoint_dict = get_checkpoint(model=unwrapped_model)
+            
         if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
             trainable_params_name = [name for name, p in unwrapped_model.named_parameters() if p.requires_grad]
             checkpoint_dict = {k: v for k, v in checkpoint_dict.items() if k in trainable_params_name}

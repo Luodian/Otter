@@ -488,14 +488,21 @@ def main():
 
     if args.rank == 0 and args.report_to_wandb:
         wandb.config.update(vars(args))
-
+    
     if accelerator.distributed_type == "DEEPSPEED" or accelerator.distributed_type == "MULTI_GPU":
         model, optimizer = accelerator.prepare(model, optimizer)
     else:
         model, optimizer, lr_scheduler, mimicit_loaders = accelerator.prepare(model, optimizer, lr_scheduler, mimicit_loaders)
 
+    save_final_weights(
+        model,
+        args,
+        accelerator,
+        processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
+        tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
+    )
+    master_print(f"Saved checkpoint at epoch 0.")
     model.train()
-
     # Main Training Loop
     for epoch in range(resume_from_epoch, args.num_epochs):
         train_one_epoch(
@@ -511,7 +518,7 @@ def main():
             wandb=wandb,
         )
         accelerator.wait_for_everyone()
-        if args.save_ckpt_each_epoch:
+        if args.save_ckpt_each_epoch and args.rank == 0:
             # save_checkpoint(epoch, model, args, accelerator)
             save_final_weights(
                 model,
