@@ -26,7 +26,7 @@ class MMBenchDataset(BaseEvalDataset):
         super().__init__("MMBenchDataset", data_path)
         self.version = str(version)
         self.name_converter = {"dev": "validation", "test": "test"}
-        self.df = load_dataset("Otter-AI/MMBench", self.version, split=self.name_converter[split], cache_dir=cache_dir).to_pandas()
+        self.df = load_dataset(data_path, self.version, split=self.name_converter[split], cache_dir=cache_dir).to_pandas()
         self.default_output_path = default_output_path
         if os.path.exists(self.default_output_path) is False:
             os.makedirs(self.default_output_path)

@@ -52,7 +52,7 @@ class MMEDataset(BaseEvalDataset):
 
         self.default_output_path = default_output_path
         self.cur_datetime = utc_plus_8_time.strftime("%Y-%m-%d_%H-%M-%S")
-        self.data = load_dataset("Otter-AI/MME", split=split, cache_dir=cache_dir)
+        self.data = load_dataset(data_path, split=split, cache_dir=cache_dir)
         self.debug = debug
 
         self.category_data = {}
