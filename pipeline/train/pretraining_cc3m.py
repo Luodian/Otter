@@ -23,7 +23,7 @@ import wandb
 from otter_ai import FlamingoForConditionalGeneration, OtterForConditionalGeneration
 
 sys.path.append("../..")
-from pipeline.train.data import get_data
+from pipeline.mimicit_utils.data import get_data
 from pipeline.train.distributed import world_info_from_env
 from pipeline.train.train_utils import AverageMeter, get_checkpoint
 
