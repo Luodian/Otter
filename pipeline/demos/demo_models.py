@@ -166,7 +166,7 @@ class TestOtterHD:
         formated_prompt = f"User: {prompt} Assistant:"
         model_inputs = self.processor(text=formated_prompt, images=[raw_image_data] if no_image_flag is False else None, device=self.device)
         for k, v in model_inputs.items():
-            model_inputs[k] = v.to(self.device)
+            model_inputs[k] = v.to(self.device, non_blocking=True) if isinstance(v, torch.Tensor) else [vv.to(self.device, non_blocking=True) for vv in v]
 
         generation_output = self.model.generate(**model_inputs, max_new_tokens=self.max_new_tokens)
         generation_text = self.processor.batch_decode(generation_output, skip_special_tokens=True)
