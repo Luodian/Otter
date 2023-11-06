@@ -871,6 +871,16 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             for name, param in self.lang_encoder.named_parameters():
                 param.requires_grad = True
 
+        # Freeze all parameters in vision encoder
+        if "train_vision_encoder" in self.config.__dict__ and self.config.train_vision_encoder is True:
+            for param in self.vision_encoder.parameters():
+                param.requires_grad = True
+
+        # Freeze all parameters in lang encoders except gated_cross_attn_layers
+        if "train_lang_encoder" in self.config.__dict__ and self.config.train_lang_encoder is True:
+            for name, param in self.lang_encoder.named_parameters():
+                param.requires_grad = True
+
         if "lora_config" in self.config.__dict__:
             # Use another logic to unfreeze gated_cross_attn_layers and perceivers
             master_print(f"LoRA trainable param: {(sum(param.numel() for name, param in self.lang_encoder.named_parameters() if 'lora' in name)) / 1e6:.3f} M")
@@ -886,7 +896,6 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         for name, param in self.named_parameters():
             if "perceiver" in name:
                 param.requires_grad = True
-
         # Unfreeze LM input and output embeddings
         self.lang_encoder.get_input_embeddings().requires_grad_(True)
         ## MPTForCausalLM is tied word embedding
