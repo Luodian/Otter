@@ -1,5 +1,5 @@
 <p align="center" width="100%">
-<img src="https://i.postimg.cc/BnKgFkPq/brand-title.png"  width="80%" height="80%">
+<img src="https://i.postimg.cc/mksBCbV9/brand-title.png"  width="80%" height="80%">
 </p>
 
 <!-- <div>
