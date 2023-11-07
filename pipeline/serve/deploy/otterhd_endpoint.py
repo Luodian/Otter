@@ -92,6 +92,8 @@ def process_image_and_prompt():
 
 
 import time
+
+
 # Other necessary functions (adapted from your Gradio demo)
 def predict(image, prompt):
     time_start = time.time()
