@@ -26,6 +26,7 @@ model.eval()
 prompt_txt_path = "../user_logs/prompts.txt"
 images_folder_path = "../user_logs"
 
+
 def save_image_unique(pil_image, directory=images_folder_path):
     # Ensure the directory exists
     if not os.path.exists(directory):
@@ -33,7 +34,7 @@ def save_image_unique(pil_image, directory=images_folder_path):
 
     # Convert the PIL Image into a bytes object
     img_byte_arr = io.BytesIO()
-    pil_image.save(img_byte_arr, format='PNG')
+    pil_image.save(img_byte_arr, format="PNG")
     img_byte_arr = img_byte_arr.getvalue()
 
     # Compute the hash of the image data
@@ -50,11 +51,12 @@ def save_image_unique(pil_image, directory=images_folder_path):
         print(f"Image already exists with the name: {file_name}")
     else:
         # If the file does not exist, save the image
-        with open(file_path, 'wb') as new_file:
+        with open(file_path, "wb") as new_file:
             new_file.write(img_byte_arr)
         print(f"Image saved with the name: {file_name}")
 
     return file_path
+
 
 # Define endpoint
 @app.route("/app/otter", methods=["POST"])
