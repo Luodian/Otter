@@ -32,7 +32,7 @@
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FLuodian%2Fotter&count_bg=%23FFA500&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false)](https://hits.seeyoufarm.com)
 [![litellm](https://img.shields.io/badge/%20%F0%9F%9A%85%20liteLLM-OpenAI%7CAzure%7CAnthropic%7CPalm%7CCohere-blue?color=green)](https://github.com/BerriAI/litellm)
 
-[Otter Paper](https://arxiv.org/abs/2305.03726) | [OtterHD Paper]() | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425) | [Demo & Checkpoints@Otter-AI's HF Space](https://huggingface.co/Otter-AI)
+[Otter Paper](https://arxiv.org/abs/2305.03726) | [OtterHD Paper]() | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425) | [Demo & Checkpoints@Otter-AI](https://huggingface.co/Otter-AI)
 
 **Corresponding Checkpoints:**
 
