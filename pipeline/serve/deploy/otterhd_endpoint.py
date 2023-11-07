@@ -6,6 +6,9 @@ import base64
 import re
 from io import BytesIO
 from datetime import datetime
+import hashlib
+from PIL import Image
+import io, os
 
 app = Flask(__name__)
 
@@ -20,10 +23,38 @@ processor = FuyuProcessor(image_processor=FuyuImageProcessor(), tokenizer=tokeni
 
 # Ensure model is in evaluation mode
 model.eval()
-
 prompt_txt_path = "../user_logs/prompts.txt"
 images_folder_path = "../user_logs"
 
+def save_image_unique(pil_image, directory=images_folder_path):
+    # Ensure the directory exists
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    # Convert the PIL Image into a bytes object
+    img_byte_arr = io.BytesIO()
+    pil_image.save(img_byte_arr, format='PNG')
+    img_byte_arr = img_byte_arr.getvalue()
+
+    # Compute the hash of the image data
+    hasher = hashlib.sha256()
+    hasher.update(img_byte_arr)
+    hash_hex = hasher.hexdigest()
+
+    # Create a file name with the hash value
+    file_name = f"{hash_hex}.png"
+    file_path = os.path.join(directory, file_name)
+
+    # Check if a file with the same name exists
+    if os.path.isfile(file_path):
+        print(f"Image already exists with the name: {file_name}")
+    else:
+        # If the file does not exist, save the image
+        with open(file_path, 'wb') as new_file:
+            new_file.write(img_byte_arr)
+        print(f"Image saved with the name: {file_name}")
+
+    return file_path
 
 # Define endpoint
 @app.route("/app/otter", methods=["POST"])
@@ -42,10 +73,7 @@ def process_image_and_prompt():
     image = Image.open(BytesIO(base64.b64decode(image_data)))
     prompt = query_content["prompt"]
     formated_time = start_time.strftime("%Y-%m-%d %H:%M:%S")
-
-    image_path = f"{images_folder_path}/{formated_time}.jpg"
-    with open(image_path, "wb") as f:
-        f.write(base64.b64decode(image_data))
+    image_path = save_image_unique(image)
 
     # Preprocess the image and prompt, and run the model
     response = predict(image, prompt)
@@ -53,8 +81,9 @@ def process_image_and_prompt():
 
     with open(prompt_txt_path, "a") as f:
         f.write(f"*************************{formated_time}**************************" + "\n")
-        f.write(prompt + "\n")
-        f.write(response + "\n\n")
+        f.write(f"Image saved to {image_path}" + "\n")
+        f.write(f"Prompt: {prompt}" + "\n")
+        f.write(f"Response: {response}" + "\n\n")
 
     # Return the response
     return jsonify({"result": response})
