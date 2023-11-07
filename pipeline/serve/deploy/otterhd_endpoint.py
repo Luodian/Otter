@@ -10,7 +10,7 @@ from datetime import datetime
 app = Flask(__name__)
 
 # Initialization code (similar to what you have in your Gradio demo)
-model_id = "/home/luodian/azure_storage/otter/checkpoints/OtterBite_NOV2_MIX_xDynamic_Bench_Continue"
+model_id = input("Model ID: ")
 device = "cuda:0"
 dtype = torch.bfloat16
 
@@ -21,8 +21,8 @@ processor = FuyuProcessor(image_processor=FuyuImageProcessor(), tokenizer=tokeni
 # Ensure model is in evaluation mode
 model.eval()
 
-prompt_txt_path = "/home/luodian/projects/Otter/pipeline/serve/user_logs/prompts.txt"
-images_folder_path = "/home/luodian/projects/Otter/pipeline/serve/user_logs"
+prompt_txt_path = "../user_logs/prompts.txt"
+images_folder_path = "../user_logs"
 
 
 # Define endpoint
@@ -52,7 +52,7 @@ def process_image_and_prompt():
     torch.cuda.empty_cache()
 
     with open(prompt_txt_path, "a") as f:
-        f.write(formated_time + "\n")
+        f.write(f"*************************{formated_time}**************************" + "\n")
         f.write(prompt + "\n")
         f.write(response + "\n\n")
 
