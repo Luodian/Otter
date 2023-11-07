@@ -32,6 +32,8 @@ We introduce OtterHD-8B, a multimodal model fine-tuned from [Fuyu-8B](https://hu
 
 We improve the native HuggingFace implementation of Fuyu-8B is highly unoptimized with [FlashAttention-2](https://github.com/Dao-AILab/flash-attention) and other fused operators including fused layernorm, fused square ReLU, and fused rotary positional embedding. Fuyu's simplified architecture facilitates us to do this in a fairly convenient way. As illustrated in the following, the modifications substantially enhance GPU utilization and training throughput (> 5 times larger than the vanilla HF implementation of Fuyu). Checkout the details at [here](../src/otter_ai/models/fuyu/modeling_fuyu.py).
 
+To our best knowledge and experiment trials, OtterHD achieves fastest training throughput among current leading LMMs, as it can be fully optimized and benefit from the simplified architecture.
+
 <p align="center" width="100%">
 <img src="https://i.postimg.cc/c43PkMqC/tokens-throughput.png"  width="80%" height="80%">
 </p>
