@@ -145,7 +145,7 @@ class MagnifierBenchDataset(BaseEvalDataset):
 
             model_response = model.generate(question, data["images"][0])
 
-            pred_ans = self.parse_pred_ans(model_response)
+            pred_ans = self.parse_pred_ans(model_response, question)
 
             freeform_question = (question.split("?")[0] + "?").replace(self.prompt, "").strip()
             options = question.split("?")[1]
