@@ -510,7 +510,7 @@ def main():
             wandb=wandb,
         )
         accelerator.wait_for_everyone()
-        if args.save_ckpt_each_epoch and args.rank == 0:
+        if args.save_ckpt_each_epoch:
             # save_checkpoint(epoch, model, args, accelerator)
             save_final_weights(
                 model,

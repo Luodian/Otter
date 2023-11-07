@@ -19,6 +19,7 @@ AVAILABLE_MODELS: Dict[str, str] = {
     "qwen_vl": "QwenVL",
     "llava_model": "LLaVA_Model",
     "instructblip": "InstructBLIP",
+    "gpt4v": "OpenAIGPT4Vision"
 }
 
 
