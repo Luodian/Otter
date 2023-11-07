@@ -60,6 +60,24 @@ For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.
    2. **Training Datasets Interface: (Pretrain)** MMC4 | LAION2B | CC3M | CC12M, **(SFT)** MIMIC-IT | M3IT | LLAVAR | LRV | SVIT...
     - *We tested above datasets for both pretraining and instruction tuning with OpenFlamingo and Otter. We also tested the datasets with Idefics and Fuyu for instruction tuning. We will opensource the training scripts gradually.*
    3. [**Benchmark Interface**](https://huggingface.co/Otter-AI): MagnifierBench/MMBench/MM-VET/MathVista/POPE/MME/SicenceQA/SeedBench. Run them can be in one-click, please see [Benchmark](./docs/benchmark_eval.md) for details.
+    ```yaml
+        datasets:
+        - name: magnifierbench
+            split: test
+            prompt: Answer with the option's letter from the given choices directly.
+            api_key: [Your API Key] # GPT4 or GPT3.5 to evaluate the answers and ground truth.
+            debug: true # put debug=true will save the model response in log file.
+        - name: mme
+            split: test
+            debug: true
+        - name: mmbench
+            split: test
+            debug: true
+
+        models:
+        - name: gpt4v
+            api_key: [Your API Key] # to call GPT4V model.
+    ```
    4. **Code refactorization** for **organizing multiple groups of datasets with integrated yaml file**, see details at [managing datasets in MIMIC-IT format](docs/mimicit_format.md). For example, 
     ```yaml
         IMAGE_TEXT: # Group name should be in [IMAGE_TEXT, TEXT_ONLY, IMAGE_TEXT_IN_CONTEXT]
