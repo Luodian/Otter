@@ -58,7 +58,7 @@ For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.
 3. Improved pipeline for [Pretrain](pipeline/train/pretraining.py) | [SFT](pipeline/train/instruction_following.py) | [RLHF]() with (part of) current leading LMMs.
    1. **Models**: [Otter](https://arxiv.org/abs/2305.03726) | [OpenFlamingo](https://arxiv.org/abs/2308.01390) | [Idefics](https://huggingface.co/HuggingFaceM4/idefics-80b-instruct) | [Fuyu](https://huggingface.co/adept/fuyu-8b)
    2. **Training Datasets Interface: (Pretrain)** MMC4 | LAION2B | CC3M | CC12M, **(SFT)** MIMIC-IT | M3IT | LLAVAR | LRV | SVIT...
-    - *We tested above datasets for both pretraining and instruction tuning with OpenFlamingo and Otter. We also tested the datasets with Idefics and Fuyu for instruction tuning. We will opensource the training scripts gradually.*
+        - *We tested above datasets for both pretraining and instruction tuning with OpenFlamingo and Otter. We also tested the datasets with Idefics and Fuyu for instruction tuning. We will opensource the training scripts gradually.*
    3. [**Benchmark Interface**](https://huggingface.co/Otter-AI): MagnifierBench/MMBench/MM-VET/MathVista/POPE/MME/SicenceQA/SeedBench. Run them can be in one-click, please see [Benchmark](./docs/benchmark_eval.md) for details.
     ```yaml
         datasets:
