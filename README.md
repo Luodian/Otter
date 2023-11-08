@@ -1,5 +1,5 @@
 <p align="center" width="100%">
-<img src="https://i.postimg.cc/BnKgFkPq/brand-title.png"  width="80%" height="80%">
+<img src="https://i.postimg.cc/mksBCbV9/brand-title.png"  width="80%" height="80%">
 </p>
 
 <!-- <div>
@@ -32,7 +32,7 @@
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FLuodian%2Fotter&count_bg=%23FFA500&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false)](https://hits.seeyoufarm.com)
 [![litellm](https://img.shields.io/badge/%20%F0%9F%9A%85%20liteLLM-OpenAI%7CAzure%7CAnthropic%7CPalm%7CCohere-blue?color=green)](https://github.com/BerriAI/litellm)
 
-[Otter Paper](https://arxiv.org/abs/2305.03726) | [OtterHD Paper]() | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425)
+[Otter Paper](https://arxiv.org/abs/2305.03726) | [OtterHD Paper]() | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425) | [Demo & Checkpoints@Otter Teamspace](https://huggingface.co/Otter-AI)
 
 **Corresponding Checkpoints:**
 
@@ -47,19 +47,37 @@ For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.
 
 ## 🦾 Update
 
-**[2023-11]: Anouncing OtterHD-8B, improved from Fuyu-8B. Checkout [OtterHD](./docs/OtterHD.md) for details.**
+**[2023-11]: Supporting GPT4V's Evaluation on 8 Benchmarks; Anouncing OtterHD-8B, improved from Fuyu-8B. Checkout [OtterHD](./docs/OtterHD.md) for details.**
 
 <div style="text-align:center">
 <img src="https://i.postimg.cc/dtxQQzt6/demo0.png"  width="100%" height="100%">
 </div>
 
-1. 🦦 Added [OtterHD](./docs/OtterHD.md), a multimodal fine-tuned from [Fuyu-8B](https://huggingface.co/adept/fuyu-8b) to facilitate a more fine-grained interpretation of high-resolution visual input without a vision encoder. We've opensourced the finetune script for Fuyu-8B and improve training throughput by 4-5 times faster with [Flash-Attention-2](https://github.com/Dao-AILab/flash-attention). Try our finetune script at [OtterHD](./docs/OtterHD.md).
+1. 🦦 Added [OtterHD](./docs/OtterHD.md), a multimodal fine-tuned from [Fuyu-8B](https://huggingface.co/adept/fuyu-8b) to facilitate fine-grained interpretations of high-resolution visual input *without a explicit vision encoder module*. All image patches are linear transformed and processed together with text tokens. This is a very innovative and elegant exploration. We are fascinated and paved in this way, we opensourced the finetune script for Fuyu-8B and improve training throughput by 4-5 times faster with [Flash-Attention-2](https://github.com/Dao-AILab/flash-attention). Try our finetune script at [OtterHD](./docs/OtterHD.md).
 2. 🔍 Added [MagnifierBench](./docs/OtterHD.md), an evaluation benchmark tailored to assess whether the model can identify the tiny objects' information (1% image size) and spatial relationships.
 3. Improved pipeline for [Pretrain](pipeline/train/pretraining.py) | [SFT](pipeline/train/instruction_following.py) | [RLHF]() with (part of) current leading LMMs.
    1. **Models**: [Otter](https://arxiv.org/abs/2305.03726) | [OpenFlamingo](https://arxiv.org/abs/2308.01390) | [Idefics](https://huggingface.co/HuggingFaceM4/idefics-80b-instruct) | [Fuyu](https://huggingface.co/adept/fuyu-8b)
-   2. **Training Datasets Interface**: (Pretrain) MMC4 | LAION2B | CC3M | CC12M, (SFT) MIMIC-IT | M3IT | LLAVAR | LRV | SVIT...
-    - *We tested above datasets for both pretraining and instruction tuning with OpenFlamingo and Otter. We also tested the datasets with Idefics and Fuyu for instruction tuning. We will opensource the training scripts gradually.*
+   2. **Training Datasets Interface: (Pretrain)** MMC4 | LAION2B | CC3M | CC12M, **(SFT)** MIMIC-IT | M3IT | LLAVAR | LRV | SVIT...
+        - *We tested above datasets for both pretraining and instruction tuning with OpenFlamingo and Otter. We also tested the datasets with Idefics and Fuyu for instruction tuning. We will opensource the training scripts gradually.*
    3. [**Benchmark Interface**](https://huggingface.co/Otter-AI): MagnifierBench/MMBench/MM-VET/MathVista/POPE/MME/SicenceQA/SeedBench. Run them can be in one-click, please see [Benchmark](./docs/benchmark_eval.md) for details.
+    ```yaml
+        datasets:
+        - name: magnifierbench
+            split: test
+            prompt: Answer with the option's letter from the given choices directly.
+            api_key: [Your API Key] # GPT4 or GPT3.5 to evaluate the answers and ground truth.
+            debug: true # put debug=true will save the model response in log file.
+        - name: mme
+            split: test
+            debug: true
+        - name: mmbench
+            split: test
+            debug: true
+
+        models:
+        - name: gpt4v
+            api_key: [Your API Key] # to call GPT4V model.
+    ```
    4. **Code refactorization** for **organizing multiple groups of datasets with integrated yaml file**, see details at [managing datasets in MIMIC-IT format](docs/mimicit_format.md). For example, 
     ```yaml
         IMAGE_TEXT: # Group name should be in [IMAGE_TEXT, TEXT_ONLY, IMAGE_TEXT_IN_CONTEXT]
@@ -91,13 +109,6 @@ For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.
    > Make sure to adjust the `sys.path.append("../..")` correctly to access `otter.modeling_otter` in order to launch the model.
 3. 🤗 Check our [paper](https://arxiv.org/abs/2306.05425) introducing MIMIC-IT in details. Meet MIMIC-IT, the first multimodal in-context instruction tuning dataset with 2.8M instructions! From general scene understanding to spotting subtle differences and enhancing egocentric view comprehension for AR headsets, our MIMIC-IT dataset has it all.
 <!-- 6. 🤗 Stay tuned for our upcoming Otter Model v0.2, trained on the MIMIC-IT dataset! With the ability to understand daily scenes, reason in context, spot differences in observations, and act as an egocentric assistant. Checkout conceptual demo video at [Youtube](https://www.youtube.com/watch?v=K8o_LKGQJhs) or [Bilibili](https://www.bilibili.com/video/BV1Bo4y1T7SN/?share_source=copy_web&vd_source=477facaaaa60694f67a784f5eaa905ad)! -->
-
-<!-- **[2023-05-14]**
-1. Otter battles with Owl? the Pokémon Arena is here! Our model is selected into [Multi-Modal Arena](http://vlarena.opengvlab.com/). This is an interesting Multi-Modal Foundation Models competition arena that let you see different models reaction to the same question.
-
-**[2023-05-08]**
-1. Check our Arxiv release paper at [Otter: A Multi-Modal Model with In-Context Instruction Tuning](https://arxiv.org/abs/2305.03726) !
-2. We support `xformers` for memory efficient attention. -->
 
 <div style="text-align:center">
 <img src="https://i.postimg.cc/Tw1Z0BCW/otterv0-2-demo.png"  width="100%" height="100%">

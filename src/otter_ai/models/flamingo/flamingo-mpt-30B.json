@@ -1,13 +1,10 @@
 {
     "_commit_hash": null,
-    "_name_or_path": "luodian/OTTER-MPT7B-Init",
     "architectures": [
-        "OtterForConditionalGeneration"
+        "FlamingoForConditionalGeneration"
     ],
-    "cross_attn_every_n_layers": 4,
-    "model_type": "otter",
-    "train_vision_encoder": false,
-    "train_lang_encoder": true,
+    "cross_attn_every_n_layers": 7,
+    "model_type": "flamingo",
     "text_config": {
         "_name_or_path": "",
         "add_cross_attention": false,
@@ -31,7 +28,7 @@
         "bos_token_id": null,
         "chunk_size_feed_forward": 0,
         "cross_attention_hidden_size": null,
-        "d_model": 4096,
+        "d_model": 7168,
         "decoder_start_token_id": null,
         "diversity_penalty": 0.0,
         "do_sample": false,
@@ -45,7 +42,7 @@
         "finetuning_task": null,
         "forced_bos_token_id": null,
         "forced_eos_token_id": null,
-        "hidden_size": 4096,
+        "hidden_size": 7168,
         "id2label": {
             "0": "LABEL_0",
             "1": "LABEL_1"
@@ -55,9 +52,9 @@
             "emb_init_uniform_lim": null,
             "fan_mode": "fan_in",
             "init_div_is_residual": true,
-            "init_gain": 0,
+            "init_gain": 0.0,
             "init_nonlinearity": "relu",
-            "init_std": 0.02,
+            "init_std": null,
             "name": "kaiming_normal_",
             "verbose": 0
         },
@@ -72,11 +69,11 @@
         "length_penalty": 1.0,
         "logit_scale": null,
         "max_length": 20,
-        "max_seq_len": 2048,
+        "max_seq_len": 8192,
         "min_length": 0,
         "model_type": "mpt",
-        "n_heads": 32,
-        "n_layers": 32,
+        "n_heads": 64,
+        "n_layers": 48,
         "no_bias": true,
         "no_repeat_ngram_size": 0,
         "norm_type": "low_precision_layernorm",

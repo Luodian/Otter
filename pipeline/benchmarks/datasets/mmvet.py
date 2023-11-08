@@ -8,12 +8,11 @@ from .base_eval_dataset import BaseEvalDataset
 from collections import Counter
 from typing import Union
 import numpy as np
-import openai
+from openai import OpenAI
 import time
 import json
 import pytz
 import datetime
-import openai
 from Levenshtein import distance
 
 utc_plus_8 = pytz.timezone("Asia/Singapore")  # You can also use 'Asia/Shanghai', 'Asia/Taipei', etc.
@@ -60,6 +59,7 @@ class MMVetDataset(BaseEvalDataset):
         self.cur_datetime = utc_plus_8_time.strftime("%Y-%m-%d_%H-%M-%S")
         self.debug = debug
         self.prepare()
+        self.client = OpenAI(api_key=api_key)
 
     def prepare(self):
         self.counter = Counter()
@@ -123,8 +123,6 @@ class MMVetDataset(BaseEvalDataset):
         return model_results_file, grade_file, cap_score_file, cap_int_score_file
 
     def _evaluate(self, model):
-        openai.api_key = self.api_key
-
         model_results_file, grade_file, cap_score_file, cap_int_score_file = self.get_output_file_name(model)
 
         if os.path.exists(grade_file):
@@ -185,7 +183,7 @@ class MMVetDataset(BaseEvalDataset):
 
                     while not grade_sample_run_complete:
                         try:
-                            response = openai.ChatCompletion.create(model=self.gpt_model, max_tokens=3, temperature=temperature, messages=messages, timeout=15)
+                            response = self.client.chat.completions.create(model=self.gpt_model, max_tokens=3, temperature=temperature, messages=messages, timeout=15)
                             content = response["choices"][0]["message"]["content"]
                             flag = True
                             try_time = 1
@@ -213,7 +211,7 @@ class MMVetDataset(BaseEvalDataset):
                                     messages = [
                                         {"role": "user", "content": question},
                                     ]
-                                    response = openai.ChatCompletion.create(model=self.gpt_model, max_tokens=3, temperature=temperature, messages=messages)
+                                    response = self.client.chat.completions.create(model=self.gpt_model, max_tokens=3, temperature=temperature, messages=messages, timeout=15)
                                     content = response["choices"][0]["message"]["content"]
                                     try_time += 1
                                     temperature += 0.5
