@@ -130,9 +130,7 @@ class ModelWorker:
         assert r.status_code == 200
 
     def send_heart_beat(self):
-        logger.info(
-            f"Send heart beat. Models: {[self.model_name]}. " f"Semaphore: {pretty_print_semaphore(model_semaphore)}. " f"global_counter: {global_counter}"
-        )
+        logger.info(f"Send heart beat. Models: {[self.model_name]}. " f"Semaphore: {pretty_print_semaphore(model_semaphore)}. " f"global_counter: {global_counter}")
 
         url = self.controller_addr + "/receive_heart_beat"
 
@@ -191,7 +189,11 @@ class ModelWorker:
                 # cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
                 images = [Image.open(BytesIO(base64.urlsafe_b64decode(image))).convert("RGB") for image in images]
                 logger.info(f"{len(images)} images conditioned.")
-                tensor_dtype = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}[self.load_bit]
+                tensor_dtype = {
+                    "fp16": torch.float16,
+                    "bf16": torch.bfloat16,
+                    "fp32": torch.float32,
+                }[self.load_bit]
                 if is_video is True:
                     vision_x = image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(0).unsqueeze(0)
                     assert vision_x.shape[2] == len(images)  # dim of vision_x: [B, T, F, C, H, W], make sure conditioned on frames of the same video
@@ -325,7 +327,12 @@ if __name__ == "__main__":
     parser.add_argument("--limit_model_concurrency", type=int, default=5)
     parser.add_argument("--stream_interval", type=int, default=2)
     parser.add_argument("--no_register", action="store_true")
-    parser.add_argument("--load_bit", type=str, choices=["fp16", "bf16", "int8", "int4", "fp32"], default="fp32")
+    parser.add_argument(
+        "--load_bit",
+        type=str,
+        choices=["fp16", "bf16", "int8", "int4", "fp32"],
+        default="fp32",
+    )
     parser.add_argument("--load_pt", action="store_true")
     args = parser.parse_args()
 

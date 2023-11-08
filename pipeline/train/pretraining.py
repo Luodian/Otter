@@ -4,6 +4,7 @@ import argparse
 import glob
 import os
 import random
+import sys
 import time
 
 import numpy as np
@@ -19,9 +20,10 @@ from transformers import (
 )
 
 import wandb
-from otter_ai import FlamingoForConditionalGeneration
-from otter_ai import OtterForConditionalGeneration
-from pipeline.train.data import get_data
+from otter_ai import FlamingoForConditionalGeneration, OtterForConditionalGeneration
+
+sys.path.append("../..")
+from pipeline.mimicit_utils.data import get_data
 from pipeline.train.distributed import world_info_from_env
 from pipeline.train.train_utils import AverageMeter, get_checkpoint
 
@@ -87,7 +89,12 @@ def parse_args():
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--num_epochs", type=int, default=1)
     parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
-    parser.add_argument("--checkpointing_steps", type=int, default=10000, help="checkpointing every n steps")
+    parser.add_argument(
+        "--checkpointing_steps",
+        type=int,
+        default=10000,
+        help="checkpointing every n steps",
+    )
     # Sum of gradient optimization batch size
 
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
@@ -124,12 +131,6 @@ def parse_args():
         help="url used to set up distributed training",
     )
     parser.add_argument("--dist-backend", default="nccl", type=str, help="distributed backend")
-    parser.add_argument(
-        "--horovod",
-        default=False,
-        action="store_true",
-        help="Use horovod for distributed training.",
-    )
     parser.add_argument(
         "--no-set-device-rank",
         default=False,
@@ -178,7 +179,19 @@ def random_seed(seed=42, rank=0):
     random.seed(seed + rank)
 
 
-def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
+def train_one_epoch(
+    args,
+    model,
+    epoch,
+    mmc4_loader,
+    laion_loader,
+    tokenizer,
+    optimizer,
+    lr_scheduler,
+    device_id,
+    accelerator,
+    wandb,
+):
     num_batches_per_epoch_laion = laion_loader.num_batches
     num_batches_per_epoch_mmc4 = mmc4_loader.num_batches
 
@@ -384,7 +397,10 @@ def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, op
                 "lr_scheduler_state_dict": lr_scheduler.state_dict(),
             }
             print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_steps{num_steps + 1}.pt")
-            accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_steps{num_steps + 1}.pt")
+            accelerator.save(
+                checkpoint_dict,
+                f"{args.external_save_dir}/checkpoint_steps{num_steps + 1}.pt",
+            )
             # save the config
             print(f"Saving config to {args.external_save_dir}/config.json")
             unwrapped_model.config.save_pretrained(args.external_save_dir)

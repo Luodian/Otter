@@ -8,7 +8,11 @@ import uuid
 import gradio as gr
 import requests
 import re
-from pipeline.conversation import default_conversation, conv_templates, SeparatorStyle
+from pipeline.serve.conversation import (
+    default_conversation,
+    conv_templates,
+    SeparatorStyle,
+)
 from pipeline.constants import LOGDIR
 from pipeline.serve.serving_utils import (
     build_logger,
@@ -255,28 +259,10 @@ def add_text(
 
     if text_demo_answer_2 != "":
         assert image_demo_2 is not None
-        text = (
-            DEFAULT_IMAGE_TOKEN
-            + human_role_label
-            + text_demo_question_2
-            + bot_role_label
-            + DEFAULT_ANSWER_TOKEN
-            + text_demo_answer_2
-            + DEFAULT_DEMO_END_TOKEN
-            + text
-        )
+        text = DEFAULT_IMAGE_TOKEN + human_role_label + text_demo_question_2 + bot_role_label + DEFAULT_ANSWER_TOKEN + text_demo_answer_2 + DEFAULT_DEMO_END_TOKEN + text
     if text_demo_answer_1 != "":
         assert image_demo_1 is not None
-        text = (
-            DEFAULT_IMAGE_TOKEN
-            + human_role_label
-            + text_demo_question_1
-            + bot_role_label
-            + DEFAULT_ANSWER_TOKEN
-            + text_demo_answer_1
-            + DEFAULT_DEMO_END_TOKEN
-            + text
-        )
+        text = DEFAULT_IMAGE_TOKEN + human_role_label + text_demo_question_1 + bot_role_label + DEFAULT_ANSWER_TOKEN + text_demo_answer_1 + DEFAULT_DEMO_END_TOKEN + text
 
     input = (text, image_demo_1, image_demo_2, image_3)
     state.append_message(state.roles[0], input)
@@ -577,12 +563,54 @@ def build_demo(embed_mode):
                     ).style(container=True)
 
                 with gr.Accordion("Parameters", open=False, visible=False) as parameter_row:
-                    max_new_tokens = gr.Slider(minimum=16, maximum=512, value=512, step=1, interactive=True, label="# generation tokens")
-                    temperature = gr.Slider(minimum=0, maximum=1, value=1, step=0.1, interactive=True, label="temperature")
-                    top_k = gr.Slider(minimum=0, maximum=10, value=0, step=1, interactive=True, label="top_k")
-                    top_p = gr.Slider(minimum=0, maximum=1, value=1.0, step=0.1, interactive=True, label="top_p")
-                    no_repeat_ngram_size = gr.Slider(minimum=1, maximum=10, value=3, step=1, interactive=True, label="no_repeat_ngram_size")
-                    length_penalty = gr.Slider(minimum=1, maximum=5, value=1, step=0.1, interactive=True, label="length_penalty")
+                    max_new_tokens = gr.Slider(
+                        minimum=16,
+                        maximum=512,
+                        value=512,
+                        step=1,
+                        interactive=True,
+                        label="# generation tokens",
+                    )
+                    temperature = gr.Slider(
+                        minimum=0,
+                        maximum=1,
+                        value=1,
+                        step=0.1,
+                        interactive=True,
+                        label="temperature",
+                    )
+                    top_k = gr.Slider(
+                        minimum=0,
+                        maximum=10,
+                        value=0,
+                        step=1,
+                        interactive=True,
+                        label="top_k",
+                    )
+                    top_p = gr.Slider(
+                        minimum=0,
+                        maximum=1,
+                        value=1.0,
+                        step=0.1,
+                        interactive=True,
+                        label="top_p",
+                    )
+                    no_repeat_ngram_size = gr.Slider(
+                        minimum=1,
+                        maximum=10,
+                        value=3,
+                        step=1,
+                        interactive=True,
+                        label="no_repeat_ngram_size",
+                    )
+                    length_penalty = gr.Slider(
+                        minimum=1,
+                        maximum=5,
+                        value=1,
+                        step=0.1,
+                        interactive=True,
+                        label="length_penalty",
+                    )
                     do_sample = gr.Checkbox(interactive=True, label="do_sample")
                     early_stopping = gr.Checkbox(interactive=True, label="early_stopping", value=True)
 
@@ -609,11 +637,26 @@ def build_demo(embed_mode):
         gr.Examples(
             label="Examples (0-shot)",
             examples=[
-                [f"{cur_dir}/examples/ms_st.jpg", "Does the image feature a globally recognized technology company?"],
-                [f"{cur_dir}/examples/ms_st.jpg", "Does the image feature a globally recognized technology company? Please answer with yes or no."],
-                [f"{cur_dir}/examples/zelda_princess.jpg", "Can you identify the game character?"],
-                [f"{cur_dir}/examples/martin.jpeg", "Can you identify the historic figure?"],
-                [f"{cur_dir}/examples/gtav.jpg", "Can you identify what the image is about?"],
+                [
+                    f"{cur_dir}/examples/ms_st.jpg",
+                    "Does the image feature a globally recognized technology company?",
+                ],
+                [
+                    f"{cur_dir}/examples/ms_st.jpg",
+                    "Does the image feature a globally recognized technology company? Please answer with yes or no.",
+                ],
+                [
+                    f"{cur_dir}/examples/zelda_princess.jpg",
+                    "Can you identify the game character?",
+                ],
+                [
+                    f"{cur_dir}/examples/martin.jpeg",
+                    "Can you identify the historic figure?",
+                ],
+                [
+                    f"{cur_dir}/examples/gtav.jpg",
+                    "Can you identify what the image is about?",
+                ],
                 [
                     f"{cur_dir}/examples/xray.jpg",
                     "Act as a radiologist and write a diagnostic radiology report for the patient based on their chest radiographs:",
@@ -857,7 +900,5 @@ if __name__ == "__main__":
     models = get_model_list()
     logger.info(args)
     demo = build_demo(args.embed)
-    demo.queue(concurrency_count=args.concurrency_count, status_update_rate=10, api_open=False).launch(
-        server_name=args.host, server_port=args.port, share=args.share
-    )
+    demo.queue(concurrency_count=args.concurrency_count, status_update_rate=10, api_open=False).launch(server_name=args.host, server_port=args.port, share=args.share)
     gr.close_all()

@@ -1,5 +1,5 @@
 [tool.black]
-line-length = 160
+line-length = 240
 
 [build-system]
 requires = ["setuptools>=42", "wheel", "setuptools_scm[tomli]>=6.3"]

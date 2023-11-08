@@ -7,7 +7,7 @@ import argparse
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-from pipeline.conversation import conv_templates, SeparatorStyle
+from pipeline.serve.conversation import conv_templates, SeparatorStyle
 
 
 @torch.inference_mode()
