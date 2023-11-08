@@ -100,18 +100,16 @@ def predict(image, prompt):
     image = image.convert("RGB")
     # if max(image.size) > 1080:
     #     image.thumbnail((1080, 1080))
-    model_inputs = processor(text=prompt, images=[image], device=device)
+    formated_prompt = f"User: {prompt} Assistant:"
+    model_inputs = processor(text=formated_prompt, images=[image], device=device)
     for k, v in model_inputs.items():
         model_inputs[k] = v.to(device, non_blocking=True) if isinstance(v, torch.Tensor) else [vv.to(device, non_blocking=True) for vv in v]
     model_inputs["image_patches"][0] = model_inputs["image_patches"][0].to(dtype=next(model.parameters()).dtype)
 
     generation_output = model.generate(
         **model_inputs,
-        max_new_tokens=512,
+        max_new_tokens=256,
         pad_token_id=processor.tokenizer.eos_token_id
-        # do_sample=True,
-        # top_p=0.5,
-        # temperature=0.2,
     )
     generation_text = processor.batch_decode(generation_output, skip_special_tokens=True)
     generation_text = [text.split("\x04")[1].strip() for text in generation_text]
