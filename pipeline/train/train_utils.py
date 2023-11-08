@@ -228,7 +228,7 @@ def save_checkpoint(checkpoint_dict, save_path, is_main_process, save_function):
 
 def save_pretrained(component, save_path, is_main_process, save_function):
     """Helper function to save pretrained components."""
-    component.save_pretrained(save_path, is_main_process=is_main_process, save_function=save_function, safe_serialization=False)
+    component.save_pretrained(save_path, is_main_process=is_main_process, save_function=save_function, safe_serialization=False, max_shard_size="5GB")
 
 
 def save_final_weights(model, args, accelerator, processor=None, tokenizer=None):
