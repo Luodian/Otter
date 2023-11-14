@@ -139,9 +139,10 @@ class TestIdefics:
         else:
             return f"User:<fake_token_around_image><image><fake_token_around_image>{question}<end_of_utterance>\nAssistant:"
 
+import math
 
 class TestOtterHD:
-    def __init__(self, checkpoint: str = "adept/fuyu-8b", cuda_id: int = 0, resolution: int = 336, max_new_tokens=256):
+    def __init__(self, checkpoint: str = "adept/fuyu-8b", cuda_id: int = 0, resolution: int = 512, max_new_tokens=256):
         self.resolution = resolution
         self.device = f"cuda:{cuda_id}" if torch.cuda.is_available() else "cpu"
         self.model = FuyuForCausalLM.from_pretrained(checkpoint).to(self.device)
@@ -152,14 +153,20 @@ class TestOtterHD:
         self.max_new_tokens = max_new_tokens
         self.bad_words_list = ["User:", "Assistant:"]
         self.bad_words_ids = self.tokenizer(self.bad_words_list, add_special_tokens=False).input_ids
-
+        self.resolution = resolution
+        
     def generate(self, image, prompt, no_image_flag=False):
         raw_image_data = get_pil_image(image)
         # make sure the image is in RGB format and resize to match the width
         # max_height, max_width = self.resolution, self.resolution
         raw_image_data = raw_image_data.convert("RGB")
-        if max(raw_image_data.size) > 1080:
-            raw_image_data.thumbnail((1080, 1080), Image.ANTIALIAS)
+        if self.resolution != -1:
+            width, height = raw_image_data.size
+            short_edge = min(width, height)
+            scaling_factor = self.resolution / short_edge
+            new_width = math.ceil(width * scaling_factor)
+            new_height = math.ceil(height * scaling_factor)
+            raw_image_data = raw_image_data.resize((new_width, new_height), Image.ANTIALIAS)
 
         print(f"Eval with res: {raw_image_data.size}")
         # raw_image_data.thumbnail((max_width, max_height), Image.ANTIALIAS)
