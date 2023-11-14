@@ -153,3 +153,5 @@ config.yaml
 azure_storage/
 checkpoints/
 *.ttf
+pipeline/serve/deploy/otterhd_endpoint.py
+pipeline/benchmarks/models/llava_model.py
