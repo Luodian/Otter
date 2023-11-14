@@ -40,8 +40,8 @@ def convert_json_to_parquet(input_path, output_path):
     resized_data_dict = {}
     dropped_keys = []
     for key, value in tqdm(data_dict.items(), desc=f"Processing {input_path}"):
-        # resized_base64 = process_images(value)
-        resized_data_dict[key] = value
+        resized_base64 = process_images(value)
+        resized_data_dict[key] = resized_base64
 
     df = pd.DataFrame.from_dict(resized_data_dict, orient="index", columns=["base64"])
     df.to_parquet(output_path, engine="pyarrow")
