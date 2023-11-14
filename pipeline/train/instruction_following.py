@@ -116,7 +116,8 @@ def forward_pass(args, model, tokenizer, images, input_ids, attention_mask, labe
 def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
     dataloader_iterators = [cycle(dataloader) for dataloader in mimicit_loaders]
     weights = get_weights_for_dataloaders(mimicit_loaders)
-    num_batches_per_epoch = sum(len(dataloader) for dataloader in mimicit_loaders) // args.gradient_accumulation_steps
+    num_batches_per_epoch = sum(len(dataloader) for dataloader in mimicit_loaders)
+    # // args.gradient_accumulation_steps
 
     # Special Design for Idefics Model's prompt strategy
     if args.model_name.lower() == "idefics":
@@ -272,7 +273,8 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                             "mimicit_samples_per_second_per_gpu": mimicit_samples_per_second_per_gpu,
                             "lr": optimizer.param_groups[0]["lr"],
                             "loss_mimicit": mean_loss,
-                            "global_step": global_step // args.gradient_accumulation_steps,
+                            "global_step": global_step,
+                            # // args.gradient_accumulation_steps,
                             group_name: mean_loss,
                         },
                         commit=True,
@@ -468,8 +470,9 @@ def main():
         print(f"Total training steps: {total_training_steps}")
 
     args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
-    args.warmup_steps = args.warmup_steps // args.gradient_accumulation_steps
-    args.total_training_steps = total_training_steps // args.gradient_accumulation_steps
+    # args.warmup_steps = args.warmup_steps // args.gradient_accumulation_steps
+    args.total_training_steps = total_training_steps
+    # // args.gradient_accumulation_steps
 
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(
