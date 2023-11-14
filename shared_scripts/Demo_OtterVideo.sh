@@ -42,7 +42,7 @@ accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_
     --machine_rank $THEID --main_process_ip $MASTER_ADDR --main_process_port $MASTER_PORT \
     --num_machines=${COUNT_NODE} --num_processes=${GPU} \
     pipeline/train/instruction_following.py \
-    --pretrained_model_name_or_path=luodian/OTTER-Image-MPT7B \
+    --pretrained_model_name_or_path=luodian/OTTER-Video-LLaMA7B-DenseCaption \
     --training_data_yaml=./Demo_Data.yaml \
     --model_name=otter \
     --instruction_format=simple \
@@ -53,7 +53,7 @@ accelerate launch --config_file=./pipeline/accelerate_configs/accelerate_config_
     --wandb_entity=libo0013 \
     --external_save_dir=./checkpoints \
     --run_name=${RUN_NAME} \
-    --wandb_project=OtterImage \
+    --wandb_project=OtterVideo \
     --workers=${WORKERS} \
     --lr_scheduler=cosine \
     --learning_rate=1e-5 \
