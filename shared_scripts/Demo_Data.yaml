@@ -1,21 +1,16 @@
-IMAGE_TEXT:
-  LADD:
-    mimicit_path: azure_storage/json/LA/LADD_instructions.json
-    images_path: azure_storage/Parquets/LA.parquet
-    num_samples: -1
-  # LACONV:
-  #   mimicit_path: azure_storage/json/LA/LACONV_instructions.json
-  #   images_path: azure_storage/json/LA/LA.json
-  #   train_config_path: azure_storage/json/LA/LACONV_train.json
-  #   num_samples: 50
+IMAGE_TEXT: # Group name should be in [IMAGE_TEXT, TEXT_ONLY, IMAGE_TEXT_IN_CONTEXT]
+  LADD: # LLaVA Detailed Description, dataset name can be assigned at any name you want
+      mimicit_path: azure_storage/json/LA/LADD_instructions.json # Path of the instruction json file
+      images_path: azure_storage/Parquets/LA.parquet # Path of the image parquet file
+      num_samples: -1 # Number of samples you want to use, -1 means use all samples, if not set, default is -1.
+  M3IT_CAPTIONING:
+      mimicit_path: azure_storage/json/M3IT/captioning/coco/coco_instructions.json
+      images_path: azure_storage/Parquets/coco.parquet
+      num_samples: 20000
   LACR_T2T:
     mimicit_path: azure_storage/json/LA/LACR_T2T_instructions.json
     images_path: azure_storage/Parquets/LA.parquet
     num_samples: -1
-  M3IT_CAPTIONING:
-    mimicit_path: azure_storage/json/M3IT/captioning/coco/coco_instructions.json
-    images_path: azure_storage/Parquets/coco.parquet
-    num_samples: 20000
   # M3IT_VQA:
   #   mimicit_path: azure_storage/json/M3IT/vqa/vqav2/vqav2_instructions.json
   #   images_path: azure_storage/json/M3IT/vqa/vqav2/vqav2.json

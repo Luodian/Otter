@@ -1,13 +1,10 @@
 {
     "_commit_hash": null,
-    "_name_or_path": "luodian/OTTER-MPT7B-Init",
     "architectures": [
-        "OtterForConditionalGeneration"
+        "FlamingoForConditionalGeneration"
     ],
     "cross_attn_every_n_layers": 4,
-    "model_type": "otter",
-    "train_vision_encoder": false,
-    "train_lang_encoder": true,
+    "model_type": "flamingo",
     "text_config": {
         "_name_or_path": "",
         "add_cross_attention": false,

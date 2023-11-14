@@ -12,6 +12,7 @@ more_itertools>=9.1.0
 nltk>=3.8.1
 numpy>=1.23.5
 open_clip_torch>=2.16.0
+openai>=1.1.1
 opencv_python_headless>=4.5.5.64
 Pillow>=9.5.0
 pycocoevalcap>=1

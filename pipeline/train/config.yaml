@@ -1,0 +1,7 @@
+mimicit_vt_path:
+  - /data/pufanyi/training_data/SD/SD_instructions.json
+  - /data/pufanyi/training_data/CGD/CGD_instructions.json
+
+images_vt_path:
+  - /data/pufanyi/training_data/SD/SD.json
+  - /data/pufanyi/training_data/CGD/CGD.json

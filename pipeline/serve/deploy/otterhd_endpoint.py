@@ -6,11 +6,14 @@ import base64
 import re
 from io import BytesIO
 from datetime import datetime
+import hashlib
+from PIL import Image
+import io, os
 
 app = Flask(__name__)
 
 # Initialization code (similar to what you have in your Gradio demo)
-model_id = "/home/luodian/azure_storage/otter/checkpoints/OtterBite_NOV2_MIX_xDynamic_Bench_Continue"
+model_id = input("Model ID: ")
 device = "cuda:0"
 dtype = torch.bfloat16
 
@@ -20,9 +23,39 @@ processor = FuyuProcessor(image_processor=FuyuImageProcessor(), tokenizer=tokeni
 
 # Ensure model is in evaluation mode
 model.eval()
+prompt_txt_path = "../user_logs/prompts.txt"
+images_folder_path = "../user_logs"
 
-prompt_txt_path = "/home/luodian/projects/Otter/pipeline/serve/user_logs/prompts.txt"
-images_folder_path = "/home/luodian/projects/Otter/pipeline/serve/user_logs"
+
+def save_image_unique(pil_image, directory=images_folder_path):
+    # Ensure the directory exists
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    # Convert the PIL Image into a bytes object
+    img_byte_arr = io.BytesIO()
+    pil_image.save(img_byte_arr, format="PNG")
+    img_byte_arr = img_byte_arr.getvalue()
+
+    # Compute the hash of the image data
+    hasher = hashlib.sha256()
+    hasher.update(img_byte_arr)
+    hash_hex = hasher.hexdigest()
+
+    # Create a file name with the hash value
+    file_name = f"{hash_hex}.png"
+    file_path = os.path.join(directory, file_name)
+
+    # Check if a file with the same name exists
+    if os.path.isfile(file_path):
+        print(f"Image already exists with the name: {file_name}")
+    else:
+        # If the file does not exist, save the image
+        with open(file_path, "wb") as new_file:
+            new_file.write(img_byte_arr)
+        print(f"Image saved with the name: {file_name}")
+
+    return file_path
 
 
 # Define endpoint
@@ -42,19 +75,17 @@ def process_image_and_prompt():
     image = Image.open(BytesIO(base64.b64decode(image_data)))
     prompt = query_content["prompt"]
     formated_time = start_time.strftime("%Y-%m-%d %H:%M:%S")
-
-    image_path = f"{images_folder_path}/{formated_time}.jpg"
-    with open(image_path, "wb") as f:
-        f.write(base64.b64decode(image_data))
+    image_path = save_image_unique(image)
 
     # Preprocess the image and prompt, and run the model
     response = predict(image, prompt)
     torch.cuda.empty_cache()
 
     with open(prompt_txt_path, "a") as f:
-        f.write(formated_time + "\n")
-        f.write(prompt + "\n")
-        f.write(response + "\n\n")
+        f.write(f"*************************{formated_time}**************************" + "\n")
+        f.write(f"Image saved to {image_path}" + "\n")
+        f.write(f"Prompt: {prompt}" + "\n")
+        f.write(f"Response: {response}" + "\n\n")
 
     # Return the response
     return jsonify({"result": response})
@@ -69,18 +100,16 @@ def predict(image, prompt):
     image = image.convert("RGB")
     # if max(image.size) > 1080:
     #     image.thumbnail((1080, 1080))
-    model_inputs = processor(text=prompt, images=[image], device=device)
+    formated_prompt = f"User: {prompt} Assistant:"
+    model_inputs = processor(text=formated_prompt, images=[image], device=device)
     for k, v in model_inputs.items():
         model_inputs[k] = v.to(device, non_blocking=True) if isinstance(v, torch.Tensor) else [vv.to(device, non_blocking=True) for vv in v]
     model_inputs["image_patches"][0] = model_inputs["image_patches"][0].to(dtype=next(model.parameters()).dtype)
 
     generation_output = model.generate(
         **model_inputs,
-        max_new_tokens=512,
+        max_new_tokens=256,
         pad_token_id=processor.tokenizer.eos_token_id
-        # do_sample=True,
-        # top_p=0.5,
-        # temperature=0.2,
     )
     generation_text = processor.batch_decode(generation_output, skip_special_tokens=True)
     generation_text = [text.split("\x04")[1].strip() for text in generation_text]
