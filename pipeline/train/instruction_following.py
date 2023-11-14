@@ -76,6 +76,7 @@ def forward_pass(args, model, tokenizer, images, input_ids, attention_mask, labe
         for k, v in model_inputs.items():
             model_inputs[k] = v.to(device_id, non_blocking=True) if isinstance(v, torch.Tensor) else [vv.to(device_id, non_blocking=True) for vv in v]
         loss_mimicit = model(**model_inputs)[0]
+        delete_tensors_from_dict(model_inputs)
     elif args.model_name == "idefics":
         # only for image model
         max_num_images = images.shape[1]
