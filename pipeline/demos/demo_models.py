@@ -139,7 +139,9 @@ class TestIdefics:
         else:
             return f"User:<fake_token_around_image><image><fake_token_around_image>{question}<end_of_utterance>\nAssistant:"
 
+
 import math
+
 
 class TestOtterHD:
     def __init__(self, checkpoint: str = "adept/fuyu-8b", cuda_id: int = 0, resolution: int = 512, max_new_tokens=256):
@@ -154,7 +156,7 @@ class TestOtterHD:
         self.bad_words_list = ["User:", "Assistant:"]
         self.bad_words_ids = self.tokenizer(self.bad_words_list, add_special_tokens=False).input_ids
         self.resolution = resolution
-        
+
     def generate(self, image, prompt, no_image_flag=False):
         raw_image_data = get_pil_image(image)
         # make sure the image is in RGB format and resize to match the width

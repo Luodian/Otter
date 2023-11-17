@@ -5,6 +5,7 @@ from PIL import Image
 import io
 import time
 
+
 def get_pil_image(raw_image_data) -> Image.Image:
     if isinstance(raw_image_data, Image.Image):
         return raw_image_data
@@ -18,6 +19,7 @@ def get_pil_image(raw_image_data) -> Image.Image:
 
     else:
         raise ValueError("Unsupported image data format")
+
 
 class OpenAIGPT4Vision(BaseModel):
     def __init__(self, api_key: str, max_new_tokens: int = 256):

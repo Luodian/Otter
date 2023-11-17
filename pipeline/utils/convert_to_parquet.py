@@ -5,6 +5,7 @@ import json
 from tqdm import tqdm
 import argparse
 
+
 def process_images(base64_str):
     import base64
     from PIL import Image
@@ -32,6 +33,7 @@ def process_images(base64_str):
     new_base64_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     return new_base64_str
 
+
 def convert_json_to_parquet(input_path, output_path):
     start_time = time.time()
     with open(input_path, "r") as f:
@@ -50,6 +52,7 @@ def convert_json_to_parquet(input_path, output_path):
     print(f"Converting {input_path} to parquet takes {end_time - start_time} seconds.")
     return dropped_keys
 
+
 def main():
     parser = argparse.ArgumentParser(description="Convert JSON to Parquet")
     parser.add_argument("--input_path", help="Path to the input JSON file")
@@ -58,6 +61,7 @@ def main():
 
     dropped_keys = convert_json_to_parquet(args.input_path, args.output_path)
     print(dropped_keys)
+
 
 if __name__ == "__main__":
     main()
