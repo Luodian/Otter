@@ -8,7 +8,7 @@ import transformers
 from PIL import Image
 import sys
 
-sys.path.append("../../src")
+# sys.path.append("../../src")
 # make sure you can properly access the otter folder
 from otter_ai import OtterForConditionalGeneration
 
