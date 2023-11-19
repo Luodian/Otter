@@ -309,7 +309,7 @@ class MimicitDataset(Dataset):
         elif instruction_format == "fuyu":
             return f"User:{cur_instruction} Assistant:\x04 {cur_answer}"
 
-    def process_images(self, image_ids, is_video=False):
+    def process_images(self, image_ids, is_video=False, in_context=False):
         pil_images = []
         patch_images = torch.tensor([])
         if is_video:
@@ -329,13 +329,18 @@ class MimicitDataset(Dataset):
 
         if is_video:
             patch_images = patch_images.unsqueeze(0)
+        elif in_context:
+            patch_images = patch_images.unsqueeze(1)
 
         return pil_images, patch_images
 
     def process_general(self, instruction_id, image_ids, in_context_example_ids, task_group):
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
+        all_image_ids = []
+        all_image_ids.extend(image_ids)
 
+        all_instruction_ids = all_instruction_ids[:4]
         for idx, cur_instruction_id in enumerate(all_instruction_ids):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
@@ -344,6 +349,8 @@ class MimicitDataset(Dataset):
 
             if task_group == "IMAGE_TEXT_IN_CONTEXT":
                 cur_text = self.process_text_formatting(cur_instruction, cur_answer, self.instruction_format, insert_image=True, is_text_only=False)
+                all_image_ids.extend(self.dataset[cur_instruction_id]["image_ids"])
+                assert len(self.dataset[cur_instruction_id]["image_ids"]) == 1, f"Error: {cur_instruction_id} has more than one image_ids!"
             else:
                 # only insert image for the first instruction, used for conversation.
                 cur_text = self.process_text_formatting(
@@ -360,11 +367,13 @@ class MimicitDataset(Dataset):
         if task_group == "TEXT_ONLY":
             patch_images = torch.zeros(3, 224, 224).unsqueeze(0).unsqueeze(0)
             pil_images = [Image.fromarray(patch_images[0, 0].numpy().astype(np.uint8).transpose(1, 2, 0))]
-        elif task_group == "IMAGE_TEXT_IN_CONTEXT" or task_group == "IMAGE_TEXT":
-            pil_images, patch_images = self.process_images(image_ids, is_video=False)
+        elif task_group == "IMAGE_TEXT":
+            pil_images, patch_images = self.process_images(all_image_ids, is_video=False, in_context=False)
             patch_images = patch_images.unsqueeze(0)
+        elif task_group == "IMAGE_TEXT_IN_CONTEXT":
+            pil_images, patch_images = self.process_images(all_image_ids, is_video=False, in_context=True)
         elif task_group == "VIDEO_TEXT":
-            pil_images, patch_images = self.process_images(image_ids, is_video=True)
+            pil_images, patch_images = self.process_images(all_image_ids, is_video=True)
 
         return pil_images, patch_images, all_texts.rstrip("\n")
 
@@ -403,9 +412,6 @@ class MimicitDataset(Dataset):
             print(f"instruction_id: {instruction_id}")
             print(f"image_ids: {image_ids}")
             print(f"in_context_example_ids: {in_context_example_ids}")
-            import pdb
-
-            pdb.set_trace()
             exit()
 
         if cur_task_desc != "" and self.args.with_task_description:
