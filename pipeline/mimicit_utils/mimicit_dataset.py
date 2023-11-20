@@ -340,7 +340,7 @@ class MimicitDataset(Dataset):
         all_image_ids = []
         all_image_ids.extend(image_ids)
 
-        all_instruction_ids = all_instruction_ids[:4]
+        all_instruction_ids = all_instruction_ids[:2]
         for idx, cur_instruction_id in enumerate(all_instruction_ids):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
@@ -374,6 +374,8 @@ class MimicitDataset(Dataset):
             pil_images, patch_images = self.process_images(all_image_ids, is_video=False, in_context=True)
         elif task_group == "VIDEO_TEXT":
             pil_images, patch_images = self.process_images(all_image_ids, is_video=True)
+        else:
+            raise NotImplementedError
 
         return pil_images, patch_images, all_texts.rstrip("\n")
 
