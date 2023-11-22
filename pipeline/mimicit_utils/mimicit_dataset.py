@@ -334,13 +334,13 @@ class MimicitDataset(Dataset):
 
         return pil_images, patch_images
 
-    def process_general(self, instruction_id, image_ids, in_context_example_ids, task_group):
+    def process_general(self, instruction_id, in_context_example_ids, task_group):
         all_texts = ""
         all_instruction_ids = in_context_example_ids + [instruction_id]
         all_image_ids = []
-        all_image_ids.extend(image_ids)
+        # all_image_ids.extend(image_ids)
 
-        all_instruction_ids = all_instruction_ids[:2]
+        all_instruction_ids = all_instruction_ids[:3]
         for idx, cur_instruction_id in enumerate(all_instruction_ids):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
@@ -362,8 +362,7 @@ class MimicitDataset(Dataset):
                 )
             all_texts += cur_text
 
-        # all_texts = all_texts.rstrip("\n")
-        # patch_images = torch.tensor([])
+        assert len(all_image_ids) == len(all_instruction_ids)
         if task_group == "TEXT_ONLY":
             patch_images = torch.zeros(3, 224, 224).unsqueeze(0).unsqueeze(0)
             pil_images = [Image.fromarray(patch_images[0, 0].numpy().astype(np.uint8).transpose(1, 2, 0))]
@@ -391,7 +390,7 @@ class MimicitDataset(Dataset):
         else:
             print(f"Error: {cur_train_id} is invalid!")
             exit()
-        image_ids = self.dataset[cur_train_id]["image_ids"] if self.dataset[cur_train_id].get("image_ids", None) is not None else []  # handling for text-only data without image_ids
+        # image_ids = self.dataset[cur_train_id]["image_ids"] if self.dataset[cur_train_id].get("image_ids", None) is not None else []  # handling for text-only data without image_ids
 
         cur_task_desc = self.task_description[self.task_mapping[cur_train_id]]
         if len(cur_task_desc) > 0:
@@ -406,14 +405,14 @@ class MimicitDataset(Dataset):
 
         try:
             if self.task_group in process_mapping:
-                pil_images, patch_images, all_texts = self.process_general(instruction_id, image_ids, in_context_example_ids, self.task_group)
+                pil_images, patch_images, all_texts = self.process_general(instruction_id, in_context_example_ids, self.task_group)
         except Exception as e:
             print(f"Error: {e}")
             print(f"cur_train_id: {cur_train_id}")
             print(f"self.task_group: {self.task_group}")
             print(f"instruction_id: {instruction_id}")
-            print(f"image_ids: {image_ids}")
             print(f"in_context_example_ids: {in_context_example_ids}")
+            import pdb;pdb.set_trace()
             exit()
 
         if cur_task_desc != "" and self.args.with_task_description:
