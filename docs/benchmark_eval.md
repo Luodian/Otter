@@ -24,6 +24,8 @@ And following models:
 
 many more, see `/pipeline/benchmarks/models`
 
+https://github.com/Luodian/Otter/tree/main/pipeline/benchmarks/models
+
 Create a yaml file `benchmark.yaml` with below content:
 ```yaml
 datasets:
