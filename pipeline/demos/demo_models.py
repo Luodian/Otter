@@ -7,7 +7,7 @@ from transformers import AutoProcessor, AutoTokenizer, FuyuImageProcessor, CLIPI
 # from src.otter_ai.models.fuyu.modeling_fuyu import FuyuForCausalLM
 from transformers import FuyuForCausalLM
 from src.otter_ai.models.fuyu.processing_fuyu import FuyuProcessor
-from otter_ai import OtterForConditionalGeneration
+from src.otter_ai.models.otter import OtterForConditionalGeneration
 import io
 import base64
 

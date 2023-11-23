@@ -347,6 +347,9 @@ class MimicitDataset(Dataset):
             cur_instruction = self.pre_question(cur_instruction, keep_symbols=self.keep_symbols)
             cur_answer = self.pre_answer(cur_answer, keep_symbols=self.keep_symbols)
 
+            if idx == 0 and (task_group == "IMAGE_TEXT" or task_group == "VIDEO_TEXT"):
+                all_image_ids.extend(self.dataset[cur_instruction_id]["image_ids"])
+
             if task_group == "IMAGE_TEXT_IN_CONTEXT":
                 cur_text = self.process_text_formatting(cur_instruction, cur_answer, self.instruction_format, insert_image=True, is_text_only=False)
                 all_image_ids.extend(self.dataset[cur_instruction_id]["image_ids"])
@@ -362,7 +365,6 @@ class MimicitDataset(Dataset):
                 )
             all_texts += cur_text
 
-        assert len(all_image_ids) == len(all_instruction_ids)
         if task_group == "TEXT_ONLY":
             patch_images = torch.zeros(3, 224, 224).unsqueeze(0).unsqueeze(0)
             pil_images = [Image.fromarray(patch_images[0, 0].numpy().astype(np.uint8).transpose(1, 2, 0))]
@@ -412,7 +414,6 @@ class MimicitDataset(Dataset):
             print(f"self.task_group: {self.task_group}")
             print(f"instruction_id: {instruction_id}")
             print(f"in_context_example_ids: {in_context_example_ids}")
-            import pdb;pdb.set_trace()
             exit()
 
         if cur_task_desc != "" and self.args.with_task_description:
