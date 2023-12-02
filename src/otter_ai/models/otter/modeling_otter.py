@@ -534,7 +534,7 @@ class OtterPreTrainedModel(PreTrainedModel):
     config_class = OtterConfig
     base_model_prefix = "otter"
     supports_gradient_checkpointing = True
-    _no_split_modules = ["OtterPerceiverBlock", "CLIPEncoderLayer", "OtterLayer"]
+    _no_split_modules = ["OtterPerceiverBlock", "CLIPEncoderLayer", "OtterLayer", "CLIPVisionModel"]
 
     def _init_weights(self, module):
         """Otter requires no specific initialization"""
