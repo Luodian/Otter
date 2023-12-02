@@ -4,7 +4,7 @@ We will show you how to host a demo on your own computer using gradio.
 
 ## Preparation
 
-### Warnings: `gradio` and `gradio_client` may have errors after upgrading.
+### Warnings: Newest `gradio` and `gradio_client` versions may cause errors ❗❗❗
 
 Please keep the packages fixed with the following versions (my local verified model serving environment).
 ```
