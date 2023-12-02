@@ -4,6 +4,38 @@ We will show you how to host a demo on your own computer using gradio.
 
 ## Preparation
 
+### Warnings: `gradio` and `gradio_client` may have errors after upgrading.
+
+Please keep the packages fixed with the following versions (my local verified model serving environment).
+```
+braceexpand==0.1.7
+einops==0.7.0
+fastapi==0.104.1
+gradio==4.7.1
+horovod==0.27.0
+huggingface_hub==0.14.0
+ijson==3.2.3
+importlib_metadata==6.6.0
+inflection==0.5.1
+markdown2==2.4.8
+natsort==8.4.0
+nltk==3.8.1
+numpy==1.26.2
+openai==1.3.7
+opencv_python==4.8.1.78
+opencv_python_headless==4.8.1.78
+orjson==3.9.10
+packaging==23.2
+Pillow==10.1.0
+pycocoevalcap==1.2
+pycocotools==2.0.7
+Requests==2.31.0
+tqdm==4.65.0
+transformers==4.35.0
+uvicorn==0.24.0.post1
+webdataset==0.2.79
+```
+
 ### Download the checkpoints
 
 The 🦦 Otter checkpoint and the 🦩 Open Flamingo checkpoint can be auto-downloaded with the code below.
