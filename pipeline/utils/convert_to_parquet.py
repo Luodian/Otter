@@ -4,7 +4,7 @@ import time
 import json
 from tqdm import tqdm
 import argparse
-
+import orjson
 
 def process_images(base64_str):
     import base64
@@ -36,14 +36,18 @@ def process_images(base64_str):
 
 def convert_json_to_parquet(input_path, output_path):
     start_time = time.time()
-    with open(input_path, "r") as f:
-        data_dict = json.load(f)
+    with open(input_path, "rb") as f:
+        data_dict = orjson.loads(f.read())
+    # with open(input_path, "r") as f:
+    #     data_dict = json.load(f)
 
     resized_data_dict = {}
     dropped_keys = []
     for key, value in tqdm(data_dict.items(), desc=f"Processing {input_path}"):
-        resized_base64 = process_images(value)
-        resized_data_dict[key] = resized_base64
+        if isinstance(value, list):
+            value = value[0]
+        # resized_base64 = process_images(value)
+        resized_data_dict[key] = value
 
     df = pd.DataFrame.from_dict(resized_data_dict, orient="index", columns=["base64"])
     df.to_parquet(output_path, engine="pyarrow")
