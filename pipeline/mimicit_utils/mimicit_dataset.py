@@ -227,6 +227,9 @@ class MimicitDataset(Dataset):
                         cur_df = pd.DataFrame(orjson.loads(f.read()))
                     self.images.append(cur_df)
                     loaded_images_path.add(cur_images_path)
+                else:
+                    master_print(f"Error: {cur_images_path} is not supported!")
+                    import pdb;pdb.set_trace()
                 del cur_df
 
             self.train_data_list.extend(resampled_train)
