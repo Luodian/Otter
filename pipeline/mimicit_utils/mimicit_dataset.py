@@ -217,19 +217,21 @@ class MimicitDataset(Dataset):
                 ]
             )
 
-            if cur_images_path != "":
-                if cur_images_path.endswith(".parquet") and cur_images_path not in loaded_images_path:
+            if cur_images_path != "" and cur_images_path not in loaded_images_path:
+                if cur_images_path.endswith(".parquet"):
                     cur_df = pd.read_parquet(cur_images_path, columns=None)  # not in memory
                     self.images.append(cur_df)
                     loaded_images_path.add(cur_images_path)
-                elif cur_images_path.endswith(".json") and cur_images_path not in loaded_images_path:
+                elif cur_images_path.endswith(".json"):
                     with open(cur_images_path, "rb") as f:
                         cur_df = pd.DataFrame(orjson.loads(f.read()))
                     self.images.append(cur_df)
                     loaded_images_path.add(cur_images_path)
                 else:
                     master_print(f"Error: {cur_images_path} is not supported!")
-                    import pdb;pdb.set_trace()
+                    import pdb
+
+                    pdb.set_trace()
                 del cur_df
 
             self.train_data_list.extend(resampled_train)
