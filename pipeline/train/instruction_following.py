@@ -65,11 +65,7 @@ except ImportError:
     print("IdeficsForVisionText2Text does not exist")
     IdeficsForVisionText2Text = type(None)
 
-# from memory_profiler import profile
-# fp = open("memory_report.log", "w+")
 
-
-# @profile(stream=fp)
 def forward_pass(args, model, tokenizer, images, input_ids, attention_mask, labels, device_id, autocast_type, batch_mimicit):
     if args.model_name == "fuyu":
         model_inputs = batch_mimicit.pop("fuyu_data")
@@ -118,7 +114,6 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
     dataloader_iterators = [cycle(dataloader) for dataloader in mimicit_loaders]
     weights = get_weights_for_dataloaders(mimicit_loaders)
     num_batches_per_epoch = sum(len(dataloader) for dataloader in mimicit_loaders)
-    # // args.gradient_accumulation_steps
 
     # Special Design for Idefics Model's prompt strategy
     if args.model_name.lower() == "idefics":

@@ -333,11 +333,18 @@ class FuyuProcessor(ProcessorMixin):
             single_label = labels[i, :]
 
             # Remove the last token_id
-            token_indices = (single_input == token_id).nonzero(as_tuple=True)[0]
-            if len(token_indices) > 1:
-                last_token_index = token_indices[-1]
-                single_input[last_token_index] = self.tokenizer.eos_token_id
-                single_label[last_token_index] = self.tokenizer.eos_token_id
+            # token_indices = (single_input == token_id).nonzero(as_tuple=True)[0]
+            # if len(token_indices) > 1:
+            #     last_token_index = token_indices[-1]
+            #     single_input[last_token_index] = self.tokenizer.eos_token_id
+            #     single_label[last_token_index] = self.tokenizer.eos_token_id
+
+            token_indices = (single_input == token_id).nonzero(as_tuple=False).squeeze()
+            # Pair the indices and set the last token between each pair to eos_token_id
+            paired_indices = token_indices.reshape(-1, 2)
+            for start, end in paired_indices:
+                single_input[end] = self.tokenizer.eos_token_id
+                single_label[end] = self.tokenizer.eos_token_id
 
             # Append the new sequence to the list
             new_input_list.append(single_input)
@@ -352,16 +359,12 @@ class FuyuProcessor(ProcessorMixin):
         # Iterate through each sequence in the batch
         for i in range(input_ids.shape[0]):
             seq = input_ids[i]
-
             # Find the indices of the special_token_id
             indices = (seq == special_token_id).nonzero(as_tuple=False).squeeze()
-
-            # If there are at least two occurrences of special_token_id
-            if len(indices) >= 2:
-                start, end = indices[0], indices[1] + 1
-
-                # Unmask the tokens between the first and second occurrence
-                labels[i, start + 1 : end] = seq[start + 1 : end]
+            # Pair the indices and unmask the tokens between each pair
+            paired_indices = indices.reshape(-1, 2)
+            for start, end in paired_indices:
+                labels[i, start + 1 : end + 1] = seq[start + 1 : end + 1]
 
         return labels
 
