@@ -6,6 +6,7 @@ from tqdm import tqdm
 import argparse
 import orjson
 
+
 def process_images(base64_str):
     import base64
     from PIL import Image
