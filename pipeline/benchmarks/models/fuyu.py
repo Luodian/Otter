@@ -52,7 +52,7 @@ class Fuyu(BaseModel):
             scaling_factor = self.resolution / short_edge
             new_width = math.ceil(width * scaling_factor)
             new_height = math.ceil(height * scaling_factor)
-            raw_image_data = raw_image_data.resize((new_width, new_height), Image.ANTIALIAS)
+            raw_image_data = raw_image_data.resize((new_width, new_height), Image.Resampling.LANCZOS)
         # formated_prompt = f"User: {text_prompt} Assistant:"
         model_inputs = self.processor(text=text_prompt, images=[raw_image_data], device=self.device)
         for k, v in model_inputs.items():

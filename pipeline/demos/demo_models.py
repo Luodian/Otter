@@ -169,10 +169,9 @@ class TestOtterHD:
             scaling_factor = self.resolution / short_edge
             new_width = math.ceil(width * scaling_factor)
             new_height = math.ceil(height * scaling_factor)
-            raw_image_data = raw_image_data.resize((new_width, new_height), Image.ANTIALIAS)
+            raw_image_data = raw_image_data.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
         print(f"Eval with res: {raw_image_data.size}")
-        # raw_image_data.thumbnail((max_width, max_height), Image.ANTIALIAS)
         formated_prompt = f"User: {prompt} Assistant:"
         model_inputs = self.processor(text=formated_prompt, images=[raw_image_data] if no_image_flag is False else None, device=self.device)
         for k, v in model_inputs.items():

@@ -28,6 +28,8 @@ def parse_args():
     parser.add_argument("--output_dir", type=str, help="The dir path to the output file.", default="./logs")
     parser.add_argument("--yaml_file", type=str, help="The dir path to the eval yaml, contains question, answer pairs.", default="")
     parser.add_argument("--cuda_id", type=int, help="The CUDA Device.")
+    parser.add_argument("--resolution", type=int, help="The resolution of the image.")
+    parser.add_argument("--max_new_tokens", type=int, help="The maximum number of new tokens to generate.")
     args = parser.parse_args()
     return args
 
