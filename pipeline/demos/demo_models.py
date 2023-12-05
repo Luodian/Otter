@@ -147,6 +147,7 @@ class TestOtterHD:
     def __init__(self, checkpoint: str = "adept/fuyu-8b", cuda_id: int = 0, resolution: int = 512, max_new_tokens=256):
         self.resolution = resolution
         self.device = f"cuda:{cuda_id}" if torch.cuda.is_available() else "cpu"
+        print(f"Using device: {self.device}")
         self.model = FuyuForCausalLM.from_pretrained(checkpoint).to(self.device)
         self.model.eval()
         self.tokenizer = AutoTokenizer.from_pretrained("adept/fuyu-8b")

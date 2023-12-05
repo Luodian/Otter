@@ -27,6 +27,7 @@ def parse_args():
     parser.add_argument("--checkpoint", type=str, help="The path to the checkpoint.")
     parser.add_argument("--output_dir", type=str, help="The dir path to the output file.", default="./logs")
     parser.add_argument("--yaml_file", type=str, help="The dir path to the eval yaml, contains question, answer pairs.", default="")
+    parser.add_argument("--cuda_id", type=int, help="The CUDA Device.")
     args = parser.parse_args()
     return args
 
@@ -76,7 +77,7 @@ def main():
     if args.model_name == "otter":
         model = TestOtter(checkpoint=args.checkpoint)
     elif args.model_name == "otterhd":
-        model = TestOtterHD(checkpoint=args.checkpoint)
+        model = TestOtterHD(checkpoint=args.checkpoint, cuda_id=args.cuda_id)
     elif args.model_name == "idefics":
         model = TestIdefics(checkpoint=args.checkpoint)
     else:
