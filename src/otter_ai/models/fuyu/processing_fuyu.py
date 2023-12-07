@@ -361,8 +361,14 @@ class FuyuProcessor(ProcessorMixin):
             seq = input_ids[i]
             # Find the indices of the special_token_id
             indices = (seq == special_token_id).nonzero(as_tuple=False).squeeze()
-            # Pair the indices and unmask the tokens between each pair
-            paired_indices = indices.reshape(-1, 2)
+            # Pair the indices and unmask the tokens between each pairt
+            try:
+                paired_indices = indices.reshape(-1, 2)
+            except Exception as e:
+                print(f"Exception: {e}")
+                print(indices)
+                import pdb;pdb.set_trace()
+                
             for start, end in paired_indices:
                 labels[i, start + 1 : end + 1] = seq[start + 1 : end + 1]
 
