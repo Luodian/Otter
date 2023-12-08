@@ -4,6 +4,7 @@ import argparse
 import glob
 import os
 import random
+import sys
 import time
 
 import numpy as np
@@ -19,9 +20,10 @@ from transformers import (
 )
 
 import wandb
-from flamingo.modeling_flamingo import FlamingoForConditionalGeneration
-from otter.modeling_otter import OtterForConditionalGeneration
-from pipeline.train.data import get_data
+from otter_ai import FlamingoForConditionalGeneration, OtterForConditionalGeneration
+
+sys.path.append("../..")
+from pipeline.mimicit_utils.data import get_data
 from pipeline.train.distributed import world_info_from_env
 from pipeline.train.train_utils import AverageMeter, get_checkpoint
 
@@ -87,7 +89,12 @@ def parse_args():
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--num_epochs", type=int, default=1)
     parser.add_argument("--logging_steps", type=int, default=100, help="log loss every n steps")
-    parser.add_argument("--checkpointing_steps", type=int, default=10000, help="checkpointing every n steps")
+    parser.add_argument(
+        "--checkpointing_steps",
+        type=int,
+        default=10000,
+        help="checkpointing every n steps",
+    )
     # Sum of gradient optimization batch size
 
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
@@ -124,12 +131,6 @@ def parse_args():
         help="url used to set up distributed training",
     )
     parser.add_argument("--dist-backend", default="nccl", type=str, help="distributed backend")
-    parser.add_argument(
-        "--horovod",
-        default=False,
-        action="store_true",
-        help="Use horovod for distributed training.",
-    )
     parser.add_argument(
         "--no-set-device-rank",
         default=False,
@@ -178,7 +179,19 @@ def random_seed(seed=42, rank=0):
     random.seed(seed + rank)
 
 
-def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
+def train_one_epoch(
+    args,
+    model,
+    epoch,
+    mmc4_loader,
+    laion_loader,
+    tokenizer,
+    optimizer,
+    lr_scheduler,
+    device_id,
+    accelerator,
+    wandb,
+):
     num_batches_per_epoch_laion = laion_loader.num_batches
     num_batches_per_epoch_mmc4 = mmc4_loader.num_batches
 
@@ -230,6 +243,25 @@ def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, op
                 labels=labels,
             )[0]
 
+        # model.eval()
+        # model.text_tokenizer.padding_side = "left"
+        # text_prompt_lang_x = model.text_tokenizer(
+        #     [
+        #         "<image>",
+        #     ],
+        #     return_tensors="pt",
+        # )['input_ids']
+        # outputs_debug = model.generate(
+        #     vision_x=images.to(device_id),
+        #     lang_x=text_prompt_lang_x.to(device_id),
+        #     attention_mask=attention_mask.to(device_id),
+        #     max_length=256,
+        # )
+
+        # print(model.text_tokenizer.batch_decode(outputs_debug))
+        # print(model.text_tokenizer.batch_decode(input_ids))
+        # model.train()
+
         #### LAION BACKWARD ####
         accelerator.backward(args.loss_multiplier_laion * loss_laion)
         total_losses.append(args.loss_multiplier_laion * loss_laion)
@@ -270,6 +302,17 @@ def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, op
                 attention_mask=attention_mask,
                 labels=labels,
             )[0]
+
+        # model.text_tokenizer.padding_side = "left"
+        # outputs_debug = model.generate(
+        #     vision_x=images.to(device_id),
+        #     lang_x=input_ids.to(device_id),
+        #     attention_mask=attention_mask.to(device_id),
+        #     max_length=256,
+        # )
+
+        # print(model.text_tokenizer.batch_decode(outputs_debug))
+        # print(model.text_tokenizer.batch_decode(input_ids))
 
         #### MMC4 BACKWARD ####
         accelerator.backward(args.loss_multiplier_mmc4 * loss_mmc4)
@@ -354,7 +397,10 @@ def train_one_epoch(args, model, epoch, mmc4_loader, laion_loader, tokenizer, op
                 "lr_scheduler_state_dict": lr_scheduler.state_dict(),
             }
             print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_steps{num_steps + 1}.pt")
-            accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_steps{num_steps + 1}.pt")
+            accelerator.save(
+                checkpoint_dict,
+                f"{args.external_save_dir}/checkpoint_steps{num_steps + 1}.pt",
+            )
             # save the config
             print(f"Saving config to {args.external_save_dir}/config.json")
             unwrapped_model.config.save_pretrained(args.external_save_dir)
@@ -491,7 +537,6 @@ def main():
             entity=args.wandb_entity,
             name=args.run_name,
             config=vars(args),
-            setting=wandb.Settings(code_dir="."),
         )
 
     model, optimizer, lr_scheduler = accelerator.prepare(model, optimizer, lr_scheduler)
@@ -533,13 +578,13 @@ def main():
                 "optimizer_state_dict": optimizer.state_dict(),
                 "lr_scheduler_state_dict": lr_scheduler.state_dict(),
             }
-            print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_{epoch}.pt")
-            accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_{epoch}.pt")
+            print(f"Saving checkpoint to {args.external_save_dir}/checkpoint_epoch{epoch}.pt")
+            accelerator.save(checkpoint_dict, f"{args.external_save_dir}/checkpoint_epoch{epoch}.pt")
             # save the config
             unwrapped_model.config.save_pretrained(args.external_save_dir)
             if args.delete_previous_checkpoint:
                 if epoch > 0:
-                    os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
+                    os.remove(f"{args.external_save_dir}/checkpoint_epoch{epoch-1}.pt")
 
         accelerator.wait_for_everyone()
 
@@ -559,7 +604,7 @@ def main():
         if args.report_to_wandb and args.save_checkpoints_to_wandb:
             wandb.save(f"{args.external_save_dir}/final_weights.pt")
         if args.save_hf_model:
-            model.save_pretrained(f"{args.external_save_dir}")
+            unwrapped_model.save_pretrained(f"{args.external_save_dir}")
 
 
 if __name__ == "__main__":

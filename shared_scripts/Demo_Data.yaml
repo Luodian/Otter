@@ -1,0 +1,78 @@
+IMAGE_TEXT: # Group name should be in [IMAGE_TEXT, TEXT_ONLY, IMAGE_TEXT_IN_CONTEXT]
+  LADD: # LLaVA Detailed Description, dataset name can be assigned at any name you want
+      mimicit_path: azure_storage/json/LA/LADD_instructions.json # Path of the instruction json file
+      images_path: azure_storage/Parquets/LA.parquet # Path of the image parquet file
+      num_samples: -1 # Number of samples you want to use, -1 means use all samples, if not set, default is -1.
+  M3IT_CAPTIONING:
+      mimicit_path: azure_storage/json/M3IT/captioning/coco/coco_instructions.json
+      images_path: azure_storage/Parquets/coco.parquet
+      num_samples: 20000
+  LACR_T2T:
+    mimicit_path: azure_storage/json/LA/LACR_T2T_instructions.json
+    images_path: azure_storage/Parquets/LA.parquet
+    num_samples: -1
+  # M3IT_VQA:
+  #   mimicit_path: azure_storage/json/M3IT/vqa/vqav2/vqav2_instructions.json
+  #   images_path: azure_storage/json/M3IT/vqa/vqav2/vqav2.json
+  #   num_samples: 20000
+  M3IT_COCOGOI:
+    mimicit_path: azure_storage/json/M3IT/classification/coco-goi/coco-goi_instructions.json
+    images_path: azure_storage/Parquets/coco-goi.parquet
+    num_samples: 20000
+  M3IT_COCOITM:
+    mimicit_path: azure_storage/json/M3IT/classification/coco-itm/coco-itm_instructions.json
+    images_path: azure_storage/Parquets/coco-itm.parquet
+    num_samples: 20000
+  M3IT_IMAGENET:
+    mimicit_path: azure_storage/json/M3IT/classification/imagenet/imagenet_instructions.json
+    images_path: azure_storage/Parquets/imagenet.parquet
+    num_samples: 20000
+  # # M3IT_IQA:
+  # #   mimicit_path: azure_storage/json/M3IT/classification/iqa/iqa_instructions.json
+  # #   images_path: azure_storage/json/M3IT/classification/iqa/iqa.json
+  # #   num_samples: 20000
+  M3IT_REFCOCO:
+    mimicit_path: azure_storage/json/M3IT/classification/refcoco/refcoco_instructions.json
+    images_path: azure_storage/Parquets/refcoco.parquet
+    num_samples: 20000
+  # M3IT_VSR:
+  #   mimicit_path: azure_storage/json/M3IT/classification/vsr/vsr_instructions.json
+  #   images_path: azure_storage/json/M3IT/classification/vsr/vsr.json
+  #   num_samples: 20000
+  M3IT_TEXT_VQA:
+    mimicit_path: azure_storage/json/M3IT/vqa/text-vqa/text-vqa_instructions.json
+    images_path: azure_storage/Parquets/text-vqa.parquet
+    num_samples: 20000
+  M3IT_OKVQA:
+    mimicit_path: azure_storage/json/M3IT/vqa/okvqa/okvqa_instructions.json
+    images_path: azure_storage/Parquets/okvqa.parquet
+    num_samples: 20000
+  M3IT_A_OKVQA:
+    mimicit_path: azure_storage/json/M3IT/vqa/a-okvqa/a-okvqa_instructions.json
+    images_path: azure_storage/Parquets/a-okvqa.parquet
+    num_samples: 20000
+  M3IT_SIENCEQA:
+    mimicit_path: azure_storage/json/M3IT/reasoning/scienceqa/scienceqa_instructions.json
+    images_path: azure_storage/Parquets/scienceqa.parquet
+    num_samples: 20000
+  # SVIT:
+  #   mimicit_path: azure_storage/json/SVIT/SVIT_instructions.json
+  #   images_path: azure_storage/json/SVIT/SVIT.json
+  #   num_samples: 20000
+  # PF:
+  #   mimicit_path: azure_storage/json/PF/PF_instructions.json
+  #   images_path: azure_storage/json/PF/PF.json
+  #   num_samples: 20000
+
+# TEXT_ONLY:
+#   LIMA:
+#     mimicit_path: azure_storage/json/LANG_Only/LIMA/LIMA_instructions_max_1K_tokens.json
+#     num_samples: 20000
+#   SHAREGPT:
+#     mimicit_path: azure_storage/json/LANG_Only/SHAREGPT/SHAREGPT_instructions_max_1K_tokens.json
+#     num_samples: 10000
+#   AL:
+#     mimicit_path: azure_storage/json/LANG_Only/AL/AL_instructions_max_1K_tokens.json
+#     num_samples: 20000
+
+

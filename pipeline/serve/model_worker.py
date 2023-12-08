@@ -28,7 +28,7 @@ from pipeline.serve.serving_utils import (
 )
 from huggingface_hub import hf_hub_download
 import transformers
-from otter import OtterForConditionalGeneration
+from otter_ai import OtterForConditionalGeneration
 from flamingo import FlamingoForConditionalGeneration
 
 GB = 1 << 30
@@ -99,7 +99,7 @@ class ModelWorker:
         else:
             precision = {}
         if "otter" in checkpoint_path.lower():
-            model = OtterForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, **precision)
+            model = OtterForConditionalGeneration.from_pretrained(checkpoint_path, device_map={"": "cuda:0"}, **precision)
         else:
             model = FlamingoForConditionalGeneration.from_pretrained(checkpoint_path, device_map=device_map, **precision)
         model.text_tokenizer.padding_side = "left"  # otter video
@@ -130,9 +130,7 @@ class ModelWorker:
         assert r.status_code == 200
 
     def send_heart_beat(self):
-        logger.info(
-            f"Send heart beat. Models: {[self.model_name]}. " f"Semaphore: {pretty_print_semaphore(model_semaphore)}. " f"global_counter: {global_counter}"
-        )
+        logger.info(f"Send heart beat. Models: {[self.model_name]}. " f"Semaphore: {pretty_print_semaphore(model_semaphore)}. " f"global_counter: {global_counter}")
 
         url = self.controller_addr + "/receive_heart_beat"
 
@@ -191,7 +189,11 @@ class ModelWorker:
                 # cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image))).convert("RGB")
                 images = [Image.open(BytesIO(base64.urlsafe_b64decode(image))).convert("RGB") for image in images]
                 logger.info(f"{len(images)} images conditioned.")
-                tensor_dtype = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}[self.load_bit]
+                tensor_dtype = {
+                    "fp16": torch.float16,
+                    "bf16": torch.bfloat16,
+                    "fp32": torch.float32,
+                }[self.load_bit]
                 if is_video is True:
                     vision_x = image_processor.preprocess(images, return_tensors="pt")["pixel_values"].unsqueeze(0).unsqueeze(0)
                     assert vision_x.shape[2] == len(images)  # dim of vision_x: [B, T, F, C, H, W], make sure conditioned on frames of the same video
@@ -214,14 +216,15 @@ class ModelWorker:
         # generation_kwargs["num_beams"] = generation_kwargs.get("num_beams", 3)
         logger.info(f"generation_kwargs: {generation_kwargs}")
 
-        # bad_words_id = tokenizer(["User:", "GPT1:", "GFT:", "GPT:"], add_special_tokens=False).input_ids
+        # vision_x = vision_x.to(self.model.device)
+        lang_x = inputs["input_ids"]
+        attention_mask = inputs["attention_mask"]
+        bad_words_id = tokenizer(["User:", "GPT:"], add_special_tokens=False).input_ids
         generation_input = dict(
             vision_x=vision_x,
-            lang_x=inputs["input_ids"],
-            attention_mask=inputs["attention_mask"],
+            lang_x=lang_x,
+            attention_mask=attention_mask,
             streamer=streamer,
-            # bad_words_ids=bad_words_id,
-            # pad_token_id=tokenizer.eos_token_id,
             **generation_kwargs,
         )
         # # Call the generate function and store the output in a variable
@@ -324,7 +327,12 @@ if __name__ == "__main__":
     parser.add_argument("--limit_model_concurrency", type=int, default=5)
     parser.add_argument("--stream_interval", type=int, default=2)
     parser.add_argument("--no_register", action="store_true")
-    parser.add_argument("--load_bit", type=str, choices=["fp16", "bf16", "int8", "int4", "fp32"], default="fp32")
+    parser.add_argument(
+        "--load_bit",
+        type=str,
+        choices=["fp16", "bf16", "int8", "int4", "fp32"],
+        default="fp32",
+    )
     parser.add_argument("--load_pt", action="store_true")
     args = parser.parse_args()
 

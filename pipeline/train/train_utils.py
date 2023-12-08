@@ -1,8 +1,39 @@
-import time
+import os
+import random
+import subprocess
+import sys
 from contextlib import suppress
 
+import numpy as np
 import torch
-from tqdm import tqdm
+from torch.utils.data.distributed import DistributedSampler
+import torch.distributed as dist
+
+try:
+    from transformers.models.idefics.processing_idefics import image_attention_mask_for_packed_input_ids, incremental_to_binary_attention_mask
+except ImportError:
+    print("Failed to import Idefics processing module.")
+
+
+def truncate_text(path, keep_start=10, keep_end=10, truncate_to="..."):
+    if len(path) <= (keep_start + keep_end + len(truncate_to)):
+        return path
+    return path[:keep_start] + truncate_to + path[-keep_end:]
+
+
+def master_print(*args, **kwargs):
+    if dist.is_available() and dist.is_initialized():
+        rank = dist.get_rank()
+        if rank == 0:
+            print(*args, **kwargs)
+    else:
+        print(*args, **kwargs)
+
+
+def random_seed(seed=42, rank=0):
+    torch.manual_seed(seed + rank)
+    np.random.seed(seed + rank)
+    random.seed(seed + rank)
 
 
 def get_cast_dtype(precision: str):
@@ -26,196 +57,6 @@ def get_autocast(precision):
         return suppress
 
 
-# DEPRECATED - use train_one_epoch in instruction_following.py and pretraining.py instead
-def train_one_epoch(
-    args,
-    model,
-    epoch,
-    mmc4_loader,
-    tokenizer,
-    optimizer,
-    lr_scheduler,
-    device_id,
-    wandb,
-):
-    # num_batches_per_epoch_laion = laion_loader.num_batches
-    num_batches_per_epoch_mmc4 = mmc4_loader.num_batches
-
-    # assert (
-    #     num_batches_per_epoch_laion == num_batches_per_epoch_mmc4
-    # ), "Number of batches in laion and mmc4 datasets must be the same"
-    num_batches_per_epoch = num_batches_per_epoch_mmc4
-    total_training_steps = num_batches_per_epoch * args.num_epochs
-
-    autocast = get_autocast(args.precision)
-    cast_dtype = get_cast_dtype(args.precision)
-
-    media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
-    endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)["input_ids"][-1]
-
-    model.train()
-
-    # setup logging
-    step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
-    data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
-    end = time.time()
-
-    # loop through dataloader
-    for num_steps, batch_mmc4 in tqdm(
-        enumerate(mmc4_loader),
-        disable=args.rank != 0,
-        total=total_training_steps,
-        initial=(epoch * num_batches_per_epoch),
-    ):
-        data_time_m.update(time.time() - end)
-
-        global_step = num_steps + epoch * num_batches_per_epoch
-
-        # #### LAION FORWARD PASS ####
-        # images = (
-        #     batch_laion[0]
-        #     .to(device_id, dtype=cast_dtype, non_blocking=True)
-        #     .unsqueeze(1)
-        #     .unsqueeze(1)
-        # )
-
-        # input_ids = batch_laion[1][0].to(device_id, dtype=cast_dtype, non_blocking=True)
-        # attention_mask = batch_laion[1][1].to(
-        #     device_id, dtype=cast_dtype, non_blocking=True
-        # )
-
-        # labels = input_ids.clone()
-        # labels[labels == tokenizer.pad_token_id] = -100
-        # labels[:, 0] = -100
-        # labels[labels == media_token_id] = -100
-        # labels.to(device_id)
-
-        # with autocast():
-        #     loss_laion = model(
-        #         vision_x=images,
-        #         lang_x=input_ids,
-        #         attention_mask=attention_mask,
-        #         labels=labels,
-        #     )[0]
-        loss_laion = 0
-        divided_loss_laion = loss_laion / args.gradient_accumulation_steps
-
-        #### C4 FORWARD PASS ####
-        images = batch_mmc4[0].to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(2)
-        input_ids = torch.stack([x[0] for x in batch_mmc4[1]]).squeeze(1)
-        attention_mask = torch.stack([x[1] for x in batch_mmc4[1]]).squeeze(1)
-
-        # NOTE: irena: expected shape of clip_text_input_ids / attention_mask is (N, I, max_seq_len)
-        labels = input_ids.clone()
-        labels[labels == tokenizer.pad_token_id] = -100
-        labels[:, 0] = -100
-
-        for i in range(labels.shape[0]):
-            # remove loss for any token before the first <image> token
-            label_idx = 0
-            while label_idx < labels.shape[1] and labels[i][label_idx] != media_token_id:
-                labels[i][label_idx] = -100
-                label_idx += 1
-
-            # get index of all endofchunk tokens in the sequence
-            endofchunk_idxs = torch.where(labels[i] == endofchunk_token_id)[0]
-            for endofchunk_idx in endofchunk_idxs:
-                token_idx = endofchunk_idx + 1
-                while token_idx < labels.shape[1] and labels[i][token_idx] != media_token_id:
-                    labels[i][token_idx] = -100
-                    token_idx += 1
-
-        labels[labels == media_token_id] = -100
-        labels.to(device_id)
-
-        with autocast():
-            loss_mmc4 = model(
-                vision_x=images,
-                lang_x=input_ids,
-                attention_mask=attention_mask,
-                labels=labels,
-            )[0]
-
-            # if loss is nan, skip this batch
-            if torch.isnan(loss_mmc4):
-                print("loss is nan, skipping this batch")
-                print("input_ids: ", tokenizer.batch_decode(input_ids))
-                print("labels: ", labels)
-                print("images: ", images)
-                optimizer.zero_grad()
-                continue
-
-        divided_loss_mmc4 = loss_mmc4 / args.gradient_accumulation_steps
-
-        #### BACKWARD PASS ####
-        loss = divided_loss_laion * args.loss_multiplier_laion + divided_loss_mmc4 * args.loss_multiplier_mmc4
-        loss.backward()
-
-        #### MASK GRADIENTS FOR EMBEDDINGS ####
-        # Note (anas): Do not apply weight decay to embeddings as it will break this function.
-        def mask_embedding(m):
-            if isinstance(m, torch.nn.Embedding) and m.weight.requires_grad:
-                zero_mask = torch.zeros_like(m.weight.grad)
-                zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
-                zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
-                m.weight.grad = m.weight.grad * zero_mask
-
-        model.apply(mask_embedding)
-
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-
-        # step optimizer and log
-        if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (num_steps == num_batches_per_epoch - 1):
-            optimizer.step()
-            lr_scheduler.step()
-            optimizer.zero_grad()
-
-            # step time and reset end outside of rank 0
-            step_time_m.update(time.time() - end)
-            end = time.time()
-
-            if args.rank == 0 and args.report_to_wandb:
-                # compute within rank 0
-                laion_samples_per_second = args.gradient_accumulation_steps * args.batch_size_laion * args.world_size / step_time_m.val
-                laion_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_laion / step_time_m.val
-
-                c4_samples_per_second = args.gradient_accumulation_steps * args.batch_size_mmc4 * args.world_size / step_time_m.val
-                c4_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size_mmc4 / step_time_m.val
-
-                wandb.log(
-                    {
-                        "data_time": data_time_m.avg,
-                        "step_time": step_time_m.avg,
-                        "laion_samples_per_second": laion_samples_per_second,
-                        "laion_samples_per_second_per_gpu": laion_samples_per_second_per_gpu,
-                        "c4_samples_per_second": c4_samples_per_second,
-                        "c4_samples_per_second_per_gpu": c4_samples_per_second_per_gpu,
-                        "lr": optimizer.param_groups[0]["lr"],
-                    },
-                    commit=False,
-                )
-                step_time_m.reset()
-                data_time_m.reset()
-
-                wandb.log(
-                    {
-                        "loss_laion": divided_loss_laion.item(),
-                        "global_step": global_step,
-                    },
-                    commit=False,
-                )
-                wandb.log(
-                    {"loss_mmc4": divided_loss_mmc4.item(), "global_step": global_step},
-                    commit=True,
-                )
-
-        # Log loss to console
-        if ((num_steps + 1) % args.logging_steps == 0) and args.rank == 0:
-            print(
-                f"Step {num_steps+1}/{num_batches_per_epoch} of epoch {epoch+1}/{args.num_epochs} complete. Loss LAION: {loss_laion.item():.3f} // Loss MMC4: {loss_mmc4.item():.3f}"
-            )
-
-
 def get_checkpoint(model):
     state_dict = model.state_dict()
 
@@ -224,6 +65,19 @@ def get_checkpoint(model):
             del state_dict[name]
 
     return state_dict
+
+
+def get_checkpoint_deepspeed_zero3(args, model):
+    state_dict = {}
+
+    for name, p in model.named_parameters():
+        if p.requires_grad:
+            state_dict[name] = p.data
+    return state_dict
+
+    # if torch.distributed.get_rank() == 0:
+    #     # 有参数
+    #     print(device_id, f"IDEFICS Trainable Params: {(sum(p.numel() for p in model.parameters() if p.requires_grad)) / 1e9:.3f} B")
 
 
 class AverageMeter(object):
@@ -243,3 +97,224 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
+
+class DistributedProxySampler(DistributedSampler):
+    """Sampler that restricts data loading to a subset of input sampler indices.
+
+    It is especially useful in conjunction with
+    :class:`torch.nn.parallel.DistributedDataParallel`. In such case, each
+    process can pass a DistributedSampler instance as a DataLoader sampler,
+    and load a subset of the original dataset that is exclusive to it.
+
+    .. note::
+        Input sampler is assumed to be of constant size.
+
+    Arguments:
+        sampler: Input data sampler.
+        num_replicas (optional): Number of processes participating in
+            distributed training.
+        rank (optional): Rank of the current process within num_replicas.
+    """
+
+    def __init__(self, sampler, num_replicas=None, rank=None):
+        super(DistributedProxySampler, self).__init__(sampler, num_replicas=num_replicas, rank=rank, shuffle=False)
+        self.sampler = sampler
+
+    def __iter__(self):
+        # deterministically shuffle based on epoch
+        torch.manual_seed(self.epoch)
+        indices = list(self.sampler)
+
+        # add extra samples to make it evenly divisible
+        indices += indices[: (self.total_size - len(indices))]
+        if len(indices) != self.total_size:
+            raise RuntimeError("{} vs {}".format(len(indices), self.total_size))
+
+        # subsample
+        indices = indices[self.rank : self.total_size : self.num_replicas]
+        if len(indices) != self.num_samples:
+            raise RuntimeError("{} vs {}".format(len(indices), self.num_samples))
+
+        return iter(indices)
+
+
+# supporting idefics processing
+def get_image_attention_mask(output_input_ids, max_num_images, tokenizer, include_image=True):
+    # image_attention_mask, _ = image_attention_mask_for_packed_input_ids(output_input_ids, tokenizer)
+    # image_attention_mask = incremental_to_binary_attention_mask(image_attention_mask, num_classes=max_num_images)
+    if include_image:
+        image_attention_mask, _ = image_attention_mask_for_packed_input_ids(output_input_ids, tokenizer)
+        image_attention_mask = incremental_to_binary_attention_mask(image_attention_mask, num_classes=max_num_images)
+    else:
+        # in full language mode we set the image mask to all-0s
+        image_attention_mask = torch.zeros(output_input_ids.shape[0], output_input_ids.shape[1], 1, dtype=torch.bool)
+    return image_attention_mask
+
+
+def verify_yaml(args):
+    if args.rank != 0:
+        return
+
+    # Run pytest with the necessary arguments.
+    result = subprocess.run(["pytest", "-m", "prerun", f"--yaml-path={args.training_data_yaml}"])
+
+    if result.returncode != 0:
+        print("YAML verification failed!")
+        sys.exit(1)
+
+
+def get_grouped_params(model, wd):
+    params_with_wd, params_without_wd = [], []
+
+    def apply_decay(x):
+        return "gated_cross_attn_layer" in x and "ff_gate" not in x and "attn_gate" not in x and "norm" not in x and "bias" not in x
+
+    for n, p in model.named_parameters():
+        # if p.requires_grad:
+        if apply_decay(n):
+            params_with_wd.append(p)
+        else:
+            params_without_wd.append(p)
+
+    return [
+        {"params": params_with_wd, "weight_decay": wd},
+        {"params": params_without_wd, "weight_decay": 0.0},
+    ]
+
+
+def save_checkpoint(epoch, model, args, accelerator, unwrapped_model=None, global_step=None):
+    """Save a checkpoint for the model."""
+    # Ensure the directory exists
+    if not os.path.exists(args.external_save_dir):
+        os.makedirs(args.external_save_dir)
+
+    if unwrapped_model is None:
+        unwrapped_model = accelerator.unwrap_model(model)
+
+    # Formulate the checkpoint filename based on whether it's an epoch or global_step checkpoint
+    if global_step:
+        checkpoint_path = f"{args.external_save_dir}/checkpoint_steps_{global_step}.pt"
+        checkpoint_dict = {
+            "steps": global_step,
+            "model_state_dict": get_checkpoint(unwrapped_model),
+        }
+    else:
+        checkpoint_path = f"{args.external_save_dir}/checkpoint_{epoch}.pt"
+        checkpoint_dict = {"model_state_dict": get_checkpoint(unwrapped_model)}
+
+    # Save the checkpoint if rank is 0
+    if args.rank == 0:
+        print(f"Saving checkpoint to {checkpoint_path}")
+        accelerator.save(checkpoint_dict, checkpoint_path)
+
+        # Save the model's configuration
+        unwrapped_model.config.save_pretrained(args.external_save_dir)
+
+        # Remove the previous checkpoint if required
+        if args.delete_previous_checkpoint:
+            if global_step:
+                prev_checkpoint_path = f"{args.external_save_dir}/checkpoint_step_{global_step-args.save_steps_interval}.pt"
+                if os.path.exists(prev_checkpoint_path):
+                    os.remove(prev_checkpoint_path)
+            elif epoch > 0:
+                os.remove(f"{args.external_save_dir}/checkpoint_{epoch-1}.pt")
+
+
+def save_checkpoint(checkpoint_dict, save_path, is_main_process, save_function):
+    """Helper function to save the checkpoint."""
+    save_function(checkpoint_dict, f"{save_path}/final_weights.pt", is_main_process=is_main_process)
+
+
+def save_pretrained(component, save_path, is_main_process, save_function):
+    """Helper function to save pretrained components."""
+    component.save_pretrained(save_path, is_main_process=is_main_process, save_function=save_function, safe_serialization=False)
+
+
+def save_final_weights(model, args, accelerator, processor=None, tokenizer=None):
+    """Save final weights of the model."""
+    unwrapped_model = accelerator.unwrap_model(model)
+    is_main_process = accelerator.is_main_process
+    save_path = args.external_save_dir
+    model_name = args.model_name.lower()
+
+    unwrapped_model.config.save_pretrained(save_path)
+
+    if args.save_hf_model:
+        save_pretrained(unwrapped_model, save_path, is_main_process, accelerator.save)
+
+        if "idefics" in model_name or "fuyu" in model_name:
+            save_pretrained(processor, save_path, is_main_process, accelerator.save)
+
+        if "llama2" in model_name:
+            save_pretrained(tokenizer, save_path, is_main_process, accelerator.save)
+    else:
+        # Save based on the distributed type
+        if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
+            checkpoint_dict = accelerator.get_state_dict(model)
+        else:
+            checkpoint_dict = get_checkpoint(model=unwrapped_model)
+
+        if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
+            trainable_params_name = [name for name, p in unwrapped_model.named_parameters() if p.requires_grad]
+            checkpoint_dict = {k: v for k, v in checkpoint_dict.items() if k in trainable_params_name}
+
+        save_checkpoint(checkpoint_dict, save_path, is_main_process, accelerator.save)
+
+
+def get_weights_for_dataloaders(dataloaders):
+    total_samples = sum(len(dataloader.dataset) for dataloader in dataloaders)
+    weights = [len(dataloader.dataset) / total_samples for dataloader in dataloaders]
+    return weights
+
+
+def get_next_dataloader(dataloader_iterators, weights):
+    chosen_dataloader_index = np.random.choice(len(dataloader_iterators), p=weights)
+    return dataloader_iterators[chosen_dataloader_index]
+
+
+def find_and_remove_tokens(input_tensor, labels_tensor, attention_mask_tensor, token_id, tokenizer):
+    batch_size, seq_len = input_tensor.size()
+
+    # Create lists to store the new tensors
+    new_input_list = []
+    new_labels_list = []
+    new_attention_mask_list = []
+
+    # Loop over each sequence in the batch
+    for i in range(batch_size):
+        single_input = input_tensor[i, :]
+        single_label = labels_tensor[i, :]
+        single_attention_mask = attention_mask_tensor[i, :]
+
+        # Remove the token_id
+        new_single_input = torch.masked_select(single_input, single_input != token_id)
+        new_single_label = torch.masked_select(single_label, single_input != token_id)
+        new_single_attention_mask = torch.masked_select(single_attention_mask, single_input != token_id)
+
+        # Append the new sequence to the list
+        new_input_list.append(new_single_input)
+        new_labels_list.append(new_single_label)
+        new_attention_mask_list.append(new_single_attention_mask)
+
+    # Pad sequences within each batch to match the longest sequence
+    new_input = torch.nn.utils.rnn.pad_sequence(new_input_list, batch_first=True, padding_value=tokenizer.pad_token_id)
+    new_labels = torch.nn.utils.rnn.pad_sequence(new_labels_list, batch_first=True, padding_value=-100)
+    new_attention_mask = torch.nn.utils.rnn.pad_sequence(new_attention_mask_list, batch_first=True, padding_value=0)
+
+    return new_input, new_labels, new_attention_mask
+
+
+def delete_tensors_from_dict(d):
+    """Recursively delete tensors from a nested dictionary."""
+    keys_to_delete = []
+    for k, v in d.items():
+        if isinstance(v, torch.Tensor):
+            keys_to_delete.append(k)
+        elif isinstance(v, list):
+            new_list = [item for item in v if not isinstance(item, torch.Tensor)]
+            d[k] = new_list
+        elif isinstance(v, dict):
+            delete_tensors_from_dict(v)
+    for key in keys_to_delete:
+        del d[key]

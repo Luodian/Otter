@@ -1,0 +1,17 @@
+compute_environment: LOCAL_MACHINE
+deepspeed_config:
+  deepspeed_multinode_launcher: standard
+  gradient_accumulation_steps: 2
+  gradient_clipping: 1.0
+  offload_optimizer_device: none
+  offload_param_device: none
+  zero3_init_flag: true
+  zero3_save_16bit_model: true
+  zero_stage: 3
+distributed_type: DEEPSPEED
+fsdp_config: {}
+main_training_function: main
+mixed_precision: bf16
+num_machines: 2
+num_processes: 16
+use_cpu: false
