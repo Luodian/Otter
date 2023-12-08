@@ -196,3 +196,6 @@ pipeline/serve/examples/*.png
 
 tools
 otter9B-mpt7b-0705/config.json
+pipeline/evaluation/data_source/multi_hop_reasoning/videos/
+pipeline/evaluation/evaluation_result/
+pipeline/evaluation/ckpts/
