@@ -68,7 +68,7 @@ except ImportError:
 
 def forward_pass(args, model, tokenizer, images, input_ids, attention_mask, labels, device_id, autocast_type, batch_mimicit):
     if args.model_name == "fuyu":
-        model_inputs = batch_mimicit.pop("fuyu_data")
+        model_inputs = batch_mimicit.pop("fuyu_data")        
         for k, v in model_inputs.items():
             model_inputs[k] = v.to(device_id, non_blocking=True) if isinstance(v, torch.Tensor) else [vv.to(device_id, non_blocking=True) for vv in v]
         loss_mimicit = model(**model_inputs)[0]
@@ -147,13 +147,17 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         dataloader_iterator = get_next_dataloader(dataloader_iterators, weights)
         batch_mimicit = next(dataloader_iterator)  # Fetch a batch from the chosen dataloader
         global_step = num_steps + epoch * num_batches_per_epoch
-
         #### MIMIC-IT FORWARD PASS ####
         net_input = batch_mimicit.pop("net_input")
         images = net_input.pop("patch_images").to(device_id, non_blocking=True)
         input_ids = net_input.pop("input_ids").to(device_id, non_blocking=True)
         attention_mask = net_input.pop("attention_masks").to(device_id, non_blocking=True)
         labels = None  # placeholder to avoid error
+
+        # master_print(num_steps)
+        # if num_steps <= 3945:
+        #     continue
+        # master_print(batch_mimicit["full_text"])
 
         if args.model_name != "fuyu":  # design fuyu's process into it's processor, a way better design than following code.
 
@@ -466,9 +470,7 @@ def main():
         print(f"Total training steps: {total_training_steps}")
 
     args.warmup_steps = total_training_steps * args.warmup_steps_ratio if args.warmup_steps_ratio is not None else args.warmup_steps
-    # args.warmup_steps = args.warmup_steps // args.gradient_accumulation_steps
     args.total_training_steps = total_training_steps
-    # // args.gradient_accumulation_steps
 
     if args.lr_scheduler == "linear":
         lr_scheduler = get_linear_schedule_with_warmup(

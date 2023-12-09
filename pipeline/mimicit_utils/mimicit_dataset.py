@@ -319,7 +319,7 @@ class MimicitDataset(Dataset):
             prefix = f"{image_placeholder}User:" if insert_image else "User:"
             return f"{prefix}{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
         elif instruction_format == "fuyu":
-            return f"User:{cur_instruction} Assistant:\x04{cur_answer}\x04"
+            return f"User:{cur_instruction} Assistant:\x04 {cur_answer} \x04"
 
     def process_images(self, image_ids, is_video=False, in_context=False):
         pil_images = []
