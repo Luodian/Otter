@@ -164,12 +164,13 @@ class TestOtterHD:
         # max_height, max_width = self.resolution, self.resolution
         raw_image_data = raw_image_data.convert("RGB")
         if self.resolution != -1:
-            width, height = raw_image_data.size
-            short_edge = min(width, height)
-            scaling_factor = self.resolution / short_edge
-            new_width = math.ceil(width * scaling_factor)
-            new_height = math.ceil(height * scaling_factor)
-            raw_image_data = raw_image_data.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            raw_image_data = raw_image_data.resize((self.resolution, self.resolution), Image.Resampling.LANCZOS)
+            # width, height = raw_image_data.size
+            # short_edge = min(width, height)
+            # scaling_factor = self.resolution / short_edge
+            # new_width = math.ceil(width * scaling_factor)
+            # new_height = math.ceil(height * scaling_factor)
+            # raw_image_data = raw_image_data.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
         print(f"Eval with res: {raw_image_data.size}")
         formated_prompt = f"User: {prompt} Assistant:"
