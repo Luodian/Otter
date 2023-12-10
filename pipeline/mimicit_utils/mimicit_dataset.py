@@ -195,7 +195,6 @@ class MimicitDataset(Dataset):
                 cache_train_config = {key: [] for key, value in cur_mimicit_data.items()}
 
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
-
             # Truncate paths for display
             # truncated_mimicit_path = truncate_text(cur_mimicit_path)
             # truncated_train_config_path = truncate_text(cur_train_config_path)
