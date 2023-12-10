@@ -78,14 +78,27 @@ D3_IMG_000001	/9j/4AAQSkZJRgABAQEASABIAAD/5FolU0NBTEFETwAAAg...
 
 Note that before September, we mainly use `images.json` to store the `key:base64_str` pairs, but we found it causes too much CPU memory during decoding large json files. So we switch to parquet, the parquet file is the same as previous json file and you can use the script to convert it from json to parquet.
 
+You may need to save the parquet files into small partitions to avoid loading errors. You can change the `npartitions` to an adequate value, the protocol is make sure each partition is no more than 2GB.
+
 ```python
+import dask.dataframe as dd
+import json
+import pandas as pd
+
+# Load the JSON data
 json_file_path = "LA.json"
 with open(json_file_path, "r") as f:
     data_dict = json.load(f)
-    
-df = pd.DataFrame.from_dict(resized_data_dict, orient="index", columns=["base64"])
-parquet_file_path = os.path.join(
-    parquet_root_path, os.path.basename(json_file_path).split(".")[0].replace("_image", "") + ".parquet"
-)
-df.to_parquet(parquet_file_path, engine="pyarrow")
+
+# Convert the dictionary to a Dask DataFrame
+ddf = dd.from_pandas(pd.DataFrame.from_dict(data_dict, orient="index", columns=["base64"]), npartitions=10)
+
+# Convert to Parquet
+parquet_file_path = 'LA.parquet'
+ddf.to_parquet(parquet_file_path, engine="pyarrow")
+
+
+ddf = dd.read_parquet(parquet_file_path, engine="pyarrow")
+search_value = 'LA_IMG_000000377944'
+filtered_ddf = ddf.loc[search_value].compute()
 ```
