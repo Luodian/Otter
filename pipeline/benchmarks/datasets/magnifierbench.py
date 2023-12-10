@@ -21,7 +21,7 @@ utc_now = pytz.utc.localize(datetime.datetime.utcnow())
 utc_plus_8_time = utc_now.astimezone(utc_plus_8)
 
 
-def get_chat_response(promot, api_key, model="gpt-4-0613", temperature=0, max_tokens=256, n=1, patience=5, sleep_time=5):
+def get_chat_response(promot, api_key, model="gpt-4-1106-preview", temperature=0, max_tokens=256, n=1, patience=5, sleep_time=5):
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
