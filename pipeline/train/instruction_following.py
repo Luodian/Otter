@@ -72,6 +72,7 @@ def forward_pass(args, model, tokenizer, device_id, autocast_type, batch_mimicit
         batch_mimicit["cur_batch_max_tokens"] = model_inputs["input_ids"].shape[1]
         for k, v in model_inputs.items():
             model_inputs[k] = v.to(device_id, non_blocking=True) if isinstance(v, torch.Tensor) else [vv.to(device_id, non_blocking=True) for vv in v]
+        model_inputs["use_cache"] = False # to make it compatible with activate_checkpointing
         loss_mimicit = model(**model_inputs)[0]
         delete_tensors_from_dict(model_inputs)
     elif args.model_name == "idefics":
