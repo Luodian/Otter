@@ -38,7 +38,7 @@ from pipeline.train.train_utils import (
     master_print,
     random_seed,
     save_checkpoint,
-    save_final_weights,
+    save_hf_weights,
     verify_yaml,
     find_and_remove_tokens,
     delete_tensors_from_dict,
@@ -499,24 +499,25 @@ def main():
         accelerator.wait_for_everyone()
         if args.save_ckpt_each_epoch:
             # save_checkpoint(epoch, model, args, accelerator)
-            save_final_weights(
+            save_hf_weights(
                 model,
                 args,
                 accelerator,
                 processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
                 tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
+                epoch=epoch,
             )
             master_print(f"Saved checkpoint at epoch {epoch+1}.")
         accelerator.wait_for_everyone()
 
     # Save the final weights
-    save_final_weights(
-        model,
-        args,
-        accelerator,
-        processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
-        tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
-    )
+    # save_final_weights(
+    #     model,
+    #     args,
+    #     accelerator,
+    #     processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
+    #     tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
+    # )
     # accelerator.wait_for_everyone()
 
 
