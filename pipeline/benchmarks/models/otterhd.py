@@ -47,7 +47,7 @@ class OtterHD(BaseModel):
         if self.resolution != -1:
             # resize the image to the specified resolution
             raw_image_data = raw_image_data.resize((self.resolution, self.resolution))
-            
+
         formated_prompt = f"User: {text_prompt} Assistant:"
         model_inputs = self.processor(text=formated_prompt, images=[raw_image_data], device=self.device)
         for k, v in model_inputs.items():

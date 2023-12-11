@@ -18,8 +18,8 @@ from PIL import Image, ImageFile
 from prettytable import PrettyTable
 from torch.utils.data import Dataset
 from torchvision import transforms
-from transformers import AutoProcessor
 import wandb
+import pyarrow.parquet as pq
 
 IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
@@ -126,8 +126,7 @@ class MimicitDataset(Dataset):
 
         self.instruction_format = args.instruction_format
         self.resample_frames = args.resample_frames
-        self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content. You need to answer user's questions with plans and Python codes as response.\n<</SYS>>\n\n"
-
+        self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content\n<</SYS>>\n\n"
         (self.mean, self.std) = (IDEFICS_STANDARD_MEAN, IDEFICS_STANDARD_STD) if args.model_name == "idefics" else (FLAMINGO_MEAN, FLAMINGO_STD)
         if args.model_name == "otter" or args.model_name == "fuyu":
             self.patch_resize_transform = transforms.Compose(
@@ -195,15 +194,8 @@ class MimicitDataset(Dataset):
                 cache_train_config = {key: [] for key, value in cur_mimicit_data.items()}
 
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
-            # Truncate paths for display
-            # truncated_mimicit_path = truncate_text(cur_mimicit_path)
-            # truncated_train_config_path = truncate_text(cur_train_config_path)
-            # truncated_images_path = truncate_text(cur_images_path)
             if len(task_desc) > 0:  # if with multiple task descriptions, join them with comma
                 task_desc = ",".join(task_desc)
-
-            # master_print(task_desc)
-            # truncated_task_desc = truncate_text(task_desc)
 
             table.add_row(
                 [
@@ -218,7 +210,12 @@ class MimicitDataset(Dataset):
 
             if cur_images_path != "" and cur_images_path not in loaded_images_path:
                 if cur_images_path.endswith(".parquet"):
-                    cur_df = pd.read_parquet(cur_images_path, columns=None)  # not in memory
+                    parquet_file = pq.ParquetFile(cur_images_path)
+                    dfs = []  # List to hold the DataFrames of each batch
+                    for batch in parquet_file.iter_batches(batch_size=1000):  # Adjust batch_size as needed
+                        batch_df = batch.to_pandas()
+                        dfs.append(batch_df)
+                    cur_df = pd.concat(dfs)  # Concatenate all DataFrames
                     self.images.append(cur_df)
                     loaded_images_path.add(cur_images_path)
                 elif cur_images_path.endswith(".json"):
@@ -421,43 +418,48 @@ class MimicitDataset(Dataset):
             if self.task_group in process_mapping:
                 pil_images, patch_images, all_texts = self.process_general(instruction_id, in_context_example_ids, self.task_group)
         except Exception as e:
-            print(f"Error: {e}")
-            print(f"cur_train_id: {cur_train_id}")
-            print(f"self.task_group: {self.task_group}")
-            print(f"instruction_id: {instruction_id}")
-            print(f"in_context_example_ids: {in_context_example_ids}")
+            master_print(f"Error: {e}")
+            master_print(f"cur_train_id: {cur_train_id}")
+            master_print(f"self.task_group: {self.task_group}")
+            master_print(f"instruction_id: {instruction_id}")
+            master_print(f"in_context_example_ids: {in_context_example_ids}")
             exit()
 
         if cur_task_desc != "" and self.args.with_task_description:
             all_texts = cur_task_desc + "\n" + all_texts
-        tokenized_all_text = self.tokenizer(
-            all_texts,
-            return_tensors="pt",
-            add_special_tokens=False,
-            truncation=True,
-            max_length=self.max_seq_len,  # for current 2k mpt/llama model, setting to 2048 causes error (2042 works)
-        )
-        num_tokens = tokenized_all_text["input_ids"].shape[1]
-        if num_tokens == self.max_seq_len:
-            master_print(f"{cur_train_id}'s all_texts reaches the max_seq_len.")
-            master_print(all_texts)
 
-        all_item = tokenized_all_text["input_ids"].squeeze(0)
-        all_item_mask = tokenized_all_text["attention_mask"].squeeze(0)
+        if self.args.model_name == "fuyu":
+            example = {"pil_images": pil_images, "full_text": all_texts, "task_group": self.task_group, "id": cur_train_id}
+            return example
 
-        all_item = torch.cat([self.bos_item, all_item, self.eos_item])
-        all_item_mask = torch.cat([self.bos_mask, all_item_mask, self.eos_mask])
+        else:
+            tokenized_all_text = self.tokenizer(
+                all_texts,
+                return_tensors="pt",
+                add_special_tokens=False,
+                truncation=True,
+                max_length=self.max_seq_len,  # for current 2k mpt/llama model, setting to 2048 causes error (2042 works)
+            )
+            num_tokens = tokenized_all_text["input_ids"].shape[1]
+            if num_tokens == self.max_seq_len:
+                master_print(f"OTTER: {cur_train_id}'s all_texts reaches the max_seq_len.")
+                master_print(all_texts)
 
-        example = {
-            "id": instruction_id,
-            "source": all_item,
-            "text_mask": all_item_mask,
-            "patch_images": patch_images,
-            "task_group": self.task_group,
-            "full_text": all_texts,
-            "pil_images": pil_images,
-        }
-        return example
+            all_item = tokenized_all_text["input_ids"].squeeze(0)
+            all_item_mask = tokenized_all_text["attention_mask"].squeeze(0)
+
+            all_item = torch.cat([self.bos_item, all_item, self.eos_item])
+            all_item_mask = torch.cat([self.bos_mask, all_item_mask, self.eos_mask])
+
+            example = {
+                "id": instruction_id,
+                "source": all_item,
+                "text_mask": all_item_mask,
+                "patch_images": patch_images,
+                "task_group": self.task_group,
+                "full_text": all_texts,
+            }
+            return example
 
     def __str__(self):
         return f"type: {type(self)}, length: {len(self)}"
@@ -485,22 +487,34 @@ class MimicitDataset(Dataset):
         for sample_tuple in samples:
             samples_v1.append(sample_tuple)
 
-        res_v1 = collate_fn(
-            samples_v1,
-            pad_idx=self.tokenizer.pad_token_id,
-            eos_idx=self.tokenizer.eos_token_id,
-        )
-
         if fuyu_processor:
+            res_v1 = {
+                "id": [sample["id"] for sample in samples_v1],
+                "task_group": [sample["task_group"] for sample in samples_v1],
+                "full_text": [sample["full_text"] for sample in samples_v1],
+                "pil_images": [sample["pil_images"] for sample in samples_v1],
+            }
             fuyu_data = prepare_fuyu(self.args, fuyu_processor, res_v1, resolution)
             res_v1["fuyu_data"] = fuyu_data
-        return res_v1
+            return res_v1
+        else:
+            res_v1 = collate_fn(
+                samples_v1,
+                pad_idx=self.tokenizer.pad_token_id,
+                eos_idx=self.tokenizer.eos_token_id,
+            )
+            return res_v1
 
 
 def prepare_fuyu(args, fuyu_processor, batch_data, resolution):
     if args.dynamic_resolution:
         resolution = random.choice([(448, 448), (512, 512), (768, 768)])
-    pil_images = [img[0].resize(resolution) for img in batch_data["pil_images"] if img is not None]
+
+    if all(task_group == "TEXT_ONLY" for task_group in batch_data["task_group"]):
+        pil_images = None
+    else:
+        pil_images = [img[0].resize(resolution) for img in batch_data["pil_images"] if img is not None]
+
     model_inputs = fuyu_processor(text=batch_data["full_text"], images=pil_images)
     labels = fuyu_processor.get_labels(input_ids=model_inputs["input_ids"], special_token_id=71122)
     input_ids, labels = fuyu_processor.find_and_remove_tokens(input_ids=model_inputs["input_ids"], labels=labels, token_id=71122)

@@ -66,43 +66,43 @@ except ImportError:
     IdeficsForVisionText2Text = type(None)
 
 
-def forward_pass(args, model, tokenizer, images, input_ids, attention_mask, labels, device_id, autocast_type, batch_mimicit):
+def forward_pass(args, model, tokenizer, device_id, autocast_type, batch_mimicit):
     if args.model_name == "fuyu":
-        model_inputs = batch_mimicit.pop("fuyu_data")        
+        model_inputs = batch_mimicit.pop("fuyu_data")
         for k, v in model_inputs.items():
             model_inputs[k] = v.to(device_id, non_blocking=True) if isinstance(v, torch.Tensor) else [vv.to(device_id, non_blocking=True) for vv in v]
         loss_mimicit = model(**model_inputs)[0]
         delete_tensors_from_dict(model_inputs)
     elif args.model_name == "idefics":
         # only for image model
-        max_num_images = images.shape[1]
-        pure_text = torch.all(images == 0)
+        max_num_images = batch_mimicit["images"].shape[1]
+        pure_text = torch.all(batch_mimicit["images"] == 0)
         image_attention_mask = get_image_attention_mask(
-            input_ids,
+            batch_mimicit["input_ids"],
             max_num_images,
             tokenizer,
             include_image=not pure_text,
         )
         image_attention_mask = image_attention_mask.to(device_id, non_blocking=True)
         loss_mimicit = model(
-            pixel_values=images.squeeze(2).to(autocast_type),
-            input_ids=input_ids,
-            attention_mask=attention_mask,
+            pixel_values=batch_mimicit["images"].squeeze(2).to(autocast_type),
+            input_ids=batch_mimicit["input_ids"],
+            attention_mask=batch_mimicit["attention_mask"],
             image_attention_mask=image_attention_mask,
-            labels=labels,
+            labels=batch_mimicit["labels"],
         )[0]
     elif args.model_name == "otter" or args.model_name == "flamingo":
         loss_mimicit = model(
-            vision_x=images.to(autocast_type),
-            lang_x=input_ids,
-            attention_mask=attention_mask,
-            labels=labels,
+            vision_x=batch_mimicit["images"].to(autocast_type),
+            lang_x=batch_mimicit["input_ids"],
+            attention_mask=batch_mimicit["attention_mask"],
+            labels=batch_mimicit["labels"],
         )[0]
     elif args.model_name == "llama2":
         loss_mimicit = model(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            labels=labels,
+            input_ids=batch_mimicit["input_ids"],
+            attention_mask=batch_mimicit["attention_mask"],
+            labels=batch_mimicit["labels"],
         )[0]
     else:
         raise NotImplementedError(f"Loss of model {args.model_name} not implemented.")
@@ -148,18 +148,13 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         batch_mimicit = next(dataloader_iterator)  # Fetch a batch from the chosen dataloader
         global_step = num_steps + epoch * num_batches_per_epoch
         #### MIMIC-IT FORWARD PASS ####
-        net_input = batch_mimicit.pop("net_input")
-        images = net_input.pop("patch_images").to(device_id, non_blocking=True)
-        input_ids = net_input.pop("input_ids").to(device_id, non_blocking=True)
-        attention_mask = net_input.pop("attention_masks").to(device_id, non_blocking=True)
-        labels = None  # placeholder to avoid error
-
-        # master_print(num_steps)
-        # if num_steps <= 3945:
-        #     continue
-        # master_print(batch_mimicit["full_text"])
-
         if args.model_name != "fuyu":  # design fuyu's process into it's processor, a way better design than following code.
+            #### MIMIC-IT FORWARD PASS ####
+            net_input = batch_mimicit.pop("net_input")
+            images = net_input.pop("patch_images").to(device_id, non_blocking=True)
+            input_ids = net_input.pop("input_ids").to(device_id, non_blocking=True)
+            attention_mask = net_input.pop("attention_masks").to(device_id, non_blocking=True)
+            labels = None  # placeholder to avoid error
 
             def masking(masking_number: int = -100):
                 labels = torch.empty(input_ids.shape, dtype=torch.int64).to(device_id, non_blocking=True)
@@ -198,24 +193,19 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             if args.remove_eos_token:
                 input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, endofchunk_token_id, tokenizer)
 
+            # put the processed content back into batch_mimicit
+            batch_mimicit["input_ids"] = input_ids
+            batch_mimicit["attention_mask"] = attention_mask
+            batch_mimicit["labels"] = labels
+            batch_mimicit["images"] = images
+
         with accelerator.accumulate(model):
             if num_steps == 0:
                 unwrapped_model = accelerator.unwrap_model(model)
                 master_print(f"model: {unwrapped_model.__class__.__name__}")
                 master_print(f"model dtype: {unwrapped_model.dtype if hasattr(unwrapped_model, 'dtype') else 'None'}")
 
-            loss_mimicit = forward_pass(
-                args,
-                model,
-                tokenizer,
-                images,
-                input_ids,
-                attention_mask,
-                labels,
-                device_id,
-                autocast_type,
-                batch_mimicit,
-            )
+            loss_mimicit = forward_pass(args, model, tokenizer, device_id, autocast_type, batch_mimicit)
 
             if accelerator.mixed_precision == "fp16":
                 accelerator.backward(loss_mimicit.to(device_id))
@@ -274,23 +264,23 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                             "lr": optimizer.param_groups[0]["lr"],
                             "loss_mimicit": mean_loss,
                             "global_step": global_step,
-                            # // args.gradient_accumulation_steps,
                             group_name: mean_loss,
                         },
                         commit=True,
                     )
 
+            if args.model_name != "fuyu":
+                delete_tensors_from_dict(
+                    {
+                        "other": [
+                            images,
+                            input_ids,
+                            attention_mask,
+                            labels,
+                        ]
+                    }
+                )
             delete_tensors_from_dict(batch_mimicit)
-            delete_tensors_from_dict(
-                {
-                    "other": [
-                        images,
-                        input_ids,
-                        attention_mask,
-                        labels,
-                    ]
-                }
-            )
 
         if args.rank == 0 and global_step != 0 and (args.save_steps_interval != -1) and (global_step % args.save_steps_interval == 0):
             save_checkpoint(epoch=None, global_step=global_step, model=model, args=args, accelerator=accelerator)

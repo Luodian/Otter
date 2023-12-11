@@ -8,6 +8,7 @@ import orjson
 import dask.dataframe as dd
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+
 def process_images(base64_str, resize_res=-1):
     import base64
     from PIL import Image
@@ -102,6 +103,7 @@ def main():
     dropped_keys = convert_json_to_parquet(args.input_path, args.output_path, max_partition_size)
     print(f"Number of dropped keys: {len(dropped_keys)}")
     print(f"Dropped keys: {dropped_keys}")
+
 
 if __name__ == "__main__":
     main()

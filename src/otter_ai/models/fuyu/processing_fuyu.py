@@ -362,23 +362,21 @@ class FuyuProcessor(ProcessorMixin):
             # Find the indices of the special_token_id
             indices = (seq == special_token_id).nonzero(as_tuple=False).squeeze()
             # Pair the indices and unmask the tokens between each pairt
-            try:
-                paired_indices = indices.reshape(-1, 2)
-            except Exception as e:
-                print(f"Exception: {e}")
-                print(indices)
-                import pdb;pdb.set_trace()
-                
+            paired_indices = indices.reshape(-1, 2)
             for start, end in paired_indices:
                 labels[i, start + 1 : end + 1] = seq[start + 1 : end + 1]
 
         return labels
 
-    def _right_pad_inputs_with_attention_mask(self, model_inputs: List[Dict], return_attention_mask: bool):
+    def _right_pad_inputs_with_attention_mask(self, model_inputs: List[Dict], return_attention_mask: bool, text_only: bool = False):
         max_length_input_ids = max(entry["input_ids"].shape[1] for entry in model_inputs)
-        max_length_image_patch_indices = max(entry["image_patches_indices"].shape[1] for entry in model_inputs)
+        if text_only is not True:
+            max_length_image_patch_indices = max(entry["image_patches_indices"].shape[1] for entry in model_inputs)
 
-        batched_inputs = {"input_ids": [], "image_patches": [], "image_patches_indices": [], "attention_mask": []}
+        if text_only:
+            batched_inputs = {"input_ids": [], "attention_mask": []}
+        else:
+            batched_inputs = {"input_ids": [], "image_patches": [], "image_patches_indices": [], "attention_mask": []}
 
         for entry in model_inputs:
             for key, tensor in entry.items():
@@ -400,7 +398,7 @@ class FuyuProcessor(ProcessorMixin):
                     # For image_patches, we don't pad but just append them to the list.
                     batched_inputs[key].append(tensor)
 
-                else:  # for image_patches_indices
+                elif key == "image_patches_indices":  # for image_patches_indices
                     num_padding_indices = max_length_image_patch_indices - tensor.shape[1]
                     padded_indices = torch.cat(
                         [tensor, torch.full((tensor.shape[0], num_padding_indices), self.dummy_image_index, dtype=torch.long)],
@@ -408,7 +406,11 @@ class FuyuProcessor(ProcessorMixin):
                     )
                     batched_inputs[key].append(padded_indices)
 
-        batched_keys = ["input_ids", "image_patches_indices"]
+        if text_only:
+            batched_keys = ["input_ids"]
+        else:
+            batched_keys = ["input_ids", "image_patches_indices"]
+
         if return_attention_mask:
             batched_keys.append("attention_mask")
         for key in batched_keys:
@@ -583,7 +585,7 @@ class FuyuProcessor(ProcessorMixin):
         if text is None and images is None:
             raise ValueError("You have to specify either text or images. Both cannot be None.")
         if text is not None and images is None:
-            logger.warning("You are processing a text with no associated image. Make sure it is intended.")
+            # logger.warning("You are processing a text with no associated image. Make sure it is intended.")
             self.current_processor = self.tokenizer
             text_encoding = self.tokenizer(
                 text=text,
@@ -603,6 +605,16 @@ class FuyuProcessor(ProcessorMixin):
                 return_tensors=return_tensors,
                 **kwargs,
             )
+            # Convert the input_ids and attention_mask lists into a list of dictionaries
+            text_encoding_list = []
+            for ids, mask in zip(text_encoding["input_ids"], text_encoding["attention_mask"]):
+                ids.append(self.tokenizer.vocab[BEGINNING_OF_ANSWER_STRING])
+                mask.append(1)
+                ids = torch.tensor(ids, dtype=torch.long)
+                mask = torch.tensor(mask, dtype=torch.long)
+                text_encoding_list.append({"input_ids": ids.unsqueeze(0), "attention_mask": mask.unsqueeze(0)})
+
+            text_encoding = self._right_pad_inputs_with_attention_mask(model_inputs=text_encoding_list, return_attention_mask=return_attention_mask, text_only=True)
             return text_encoding
 
         if text is None and images is not None:
