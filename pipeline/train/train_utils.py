@@ -261,12 +261,18 @@ def save_final_weights(model, args, accelerator, processor=None, tokenizer=None)
 
         save_checkpoint(checkpoint_dict, save_path, is_main_process, accelerator.save)
 
-
-def get_weights_for_dataloaders(dataloaders):
+def precompute_dataloader_sequence(dataloaders, num_steps, seed):
+    # Seed the random number generator for reproducibility
+    rng = np.random.default_rng(seed)
+    
+    # Calculate the total number of samples and the weights for each dataloader
     total_samples = sum(len(dataloader.dataset) for dataloader in dataloaders)
     weights = [len(dataloader.dataset) / total_samples for dataloader in dataloaders]
-    return weights
-
+    
+    # Generate a sequence of dataloader indices according to the weights
+    sequence = rng.choice(len(dataloaders), size=num_steps, p=weights)
+    
+    return sequence
 
 def get_next_dataloader(dataloader_iterators, weights):
     chosen_dataloader_index = np.random.choice(len(dataloader_iterators), p=weights)
