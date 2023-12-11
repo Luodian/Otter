@@ -408,6 +408,8 @@ def main():
                 model = get_peft_model(model, lora_config)
                 model.print_trainable_parameters()
 
+            model.gradient_checkpointing_enable()
+
         elif args.model_name.lower() == "debug_model":
             model = torch.nn.Linear(100, 100)
             tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-chat-hf")
