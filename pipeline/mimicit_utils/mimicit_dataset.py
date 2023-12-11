@@ -224,7 +224,7 @@ class MimicitDataset(Dataset):
                     for batch in parquet_file.iter_batches(batch_size=1000):  # Adjust batch_size as needed
                         batch_df = batch.to_pandas()
                         dfs.append(batch_df)
-                    cur_df = pd.concat(dfs, ignore_index=True)  # Concatenate all DataFrames
+                    cur_df = pd.concat(dfs)  # Concatenate all DataFrames
                     self.images.append(cur_df)
                     loaded_images_path.add(cur_images_path)
                 elif cur_images_path.endswith(".json"):
