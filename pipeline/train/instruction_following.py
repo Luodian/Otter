@@ -69,6 +69,7 @@ except ImportError:
 def forward_pass(args, model, tokenizer, device_id, autocast_type, batch_mimicit):
     if args.model_name == "fuyu":
         model_inputs = batch_mimicit.pop("fuyu_data")
+        batch_mimicit["cur_batch_max_tokens"] = model_inputs["input_ids"].shape[1]
         for k, v in model_inputs.items():
             model_inputs[k] = v.to(device_id, non_blocking=True) if isinstance(v, torch.Tensor) else [vv.to(device_id, non_blocking=True) for vv in v]
         loss_mimicit = model(**model_inputs)[0]
@@ -133,7 +134,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
     model.train()
 
-    # setup logging
+    # Setup Logging
     step_time_m = AverageMeter()  # time for one optimizer step (> 1 batch if using gradient accum)
     data_time_m = AverageMeter()  # avg time to load one batch of both C4 AND laion (= 1 batch regardless of gradient accum)
     end = time.time()
@@ -198,6 +199,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             batch_mimicit["attention_mask"] = attention_mask
             batch_mimicit["labels"] = labels
             batch_mimicit["images"] = images
+            batch_mimicit["cur_batch_max_tokens"] = input_ids.shape[1]
 
         with accelerator.accumulate(model):
             if num_steps == 0:
@@ -214,8 +216,6 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
             #### BACKWARD PASS ####
             mean_loss = loss_mimicit.detach().mean()
-            cur_batch_max_tokens = input_ids.shape[1]
-
             def mask_embedding(m):
                 if m.weight.requires_grad:
                     zero_mask = torch.zeros_like(m.weight.grad)
@@ -245,6 +245,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             step_time_m.update(time.time() - end)
             end = time.time()
             if accelerator.sync_gradients and args.rank == 0 and args.report_to_wandb:
+                cur_batch_max_tokens = batch_mimicit["cur_batch_max_tokens"]
                 # compute within rank 0
                 mimicit_samples_per_second = args.gradient_accumulation_steps * args.batch_size * args.world_size / step_time_m.sum
                 mimicit_samples_per_second_per_gpu = args.gradient_accumulation_steps * args.batch_size / step_time_m.sum
