@@ -13,6 +13,7 @@ import time
 import json
 import pytz
 import datetime
+import requests
 
 utc_plus_8 = pytz.timezone("Asia/Singapore")  # You can also use 'Asia/Shanghai', 'Asia/Taipei', etc.
 utc_now = pytz.utc.localize(datetime.datetime.utcnow())
