@@ -1,0 +1,17 @@
+VIDEO_TEXT:
+  M3IT_MSRVTT:
+    mimicit_path: /home/luodian/azure_storage/otter/mimicit/M3IT/M3IT_MSRVTT_instructions.json
+    images_path: /home/luodian/azure_storage/otter/mimicit/Parquets/M3IT_MSRVTT.parquet
+    num_samples: -1
+  M3IT_MSRVTTQA:
+    mimicit_path: /home/luodian/azure_storage/otter/mimicit/M3IT/M3IT_MSRVTTQA_instructions.json
+    images_path: /home/luodian/azure_storage/otter/mimicit/Parquets/M3IT_MSRVTTQA.parquet
+    num_samples: -1
+  M3IT_MSVDQA:
+    mimicit_path: /home/luodian/azure_storage/otter/mimicit/M3IT/M3IT_MSVDQA_instructions.json
+    images_path: /home/luodian/azure_storage/otter/mimicit/Parquets/M3IT_MSVDQA.parquet
+    num_samples: -1
+  M3IT_SS:
+    mimicit_path: /home/luodian/azure_storage/otter/mimicit/M3IT/M3IT_SS_instructions.json
+    images_path: /home/luodian/azure_storage/otter/mimicit/Parquets/M3IT_SS.parquet
+    num_samples: -1

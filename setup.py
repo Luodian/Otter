@@ -7,7 +7,7 @@ with open("requirements.txt") as f:
 
 setup(
     name="otter-ai",
-    version="0.0.0-alpha-7",
+    version="0.0.0-alpha-4",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     install_requires=requirements,

@@ -747,6 +747,7 @@ class OtterModel(OtterPreTrainedModel):
 
 class OtterForConditionalGeneration(OtterPreTrainedModel):
     config_class = OtterConfig
+    _no_split_modules = ["OtterPerceiverBlock", "CLIPEncoderLayer", "OtterLayer", "CLIPVisionModel"]
 
     def __init__(
         self,

@@ -2,9 +2,9 @@
 
 ❗❗❗We changed previous `images.json` to `images.parquet`. They are all containing multiple `key:base64` pairs but the later one would consume far less CPU memory and faster during loading with `pandas.Dataframe`. It enables us to train with larger datasets more conviently.
 
-We mainly use one integrate dataset format and we refer it to MIMIC-IT format since. You can convert any of your datasets into the same format like the following mentioned (two files for each dataset).
+We mainly use one integrate dataset format and we refer it to MIMIC-IT format since.
 
-We use the following data yaml file to indicate the data group and dataset we used in training. Within this data yaml file, for each dataset, you could assign the path of the instruction json file and the image parquet file, and also the number of samples you want to use. The number of samples within each group will be uniformly sampled, and the `number_samples / total_numbers`` will decide sampling ratio of each dataset.
+The mimic-it format contains the following data yaml file. Within this data yaml file, you could assign the path of the instruction json file and the image parquet file, and also the number of samples you want to use. The number of samples within each group will be uniformly sampled, and the `number_samples / total_numbers`` will decide sampling ratio of each dataset.
 
 ```yaml
 IMAGE_TEXT: # Group name should be in [IMAGE_TEXT, TEXT_ONLY, IMAGE_TEXT_IN_CONTEXT]

@@ -45,12 +45,8 @@ class OtterHD(BaseModel):
         # make sure the image is in RGB format and resize to match the width
         raw_image_data = raw_image_data.convert("RGB")
         if self.resolution != -1:
-            width, height = raw_image_data.size
-            short_edge = min(width, height)
-            scaling_factor = self.resolution / short_edge
-            new_width = math.ceil(width * scaling_factor)
-            new_height = math.ceil(height * scaling_factor)
-            raw_image_data = raw_image_data.resize((new_width, new_height), Image.ANTIALIAS)
+            # resize the image to the specified resolution
+            raw_image_data = raw_image_data.resize((self.resolution, self.resolution))
 
         formated_prompt = f"User: {text_prompt} Assistant:"
         model_inputs = self.processor(text=formated_prompt, images=[raw_image_data], device=self.device)

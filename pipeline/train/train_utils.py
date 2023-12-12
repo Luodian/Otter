@@ -228,49 +228,51 @@ def save_checkpoint(checkpoint_dict, save_path, is_main_process, save_function):
 
 def save_pretrained(component, save_path, is_main_process, save_function):
     """Helper function to save pretrained components."""
-    component.save_pretrained(save_path, is_main_process=is_main_process, save_function=save_function, safe_serialization=False)
+    component.save_pretrained(save_path, is_main_process=is_main_process, save_function=save_function, safe_serialization=False, max_shard_size="5GB")
 
-
-def save_final_weights(model, args, accelerator, processor=None, tokenizer=None):
+def save_hf_weights(model, args, accelerator, processor=None, tokenizer=None, epoch=None):
     """Save final weights of the model."""
     unwrapped_model = accelerator.unwrap_model(model)
     is_main_process = accelerator.is_main_process
-    save_path = args.external_save_dir
-    model_name = args.model_name.lower()
-
+    save_path = args.external_save_dir if epoch is None else f"{args.external_save_dir}/epoch_{epoch}"
     unwrapped_model.config.save_pretrained(save_path)
+    save_pretrained(unwrapped_model, save_path, is_main_process, accelerator.save)
+    
+    model_name = args.model_name.lower()
+    if "idefics" in model_name or "fuyu" in model_name:
+        save_pretrained(processor, save_path, is_main_process, accelerator.save)
 
-    if args.save_hf_model:
-        save_pretrained(unwrapped_model, save_path, is_main_process, accelerator.save)
+    if "llama2" in model_name:
+        save_pretrained(tokenizer, save_path, is_main_process, accelerator.save)
+    # else:
+    #     # Save based on the distributed type
+    #     if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
+    #         checkpoint_dict = accelerator.get_state_dict(model)
+    #     else:
+    #         checkpoint_dict = get_checkpoint(model=unwrapped_model)
 
-        if "idefics" in model_name or "fuyu" in model_name:
-            save_pretrained(processor, save_path, is_main_process, accelerator.save)
+    #     if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
+    #         trainable_params_name = [name for name, p in unwrapped_model.named_parameters() if p.requires_grad]
+    #         checkpoint_dict = {k: v for k, v in checkpoint_dict.items() if k in trainable_params_name}
 
-        if "llama2" in model_name:
-            save_pretrained(tokenizer, save_path, is_main_process, accelerator.save)
-    else:
-        # Save based on the distributed type
-        if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
-            checkpoint_dict = accelerator.get_state_dict(model)
-        else:
-            checkpoint_dict = get_checkpoint(model=unwrapped_model)
+    #     save_checkpoint(checkpoint_dict, save_path, is_main_process, accelerator.save)
 
-        if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
-            trainable_params_name = [name for name, p in unwrapped_model.named_parameters() if p.requires_grad]
-            checkpoint_dict = {k: v for k, v in checkpoint_dict.items() if k in trainable_params_name}
-
-        save_checkpoint(checkpoint_dict, save_path, is_main_process, accelerator.save)
-
-
-def get_weights_for_dataloaders(dataloaders):
+def precompute_dataloader_sequence(dataloaders, num_steps, seed):
+    # Seed the random number generator for reproducibility
+    rng = np.random.default_rng(seed)
+    
+    # Calculate the total number of samples and the weights for each dataloader
     total_samples = sum(len(dataloader.dataset) for dataloader in dataloaders)
     weights = [len(dataloader.dataset) / total_samples for dataloader in dataloaders]
-    return weights
-
+    
+    # Generate a sequence of dataloader indices according to the weights
+    sequence = rng.choice(len(dataloaders), size=num_steps, p=weights)
+    
+    return sequence
 
 def get_next_dataloader(dataloader_iterators, weights):
     chosen_dataloader_index = np.random.choice(len(dataloader_iterators), p=weights)
-    return dataloader_iterators[chosen_dataloader_index],chosen_dataloader_index
+    return dataloader_iterators[chosen_dataloader_index]
 
 
 def find_and_remove_tokens(input_tensor, labels_tensor, attention_mask_tensor, token_id, tokenizer):

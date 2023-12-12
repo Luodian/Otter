@@ -32,14 +32,14 @@
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FLuodian%2Fotter&count_bg=%23FFA500&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false)](https://hits.seeyoufarm.com)
 [![litellm](https://img.shields.io/badge/%20%F0%9F%9A%85%20liteLLM-OpenAI%7CAzure%7CAnthropic%7CPalm%7CCohere-blue?color=green)](https://github.com/BerriAI/litellm)
 
-[Otter Paper](https://arxiv.org/abs/2305.03726) | [OtterHD Paper](https://arxiv.org/abs/2311.04219) | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425) | [Demo & Checkpoints@Otter Teamspace](https://huggingface.co/Otter-AI)
+[Otter Paper](https://arxiv.org/abs/2305.03726) | [OtterHD Paper]() | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425) | [Demo & Checkpoints@Otter Teamspace](https://huggingface.co/Otter-AI)
 
 **Corresponding Checkpoints:**
 
 - [Otter-AI/OtterHD-8B](https://huggingface.co/Otter-AI/OtterHD-8B)
 - [luodian/OTTER-Image-MPT7B](https://huggingface.co/luodian/OTTER-Image-MPT7B)
 - [luodian/OTTER-Video-LLaMA7B-DenseCaption](https://huggingface.co/luodian/OTTER-Video-LLaMA7B-DenseCaption)
-- [More at Our Research Group->Otters Embrace AI](https://huggingface.co/Otter-AI)
+- [More at Otter-AI](https://huggingface.co/Otter-AI)
 
 For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.org.cn/header/openxlab_models.svg)](https://openxlab.org.cn/models/detail/YuanhanZhang/OTTER-Image-MPT7B) | [![Open in OpenXLab](https://cdn-static.openxlab.org.cn/header/openxlab_models.svg)](https://openxlab.org.cn/models/detail/YuanhanZhang/OTTER-Video-LLaMA7B-DenseCaption)
 

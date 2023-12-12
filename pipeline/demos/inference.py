@@ -27,6 +27,9 @@ def parse_args():
     parser.add_argument("--checkpoint", type=str, help="The path to the checkpoint.")
     parser.add_argument("--output_dir", type=str, help="The dir path to the output file.", default="./logs")
     parser.add_argument("--yaml_file", type=str, help="The dir path to the eval yaml, contains question, answer pairs.", default="")
+    parser.add_argument("--cuda_id", type=int, help="The CUDA Device.")
+    parser.add_argument("--resolution", type=int, help="The resolution of the image.")
+    parser.add_argument("--max_new_tokens", type=int, help="The maximum number of new tokens to generate.")
     args = parser.parse_args()
     return args
 
@@ -73,12 +76,22 @@ def eval_yaml(args, yaml_file, model):
 
 def main():
     args = parse_args()
+    kwargs = {}
+    if args.cuda_id is not None:
+        kwargs["cuda_id"] = args.cuda_id
+    if args.checkpoint is not None:
+        kwargs["checkpoint"] = args.checkpoint
+    if args.resolution is not None:
+        kwargs["resolution"] = args.resolution
+    if args.max_new_tokens is not None:
+        kwargs["max_new_tokens"] = args.max_new_tokens
+
     if args.model_name == "otter":
-        model = TestOtter(checkpoint=args.checkpoint)
+        model = TestOtter(**kwargs)
     elif args.model_name == "otterhd":
-        model = TestOtterHD(checkpoint=args.checkpoint)
+        model = TestOtterHD(**kwargs)
     elif args.model_name == "idefics":
-        model = TestIdefics(checkpoint=args.checkpoint)
+        model = TestIdefics(**kwargs)
     else:
         raise NotImplementedError(f"model_name: {args.model_name} is not implemented.")
 
