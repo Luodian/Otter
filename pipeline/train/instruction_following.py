@@ -291,8 +291,6 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             gc.collect()
             torch.cuda.empty_cache()
 
-    del unwrapped_model
-
 
 def main():
     args = parse_args()
