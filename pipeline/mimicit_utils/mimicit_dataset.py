@@ -380,13 +380,18 @@ class MimicitDataset(Dataset):
         if task_group == "TEXT_ONLY":
             patch_images = torch.zeros(3, self.patch_image_size, self.patch_image_size).unsqueeze(0).unsqueeze(0)
             pil_images = [Image.fromarray(patch_images[0, 0].numpy().astype(np.uint8).transpose(1, 2, 0))]
-        elif task_group == "IMAGE_TEXT_IN_CONTEXT" or task_group == "IMAGE_TEXT":
-            pil_images, patch_images = self.process_images(image_ids, is_video=False)
+        elif task_group == "IMAGE_TEXT":
+            pil_images, patch_images = self.process_images(all_image_ids, is_video=False, in_context=False)
             patch_images = patch_images.unsqueeze(0)
+        elif task_group == "IMAGE_TEXT_IN_CONTEXT":
+            pil_images, patch_images = self.process_images(all_image_ids, is_video=False, in_context=True)
         elif task_group == "VIDEO_TEXT":
-            pil_images, patch_images = self.process_images(image_ids, is_video=True)
+            pil_images, patch_images = self.process_images(all_image_ids, is_video=True)
+        else:
+            raise NotImplementedError
 
-        return pil_images, patch_images, all_texts.rstrip("\n")
+        # for fuyu's special format, the processor would add one x04 to the end of all_texts.
+        return pil_images, patch_images, all_texts.rstrip("\n").rstrip("\x04")
 
     def process_image_text_pair(self, index):
         cur_train_id = self.train_data_list[index]
@@ -497,6 +502,7 @@ class MimicitDataset(Dataset):
             res_v1["fuyu_data"] = fuyu_data
             return res_v1
         else:
+            # import pdb;pdb.set_trace()
             res_v1 = collate_fn(
                 samples_v1,
                 pad_idx=self.tokenizer.pad_token_id,
@@ -522,18 +528,6 @@ def prepare_fuyu(args, fuyu_processor, batch_data, resolution):
     del batch_data["pil_images"]
     return model_inputs
 
-
-def prepare_fuyu(args, fuyu_processor, batch_data, resolution):
-    if args.dynamic_resolution:
-        resolution = random.choice([(448, 448), (512, 512), (768, 768)])
-    pil_images = [img[0].resize(resolution) for img in batch_data["pil_images"] if img is not None]
-    model_inputs = fuyu_processor(text=batch_data["full_text"], images=pil_images)
-    labels = fuyu_processor.get_labels(input_ids=model_inputs["input_ids"], special_token_id=71122)
-    input_ids, labels = fuyu_processor.find_and_remove_tokens(input_ids=model_inputs["input_ids"], labels=labels, token_id=71122)
-    model_inputs["input_ids"] = input_ids
-    model_inputs["labels"] = labels
-    del batch_data["pil_images"]
-    return model_inputs
 
 
 def collate_fn(samples, pad_idx, eos_idx):
@@ -564,7 +558,7 @@ def collate_fn(samples, pad_idx, eos_idx):
             "attention_masks": src_tokens_masks,
         },
         "full_text": [s["full_text"] for s in samples],
-        "pil_images": [s["pil_images"] for s in samples],
+        # "pil_images": [s["pil_images"] for s in samples],
     }
     # larger_incontext_num = max([s["patch_images"].size(0) for s in samples])
     try:

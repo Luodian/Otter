@@ -169,6 +169,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             labels = None  # placeholder to avoid error
 
             def masking(masking_number: int = -100):
+                import pdb;pdb.set_trace()
                 labels = torch.empty(input_ids.shape, dtype=torch.int64).to(device_id, non_blocking=True)
                 for i in range(input_ids.shape[0]):
                     labels[i] = torch.where(input_ids[i] == eos_token_id, eos_token_id, masking_number)
@@ -211,6 +212,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             batch_mimicit["images"] = images
             batch_mimicit["cur_batch_max_tokens"] = input_ids.shape[1]
 
+        import pdb;pdb.set_trace()
         with accelerator.accumulate(model):
             if num_steps == 0:
                 unwrapped_model = accelerator.unwrap_model(model)
