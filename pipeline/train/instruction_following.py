@@ -38,7 +38,7 @@ from pipeline.train.train_utils import (
     master_print,
     random_seed,
     save_checkpoint,
-    save_final_weights,
+    save_hf_weights,
     verify_yaml,
     find_and_remove_tokens,
     delete_tensors_from_dict,
@@ -217,7 +217,11 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 master_print(f"model: {unwrapped_model.__class__.__name__}")
                 master_print(f"model dtype: {unwrapped_model.dtype if hasattr(unwrapped_model, 'dtype') else 'None'}")
 
-            loss_mimicit = forward_pass(args, model, tokenizer, device_id, autocast_type, batch_mimicit)
+            try:
+                loss_mimicit = forward_pass(args, model, tokenizer, device_id, autocast_type, batch_mimicit)
+            except Exception as e:
+                master_print(batch_mimicit)
+                continue
 
             if accelerator.mixed_precision == "fp16":
                 accelerator.backward(loss_mimicit.to(device_id))
@@ -499,24 +503,25 @@ def main():
         accelerator.wait_for_everyone()
         if args.save_ckpt_each_epoch:
             # save_checkpoint(epoch, model, args, accelerator)
-            save_final_weights(
+            save_hf_weights(
                 model,
                 args,
                 accelerator,
                 processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
                 tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
+                epoch=epoch,
             )
             master_print(f"Saved checkpoint at epoch {epoch+1}.")
         accelerator.wait_for_everyone()
 
     # Save the final weights
-    save_final_weights(
-        model,
-        args,
-        accelerator,
-        processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
-        tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
-    )
+    # save_final_weights(
+    #     model,
+    #     args,
+    #     accelerator,
+    #     processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
+    #     tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
+    # )
     # accelerator.wait_for_everyone()
 
 
