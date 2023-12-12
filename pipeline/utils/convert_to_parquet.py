@@ -66,7 +66,7 @@ def convert_json_to_parquet(input_path, output_path, max_partition_size):
         progress_bar.update(1)  # Update the progress bar here
         return key, resized_base64
 
-    with ThreadPoolExecutor(max_workers=256) as executor:
+    with ThreadPoolExecutor(max_workers=128) as executor:
         future_to_key = {executor.submit(process_item, key, value): key for key, value in data_dict.items()}
 
         for future in as_completed(future_to_key):
