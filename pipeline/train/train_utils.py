@@ -226,9 +226,9 @@ def save_checkpoint(checkpoint_dict, save_path, is_main_process, save_function):
     save_function(checkpoint_dict, f"{save_path}/final_weights.pt", is_main_process=is_main_process)
 
 
-def save_pretrained(component, save_path, is_main_process, save_function):
-    """Helper function to save pretrained components."""
-    component.save_pretrained(save_path, is_main_process=is_main_process, save_function=save_function, safe_serialization=False, max_shard_size="5GB")
+# def save_pretrained(component, save_path, is_main_process, save_function):
+#     """Helper function to save pretrained components."""
+#     component.save_pretrained(save_path, is_main_process=is_main_process, save_function=save_function, safe_serialization=False, max_shard_size="5GB")
 
 def save_hf_weights(model, args, accelerator, processor=None, tokenizer=None, epoch=None):
     """Save final weights of the model."""
@@ -236,14 +236,13 @@ def save_hf_weights(model, args, accelerator, processor=None, tokenizer=None, ep
     is_main_process = accelerator.is_main_process
     save_path = args.external_save_dir if epoch is None else f"{args.external_save_dir}/epoch_{epoch}"
     unwrapped_model.config.save_pretrained(save_path)
-    save_pretrained(unwrapped_model, save_path, is_main_process, accelerator.save)
+    unwrapped_model.save_pretrained(save_path, is_main_process=is_main_process, accelerator=accelerator, max_shard_size="5GB")
     
     model_name = args.model_name.lower()
     if "idefics" in model_name or "fuyu" in model_name:
-        save_pretrained(processor, save_path, is_main_process, accelerator.save)
-
+        processor.save_pretrained(save_path, is_main_process=is_main_process, accelerator=accelerator)
     if "llama2" in model_name:
-        save_pretrained(tokenizer, save_path, is_main_process, accelerator.save)
+        tokenizer.save_pretrained(save_path, is_main_process=is_main_process, accelerator=accelerator)
     # else:
     #     # Save based on the distributed type
     #     if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
