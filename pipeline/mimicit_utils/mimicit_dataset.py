@@ -227,9 +227,7 @@ class MimicitDataset(Dataset):
                     loaded_images_path.add(cur_images_path)
                 else:
                     master_print(f"Error: {cur_images_path} is not supported!")
-                    import pdb
-
-                    pdb.set_trace()
+                    import pdb; pdb.set_trace()
                 del cur_df
 
             self.train_data_list.extend(resampled_train)
