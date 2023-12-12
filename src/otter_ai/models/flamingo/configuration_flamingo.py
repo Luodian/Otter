@@ -7,9 +7,11 @@ from transformers.models.auto import CONFIG_MAPPING
 from transformers.models.clip import CLIPVisionConfig
 import sys
 
-from ..falcon.configuration_RW import RWConfig
-from ..mpt.configuration_mpt import MPTConfig
-from ..mpt_redpajama.configuration_mosaic_gpt import MosaicGPTConfig
+
+sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/src/otter_ai/models")
+from falcon.configuration_RW import RWConfig
+from mpt.configuration_mpt import MPTConfig
+from mpt_redpajama.configuration_mosaic_gpt import MosaicGPTConfig
 
 
 logger = logging.get_logger(__name__)

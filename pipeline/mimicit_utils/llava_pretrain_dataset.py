@@ -13,6 +13,7 @@ from io import BytesIO
 import pandas as pd
 import numpy as np
 import orjson
+import json
 import torch
 from PIL import Image, ImageFile
 from prettytable import PrettyTable
@@ -36,8 +37,6 @@ Image.MAX_IMAGE_PIXELS = None
 
 sys.path.append("../..")
 from pipeline.train.train_utils import master_print, truncate_text
-
-import yaml
 
 
 @contextlib.contextmanager
@@ -97,7 +96,7 @@ def extract_rgb_number(path):
     return -1  # Return -1 if 'rgb{x}' is not found
 
 
-class MimicitDataset(Dataset):
+class LlavaPretrainDataset(Dataset):
     def __init__(self, args, dataset_info, task_group=""):
         self.args = args
         self.tokenizer = args.tokenizer
@@ -115,6 +114,7 @@ class MimicitDataset(Dataset):
         for key, value in dataset_info.items():
             self.task_names.append(key)
             self.mimicit_paths.append(value.get("mimicit_path", ""))
+            # import pdb;pdb.set_trace()
             self.num_samples_list.append(value.get("num_samples", 0))
             self.train_config_paths.append(value.get("train_config_path", ""))
             self.images_paths.append(value.get("images_path", ""))
@@ -181,20 +181,26 @@ class MimicitDataset(Dataset):
             self.task_description,
         ):
             # Load the dataset
+            # import pdb;pdb.set_trace()
             assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!"
 
-            with open(cur_mimicit_path, "rb") as f:
-                cur_mimicit_data = orjson.loads(f.read())["data"]
-                self.dataset.update(cur_mimicit_data)
-
+            with open(cur_mimicit_path) as f:
+                cur_mimicit_data = json.load(f)
+            for _ in cur_mimicit_data:
+                if len(_["conversations"]) > 2:
+                    import pdb;pdb.set_trace() 
+                for cur_conv in _["conversations"]:
+                    if cur_conv["from"] == "gpt":
+                        cur_answer = cur_conv["value"]
+                        break
+                # import pdb;pdb.set_trace()
+                self.dataset[_["id"]] = {
+                    "image_ids": [_["image"]],
+                    "answer": cur_answer
+                }
+            # import pdb;pdb.set_trace()
             # Load the train_config
-            if cur_train_config_path != "":
-                with open(cur_train_config_path, "rb") as f:
-                    cache_train_config = orjson.loads(f.read())
-            elif args.populate_rel_ins:
-                cache_train_config = {key: value["rel_ins_ids"] for key, value in cur_mimicit_data.items()}
-            else:
-                cache_train_config = {key: [] for key, value in cur_mimicit_data.items()}
+            cache_train_config = {key: [] for key, value in self.dataset.items()}
 
             resampled_train = resample_data(list(cache_train_config.keys()), sampled_examples)
 
@@ -219,10 +225,10 @@ class MimicitDataset(Dataset):
                 ]
             )
 
-            if cur_images_path != "" and cur_images_path.endswith(".parquet") and cur_images_path not in loaded_images_path:
-                cur_df = pd.read_parquet(cur_images_path, columns=None)  # not in memory
-                self.images.append(cur_df)
-                loaded_images_path.add(cur_images_path)
+            # if cur_images_path != "" and cur_images_path.endswith(".parquet") and cur_images_path not in loaded_images_path:
+            #     cur_df = pd.read_parquet(cur_images_path, columns=None)  # not in memory
+            #     self.images.append(cur_df)
+            #     loaded_images_path.add(cur_images_path)
 
             self.train_data_list.extend(resampled_train)
             self.train_config.update(cache_train_config)
@@ -295,42 +301,25 @@ class MimicitDataset(Dataset):
         assert len(image_ids) == resample_frames
         return image_ids
 
-    def process_text_formatting(self, cur_instruction, cur_answer, instruction_format, insert_image=False, is_text_only=False):
-        if instruction_format == "llama2":
-            image_placeholder = "<image>" if not is_text_only else ""
-            prefix = f"[INST]{image_placeholder}\n" if insert_image else "[INST]"
-            return f"{prefix}{cur_instruction}[/INST]<answer>{cur_answer}<|endofchunk|>"
-        elif instruction_format == "idefics":
-            image_placeholder = "<fake_token_around_image><image><fake_token_around_image>" if not is_text_only else ""
-            prefix = f"User:{image_placeholder}" if insert_image else "User:"
-            return f"{prefix}{cur_instruction}<end_of_utterance>\nAssistant:<answer>{cur_answer}<end_of_utterance>\n"
-        elif instruction_format == "simple":
-            image_placeholder = "<image>" if not is_text_only else ""
-            prefix = f"{image_placeholder}User:" if insert_image else "User:"
-            return f"{prefix}{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
-        elif instruction_format == "fuyu":
-            return f"User:{cur_instruction} Assistant:\x04 {cur_answer}"
+    def process_text_formatting(self, cur_answer, insert_image=False, is_text_only=False):
+        image_placeholder = "<image>" if not is_text_only else ""
+        prefix = f"{image_placeholder}" if insert_image else ""
+        return f"{prefix}{cur_answer}<|endofchunk|>"
+ 
 
     def process_images(self, image_ids, is_video=False):
         pil_images = []
         patch_images = torch.tensor([])
-        if is_video:
-            image_ids = self.resample_frames_fn(image_ids, self.resample_frames)
-        # import pdb;pdb.set_trace()
-        for cur_image_id in image_ids:
-            cur_image_str = self.images.loc[cur_image_id.upper()]["base64"]
-            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image_str))).convert("RGB")
-            if self.args.model_name == self.args.model_name == "fuyu":
-                pil_images.append(cur_image)  # fuyu doesnt need following process.
-            else:
-                cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
-                if len(patch_images) == 0:
-                    patch_images = cur_patch_image
-                else:
-                    patch_images = torch.cat((patch_images, cur_patch_image))
 
-        if is_video:
-            patch_images = patch_images.unsqueeze(0)
+        for cur_image_id in image_ids:
+            # import pdb;pdb.set_trace()
+            cur_image = Image.open(f"{self.images_paths[0]}/{cur_image_id}").convert("RGB")
+
+            cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
+            if len(patch_images) == 0:
+                patch_images = cur_patch_image
+            else:
+                patch_images = torch.cat((patch_images, cur_patch_image))
 
         return pil_images, patch_images
 
@@ -339,43 +328,27 @@ class MimicitDataset(Dataset):
         all_instruction_ids = in_context_example_ids + [instruction_id]
 
         for idx, cur_instruction_id in enumerate(all_instruction_ids):
-            cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
-            cur_instruction = self.pre_question(cur_instruction, keep_symbols=self.keep_symbols)
             cur_answer = self.pre_answer(cur_answer, keep_symbols=self.keep_symbols)
 
-            if task_group == "IMAGE_TEXT_IN_CONTEXT":
-                cur_text = self.process_text_formatting(cur_instruction, cur_answer, self.instruction_format, insert_image=True, is_text_only=False)
-            else:
-                # only insert image for the first instruction, used for conversation.
-                cur_text = self.process_text_formatting(
-                    cur_instruction,
-                    cur_answer,
-                    self.instruction_format,
-                    insert_image=(idx == 0),
-                    is_text_only=(task_group == "TEXT_ONLY"),
-                )
+            cur_text = self.process_text_formatting(
+                cur_answer,
+                insert_image=(idx == 0),
+                is_text_only=(task_group == "TEXT_ONLY"),
+            )
             all_texts += cur_text
 
-        # all_texts = all_texts.rstrip("\n")
-        # patch_images = torch.tensor([])
-        if task_group == "TEXT_ONLY":
-            patch_images = torch.zeros(3, self.patch_image_size, self.patch_image_size).unsqueeze(0).unsqueeze(0)
-            pil_images = [Image.fromarray(patch_images[0, 0].numpy().astype(np.uint8).transpose(1, 2, 0))]
-        elif task_group == "IMAGE_TEXT_IN_CONTEXT" or task_group == "IMAGE_TEXT":
-            pil_images, patch_images = self.process_images(image_ids, is_video=False)
-            patch_images = patch_images.unsqueeze(0)
-        elif task_group == "VIDEO_TEXT":
-            pil_images, patch_images = self.process_images(image_ids, is_video=True)
+        pil_images, patch_images = self.process_images(image_ids, is_video=False)
+        patch_images = patch_images.unsqueeze(0)
 
         return pil_images, patch_images, all_texts.rstrip("\n")
 
     def process_image_text_pair(self, index):
         cur_train_id = self.train_data_list[index]
-        if cur_train_id in self.dataset and "instruction" in self.dataset[cur_train_id] and "answer" in self.dataset[cur_train_id]:
-            (instruction_id, instruction, answer, in_context_example_ids) = (
+        # if cur_train_id in self.dataset and "instruction" in self.dataset[cur_train_id] and "answer" in self.dataset[cur_train_id]:
+        if cur_train_id in self.dataset and "answer" in self.dataset[cur_train_id]:
+            (instruction_id, answer, in_context_example_ids) = (
                 cur_train_id,
-                self.dataset[cur_train_id]["instruction"],
                 self.dataset[cur_train_id]["answer"],
                 self.train_config[cur_train_id],
             )
@@ -383,8 +356,7 @@ class MimicitDataset(Dataset):
             print(f"Error: {cur_train_id} is invalid!")
             exit()
         image_ids = self.dataset[cur_train_id]["image_ids"] if self.dataset[cur_train_id].get("image_ids", None) is not None else []  # handling for text-only data without image_ids
-        # if "VG" not in image_ids[0]:
-        #     return "123"
+
         cur_task_desc = self.task_description[self.task_mapping[cur_train_id]]
         if len(cur_task_desc) > 0:
             cur_task_desc = random.choice(cur_task_desc)
@@ -392,12 +364,13 @@ class MimicitDataset(Dataset):
         process_mapping = {
             "VIDEO_TEXT": "process_general_videoqa",
             "TEXT_ONLY": "process_general_text",
-            "IMAGE_TEXT": "process_general_imageqa",
+            "IMAGE_TEXT": "process_general",
             "IMAGE_TEXT_IN_CONTEXT": "process_in_context_imageqa",
         }
-
+        # import pdb;pdb.set_trace()
         try:
             if self.task_group in process_mapping:
+                # import pdb;pdb.set_trace()
                 pil_images, patch_images, all_texts = self.process_general(instruction_id, image_ids, in_context_example_ids, self.task_group)
         except Exception as e:
             print(f"Error: {e}")
@@ -578,6 +551,7 @@ def collate_tokens(
         copy_tensor(v, res[i][size - len(v) :] if left_pad else res[i][: len(v)])
     return res
 
+import yaml
 
 def preload_dataset(path):
     dataset_info = {
@@ -613,7 +587,6 @@ def preload_dataset(path):
 
 if __name__ == "__main__":
     import argparse
-    from tqdm import tqdm
 
     parser = argparse.ArgumentParser(description="Main training script for the model")
 
@@ -623,9 +596,8 @@ if __name__ == "__main__":
     args.seed = 0
     args.patch_image_size = 336 
     args.max_seq_len = 128
-    args.instruction_format = "simple"
+    args.instruction_format = "pretrain"
     args.resample_frames = 1
-    args.populate_rel_ins = False
 
     args.rank = 1
     args.model_name = "otter" 
@@ -635,8 +607,7 @@ if __name__ == "__main__":
 
     args.tokenizer = text_tokenizer
 
-    dataset_info = preload_dataset("/mnt/petrelfs/zhangyuanhan/Otter/shared_scripts/llava_sft_noconv_nogrounp.yaml")
-    dataset = MimicitDataset(args, dataset_info["IMAGE_TEXT"], "IMAGE_TEXT")
-    for _ in tqdm(dataset):
-        pass
-        # print(_)
+    dataset_info = preload_dataset("/mnt/petrelfs/zhangyuanhan/Otter/shared_scripts/llava_pretrain.yaml")
+    dataset = LlavaPretrainDataset(args, dataset_info["IMAGE_TEXT"], "IMAGE_TEXT")
+    for _ in dataset:
+        print(_)

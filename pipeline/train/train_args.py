@@ -42,7 +42,7 @@ def parse_args():
         "--instruction_format",
         type=str,
         default="simple",
-        choices=["simple", "llama2", "idefics", "fuyu"],
+        choices=["simple", "llama2", "idefics", "fuyu","pretrain"],
         help="simple is for mpt/llama1, rest are in different instruction templates.",
     )
     parser.add_argument(
@@ -114,7 +114,7 @@ def parse_args():
         default=2048,
         help="the maximum src sequence length",
     )
-    parser.add_argument("--patch-image-size", type=int, default=224)
+    parser.add_argument("--patch_image_size", type=int, default=224)
     parser.add_argument("--resample_frames", type=int, default=32)
     # this could potentially save 33GB of all model parameters for otter-9b, including the language and vision model.
     parser.add_argument("--save_hf_model", default=False, action="store_true")

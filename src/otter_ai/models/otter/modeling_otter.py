@@ -14,12 +14,16 @@ from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.auto import AutoModel, AutoModelForCausalLM, AutoTokenizer
 
-from pipeline.utils.modeling_value_head import AutoModelForCausalLMWithValueHead
+# from pipeline.utils.modeling_value_head import AutoModelForCausalLMWithValueHead
 
-from ..falcon.modelling_RW import RWForCausalLM
-from ..mpt.modeling_mpt import MPTForCausalLM
-from ..mpt_redpajama.mosaic_gpt import MosaicGPT
-from .configuration_otter import OtterConfig
+import sys
+
+sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/src/otter_ai/models/otter/")
+sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/src/otter_ai/models")
+from configuration_otter import OtterConfig
+from falcon.modelling_RW import RWForCausalLM
+from mpt.modeling_mpt import MPTForCausalLM
+from mpt_redpajama.mosaic_gpt import MosaicGPT
 
 # The package importlib_metadata is in a different place, depending on the python version.
 if sys.version_info < (3, 8):

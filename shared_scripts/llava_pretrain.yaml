@@ -1,0 +1,8 @@
+IMAGE_TEXT: # Group name should be in [IMAGE_TEXT, TEXT_ONLY, IMAGE_TEXT_IN_CONTEXT]
+  LLavaPretrain: # LLaVA Detailed Description, dataset name can be assigned at any name you want
+      mimicit_path: /mnt/petrelfs/zhangyuanhan/LLaVA/playground/data/LLaVA-Pretrain/blip_laion_cc_sbu_558k.json # Path of the instruction json file
+      images_path: /mnt/petrelfs/zhangyuanhan/LLaVA/playground/data/LLaVA-Pretrain/images # Path of the image parquet file
+      num_samples: -1 # Number of samples you want to use, -1 means use all samples, if not set, default is -1.
+
+
+

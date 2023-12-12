@@ -25,8 +25,8 @@ from peft import LoraConfig, TaskType, get_peft_model, PeftModel
 import wandb
 
 sys.path.append("../..")
+# from transformers import AutoProcessor, AutoTokenizer, FuyuImageProcessor
 from transformers import AutoProcessor, AutoTokenizer
-
 # from src.otter_ai.models.fuyu.modeling_fuyu import FuyuForCausalLM
 # from src.otter_ai.models.fuyu.processing_fuyu import FuyuProcessor
 
@@ -148,18 +148,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         if num_steps == num_batches_per_epoch:
             break
         data_time_m.update(time.time() - end)
-
-        # import pdb;pdb.set_trace()
-        chosen_dataloader_index = torch.tensor(0).to(device_id)
-
-        if args.rank == 0:
-            dataloader_iterator,chosen_dataloader_index = get_next_dataloader(dataloader_iterators, weights)
-            chosen_dataloader_index = torch.tensor(chosen_dataloader_index).to(device_id)
-            torch.distributed.broadcast(chosen_dataloader_index,args.rank)
-        else:
-            torch.distributed.recv(chosen_dataloader_index,0)
-            dataloader_iterator = dataloader_iterators[chosen_dataloader_index.item()]
-
+        dataloader_iterator = get_next_dataloader(dataloader_iterators, weights)
         batch_mimicit = next(dataloader_iterator)  # Fetch a batch from the chosen dataloader
         global_step = num_steps + epoch * num_batches_per_epoch
 
@@ -168,48 +157,19 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         images = net_input.pop("patch_images").to(device_id, non_blocking=True)
         input_ids = net_input.pop("input_ids").to(device_id, non_blocking=True)
         attention_mask = net_input.pop("attention_masks").to(device_id, non_blocking=True)
-        labels = None  # placeholder to avoid error
-
-        if args.model_name != "fuyu":  # design fuyu's process into it's processor, a way better design than following code.
-
-            def masking(masking_number: int = -100):
-                labels = torch.empty(input_ids.shape, dtype=torch.int64).to(device_id, non_blocking=True)
-                for i in range(input_ids.shape[0]):
-                    labels[i] = torch.where(input_ids[i] == eos_token_id, eos_token_id, masking_number)
-                    answer_token_ids_all = torch.where(input_ids[i] == answer_token_id)[0]
-                    endofchunk_token_ids_all = torch.where(input_ids[i] == endofchunk_token_id)[0]
-
-                    j = 0  # Counter for endofchunk_token_ids
-                    for answer_token_idx in answer_token_ids_all:
-                        # Find the closest endofchunk_token_id that is greater than answer_token_id
-                        while j < len(endofchunk_token_ids_all) and endofchunk_token_ids_all[j] < answer_token_idx:
-                            j += 1
-
-                        if j < len(endofchunk_token_ids_all):
-                            endofchunk_token_idx = endofchunk_token_ids_all[j]
-                            labels[i, answer_token_idx + 1 : endofchunk_token_idx + 1] = input_ids[i, answer_token_idx + 1 : endofchunk_token_idx + 1]
-
-                            # Increment j for the next iteration
-                            j += 1
-
-                    for answer_token_idx, endofchunk_token_idx in zip(answer_token_ids_all, endofchunk_token_ids_all):
-                        labels[i, answer_token_idx + 1 : endofchunk_token_idx + 1] = input_ids[i, answer_token_idx + 1 : endofchunk_token_idx + 1]
-
-                labels[:, 0] = masking_number
-                if args.model_name == "idefics" and fake_token_image_exists:
-                    labels[labels == fake_token_image_token_id] = masking_number
-
-                return labels
-
-            labels = masking()
-
-            if args.remove_answer_token:
-                input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, answer_token_id, tokenizer)  # find and remove certain tokens from input_ids, labels, and attention_mask
-
-            if args.remove_eos_token:
-                input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, endofchunk_token_id, tokenizer)
+        
+        labels = input_ids.clone()
+        labels[labels == tokenizer.pad_token_id] = -100
+        labels[:, 0] = -100
+        labels[labels == media_token_id] = -100
+        labels[labels == endofchunk_token_id] = -100
 
         # import pdb;pdb.set_trace()
+        if args.remove_answer_token:
+            input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, answer_token_id, tokenizer)  # find and remove certain tokens from input_ids, labels, and attention_mask
+
+        if args.remove_eos_token:
+            input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, endofchunk_token_id, tokenizer)
 
         with accelerator.accumulate(model):
             if num_steps == 0:
@@ -471,7 +431,7 @@ def main():
             name=args.run_name,
         )
 
-    mimicit_loaders = get_data(args, image_processor, tokenizer, "mimicit")
+    mimicit_loaders = get_data(args, image_processor, tokenizer, "llava_pretrain")
     total_training_steps = sum(len(dataloader) for dataloader in mimicit_loaders) * args.num_epochs
     resume_from_epoch = 0
     args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name

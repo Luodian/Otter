@@ -31,6 +31,7 @@ import os
 import yaml
 from PIL import Image, ImageFile
 
+from pipeline.mimicit_utils.llava_pretrain_dataset import LlavaPretrainDataset
 from pipeline.mimicit_utils.mimicit_dataset import MimicitDataset
 from pipeline.train.train_utils import DistributedProxySampler
 
@@ -665,7 +666,7 @@ def preload_dataset(args):
     return dataset_info
 
 
-from src.otter_ai.models.fuyu.processing_fuyu import FuyuProcessor
+# from src.otter_ai.models.fuyu.processing_fuyu import FuyuProcessor
 from functools import partial
 
 
@@ -695,10 +696,51 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
         sampler = RandomSampler(dataset, replacement=True, num_samples=len(dataset))
         if args.distributed_type == "DEEPSPEED" or args.distributed_type == "MULTI_GPU":
             sampler = DistributedProxySampler(sampler, num_replicas=args.world_size, rank=args.rank)
-        if isinstance(image_processor, FuyuProcessor):
-            collate_fn = partial(dataset.collate, fuyu_processor=image_processor, resolution=args.image_resolution)
-        else:
-            collate_fn = dataset.collate
+        # if isinstance(image_processor, FuyuProcessor):
+        #     collate_fn = partial(dataset.collate, fuyu_processor=image_processor, resolution=args.image_resolution)
+        # else:
+        collate_fn = dataset.collate
+        dataloader = torch.utils.data.DataLoader(
+            dataset,
+            sampler=sampler,
+            batch_size=args.batch_size,
+            num_workers=args.workers,
+            pin_memory=True,
+            drop_last=True,
+            collate_fn=collate_fn,
+        )
+        dataloaders.append(dataloader)
+
+    return dataloaders
+
+
+def get_llava_pretrain_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
+    args.task = "pretrain"
+    args.tokenizer = tokenizer
+    unified_datasets = []
+    dataset_info = preload_dataset(args)
+    # import pdb;pdb.set_trace()
+    # Converting multiple types of mimic-it datasets into a unified format dataset
+    for key, item in dataset_info.items():
+        if item != {}:  # if the category is not empty
+            unified_dataset = LlavaPretrainDataset(args, dataset_info=dataset_info[key], task_group=key)
+            unified_datasets.append(unified_dataset)
+
+    # round_fn = math.floor if floor else math.ceil
+    # global_batch_size = args.batch_size * args.world_size
+
+    # num_samples = args.train_num_samples  # 8
+    # num_samples = sum([len(dataset) for dataset in unified_datasets])
+    # num_batches = round_fn(num_samples / global_batch_size)  # 2
+    # num_samples = num_batches * global_batch_size  # 8
+
+    dataloaders = []
+    for dataset in unified_datasets:
+        sampler = RandomSampler(dataset, replacement=True, num_samples=len(dataset))
+        if args.distributed_type == "DEEPSPEED" or args.distributed_type == "MULTI_GPU":
+            sampler = DistributedProxySampler(sampler, num_replicas=args.world_size, rank=args.rank)
+        collate_fn = dataset.collate
         dataloader = torch.utils.data.DataLoader(
             dataset,
             sampler=sampler,
@@ -722,6 +764,8 @@ def get_dataset_fn(dataset_type):
         return get_mimicit_dataset
     elif dataset_type == "cc3m":
         return get_cc3m_dataset
+    elif dataset_type == "llava_pretrain":
+        return get_llava_pretrain_dataset
     else:
         raise ValueError(f"Unsupported dataset type: {dataset_type}")
 

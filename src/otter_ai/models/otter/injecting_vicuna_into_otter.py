@@ -7,9 +7,9 @@ from tqdm import tqdm
 import sys
 
 
-sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/src/otter_ai/models/flamingo/")
-from configuration_flamingo import FlamingoConfig
-from modeling_flamingo import FlamingoForConditionalGeneration
+sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/src/otter_ai/models/otter/")
+from configuration_otter import OtterConfig
+from modeling_otter  import OtterForConditionalGeneration
 from transformers import CLIPVisionModel
 
 # import pdb;pdb.set_trace() #model.lang_encoder.model.embed_tokens.weight
@@ -49,12 +49,12 @@ elif model_choice == "7B":
         f"{root_dir}/pytorch_model-00001-of-00002.bin",
         f"{root_dir}/pytorch_model-00002-of-00002.bin",
     ]
-    save_path = f"{save_root_dir}/flamingo_vicuna-7B-v1.5_clip-vit-large-patch14-336_init"
+    save_path = f"{save_root_dir}/otter_vicuna-7B-v1.5_clip-vit-large-patch14-336_init"
 else:
     raise ValueError("Invalid model_choice. Choose either '33B' or '7B'.")
 
-config = FlamingoConfig.from_json_file(config_file)
-model = FlamingoForConditionalGeneration(config=config)
+config = OtterConfig.from_json_file(config_file)
+model = OtterForConditionalGeneration(config=config)
 
 # load flamingo's vision encoder from last checkpoint.
 # you can visit https://huggingface.co/luodian/openflamingo-9b-hf/tree/main to download the checkpoint.
@@ -103,12 +103,12 @@ load_msg = model.lang_encoder.load_state_dict(
     save_state_dict_1,
     False,
 )
-
+# import pdb;pdb.set_trace()
 # # Reshape the token embedding to 32002 for compatible
 model.lang_encoder.resize_token_embeddings(32002)
 # print incompatible keys
 print(load_msg[1])
-import pdb;pdb.set_trace()
+# import pdb;pdb.set_trace()
 
 print(f"Saving model to {save_path}...")
 model.save_pretrained(save_path, max_shard_size="10GB")

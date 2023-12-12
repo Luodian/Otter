@@ -1,0 +1,32 @@
+# IMAGE_TEXT:
+#   LA_MIX_COCO:
+#     mimicit_path: /mnt/petrelfs/share_data/zhangyuanhan/m3it/LA_MIX/LA_MIX_COCO.json
+#     images_path: /mnt/petrelfs/share_data/zhangyuanhan/m3it/LA_MIX/LA_MIX_COCO_Images.parquet
+#     train_config_path: /mnt/petrelfs/share_data/zhangyuanhan/m3it/LA_MIX/LA_MIX_COCO_train.json
+#     num_samples: -1
+#   LA_MIX_GQA:
+#     mimicit_path: /mnt/petrelfs/share_data/zhangyuanhan/m3it/LA_MIX/LA_MIX_GQA.json
+#     images_path: /mnt/petrelfs/share_data/zhangyuanhan/m3it/LA_MIX/LA_MIX_GQA_Images.parquet
+#     train_config_path: /mnt/petrelfs/share_data/zhangyuanhan/m3it/LA_MIX/LA_MIX_GQA_train.json
+#     num_samples: -1
+#   LA_MIX_OCRQA:
+#     mimicit_path: /mnt/petrelfs/share_data/zhangyuanhan/m3it/LA_MIX/LA_MIX_OCR_VQA.json
+#     images_path: /mnt/petrelfs/share_data/zhangyuanhan/m3it/LA_MIX/LA_MIX_OCR_VQA_Images.parquet
+#     train_config_path: /mnt/petrelfs/share_data/zhangyuanhan/m3it/LA_MIX/LA_MIX_OCR_VQA_train.json
+#     num_samples: -1
+#   LA_MIX_TEXTVQA:
+#     mimicit_path: /mnt/petrelfs/share_data/zhangyuanhan/m3it/LA_MIX/LA_MIX_TEXTVQA.json
+#     images_path: /mnt/petrelfs/share_data/zhangyuanhan/m3it/LA_MIX/LA_MIX_TEXTVQA_Images.parquet
+#     train_config_path: /mnt/petrelfs/share_data/zhangyuanhan/m3it/LA_MIX/LA_MIX_TEXTVQA_train.json
+#     num_samples: -1
+#   LA_MIX_VG:
+#     mimicit_path: /mnt/petrelfs/share_data/zhangyuanhan/m3it/LA_MIX/LA_MIX_VG.json
+#     images_path: /mnt/petrelfs/share_data/zhangyuanhan/m3it/LA_MIX/LA_MIX_VG_Images.parquet
+#     train_config_path: /mnt/petrelfs/share_data/zhangyuanhan/m3it/LA_MIX/LA_MIX_VG_train.json
+#     num_samples: -1
+
+TEXT_ONLY:
+  LA_MIX_TEXT:
+    mimicit_path: /mnt/petrelfs/share_data/zhangyuanhan/m3it/LA_MIX/LA_MIX_TEXT.json
+    train_config_path: /mnt/petrelfs/share_data/zhangyuanhan/m3it/LA_MIX/LA_MIX_TEXT_train.json
+    num_samples: -1

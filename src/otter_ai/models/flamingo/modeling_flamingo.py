@@ -11,10 +11,14 @@ from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.auto import AutoModel, AutoModelForCausalLM, AutoTokenizer
 
-from .configuration_flamingo import FlamingoConfig
-from ..falcon.modelling_RW import RWForCausalLM
-from ..mpt.modeling_mpt import MPTForCausalLM
-from ..mpt_redpajama.mosaic_gpt import MosaicGPT
+import sys
+
+sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/src/otter_ai/models/flamingo/")
+sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter/src/otter_ai/models")
+from configuration_flamingo import FlamingoConfig
+from falcon.modelling_RW import RWForCausalLM
+from mpt.modeling_mpt import MPTForCausalLM
+from mpt_redpajama.mosaic_gpt import MosaicGPT
 import torch.distributed as dist
 
 # from .configuration_flamingo import FlamingoConfig

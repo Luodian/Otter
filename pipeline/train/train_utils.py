@@ -270,7 +270,7 @@ def get_weights_for_dataloaders(dataloaders):
 
 def get_next_dataloader(dataloader_iterators, weights):
     chosen_dataloader_index = np.random.choice(len(dataloader_iterators), p=weights)
-    return dataloader_iterators[chosen_dataloader_index]
+    return dataloader_iterators[chosen_dataloader_index],chosen_dataloader_index
 
 
 def find_and_remove_tokens(input_tensor, labels_tensor, attention_mask_tensor, token_id, tokenizer):
