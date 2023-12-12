@@ -217,7 +217,11 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 master_print(f"model: {unwrapped_model.__class__.__name__}")
                 master_print(f"model dtype: {unwrapped_model.dtype if hasattr(unwrapped_model, 'dtype') else 'None'}")
 
-            loss_mimicit = forward_pass(args, model, tokenizer, device_id, autocast_type, batch_mimicit)
+            try:
+                loss_mimicit = forward_pass(args, model, tokenizer, device_id, autocast_type, batch_mimicit)
+            except Exception as e:
+                master_print(batch_mimicit)
+                continue
 
             if accelerator.mixed_precision == "fp16":
                 accelerator.backward(loss_mimicit.to(device_id))
