@@ -396,8 +396,8 @@ def main():
                     model = model.merge_and_unload()
 
                 lora_config = LoraConfig(
-                    r=16,
-                    lora_alpha=8,
+                    r=64,
+                    lora_alpha=32,
                     lora_dropout=0.05,
                     task_type=TaskType.CAUSAL_LM,
                     target_modules=["query_key_value", "dense", "dense_h_to_4h", "dense_4h_to_h", "lm_head"],
@@ -509,7 +509,7 @@ def main():
                 accelerator,
                 processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
                 tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
-                epoch=epoch,
+                epoch=epoch + 1,
             )
             master_print(f"Saved checkpoint at epoch {epoch+1}.")
         accelerator.wait_for_everyone()

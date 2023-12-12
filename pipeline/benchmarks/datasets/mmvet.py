@@ -13,7 +13,6 @@ import time
 import json
 import pytz
 import datetime
-from Levenshtein import distance
 
 utc_plus_8 = pytz.timezone("Asia/Singapore")  # You can also use 'Asia/Shanghai', 'Asia/Taipei', etc.
 utc_now = pytz.utc.localize(datetime.datetime.utcnow())
@@ -31,6 +30,43 @@ What is x in the equation? | -1 <AND> -5 | x = -1 or x = -5 | 1.0
 Can you explain this meme? | This meme is poking fun at the fact that the names of the countries Iceland and Greenland are misleading. Despite its name, Iceland is known for its beautiful green landscapes, while Greenland is mostly covered in ice and snow. The meme is saying that the person has trust issues because the names of these countries do not accurately represent their landscapes. | The meme talks about Iceland and Greenland. It's pointing out that despite their names, Iceland is not very icy and Greenland isn't very green. | 0.4
 Can you explain this meme? | This meme is poking fun at the fact that the names of the countries Iceland and Greenland are misleading. Despite its name, Iceland is known for its beautiful green landscapes, while Greenland is mostly covered in ice and snow. The meme is saying that the person has trust issues because the names of these countries do not accurately represent their landscapes. | The meme is using humor to point out the misleading nature of Iceland's and Greenland's names. Iceland, despite its name, has lush green landscapes while Greenland is mostly covered in ice and snow. The text 'This is why I have trust issues' is a playful way to suggest that these contradictions can lead to distrust or confusion. The humor in this meme is derived from the unexpected contrast between the names of the countries and their actual physical characteristics. | 1.0
 """
+
+
+def get_chat_response(prompt, api_key, model, temperature=0.0, max_tokens=3, patience=5, sleep_time=15):
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    messages = [
+        {"role": "user", "content": prompt},
+    ]
+
+    payload = {"model": model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}
+
+    while patience > 0:
+        try:
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=30,
+            )
+            response.raise_for_status()
+            response_data = response.json()
+
+            content = response_data["choices"][0]["message"]["content"].strip()
+            if content:
+                return content, response_data["model"]
+
+        except Exception as e:
+            print(f"Error: {e}")
+            if "Rate limit" in str(e):
+                print("Sleeping due to rate limit...")
+                time.sleep(sleep_time)
+            patience -= 1
+
+    return "", ""
 
 
 class MMVetDataset(BaseEvalDataset):
@@ -124,7 +160,6 @@ class MMVetDataset(BaseEvalDataset):
 
     def _evaluate(self, model):
         model_results_file, grade_file, cap_score_file, cap_int_score_file = self.get_output_file_name(model)
-
         if os.path.exists(grade_file):
             with open(grade_file, "r") as f:
                 grade_results = json.load(f)
@@ -157,22 +192,7 @@ class MMVetDataset(BaseEvalDataset):
                         print(f"# Response: {model_pred}")
                         print(f"# Ground Truth: {line['answer']}")
 
-                    question = (
-                        self.prompt
-                        + "\n"
-                        + " | ".join(
-                            [
-                                line["instruction"],
-                                line["answer"].replace("<AND>", " <AND> ").replace("<OR>", " <OR> "),
-                                model_pred,
-                                "",
-                            ]
-                        )
-                    )
-                    messages = [
-                        {"role": "user", "content": question},
-                    ]
-
+                    question = f"{self.prompt}\n{line['instruction']} | {line['answer'].replace('<AND>', ' <AND> ').replace('<OR>', ' <OR> ')} | {model_pred} |"
                     if id not in grade_results:
                         sample_grade = {"model": [], "content": [], "score": []}
                     else:
@@ -182,57 +202,26 @@ class MMVetDataset(BaseEvalDataset):
                     temperature = 0.0
 
                     while not grade_sample_run_complete:
-                        try:
-                            response = self.client.chat.completions.create(model=self.gpt_model, max_tokens=3, temperature=temperature, messages=messages, timeout=15)
-                            content = response["choices"][0]["message"]["content"]
-                            flag = True
-                            try_time = 1
-                            while flag:
-                                try:
-                                    content = content.split(" ")[0].strip()
-                                    score = float(content)
-                                    if score > 1.0 or score < 0.0:
-                                        assert False
-                                    flag = False
-                                except:
-                                    question = (
-                                        self.prompt
-                                        + "\n"
-                                        + " | ".join(
-                                            [
-                                                line["instruction"],
-                                                line["answer"].replace("<AND>", " <AND> ").replace("<OR>", " <OR> "),
-                                                model_pred,
-                                                "",
-                                            ]
-                                        )
-                                        + "\nPredict the correctness of the answer (digit): "
-                                    )
-                                    messages = [
-                                        {"role": "user", "content": question},
-                                    ]
-                                    response = self.client.chat.completions.create(model=self.gpt_model, max_tokens=3, temperature=temperature, messages=messages, timeout=15)
-                                    content = response["choices"][0]["message"]["content"]
-                                    try_time += 1
-                                    temperature += 0.5
-                                    print(f"{id} try {try_time} times")
-                                    print(content)
-                                    if try_time > 5:
-                                        score = 0.0
-                                        flag = False
-                            grade_sample_run_complete = True
-                        except Exception as e:
-                            # gpt4 may have token rate limit
-                            print(e)
-                            print("sleep 15s")
-                            time.sleep(15)
+                        content, model_name = get_chat_response(question, self.api_key, self.gpt_model, temperature=temperature)
+                        if content:
+                            try:
+                                content = content.split(" ")[0].strip()
+                                score = float(content)
+                                if 0.0 <= score <= 1.0:
+                                    grade_sample_run_complete = True
+                            except ValueError:
+                                temperature += 0.5
+                                print(f"{id} try again with increased temperature")
+                                if temperature > 2.5:  # Assuming a max temperature threshold
+                                    score = 0.0
+                                    grade_sample_run_complete = True
 
                     if len(sample_grade["model"]) >= j + 1:
-                        sample_grade["model"][j] = response["model"]
+                        sample_grade["model"][j] = model_name
                         sample_grade["content"][j] = content
                         sample_grade["score"][j] = score
                     else:
-                        sample_grade["model"].append(response["model"])
+                        sample_grade["model"].append(model_name)
                         sample_grade["content"].append(content)
                         sample_grade["score"].append(score)
                         sample_grade["query"] = line["instruction"]
@@ -251,8 +240,6 @@ class MMVetDataset(BaseEvalDataset):
         counter2["total"] = self.len_data
 
         for k, v in grade_results.items():
-            # if sub_set is not None and k not in sub_set:
-            #     continue
             for i in range(self.num_run):
                 score = v["score"][i]
                 caps = set(self.caps[k])
