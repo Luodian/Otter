@@ -4,11 +4,10 @@ from transformers import FuyuPreTrainedModel, FuyuConfig, AutoModelForCausalLM
 
 try:
     from .modeling_persimmon import PersimmonForCausalLM
-
     print("Using local PersimmonForCausalLM with Flash Attention")
-except ImportError:
+except ImportError as e:
+    print(f"Import Error: {e}")
     from transformers import PersimmonForCausalLM
-
     print("Using transformers PersimmonForCausalLM without Flash Attention")
 
 from typing import List, Optional, Tuple, Union
