@@ -72,7 +72,7 @@ def convert_json_to_parquet(input_path, output_path, max_partition_size):
         for future in as_completed(future_to_key):
             key = future_to_key[future]
             try:
-                resized_data_dict[key] = future.result()
+                resized_data_dict[key] = future.result()[1] # The result is a tuple (key, resized_base64)
             except Exception as e:
                 print(f"Warning: Failed to process key {key}. Error: {e}")
                 dropped_keys.append(key)
