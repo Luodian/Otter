@@ -486,6 +486,14 @@ def main():
     model.train()
     # Main Training Loop
     for epoch in range(resume_from_epoch, args.num_epochs):
+        save_hf_weights(
+            model,
+            args,
+            accelerator,
+            processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
+            tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
+            epoch=epoch + 1,
+        )
         train_one_epoch(
             args=args,
             model=model,

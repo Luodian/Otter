@@ -5,7 +5,6 @@ import json
 from tqdm import tqdm
 import argparse
 import orjson
-import dask.dataframe as dd
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
@@ -81,8 +80,8 @@ def convert_json_to_parquet(input_path, output_path, max_partition_size):
     # Close the progress bar after all tasks are done
     progress_bar.close()
 
-    ddf = dd.from_pandas(pd.DataFrame.from_dict(resized_data_dict, orient="index", columns=["base64"]), npartitions=nparitions)
-    ddf.to_parquet(output_path, engine="pyarrow")
+    df = pd.DataFrame.from_dict(resized_data_dict, orient="index", columns=["base64"])
+    df.to_parquet(output_path, engine="pyarrow")
 
     end_time = time.time()
     print(f"Converting {input_path} to parquet takes {end_time - start_time} seconds.")
