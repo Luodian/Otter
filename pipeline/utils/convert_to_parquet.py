@@ -5,7 +5,6 @@ import json
 from tqdm import tqdm
 import argparse
 import orjson
-import dask.dataframe as dd
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
