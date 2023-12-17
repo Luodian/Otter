@@ -25,9 +25,6 @@ def get_pil_image(raw_image_data) -> Image.Image:
         raise ValueError("Unsupported image data format")
 
 
-import math
-
-
 class OtterHD(BaseModel):
     def __init__(self, model_path: str = "Otter-AI/OtterHD-8B", cuda_id: int = 0, resolution: int = -1, max_new_tokens=256):
         super().__init__("otterhd", model_path)
