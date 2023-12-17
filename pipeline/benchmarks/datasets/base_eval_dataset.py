@@ -13,6 +13,7 @@ AVAILABLE_EVAL_DATASETS: Dict[str, str] = {
     "pope": "PopeDataset",
     "scienceqa": "ScienceQADataset",
     "magnifierbench": "MagnifierBenchDataset",
+    "mmmu": "MMMUDataset",
 }
 
 

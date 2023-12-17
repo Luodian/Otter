@@ -8,7 +8,7 @@ import torch
 import transformers
 from PIL import Image
 
-from otter_ai import OtterForConditionalGeneration
+from src.otter_ai import OtterForConditionalGeneration
 from .base_model import BaseModel
 
 
