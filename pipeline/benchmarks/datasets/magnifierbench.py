@@ -1,10 +1,5 @@
-import base64
-import io
-from PIL import Image
 import json
-from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix
 import os
-import numpy as np
 from datasets import load_dataset
 from typing import Union
 from .base_eval_dataset import BaseEvalDataset
