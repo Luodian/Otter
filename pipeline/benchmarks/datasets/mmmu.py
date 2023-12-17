@@ -329,7 +329,7 @@ class MMMUDataset(BaseEvalDataset):
         data_path: str = "MMMU/MMMU",
         *,
         cache_dir: Union[str, None] = None,
-        default_output_path: str = "./logs/MagBench",
+        default_output_path: str = "./logs/MMMU",
         split: str = "validation",
         subset: str = "all",
         debug: bool = False,
