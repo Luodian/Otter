@@ -152,7 +152,7 @@ def extract_answer(response, problem, quick_extract=False, api_key=None, pid=Non
         # general extraction
         try:
             full_prompt = create_test_prompt(demo_prompt, query, response)
-            extraction = get_chat_response(full_prompt, api_key=api_key, model=gpt_model, n=1, patience=5, sleep_time=5)
+            extraction = get_chat_response(full_prompt, api_key=api_key, model=gpt_model, patience=5, sleep_time=5)
             return extraction
         except Exception as e:
             print(e)
