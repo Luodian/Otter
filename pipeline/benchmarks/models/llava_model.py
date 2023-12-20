@@ -3,6 +3,9 @@ import torch
 import torchvision.transforms as T
 from torchvision.io import read_video
 
+import sys
+sys.path.append("/mnt/petrelfs/zhangyuanhan/LLaVA")
+
 from .base_model import BaseModel
 from .llava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 from .llava.conversation import conv_templates, SeparatorStyle
@@ -11,6 +14,7 @@ from .llava.utils import disable_torch_init
 from .llava.mm_utils import tokenizer_image_token, get_model_name_from_path, KeywordsStoppingCriteria
 
 default_model_path = "liuhaotian/llava-v1.5-7b"
+
 
 
 class LLaVA_Model(BaseModel):

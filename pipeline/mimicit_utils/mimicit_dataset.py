@@ -210,25 +210,25 @@ class MimicitDataset(Dataset):
                 ]
             )
 
-            if cur_images_path != "" and cur_images_path not in loaded_images_path:
-                if cur_images_path.endswith(".parquet"):
-                    parquet_file = pq.ParquetFile(cur_images_path)
-                    dfs = []  # List to hold the DataFrames of each batch
-                    for batch in parquet_file.iter_batches(batch_size=1000):  # Adjust batch_size as needed
-                        batch_df = batch.to_pandas()
-                        dfs.append(batch_df)
-                    cur_df = pd.concat(dfs)  # Concatenate all DataFrames
-                    self.images.append(cur_df)
-                    loaded_images_path.add(cur_images_path)
-                elif cur_images_path.endswith(".json"):
-                    with open(cur_images_path, "rb") as f:
-                        cur_df = pd.DataFrame(orjson.loads(f.read()))
-                    self.images.append(cur_df)
-                    loaded_images_path.add(cur_images_path)
-                else:
-                    master_print(f"Error: {cur_images_path} is not supported!")
-                    import pdb; pdb.set_trace()
-                del cur_df
+            # if cur_images_path != "" and cur_images_path not in loaded_images_path:
+            #     if cur_images_path.endswith(".parquet"):
+            #         parquet_file = pq.ParquetFile(cur_images_path)
+            #         dfs = []  # List to hold the DataFrames of each batch
+            #         for batch in parquet_file.iter_batches(batch_size=1000):  # Adjust batch_size as needed
+            #             batch_df = batch.to_pandas()
+            #             dfs.append(batch_df)
+            #         cur_df = pd.concat(dfs)  # Concatenate all DataFrames
+            #         self.images.append(cur_df)
+            #         loaded_images_path.add(cur_images_path)
+            #     elif cur_images_path.endswith(".json"):
+            #         with open(cur_images_path, "rb") as f:
+            #             cur_df = pd.DataFrame(orjson.loads(f.read()))
+            #         self.images.append(cur_df)
+            #         loaded_images_path.add(cur_images_path)
+            #     else:
+            #         master_print(f"Error: {cur_images_path} is not supported!")
+            #         import pdb; pdb.set_trace()
+            #     del cur_df
 
             self.train_data_list.extend(resampled_train)
             self.train_config.update(cache_train_config)
@@ -273,7 +273,6 @@ class MimicitDataset(Dataset):
             question = question.lstrip("\n")
             question = question.rstrip("\n")
         question = question.strip(" ").strip("\n")
-
         return question
 
     def pre_answer(self, answer, keep_symbols=True):
@@ -301,7 +300,8 @@ class MimicitDataset(Dataset):
         assert len(image_ids) == resample_frames
         return image_ids
 
-    def process_text_formatting(self, cur_instruction, cur_answer, instruction_format, insert_image=False, is_text_only=False):
+    def process_text_formatting(self, cur_instruction_id, cur_instruction, cur_answer, instruction_format, insert_image=False, is_text_only=False):
+        # import pdb;pdb.set_trace()
         if instruction_format == "llama2":
             image_placeholder = "<image>" if not is_text_only else ""
             prefix = f"[INST]{image_placeholder}\n" if insert_image else "[INST]"
@@ -313,7 +313,12 @@ class MimicitDataset(Dataset):
         elif instruction_format == "simple":
             image_placeholder = "<image>" if not is_text_only else ""
             prefix = f"{image_placeholder}User:" if insert_image else "User:"
-            return f"{prefix}{cur_instruction} GPT:<answer>{cur_answer}<|endofchunk|>"
+            if len(f"{prefix}{cur_instruction} GPT:<answer>{cur_answer}".split(" ")) > self.max_seq_len:
+                master_print(f"OTTER: {cur_instruction_id}'s all_texts reaches the max_seq_len.")
+                # import pdb;pdb.set_trace()
+            cur_text = " ".join(f"{prefix}{cur_instruction} GPT:<answer>{cur_answer}".split(" ")[:self.max_seq_len])
+            cur_text = f"{cur_text}<|endofchunk|>"
+            return cur_text
         elif instruction_format == "fuyu":
             return f"User:{cur_instruction} Assistant:\x04 {cur_answer} \x04"
 
@@ -324,8 +329,26 @@ class MimicitDataset(Dataset):
             image_ids = self.resample_frames_fn(image_ids, self.resample_frames)
 
         for cur_image_id in image_ids:
-            cur_image_str = self.images.loc[cur_image_id]["base64"]
-            cur_image = Image.open(BytesIO(base64.urlsafe_b64decode(cur_image_str))).convert("RGB")
+            # import pdb;pdb.set_trace()
+            real_cur_image_id = cur_image_id.split("_")[-1]
+            if "GQA_" in cur_image_id:
+                cur_image_path = f"/mnt/petrelfs/share_data/basemodel/dataset/multimodality/gqa/images/{real_cur_image_id}.jpg"
+            elif "COCO" in cur_image_id:
+                cur_image_path = f"/mnt/petrelfs/share_data/basemodel/dataset/multimodality/coco/train2017/{real_cur_image_id}.jpg"
+            elif "OCR_VQA" in cur_image_id:
+                cur_image_path = f"/mnt/petrelfs/zhangyuanhan/LLaVA/playground/data/ocr_vqa/images/{real_cur_image_id}.jpg"   
+            elif "TEXTVQA" in cur_image_id:   
+                cur_image_path = f"/mnt/petrelfs/share_data/basemodel/dataset/multimodality/textqa/train_images/{real_cur_image_id}.jpg"                     
+            elif "VG" in cur_image_id:
+                if "VG_100K_2_" in cur_image_id:
+                    real_cur_image_id = cur_image_id.replace("VG_IMG_","").replace("VG_100K_2_","VG_100K_2/")
+                else:
+                    real_cur_image_id = cur_image_id.replace("VG_IMG_","").replace("VG_100K_","VG_100K/")       
+                cur_image_path = f"/mnt/petrelfs/zhangyuanhan/LLaVA/playground/data/vg/{real_cur_image_id}.jpg"
+            else:
+                import pdb;pdb.set_trace()
+            # cur_image_str = self.images.loc[cur_image_id]["base64"]
+            cur_image = Image.open(cur_image_path).convert("RGB")
             if self.args.model_name == self.args.model_name == "fuyu":
                 pil_images.append(cur_image)  # fuyu doesnt need following process.
             else:
@@ -349,6 +372,7 @@ class MimicitDataset(Dataset):
         # all_image_ids.extend(image_ids)
 
         all_instruction_ids = all_instruction_ids[:3]
+        # import pdb;pdb.set_trace()
         for idx, cur_instruction_id in enumerate(all_instruction_ids):
             cur_instruction = self.dataset[cur_instruction_id]["instruction"]
             cur_answer = self.dataset[cur_instruction_id]["answer"]
@@ -365,16 +389,19 @@ class MimicitDataset(Dataset):
             else:
                 # only insert image for the first instruction, used for conversation.
                 cur_text = self.process_text_formatting(
+                    cur_instruction_id,
                     cur_instruction,
                     cur_answer,
                     self.instruction_format,
                     insert_image=(idx == 0),
                     is_text_only=(task_group == "TEXT_ONLY"),
                 )
+                # import pdb;pdb.set_trace()
             all_texts += cur_text
 
         # all_texts = all_texts.rstrip("\n")
         # patch_images = torch.tensor([])
+        # import pdb;pdb.set_trace()
         if task_group == "TEXT_ONLY":
             patch_images = torch.zeros(3, self.patch_image_size, self.patch_image_size).unsqueeze(0).unsqueeze(0)
             pil_images = [Image.fromarray(patch_images[0, 0].numpy().astype(np.uint8).transpose(1, 2, 0))]
@@ -425,8 +452,10 @@ class MimicitDataset(Dataset):
             master_print(f"self.task_group: {self.task_group}")
             master_print(f"instruction_id: {instruction_id}")
             master_print(f"in_context_example_ids: {in_context_example_ids}")
-            exit()
+            # exit()
+            return self.process_image_text_pair(index+1)
 
+        # import pdb;pdb.set_trace()
         if cur_task_desc != "" and self.args.with_task_description:
             all_texts = cur_task_desc + "\n" + all_texts
 
@@ -435,16 +464,17 @@ class MimicitDataset(Dataset):
             return example
 
         else:
+            # import pdb;pdb.set_trace()
             tokenized_all_text = self.tokenizer(
                 all_texts,
                 return_tensors="pt",
                 add_special_tokens=False,
                 truncation=True,
-                max_length=self.max_seq_len,  # for current 2k mpt/llama model, setting to 2048 causes error (2042 works)
+                # max_length=self.max_seq_len,  # for current 2k mpt/llama model, setting to 2048 causes error (2042 works)
             )
             num_tokens = tokenized_all_text["input_ids"].shape[1]
-            if num_tokens == self.max_seq_len:
-                master_print(f"OTTER: {cur_train_id}'s all_texts reaches the max_seq_len.")
+            # if num_tokens > self.max_seq_len*1.5:
+                # master_print(f"OTTER: {cur_train_id}'s all_texts reaches the max_seq_len.")
                 # master_print(all_texts)
 
             all_item = tokenized_all_text["input_ids"].squeeze(0)
@@ -484,7 +514,7 @@ class MimicitDataset(Dataset):
         Returns:
             Tuple[dict]: two mini-batch containing the data of different tasks
         """
-
+        # import pdb;pdb.set_trace()
         samples_v1 = []  # containing image-text pairs
         for sample_tuple in samples:
             samples_v1.append(sample_tuple)
@@ -529,7 +559,9 @@ def prepare_fuyu(args, fuyu_processor, batch_data, resolution):
 
 
 def collate_fn(samples, pad_idx, eos_idx):
+    # import pdb;pdb.set_trace()
     if len(samples) == 0:
+        import pdb;pdb.set_trace()
         return {}
 
     def merge(key, pad_idx, pading_size=None):
@@ -548,6 +580,7 @@ def collate_fn(samples, pad_idx, eos_idx):
     src_tokens_masks = merge("text_mask", pad_idx=0, pading_size=larger_size)
     task_groups = [s["task_group"] for s in samples]
 
+    # import pdb;pdb.set_trace()
     batch = {
         "id": ids,
         "task_group": task_groups,
@@ -649,12 +682,16 @@ def preload_dataset(path):
 if __name__ == "__main__":
     import argparse
     from tqdm import tqdm
+    from torch.utils.data import ConcatDataset, DataLoader, IterableDataset, RandomSampler, get_worker_info
+    import sys
+    sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter")
+    from pipeline.train.train_utils import DistributedProxySampler
+    from itertools import cycle
 
     parser = argparse.ArgumentParser(description="Main training script for the model")
 
     args = parser.parse_args()
     
-
     args.seed = 0
     args.patch_image_size = 336 
     args.max_seq_len = 128
@@ -667,11 +704,32 @@ if __name__ == "__main__":
 
     from transformers.models.auto import AutoTokenizer
     text_tokenizer = AutoTokenizer.from_pretrained("/mnt/petrelfs/share_data/duanhaodong/vicuna-7b-v1.5")
+    text_tokenizer.add_special_tokens({"pad_token": "<PAD>"})
 
     args.tokenizer = text_tokenizer
 
     dataset_info = preload_dataset("/mnt/petrelfs/zhangyuanhan/Otter/shared_scripts/llava_sft_noconv_nogrounp.yaml")
-    dataset = MimicitDataset(args, dataset_info["IMAGE_TEXT"], "IMAGE_TEXT")
-    for _ in tqdm(dataset):
-        pass
-        # print(_)
+    dataset = MimicitDataset(args, dataset_info["TEXT_ONLY"], "TEXT_ONLY")
+    sampler = RandomSampler(dataset, replacement=True, num_samples=len(dataset))
+    # sampler = DistributedProxySampler(sampler, num_replicas=8, rank=7)
+    # import pdb;pdb.set_trace()
+    # if isinstance(image_processor, FuyuProcessor):
+    #     collate_fn = partial(dataset.collate, fuyu_processor=image_processor, resolution=args.image_resolution)
+    # else:
+    dataloader = torch.utils.data.DataLoader(
+        dataset,
+        sampler=sampler,
+        batch_size=1,
+        num_workers=0,
+        pin_memory=True,
+        drop_last=True,
+        collate_fn=dataset.collate,
+    )
+    cycle_data = cycle(dataloader)
+    while True:
+        _ = next(cycle_data)
+        net_input = _.pop("net_input")
+    # for _ in cycle(dataloader):
+        # pass
+        # print(_["net_input"])
+        import pdb;pdb.set_trace()

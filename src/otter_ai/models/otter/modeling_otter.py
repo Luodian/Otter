@@ -516,6 +516,7 @@ class OtterLMMixin(nn.Module):
                 layer.condition_attend_previous(attend_previous)
         else:
             master_print("inavaliable text encoder")
+        # import pdb;pdb.set_trace()
         return super().forward(*input, **kwargs)  # Call the other parent's forward method
 
     def is_conditioned(self) -> bool:
@@ -968,6 +969,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             # Case: do not use caching (i.e. this is a standard forward pass);
             self._encode_vision_x(vision_x=vision_x)
 
+        # import pdb;pdb.set_trace()
         output = self.lang_encoder(
             input_ids=lang_x,
             attention_mask=attention_mask,

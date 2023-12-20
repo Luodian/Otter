@@ -15,5 +15,5 @@ main_process_port: 20333
 main_training_function: main
 mixed_precision: bf16
 num_machines: 1
-num_processes: 8
+num_processes: 4
 use_cpu: false

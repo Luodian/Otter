@@ -114,6 +114,7 @@ def forward_pass(args, model, tokenizer, device_id, autocast_type, batch_mimicit
 
 def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
     # Set up the dataloader iterators for each task group [IMAGE_TEXT, TEXT_ONLY, IMAGE_TEXT_IN_CONTEXT]
+    # import pdb;pdb.set_trace()
     dataloader_iterators = [cycle(dataloader) for dataloader in mimicit_loaders]
     num_batches_per_epoch = sum(len(dataloader) for dataloader in mimicit_loaders)
     # Precompute the sequence before starting the training loop
@@ -158,18 +159,28 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         global_step = num_steps + epoch * num_batches_per_epoch
         # dataloader_iterator = get_next_dataloader(dataloader_iterators, weights)
         dataloader_iterator = get_dataloader_from_sequence(dataloader_sequence, num_steps)
+        import pdb;pdb.set_trace()
         batch_mimicit = next(dataloader_iterator)  # Fetch a batch from the chosen dataloader
 
         if args.model_name != "fuyu":  # design fuyu's process into it's processor, a way better design than following code.
             #### MIMIC-IT FORWARD PASS ####
-            net_input = batch_mimicit.pop("net_input")
-            images = net_input.pop("patch_images").to(device_id, non_blocking=True)
-            input_ids = net_input.pop("input_ids").to(device_id, non_blocking=True)
-            attention_mask = net_input.pop("attention_masks").to(device_id, non_blocking=True)
-            labels = None  # placeholder to avoid error
+            try:
+                net_input = batch_mimicit["net_input"]
+                images = net_input["patch_images"].to(device_id, non_blocking=True)
+                input_ids = net_input["input_ids"].to(device_id, non_blocking=True)
+                attention_mask = net_input["attention_masks"].to(device_id, non_blocking=True)
+                labels = None  # placeholder to avoid error
+            except Exception as e:
+                master_print(e)
+                # print("batch_mimicit",batch_mimicit)
+                # print("dataloader_iterator":dataloader_iterator)
+                import pdb;pdb.set_trace()
+                continue
+    # pass
+    # import pdb;pdb.set_trace()
 
             def masking(masking_number: int = -100):
-                import pdb;pdb.set_trace()
+                # import pdb;pdb.set_trace()
                 labels = torch.empty(input_ids.shape, dtype=torch.int64).to(device_id, non_blocking=True)
                 for i in range(input_ids.shape[0]):
                     labels[i] = torch.where(input_ids[i] == eos_token_id, eos_token_id, masking_number)
@@ -181,7 +192,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                         # Find the closest endofchunk_token_id that is greater than answer_token_id
                         while j < len(endofchunk_token_ids_all) and endofchunk_token_ids_all[j] < answer_token_idx:
                             j += 1
-
+                        # import pdb;pdb.set_trace()
                         if j < len(endofchunk_token_ids_all):
                             endofchunk_token_idx = endofchunk_token_ids_all[j]
                             labels[i, answer_token_idx + 1 : endofchunk_token_idx + 1] = input_ids[i, answer_token_idx + 1 : endofchunk_token_idx + 1]
@@ -212,7 +223,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             batch_mimicit["images"] = images
             batch_mimicit["cur_batch_max_tokens"] = input_ids.shape[1]
 
-        import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
         with accelerator.accumulate(model):
             if num_steps == 0:
                 unwrapped_model = accelerator.unwrap_model(model)
@@ -220,8 +231,10 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 master_print(f"model dtype: {unwrapped_model.dtype if hasattr(unwrapped_model, 'dtype') else 'None'}")
 
             try:
+                # import pdb;pdb.set_trace()
                 loss_mimicit = forward_pass(args, model, tokenizer, device_id, autocast_type, batch_mimicit)
             except Exception as e:
+                # import pdb;pdb.set_trace()
                 master_print(batch_mimicit)
                 continue
 
@@ -515,14 +528,14 @@ def main():
         accelerator.wait_for_everyone()
 
     # Save the final weights
-    # save_final_weights(
-    #     model,
-    #     args,
-    #     accelerator,
-    #     processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
-    #     tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
-    # )
-    # accelerator.wait_for_everyone()
+    save_hf_weights(
+        model,
+        args,
+        accelerator,
+        processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
+        tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
+    )
+    accelerator.wait_for_everyone()
 
 
 if __name__ == "__main__":
