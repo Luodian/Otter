@@ -5,6 +5,7 @@ from datasets import load_dataset
 from .base_eval_dataset import BaseEvalDataset
 import pytz
 import datetime
+from .base_eval_dataset import get_pil_image
 
 utc_plus_8 = pytz.timezone("Asia/Singapore")  # You can also use 'Asia/Shanghai', 'Asia/Taipei', etc.
 utc_now = pytz.utc.localize(datetime.datetime.utcnow())
@@ -22,6 +23,7 @@ class MMBenchDataset(BaseEvalDataset):
         cache_dir=None,
         default_output_path="./logs/MMBench",
         debug=False,
+        prompt=None,
     ):
         super().__init__("MMBenchDataset", data_path)
         self.version = str(version)
@@ -31,6 +33,7 @@ class MMBenchDataset(BaseEvalDataset):
         if os.path.exists(self.default_output_path) is False:
             os.makedirs(self.default_output_path)
         self.sys_prompt = sys_prompt
+        self.prompt = prompt
         self.cur_datetime = utc_plus_8_time.strftime("%Y-%m-%d_%H-%M-%S")
         self.debug = debug
 
@@ -46,7 +49,8 @@ class MMBenchDataset(BaseEvalDataset):
         sorted_options = dict(sorted(options.items()))
         options_prompt = f"{self.sys_prompt}\n"
         for key, item in sorted_options.items():
-            options_prompt += f"{key}. {item}\n"
+            if pd.notna(item):
+                options_prompt += f"{key}. {item}\n"
         return options_prompt.rstrip("\n"), sorted_options
 
     def get_data(self, idx):
@@ -99,11 +103,12 @@ class MMBenchDataset(BaseEvalDataset):
 
         for idx in tqdm(range(len(self.df))):
             cur_data = self.get_data(idx)
-            cur_prompt = f"{cur_data['hint']} {cur_data['question']} {cur_data['options']}" if pd.notna(cur_data["hint"]) and cur_data["hint"] != "nan" else f"{cur_data['question']} {cur_data['options']}"
-            pred_answer = model.generate(cur_prompt, cur_data["img"])
+            query_prompt = f"{cur_data['hint']} {cur_data['question']} {cur_data['options']}" if pd.notna(cur_data["hint"]) and cur_data["hint"] != "nan" else f"{cur_data['question']} {cur_data['options']}"
+            query_image = get_pil_image(cur_data["img"])
+            pred_answer = model.generate(query_prompt, query_image)
 
             if self.debug:
-                print(f"# Query: {cur_prompt}")
+                print(f"# Query: {query_prompt}")
                 print(f"# Response: {pred_answer}")
 
             result = {

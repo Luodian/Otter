@@ -5,7 +5,6 @@ import json
 from tqdm import tqdm
 import argparse
 import orjson
-import dask.dataframe as dd
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
@@ -72,7 +71,7 @@ def convert_json_to_parquet(input_path, output_path, max_partition_size):
         for future in as_completed(future_to_key):
             key = future_to_key[future]
             try:
-                resized_data_dict[key] = future.result()
+                resized_data_dict[key] = future.result()[1] # The result is a tuple (key, resized_base64)
             except Exception as e:
                 print(f"Warning: Failed to process key {key}. Error: {e}")
                 dropped_keys.append(key)
@@ -80,10 +79,8 @@ def convert_json_to_parquet(input_path, output_path, max_partition_size):
 
     # Close the progress bar after all tasks are done
     progress_bar.close()
-
-    ddf = dd.from_pandas(pd.DataFrame.from_dict(resized_data_dict, orient="index", columns=["base64"]), npartitions=nparitions)
-    ddf.to_parquet(output_path, engine="pyarrow")
-
+    df = pd.DataFrame.from_dict(resized_data_dict, orient="index", columns=["base64"])
+    df.to_parquet(output_path, engine="pyarrow")
     end_time = time.time()
     print(f"Converting {input_path} to parquet takes {end_time - start_time} seconds.")
     return dropped_keys

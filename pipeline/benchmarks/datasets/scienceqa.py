@@ -98,13 +98,13 @@ class ScienceQADataset(BaseEvalDataset):
         print(f"ScienceQA Evaluator: Score saved to {os.path.abspath(result_file)}.")
 
 
-if __name__ == "__main__":
-    dataset = ScienceQADataset(cache_dir="/data/pufanyi/cache")
-    data = dataset.data
-    print("=============================")
-    import json
+# if __name__ == "__main__":
+#     dataset = ScienceQADataset(cache_dir="/data/pufanyi/cache")
+#     data = dataset.data
+#     print("=============================")
+#     import json
 
-    print(json.dumps(data[1], indent=4))
-    print("=============================")
-    print(build_prompt(dataset.data[1], "QCM-ALE"))
-    print("=============================")
+#     print(json.dumps(data[1], indent=4))
+#     print("=============================")
+#     print(build_prompt(dataset.data[1], "QCM-ALE"))
+#     print("=============================")

@@ -44,21 +44,18 @@ class Fuyu(BaseModel):
 
     def generate(self, text_prompt: str, raw_image_data: str):
         raw_image_data = get_pil_image(raw_image_data)
-        raw_image_data = raw_image_data.convert("RGB")
         # make sure the image is in RGB format and resize to match the width
+        raw_image_data = raw_image_data.convert("RGB")
         if self.resolution != -1:
-            width, height = raw_image_data.size
-            short_edge = min(width, height)
-            scaling_factor = self.resolution / short_edge
-            new_width = math.ceil(width * scaling_factor)
-            new_height = math.ceil(height * scaling_factor)
-            raw_image_data = raw_image_data.resize((new_width, new_height), Image.Resampling.LANCZOS)
-        # formated_prompt = f"User: {text_prompt} Assistant:"
-        model_inputs = self.processor(text=text_prompt, images=[raw_image_data], device=self.device)
-        for k, v in model_inputs.items():
-            model_inputs[k] = v.to(self.device)
+            # resize the image to the specified resolution
+            raw_image_data = raw_image_data.resize((self.resolution, self.resolution))
 
-        model_inputs["image_patches"] = model_inputs["image_patches"].to(dtype=next(self.model.parameters()).dtype)
+        formated_prompt = f"User: {text_prompt} Assistant:"
+        model_inputs = self.processor(text=formated_prompt, images=[raw_image_data], device=self.device)
+        for k, v in model_inputs.items():
+            model_inputs[k] = v.to(self.device, non_blocking=True) if isinstance(v, torch.Tensor) else [vv.to(self.device, non_blocking=True) for vv in v]
+
+        model_inputs["image_patches"][0] = model_inputs["image_patches"][0].to(dtype=next(self.model.parameters()).dtype)
         generation_output = self.model.generate(**model_inputs, max_new_tokens=self.max_new_tokens, pad_token_id=self.tokenizer.eos_token_id, bad_words_ids=self.bad_words_ids)
         generation_text = self.processor.batch_decode(generation_output, skip_special_tokens=True)
         return generation_text[0].split("\x04")[1].strip(" ").strip("\n")

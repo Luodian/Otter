@@ -628,6 +628,7 @@ class PersimmonModel(PersimmonPreTrainedModel):
                     hidden_states,
                     attention_mask,
                     position_ids,
+                    use_reentrant=False,
                 )
             else:
                 layer_outputs = decoder_layer(

@@ -236,7 +236,7 @@ def save_hf_weights(model, args, accelerator, processor=None, tokenizer=None, ep
     is_main_process = accelerator.is_main_process
     save_path = args.external_save_dir if epoch is None else f"{args.external_save_dir}/epoch_{epoch}"
     unwrapped_model.config.save_pretrained(save_path)
-    unwrapped_model.save_pretrained(save_path, is_main_process=is_main_process, accelerator=accelerator, max_shard_size="5GB")
+    unwrapped_model.save_pretrained(save_path, is_main_process=is_main_process, accelerator=accelerator, max_shard_size="5GB", safe_serialization=False)
     
     model_name = args.model_name.lower()
     if "idefics" in model_name or "fuyu" in model_name:

@@ -1,0 +1,10 @@
+datasets: 
+  - name: mmmu
+    split: validation
+    open_ended_prompt: "Answer with a short answer:"
+    multiple_choice_prompt: "Answer with the option letter from the given choices directly:"
+    subset: "all"
+    debug: True
+models:
+  - name: otter_image
+    model_path: luodian/OTTER-Image-MPT7B

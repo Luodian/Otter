@@ -14,10 +14,13 @@ import json
 import pytz
 import datetime
 import requests
+from .base_eval_dataset import get_pil_image
 
 utc_plus_8 = pytz.timezone("Asia/Singapore")  # You can also use 'Asia/Shanghai', 'Asia/Taipei', etc.
 utc_now = pytz.utc.localize(datetime.datetime.utcnow())
 utc_plus_8_time = utc_now.astimezone(utc_plus_8)
+
+API_URL = "https://api.openai.com/v1/chat/completions"
 
 MM_VET_PROMPT = """Compare the ground truth and prediction from AI models, to give a correctness score for the prediction. <AND> in the ground truth means it is totally right only when all elements in the ground truth are present in the prediction, and <OR> means it is totally right when any one element in the ground truth is present in the prediction. The correctness score is 0.0 (totally wrong), 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, or 1.0 (totally right). Just complete the last space of the correctness score.
 
@@ -46,18 +49,18 @@ def get_chat_response(prompt, api_key, model, temperature=0.0, max_tokens=3, pat
     payload = {"model": model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}
 
     while patience > 0:
+        patience -= 1
         try:
             response = requests.post(
-                "https://api.openai.com/v1/chat/completions",
+                API_URL,
                 headers=headers,
                 json=payload,
-                timeout=30,
             )
             response.raise_for_status()
             response_data = response.json()
 
             content = response_data["choices"][0]["message"]["content"].strip()
-            if content:
+            if content != "":
                 return content, response_data["model"]
 
         except Exception as e:
@@ -65,7 +68,6 @@ def get_chat_response(prompt, api_key, model, temperature=0.0, max_tokens=3, pat
             if "Rate limit" in str(e):
                 print("Sleeping due to rate limit...")
                 time.sleep(sleep_time)
-            patience -= 1
 
     return "", ""
 
@@ -187,7 +189,9 @@ class MMVetDataset(BaseEvalDataset):
                     if id in grade_results and len(grade_results[id]["score"]) >= (j + 1):
                         continue
 
-                    model_pred = model.generate(line["instruction"], line["images"][0])
+                    query_prompt = line["instruction"]
+                    query_image = get_pil_image(line["images"][0])
+                    model_pred = model.generate(query_prompt, query_image)
                     if self.debug:
                         print(f"# Query: {line['instruction']}")
                         print(f"# Response: {model_pred}")

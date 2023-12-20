@@ -19,6 +19,8 @@ utc_plus_8 = pytz.timezone("Asia/Singapore")  # You can also use 'Asia/Shanghai'
 utc_now = pytz.utc.localize(datetime.datetime.utcnow())
 utc_plus_8_time = utc_now.astimezone(utc_plus_8)
 
+API_URL = "https://api.openai.com/v1/chat/completions"
+
 demo_prompt = """
 Please read the following example. Then extract the answer from the model response and type it at the end of the prompt.
 
@@ -65,7 +67,7 @@ import json
 import ast
 
 
-def get_chat_response(promot, api_key, model="gpt-3.5-turbo", temperature=0, max_tokens=256, n=1, patience=5, sleep_time=5):
+def get_chat_response(promot, api_key, model="gpt-3.5-turbo", patience=5, sleep_time=5):
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -82,16 +84,16 @@ def get_chat_response(promot, api_key, model="gpt-3.5-turbo", temperature=0, max
         patience -= 1
         try:
             response = requests.post(
-                "https://api.openai.com/v1/chat/completions",
+                API_URL,
                 headers=headers,
-                data=json.dumps(payload),
+                json=payload,
                 timeout=30,
             )
             response.raise_for_status()
             response_data = response.json()
 
             prediction = response_data["choices"][0]["message"]["content"].strip()
-            if prediction != "" and prediction is not None:
+            if prediction != "":
                 return prediction
 
         except Exception as e:
@@ -150,7 +152,7 @@ def extract_answer(response, problem, quick_extract=False, api_key=None, pid=Non
         # general extraction
         try:
             full_prompt = create_test_prompt(demo_prompt, query, response)
-            extraction = get_chat_response(full_prompt, api_key=api_key, model=gpt_model, n=1, patience=5, sleep_time=5)
+            extraction = get_chat_response(full_prompt, api_key=api_key, model=gpt_model, patience=5, sleep_time=5)
             return extraction
         except Exception as e:
             print(e)

@@ -7,6 +7,7 @@ import contextlib
 sys.path.append("../..")
 from .models.base_model import load_model
 from .datasets.base_eval_dataset import load_dataset
+from datetime import datetime
 
 
 def get_info(info):
@@ -80,7 +81,7 @@ if __name__ == "__main__":
         "-o",
         type=str,
         help="Output file path for logging results.",
-        default="./logs/evaluation.txt",
+        default=None,
     )
     args.add_argument(
         "--cache_dir",
@@ -110,6 +111,9 @@ if __name__ == "__main__":
     if not os.path.exists(os.path.dirname(phrased_args.output)):
         os.makedirs(os.path.dirname(phrased_args.output))
 
+    if phrased_args.output is None:
+        phrased_args.output = f"./logs/{datetime.now().strftime('%Y%m%d-%H-%M')}.txt"
+        
     with open(phrased_args.output, "w") as outfile, contextlib.redirect_stdout(DualOutput(outfile, sys.stdout)):
         print("=" * 80)
         print(" " * 30 + "EVALUATION REPORT")
