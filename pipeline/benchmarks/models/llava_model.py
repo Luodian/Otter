@@ -19,12 +19,20 @@ class LLaVA_Model(BaseModel):
         model_path: str = default_model_path,
         model_base: str = None,
         model_name: str = "llava-v1.5",
-        conv_mode: str = "llava_v1",
+        conv_mode: str = "vicuna_v1",
+        temperature: float = 0.0,
+        top_p: float = None,
+        num_beams: int = 1,
+        max_new_tokens: int = 128,
     ):
         super().__init__(model_name, model_path)
         init_model_name = get_model_name_from_path(model_path)
         self.tokenizer, self.model, self.image_processor, self.context_len = load_pretrained_model(model_path, model_base, init_model_name)
         self.conv_mode = conv_mode
+        self.temperature = temperature
+        self.top_p = top_p
+        self.num_beams = num_beams
+        self.max_new_tokens = max_new_tokens
 
     def generate(self, text_prompt: str, raw_image_data: str):
         if self.model.config.mm_use_im_start_end:
@@ -46,13 +54,12 @@ class LLaVA_Model(BaseModel):
         with torch.inference_mode():
             output_ids = self.model.generate(
                 input_ids,
-                images=input_data.unsqueeze(0).half().cuda(),
-                do_sample=True,
-                temperature=0.7,
-                top_p=0.95,
-                top_k=50,
-                no_repeat_ngram_size=3,
-                max_new_tokens=512,
+                images=input_data.unsqueeze(0).to(dtype=torch.float16, device="cuda", non_blocking=True),
+                do_sample = True if self.temperature > 0 else False,
+                temperature=self.temperature,
+                top_p=self.top_p,
+                num_beams=self.num_beams,
+                max_new_tokens=self.max_new_tokens,
                 use_cache=True,
             )
 

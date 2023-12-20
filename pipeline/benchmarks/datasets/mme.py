@@ -47,6 +47,7 @@ class MMEDataset(BaseEvalDataset):
         default_output_path: str = "./logs/MME",
         split: str = "test",
         debug: bool = False,
+        prompt: str = None,
     ):
         super().__init__("MMEDataset", data_path)
 
@@ -54,6 +55,7 @@ class MMEDataset(BaseEvalDataset):
         self.cur_datetime = utc_plus_8_time.strftime("%Y-%m-%d_%H-%M-%S")
         self.data = load_dataset(data_path, split=split, cache_dir=cache_dir)
         self.debug = debug
+        self.prompt = prompt
 
         self.category_data = {}
         # for idx in range(len(self.ids)):
@@ -175,6 +177,8 @@ class MMEDataset(BaseEvalDataset):
                         question = item["question"]
                         image = item["image"]
                         gt_ans = item["answer"].lower().strip().replace(".", "")
+                        if self.prompt is not None:
+                            question = f"{question}{self.prompt}"
                         response = model.generate(question, image)
                         if self.debug:
                             print(f"\n# Query: {question}")
