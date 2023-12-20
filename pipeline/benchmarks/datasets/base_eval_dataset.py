@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from PIL import Image
 from typing import Dict, List, Any
-
+import base64
+import io
 import importlib
 
 AVAILABLE_EVAL_DATASETS: Dict[str, str] = {
@@ -15,6 +16,20 @@ AVAILABLE_EVAL_DATASETS: Dict[str, str] = {
     "magnifierbench": "MagnifierBenchDataset",
     "mmmu": "MMMUDataset",
 }
+
+def get_pil_image(raw_image_data) -> Image.Image:
+    if isinstance(raw_image_data, Image.Image):
+        return raw_image_data
+
+    elif isinstance(raw_image_data, dict) and "bytes" in raw_image_data:
+        return Image.open(io.BytesIO(raw_image_data["bytes"]))
+
+    elif isinstance(raw_image_data, str):  # Assuming this is a base64 encoded string
+        image_bytes = base64.b64decode(raw_image_data)
+        return Image.open(io.BytesIO(image_bytes))
+
+    else:
+        raise ValueError("Unsupported image data format")
 
 
 class BaseEvalDataset(ABC):

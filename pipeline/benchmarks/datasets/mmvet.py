@@ -14,6 +14,7 @@ import json
 import pytz
 import datetime
 import requests
+from .base_eval_dataset import get_pil_image
 
 utc_plus_8 = pytz.timezone("Asia/Singapore")  # You can also use 'Asia/Shanghai', 'Asia/Taipei', etc.
 utc_now = pytz.utc.localize(datetime.datetime.utcnow())
@@ -188,7 +189,9 @@ class MMVetDataset(BaseEvalDataset):
                     if id in grade_results and len(grade_results[id]["score"]) >= (j + 1):
                         continue
 
-                    model_pred = model.generate(line["instruction"], line["images"][0])
+                    query_prompt = line["instruction"]
+                    query_image = get_pil_image(line["images"][0])
+                    model_pred = model.generate(query_prompt, query_image)
                     if self.debug:
                         print(f"# Query: {line['instruction']}")
                         print(f"# Response: {model_pred}")
