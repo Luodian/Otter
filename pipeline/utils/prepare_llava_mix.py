@@ -14,11 +14,12 @@ def image_to_base64(image_path):
         print(f"Error: {e}")
         return ""
 
+
 def process_json_conv(input_json_path, output_json_path, output_train_idx_path, output_img_dict_path, split="coco"):
     with open(input_json_path, "r") as f:
         data = json.load(f)
 
-    output_data = {"meta": {"dataset": f"LA_MIX_{split.upper()}", "version": "2023.11.12", "split": "train"}, "data": {}}
+    output_data = {"meta": {"dataset": f"SHAREGPT4V_{split.upper()}", "version": "2023.12.18", "split": "train"}, "data": {}}
     train_idx_data = {}
     image_dict = {}
     counter = 0
@@ -31,27 +32,15 @@ def process_json_conv(input_json_path, output_json_path, output_train_idx_path, 
 
         img_path = entry["image"] if "image" in entry else ""
         identifier = img_path.split("/")[0] if "image" in entry else "text"
-
+        pbar.set_postfix_str(f"Processed {identifier}..")
+        pbar.update(1)
+        
         if identifier != split:
             continue
 
-        if identifier == "coco":
-            img_path = img_path.replace("coco/train2017/", "")
-            img_path = os.path.join("/home/luodian/projects/Otter/archived/train2017", img_path)
-        elif identifier == "gqa":
-            img_path = os.path.join("/home/luodian/projects/Otter/archived/", img_path)
-        elif identifier == "ocr_vqa":
-            img_path = img_path.replace("ocr_vqa/images", "ocrvqa")
-            img_path = os.path.join("/home/luodian/projects/Otter/archived/notebooks", img_path)
-        elif identifier == "textvqa":
-            img_path = os.path.join("/home/luodian/projects/Otter/archived/", img_path)
-        elif identifier == "vg":
-            img_path = os.path.join("/home/luodian/projects/Otter/archived/", img_path)
-        elif identifier == "text":
-            img_path = ""
-        else:
-            print(f"Error: {identifier} is not a valid identifier")
-            continue
+        if identifier == "sam":
+            img_path = img_path.replace("sam/images", "sam")
+        img_path = os.path.join("/raid/bli/data/SHAREGPT4V/ShareGPT4V", img_path)
 
         identifier = identifier.upper()
         if img_path != "":
@@ -74,7 +63,7 @@ def process_json_conv(input_json_path, output_json_path, output_train_idx_path, 
                     print(f"Error: {ins_key} already exists")
                     continue
 
-                question = conversation["value"].strip().replace("<image>\n", "")
+                question = conversation["value"].strip().replace("<image>\n", "").replace("<image>", "")
                 answer = conversations[idx + 1]["value"] if idx + 1 < len(conversations) else ""
 
                 output_data["data"][ins_key] = {
@@ -95,8 +84,6 @@ def process_json_conv(input_json_path, output_json_path, output_train_idx_path, 
             train_idx_data[last_ins_key] = rel_ins_ids.copy()
 
         counter += 1
-        pbar.update(1)
-        pbar.set_postfix_str(f"Processed {identifier}..")
 
     with open(output_json_path, "w") as f:
         json.dump(output_data, f)
@@ -111,14 +98,13 @@ def process_json_conv(input_json_path, output_json_path, output_train_idx_path, 
         image_df = pd.DataFrame.from_dict(image_dict, orient="index", columns=["base64"])
         image_df.to_parquet(output_img_dict_path, engine="pyarrow")
 
+
 if __name__ == "__main__":
-    input_json_path = "/raid/bli/data/llava_v1_5_mix665k.json"
-    splits_list = ["coco"]
-    # splits_list = ["text"]
+    input_json_path = "/raid/bli/data/SHAREGPT4V/ShareGPT4V/sharegpt4v_mix665k_cap23k_coco-ap9k_lcs3k_sam9k_div2k.json"
+    splits_list = ["sam", "wikiart", "share_textvqa", "web-celebrity", "web-landmark"]
 
     for split in splits_list:
-        output_json_path = f"/raid/bli/data/LA_MIX_{split.upper()}.json"
-        output_train_path = f"/raid/bli/data/LA_MIX_{split.upper()}_train.json"
-        output_img_dict_path = f"/raid/bli/data/LA_MIX_{split.upper()}_Images.parquet"
-        # process_json(input_json_path, output_json_path, output_img_dict_path)
+        output_json_path = f"/raid/bli/data/SHAREGPT4V/MIMICIT_Format/SHAREGPT4V_{split.upper()}.json"
+        output_train_path = f"/raid/bli/data/SHAREGPT4V/MIMICIT_Format/SHAREGPT4V_{split.upper()}_train.json"
+        output_img_dict_path = f"/raid/bli/data/SHAREGPT4V/MIMICIT_Format/SHAREGPT4V_{split.upper()}_Images.parquet"
         process_json_conv(input_json_path, output_json_path, output_train_path, output_img_dict_path, split=split)
