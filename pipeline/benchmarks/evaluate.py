@@ -108,6 +108,7 @@ if __name__ == "__main__":
             model_infos = [{"name": name} for name in model_names]
         dataset_infos = [{"name": dataset_name, "cache_dir": phrased_args.cache_dir} for dataset_name in phrased_args.datasets.split(",")]
 
+    # import pdb;pdb.set_trace()
     if not os.path.exists(os.path.dirname(phrased_args.output)):
         os.makedirs(os.path.dirname(phrased_args.output))
 

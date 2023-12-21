@@ -595,6 +595,8 @@ def collate_fn(samples, pad_idx, eos_idx):
     try:
         if samples[0].get("patch_images", None) is not None:
             batch["net_input"]["patch_images"] = torch.stack([sample["patch_images"] for sample in samples], dim=0)
+        else:
+            import pdb;pdb.set_trace()
     except Exception as e:
         print(f"Error: {e}")
         print(batch["id"])
@@ -709,7 +711,7 @@ if __name__ == "__main__":
     args.tokenizer = text_tokenizer
 
     dataset_info = preload_dataset("/mnt/petrelfs/zhangyuanhan/Otter/shared_scripts/llava_sft_noconv_nogrounp.yaml")
-    dataset = MimicitDataset(args, dataset_info["TEXT_ONLY"], "TEXT_ONLY")
+    dataset = MimicitDataset(args, dataset_info["IMAGE_TEXT"], "IMAGE_TEXT")
     sampler = RandomSampler(dataset, replacement=True, num_samples=len(dataset))
     # sampler = DistributedProxySampler(sampler, num_replicas=8, rank=7)
     # import pdb;pdb.set_trace()
@@ -728,7 +730,8 @@ if __name__ == "__main__":
     cycle_data = cycle(dataloader)
     while True:
         _ = next(cycle_data)
-        net_input = _.pop("net_input")
+        print(len(_["net_input"]["patch_images"]))
+        # net_input = _.pop("net_input")
     # for _ in cycle(dataloader):
         # pass
         # print(_["net_input"])

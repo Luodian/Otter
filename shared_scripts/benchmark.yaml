@@ -17,14 +17,16 @@ datasets:
   # - name: mmbench
   #   split: dev
   #   prompt: Answer with the option's letter from the given choices directly.
-  - name: pope
-    split: test
-    default_output_path: ./logs
+  # - name: pope
+  #   split: test
+  #   default_output_path: ./logs
   # - name: magnifierbench
   #   split: test
   #   prompt: Answer with the option's letter from the given choices directly.
   #   api_key: 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
 
 models:
-  - name: llava_model
-    model_path: /mnt/petrelfs/zhangyuanhan/LLaVA/checkpoints/llava-v1.5-7b
+  # - name: llava_model
+  #   model_path: /mnt/petrelfs/zhangyuanhan/LLaVA/checkpoints/llava-v1.5-7b
+  - name: otter_image
+    model_path: /mnt/petrelfs/zhangyuanhan/Otter/checkpoints/otter_llava_sft_nonconv_nogroup

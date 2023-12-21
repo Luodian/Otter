@@ -159,7 +159,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         global_step = num_steps + epoch * num_batches_per_epoch
         # dataloader_iterator = get_next_dataloader(dataloader_iterators, weights)
         dataloader_iterator = get_dataloader_from_sequence(dataloader_sequence, num_steps)
-        import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
         batch_mimicit = next(dataloader_iterator)  # Fetch a batch from the chosen dataloader
 
         if args.model_name != "fuyu":  # design fuyu's process into it's processor, a way better design than following code.
@@ -174,7 +174,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 master_print(e)
                 # print("batch_mimicit",batch_mimicit)
                 # print("dataloader_iterator":dataloader_iterator)
-                import pdb;pdb.set_trace()
+                # import pdb;pdb.set_trace()
                 continue
     # pass
     # import pdb;pdb.set_trace()
@@ -210,11 +210,11 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 return labels
             labels = masking()
 
-            if args.remove_answer_token:
-                input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, answer_token_id, tokenizer)  # find and remove certain tokens from input_ids, labels, and attention_mask
+            # if args.remove_answer_token:
+            #     input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, answer_token_id, tokenizer)  # find and remove certain tokens from input_ids, labels, and attention_mask
 
-            if args.remove_eos_token:
-                input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, endofchunk_token_id, tokenizer)
+            # if args.remove_eos_token:
+            #     input_ids, labels, attention_mask = find_and_remove_tokens(input_ids, labels, attention_mask, endofchunk_token_id, tokenizer)
 
             # put the processed content back into batch_mimicit
             batch_mimicit["input_ids"] = input_ids
@@ -501,14 +501,14 @@ def main():
     model.train()
     # Main Training Loop
     for epoch in range(resume_from_epoch, args.num_epochs):
-        save_hf_weights(
-            model,
-            args,
-            accelerator,
-            processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
-            tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
-            epoch=epoch + 1,
-        )
+        # save_hf_weights(
+        #     model,
+        #     args,
+        #     accelerator,
+        #     processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
+        #     tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
+        #     epoch=epoch + 1,
+        # )
         train_one_epoch(
             args=args,
             model=model,
@@ -535,15 +535,15 @@ def main():
             master_print(f"Saved checkpoint at epoch {epoch+1}.")
         accelerator.wait_for_everyone()
 
-    # Save the final weights
-    save_hf_weights(
-        model,
-        args,
-        accelerator,
-        processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
-        tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
-    )
-    accelerator.wait_for_everyone()
+    # # Save the final weights
+    # save_hf_weights(
+    #     model,
+    #     args,
+    #     accelerator,
+    #     processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
+    #     tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
+    # )
+    # accelerator.wait_for_everyone()
 
 
 if __name__ == "__main__":
