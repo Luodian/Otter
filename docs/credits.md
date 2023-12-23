@@ -11,6 +11,7 @@ The Otter/MIMIC-IT/OtterHD project is a collaborative effort involving many dist
 ## OtterHD 🎥
 - **[OtterHD Model/Training/Optimization]**: [Bo Li](https://brianboli.com/) 🧠💻, [Peiyuan Zhang](https://www.linkedin.com/in/lance-peiyuan-zhang-5b2886194/?originalSubdomain=sg) 🧠⚙️
 - **[Magnifier Dataset Construction]**: [Jingkang Yang](https://jingkang50.github.io/) 🛠️, [Fanyi Pu](https://pufanyi.github.io/) 🖥️
+- **[Evaluation Suite Maintenance]**: [Joshua Adrian Cahyono](https://www.linkedin.com/in/joshua-adrian-cahyono-5230b814b/?originalSubdomain=sg) 🖥️🛠️, [Fanyi Pu](https://pufanyi.github.io/) 🖥️
 
 ## Academic/Directional Guidance 📚
 - [Ziwei Liu](https://liuziwei7.github.io/) 👨‍🏫, [Chunyuan Li](https://chunyuan.li/) 👨‍🏫.
