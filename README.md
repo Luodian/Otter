@@ -2,29 +2,6 @@
 <img src="https://i.postimg.cc/mksBCbV9/brand-title.png"  width="80%" height="80%">
 </p>
 
-<!-- <div>
-<div align="center">
-    <a href='https://brianboli.com/' target='_blank'>Bo Li<sup>*,♠,1</sup></a>&emsp;
-    <a href='https://zhangyuanhan-ai.github.io/' target='_blank'>Yuanhan Zhang<sup>*,♠,1</sup></a>&emsp;
-    <a href='https://cliangyu.com/' target='_blank'>Liangyu Chen<sup>*,1</sup></a>&emsp;
-    <a href='https://king159.github.io/' target='_blank'>Jinghao Wang<sup>*,1</sup></a>&emsp;
-    <a href='https://pufanyi.github.io/' target='_blank'>Fanyi Pu<sup>*,1</sup></a>&emsp;
-    </br>
-    <a href='https://jingkang50.github.io/' target='_blank'>Jingkang Yang<sup>1</sup></a>&emsp;
-    <a href='https://chunyuan.li/' target='_blank'>Chunyuan Li<sup>2</sup></a>&emsp;
-    <a href='https://liuziwei7.github.io/' target='_blank'>Ziwei Liu<sup>&#x2709,1</sup></a>
-</div>
-<div>
-<div align="center">
-    <sup>1</sup>S-Lab, Nanyang Technological University&emsp;
-    <sup>2</sup>Microsoft Research, Redmond
-    </br>
-    <sup>♠</sup> Co-Project Lead&emsp;
-    <sup>*</sup> Equal Contribution&emsp;
-    <sup>&#x2709</sup> Corresponding Author
-
-</div> -->
-
 ---
 ![](https://img.shields.io/badge/otter-v0.3-darkcyan)
 [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/cloudposse.svg?style=social&label=Follow%20%40Us)](https://twitter.com/BoLi68567011)
@@ -32,7 +9,7 @@
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FLuodian%2Fotter&count_bg=%23FFA500&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false)](https://hits.seeyoufarm.com)
 [![litellm](https://img.shields.io/badge/%20%F0%9F%9A%85%20liteLLM-OpenAI%7CAzure%7CAnthropic%7CPalm%7CCohere-blue?color=green)](https://github.com/BerriAI/litellm)
 
-[Otter Paper](https://arxiv.org/abs/2305.03726) | [OtterHD Paper](https://arxiv.org/abs/2311.04219) | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425) | [Demo & Checkpoints@Otter Teamspace](https://huggingface.co/Otter-AI)
+[Project Credits](https://github.com/Luodian/Otter/blob/main/docs/credits.md) | [Otter Paper](https://arxiv.org/abs/2305.03726) | [OtterHD Paper](https://arxiv.org/abs/2311.04219) | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425) | [Otter Teamspace](https://huggingface.co/Otter-AI)
 
 **Corresponding Checkpoints:**
 
