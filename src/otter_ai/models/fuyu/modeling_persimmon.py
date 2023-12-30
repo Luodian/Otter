@@ -187,7 +187,10 @@ class PersimmonMLP(nn.Module):
             1: recompute gelu_out in the bwd
             2: recompute gelu_in and gelu_out in the bwd
         """
-        hidden_states = fused_mlp_func(hidden_states, self.dense_h_to_4h.weight, self.dense_4h_to_h.weight, self.dense_h_to_4h.bias, self.dense_4h_to_h.bias, "sqrelu", True, False, 0, -1)
+        if hasattr(self.dense_h_to_4h, "bias") and hasattr(self.dense_4h_to_h, "bias"):
+            hidden_states = fused_mlp_func(hidden_states, self.dense_h_to_4h.weight, self.dense_4h_to_h.weight, self.dense_h_to_4h.bias, self.dense_4h_to_h.bias, "sqrelu", True, False, 0, -1) # Thanks [Dongfu Jiang](https://jdf-prog.github.io/) for adding this exception!
+        else:
+            hidden_states = fused_mlp_func(hidden_states, self.dense_h_to_4h.weight, self.dense_4h_to_h.weight, None, None, "sqrelu", True, False, 0, -1)
         return hidden_states
 
 
