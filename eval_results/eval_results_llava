@@ -1,0 +1,36 @@
+================================================================================
+                              EVALUATION REPORT
+================================================================================
+
+
+MODEL INFO: {'name': 'llava_model', 'model_path': '/mnt/petrelfs/zhangyuanhan/LLaVA/checkpoints/llava-v1.5-7b'}
+--------------------------------------------------------------------------------
+[2023-12-21 10:25:49,407] [INFO] [real_accelerator.py:133:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+Imported class: <class 'pipeline.benchmarks.models.llava_model.LLaVA_Model'>
+Imported class: <class 'pipeline.benchmarks.datasets.mme.MMEDataset'>
+
+DATASET: MMEDataset
+--------------------
+=========== Cognition ===========
+total score: 250.0
+	 code_reasoning score: 55.0
+	 numerical_calculation score: 35.0
+	 text_translation score: 50.0
+	 commonsense_reasoning score: 110.0
+=========== Perception ===========
+total score: 1484.87775110044
+	 artwork score: 125.75
+	 celebrity score: 129.41176470588235
+	 count score: 153.33333333333334
+	 color score: 165.0
+	 position score: 118.33333333333334
+	 OCR score: 132.5
+	 landmark score: 160.0
+	 scene score: 157.25
+	 existence score: 195.0
+	 posters score: 148.29931972789115
+
+--------------------------------------------------------------------------------
+Total Datasets Evaluated: 1
+
+================================================================================

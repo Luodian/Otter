@@ -1,0 +1,197 @@
+================================================================================
+                              EVALUATION REPORT
+================================================================================
+
+
+MODEL INFO: {'name': 'otter_image', 'model_path': '/mnt/petrelfs/zhangyuanhan/Otter/checkpoints/ootter_llava_sft_2e-3/epoch_1/'}
+--------------------------------------------------------------------------------
+[2023-12-25 06:47:14,228] [INFO] [real_accelerator.py:161:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+Imported class: <class 'pipeline.benchmarks.models.otter_image.OtterImage'>
+The current model version is configured for Otter-Image with max_num_frames set to None.
+Parameter: lang_encoder.model.embed_tokens.weight, Size: 131.084288 M
+Parameter: lang_encoder.model.layers.3.gated_cross_attn_layer.attn_gate, Size: 0.000001 M
+Parameter: lang_encoder.model.layers.3.gated_cross_attn_layer.ff_gate, Size: 0.000001 M
+Parameter: lang_encoder.model.layers.3.gated_cross_attn_layer.attn.norm.weight, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.3.gated_cross_attn_layer.attn.norm.bias, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.3.gated_cross_attn_layer.attn.to_q.weight, Size: 2.097152 M
+Parameter: lang_encoder.model.layers.3.gated_cross_attn_layer.attn.to_kv.weight, Size: 1.048576 M
+Parameter: lang_encoder.model.layers.3.gated_cross_attn_layer.attn.to_out.weight, Size: 2.097152 M
+Parameter: lang_encoder.model.layers.3.gated_cross_attn_layer.feed_forward.0.weight, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.3.gated_cross_attn_layer.feed_forward.0.bias, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.3.gated_cross_attn_layer.feed_forward.1.weight, Size: 67.108864 M
+Parameter: lang_encoder.model.layers.3.gated_cross_attn_layer.feed_forward.3.weight, Size: 67.108864 M
+Parameter: lang_encoder.model.layers.7.gated_cross_attn_layer.attn_gate, Size: 0.000001 M
+Parameter: lang_encoder.model.layers.7.gated_cross_attn_layer.ff_gate, Size: 0.000001 M
+Parameter: lang_encoder.model.layers.7.gated_cross_attn_layer.attn.norm.weight, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.7.gated_cross_attn_layer.attn.norm.bias, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.7.gated_cross_attn_layer.attn.to_q.weight, Size: 2.097152 M
+Parameter: lang_encoder.model.layers.7.gated_cross_attn_layer.attn.to_kv.weight, Size: 1.048576 M
+Parameter: lang_encoder.model.layers.7.gated_cross_attn_layer.attn.to_out.weight, Size: 2.097152 M
+Parameter: lang_encoder.model.layers.7.gated_cross_attn_layer.feed_forward.0.weight, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.7.gated_cross_attn_layer.feed_forward.0.bias, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.7.gated_cross_attn_layer.feed_forward.1.weight, Size: 67.108864 M
+Parameter: lang_encoder.model.layers.7.gated_cross_attn_layer.feed_forward.3.weight, Size: 67.108864 M
+Parameter: lang_encoder.model.layers.11.gated_cross_attn_layer.attn_gate, Size: 0.000001 M
+Parameter: lang_encoder.model.layers.11.gated_cross_attn_layer.ff_gate, Size: 0.000001 M
+Parameter: lang_encoder.model.layers.11.gated_cross_attn_layer.attn.norm.weight, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.11.gated_cross_attn_layer.attn.norm.bias, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.11.gated_cross_attn_layer.attn.to_q.weight, Size: 2.097152 M
+Parameter: lang_encoder.model.layers.11.gated_cross_attn_layer.attn.to_kv.weight, Size: 1.048576 M
+Parameter: lang_encoder.model.layers.11.gated_cross_attn_layer.attn.to_out.weight, Size: 2.097152 M
+Parameter: lang_encoder.model.layers.11.gated_cross_attn_layer.feed_forward.0.weight, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.11.gated_cross_attn_layer.feed_forward.0.bias, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.11.gated_cross_attn_layer.feed_forward.1.weight, Size: 67.108864 M
+Parameter: lang_encoder.model.layers.11.gated_cross_attn_layer.feed_forward.3.weight, Size: 67.108864 M
+Parameter: lang_encoder.model.layers.15.gated_cross_attn_layer.attn_gate, Size: 0.000001 M
+Parameter: lang_encoder.model.layers.15.gated_cross_attn_layer.ff_gate, Size: 0.000001 M
+Parameter: lang_encoder.model.layers.15.gated_cross_attn_layer.attn.norm.weight, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.15.gated_cross_attn_layer.attn.norm.bias, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.15.gated_cross_attn_layer.attn.to_q.weight, Size: 2.097152 M
+Parameter: lang_encoder.model.layers.15.gated_cross_attn_layer.attn.to_kv.weight, Size: 1.048576 M
+Parameter: lang_encoder.model.layers.15.gated_cross_attn_layer.attn.to_out.weight, Size: 2.097152 M
+Parameter: lang_encoder.model.layers.15.gated_cross_attn_layer.feed_forward.0.weight, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.15.gated_cross_attn_layer.feed_forward.0.bias, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.15.gated_cross_attn_layer.feed_forward.1.weight, Size: 67.108864 M
+Parameter: lang_encoder.model.layers.15.gated_cross_attn_layer.feed_forward.3.weight, Size: 67.108864 M
+Parameter: lang_encoder.model.layers.19.gated_cross_attn_layer.attn_gate, Size: 0.000001 M
+Parameter: lang_encoder.model.layers.19.gated_cross_attn_layer.ff_gate, Size: 0.000001 M
+Parameter: lang_encoder.model.layers.19.gated_cross_attn_layer.attn.norm.weight, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.19.gated_cross_attn_layer.attn.norm.bias, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.19.gated_cross_attn_layer.attn.to_q.weight, Size: 2.097152 M
+Parameter: lang_encoder.model.layers.19.gated_cross_attn_layer.attn.to_kv.weight, Size: 1.048576 M
+Parameter: lang_encoder.model.layers.19.gated_cross_attn_layer.attn.to_out.weight, Size: 2.097152 M
+Parameter: lang_encoder.model.layers.19.gated_cross_attn_layer.feed_forward.0.weight, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.19.gated_cross_attn_layer.feed_forward.0.bias, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.19.gated_cross_attn_layer.feed_forward.1.weight, Size: 67.108864 M
+Parameter: lang_encoder.model.layers.19.gated_cross_attn_layer.feed_forward.3.weight, Size: 67.108864 M
+Parameter: lang_encoder.model.layers.23.gated_cross_attn_layer.attn_gate, Size: 0.000001 M
+Parameter: lang_encoder.model.layers.23.gated_cross_attn_layer.ff_gate, Size: 0.000001 M
+Parameter: lang_encoder.model.layers.23.gated_cross_attn_layer.attn.norm.weight, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.23.gated_cross_attn_layer.attn.norm.bias, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.23.gated_cross_attn_layer.attn.to_q.weight, Size: 2.097152 M
+Parameter: lang_encoder.model.layers.23.gated_cross_attn_layer.attn.to_kv.weight, Size: 1.048576 M
+Parameter: lang_encoder.model.layers.23.gated_cross_attn_layer.attn.to_out.weight, Size: 2.097152 M
+Parameter: lang_encoder.model.layers.23.gated_cross_attn_layer.feed_forward.0.weight, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.23.gated_cross_attn_layer.feed_forward.0.bias, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.23.gated_cross_attn_layer.feed_forward.1.weight, Size: 67.108864 M
+Parameter: lang_encoder.model.layers.23.gated_cross_attn_layer.feed_forward.3.weight, Size: 67.108864 M
+Parameter: lang_encoder.model.layers.27.gated_cross_attn_layer.attn_gate, Size: 0.000001 M
+Parameter: lang_encoder.model.layers.27.gated_cross_attn_layer.ff_gate, Size: 0.000001 M
+Parameter: lang_encoder.model.layers.27.gated_cross_attn_layer.attn.norm.weight, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.27.gated_cross_attn_layer.attn.norm.bias, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.27.gated_cross_attn_layer.attn.to_q.weight, Size: 2.097152 M
+Parameter: lang_encoder.model.layers.27.gated_cross_attn_layer.attn.to_kv.weight, Size: 1.048576 M
+Parameter: lang_encoder.model.layers.27.gated_cross_attn_layer.attn.to_out.weight, Size: 2.097152 M
+Parameter: lang_encoder.model.layers.27.gated_cross_attn_layer.feed_forward.0.weight, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.27.gated_cross_attn_layer.feed_forward.0.bias, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.27.gated_cross_attn_layer.feed_forward.1.weight, Size: 67.108864 M
+Parameter: lang_encoder.model.layers.27.gated_cross_attn_layer.feed_forward.3.weight, Size: 67.108864 M
+Parameter: lang_encoder.model.layers.31.gated_cross_attn_layer.attn_gate, Size: 0.000001 M
+Parameter: lang_encoder.model.layers.31.gated_cross_attn_layer.ff_gate, Size: 0.000001 M
+Parameter: lang_encoder.model.layers.31.gated_cross_attn_layer.attn.norm.weight, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.31.gated_cross_attn_layer.attn.norm.bias, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.31.gated_cross_attn_layer.attn.to_q.weight, Size: 2.097152 M
+Parameter: lang_encoder.model.layers.31.gated_cross_attn_layer.attn.to_kv.weight, Size: 1.048576 M
+Parameter: lang_encoder.model.layers.31.gated_cross_attn_layer.attn.to_out.weight, Size: 2.097152 M
+Parameter: lang_encoder.model.layers.31.gated_cross_attn_layer.feed_forward.0.weight, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.31.gated_cross_attn_layer.feed_forward.0.bias, Size: 0.004096 M
+Parameter: lang_encoder.model.layers.31.gated_cross_attn_layer.feed_forward.1.weight, Size: 67.108864 M
+Parameter: lang_encoder.model.layers.31.gated_cross_attn_layer.feed_forward.3.weight, Size: 67.108864 M
+Parameter: lang_encoder.lm_head.weight, Size: 131.084288 M
+Parameter: perceiver.latents, Size: 0.065536 M
+Parameter: perceiver.layers.0.norm_media.weight, Size: 0.001024 M
+Parameter: perceiver.layers.0.norm_media.bias, Size: 0.001024 M
+Parameter: perceiver.layers.0.norm_latents.weight, Size: 0.001024 M
+Parameter: perceiver.layers.0.norm_latents.bias, Size: 0.001024 M
+Parameter: perceiver.layers.0.to_q.weight, Size: 0.524288 M
+Parameter: perceiver.layers.0.to_kv.weight, Size: 1.048576 M
+Parameter: perceiver.layers.0.to_out.weight, Size: 0.524288 M
+Parameter: perceiver.layers.0.feed_forward.0.weight, Size: 0.001024 M
+Parameter: perceiver.layers.0.feed_forward.0.bias, Size: 0.001024 M
+Parameter: perceiver.layers.0.feed_forward.1.weight, Size: 4.194304 M
+Parameter: perceiver.layers.0.feed_forward.3.weight, Size: 4.194304 M
+Parameter: perceiver.layers.1.norm_media.weight, Size: 0.001024 M
+Parameter: perceiver.layers.1.norm_media.bias, Size: 0.001024 M
+Parameter: perceiver.layers.1.norm_latents.weight, Size: 0.001024 M
+Parameter: perceiver.layers.1.norm_latents.bias, Size: 0.001024 M
+Parameter: perceiver.layers.1.to_q.weight, Size: 0.524288 M
+Parameter: perceiver.layers.1.to_kv.weight, Size: 1.048576 M
+Parameter: perceiver.layers.1.to_out.weight, Size: 0.524288 M
+Parameter: perceiver.layers.1.feed_forward.0.weight, Size: 0.001024 M
+Parameter: perceiver.layers.1.feed_forward.0.bias, Size: 0.001024 M
+Parameter: perceiver.layers.1.feed_forward.1.weight, Size: 4.194304 M
+Parameter: perceiver.layers.1.feed_forward.3.weight, Size: 4.194304 M
+Parameter: perceiver.layers.2.norm_media.weight, Size: 0.001024 M
+Parameter: perceiver.layers.2.norm_media.bias, Size: 0.001024 M
+Parameter: perceiver.layers.2.norm_latents.weight, Size: 0.001024 M
+Parameter: perceiver.layers.2.norm_latents.bias, Size: 0.001024 M
+Parameter: perceiver.layers.2.to_q.weight, Size: 0.524288 M
+Parameter: perceiver.layers.2.to_kv.weight, Size: 1.048576 M
+Parameter: perceiver.layers.2.to_out.weight, Size: 0.524288 M
+Parameter: perceiver.layers.2.feed_forward.0.weight, Size: 0.001024 M
+Parameter: perceiver.layers.2.feed_forward.0.bias, Size: 0.001024 M
+Parameter: perceiver.layers.2.feed_forward.1.weight, Size: 4.194304 M
+Parameter: perceiver.layers.2.feed_forward.3.weight, Size: 4.194304 M
+Parameter: perceiver.layers.3.norm_media.weight, Size: 0.001024 M
+Parameter: perceiver.layers.3.norm_media.bias, Size: 0.001024 M
+Parameter: perceiver.layers.3.norm_latents.weight, Size: 0.001024 M
+Parameter: perceiver.layers.3.norm_latents.bias, Size: 0.001024 M
+Parameter: perceiver.layers.3.to_q.weight, Size: 0.524288 M
+Parameter: perceiver.layers.3.to_kv.weight, Size: 1.048576 M
+Parameter: perceiver.layers.3.to_out.weight, Size: 0.524288 M
+Parameter: perceiver.layers.3.feed_forward.0.weight, Size: 0.001024 M
+Parameter: perceiver.layers.3.feed_forward.0.bias, Size: 0.001024 M
+Parameter: perceiver.layers.3.feed_forward.1.weight, Size: 4.194304 M
+Parameter: perceiver.layers.3.feed_forward.3.weight, Size: 4.194304 M
+Parameter: perceiver.layers.4.norm_media.weight, Size: 0.001024 M
+Parameter: perceiver.layers.4.norm_media.bias, Size: 0.001024 M
+Parameter: perceiver.layers.4.norm_latents.weight, Size: 0.001024 M
+Parameter: perceiver.layers.4.norm_latents.bias, Size: 0.001024 M
+Parameter: perceiver.layers.4.to_q.weight, Size: 0.524288 M
+Parameter: perceiver.layers.4.to_kv.weight, Size: 1.048576 M
+Parameter: perceiver.layers.4.to_out.weight, Size: 0.524288 M
+Parameter: perceiver.layers.4.feed_forward.0.weight, Size: 0.001024 M
+Parameter: perceiver.layers.4.feed_forward.0.bias, Size: 0.001024 M
+Parameter: perceiver.layers.4.feed_forward.1.weight, Size: 4.194304 M
+Parameter: perceiver.layers.4.feed_forward.3.weight, Size: 4.194304 M
+Parameter: perceiver.layers.5.norm_media.weight, Size: 0.001024 M
+Parameter: perceiver.layers.5.norm_media.bias, Size: 0.001024 M
+Parameter: perceiver.layers.5.norm_latents.weight, Size: 0.001024 M
+Parameter: perceiver.layers.5.norm_latents.bias, Size: 0.001024 M
+Parameter: perceiver.layers.5.to_q.weight, Size: 0.524288 M
+Parameter: perceiver.layers.5.to_kv.weight, Size: 1.048576 M
+Parameter: perceiver.layers.5.to_out.weight, Size: 0.524288 M
+Parameter: perceiver.layers.5.feed_forward.0.weight, Size: 0.001024 M
+Parameter: perceiver.layers.5.feed_forward.0.bias, Size: 0.001024 M
+Parameter: perceiver.layers.5.feed_forward.1.weight, Size: 4.194304 M
+Parameter: perceiver.layers.5.feed_forward.3.weight, Size: 4.194304 M
+Parameter: perceiver.norm.weight, Size: 0.001024 M
+Parameter: perceiver.norm.bias, Size: 0.001024 M
+Total Trainable param: 1.441004 B
+Imported class: <class 'pipeline.benchmarks.datasets.mme.MMEDataset'>
+
+DATASET: MMEDataset
+--------------------
+=========== Cognition ===========
+total score: 150.35714285714286
+	 code_reasoning score: 50.0
+	 numerical_calculation score: 40.0
+	 text_translation score: 27.500000000000004
+	 commonsense_reasoning score: 32.857142857142854
+=========== Perception ===========
+total score: 418.11954781912766
+	 artwork score: 36.0
+	 celebrity score: 48.529411764705884
+	 count score: 41.66666666666667
+	 color score: 50.0
+	 position score: 50.0
+	 OCR score: 20.0
+	 landmark score: 46.0
+	 scene score: 42.25
+	 existence score: 50.0
+	 posters score: 33.6734693877551
+
+--------------------------------------------------------------------------------
+Total Datasets Evaluated: 1
+
+================================================================================

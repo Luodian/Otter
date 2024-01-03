@@ -32,6 +32,8 @@ else:
     import importlib.metadata as importlib_metadata
 
 import torch.distributed as dist
+import re
+
 
 
 def master_print(*args, **kwargs):
@@ -802,18 +804,8 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         self.eoc_token_id = text_tokenizer.encode("<|endofchunk|>")[-1]
         self.media_token_id = text_tokenizer.encode("<image>")[-1]
 
-        extend_instance(lang_encoder, OtterLMMixin)
-        decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
-        lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
-        # if lang_encoder.__class__.__name__ == "LlamaForCausalLM":
-        #     lang_encoder.resize_token_embeddings(len(text_tokenizer))
-        self.lang_encoder = lang_encoder
 
-        self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
-        self.resampler_dim = config.resampler_dim if hasattr(config, "resampler_dim") else 64
-        # use_media_placement_augmentation is strictly false for Otter model
-        self.use_media_placement_augmentation = False  # config.use_media_placement_augmentation
-        self.max_num_frames = config.max_num_frames if hasattr(config, "max_num_frames") else None
+        self.llava_connection = True if hasattr(config, "llava_connection") else False
 
         # Informative master_print statement
         if self.max_num_frames is None or self.max_num_frames == 1:
@@ -821,18 +813,45 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         else:
             master_print(f"The current model version is configured for Otter-Video with a maximum of {self.max_num_frames} frames.")
 
+        # use_media_placement_augmentation is strictly false for Otter model
+        self.use_media_placement_augmentation = False  # config.use_media_placement_augmentation
+
+        self.max_num_frames = config.max_num_frames if hasattr(config, "max_num_frames") else None
+        self.vis_dim = 1024
+
+
         vision_encoder.output_tokens = True
         self.vision_encoder = vision_encoder
 
-        self.vis_dim = 1024
-        self.perceiver = OtterPerceiverResampler(dim=self.vis_dim, max_num_frames=self.max_num_frames, dim_head = self.resampler_dim)
 
-        self.lang_encoder.init_otter(
-            media_token_id=self.media_token_id,
-            vis_hidden_size=self.vis_dim,
-            cross_attn_every_n_layers=self.cross_attn_every_n_layers,
-            use_media_placement_augmentation=self.use_media_placement_augmentation,
-        )
+        if not self.llava_connection:
+            extend_instance(lang_encoder, OtterLMMixin)
+            decoder_layers_attr_name = _infer_decoder_layers_attr_name(lang_encoder)
+            lang_encoder.set_decoder_layers_attr_name(decoder_layers_attr_name)
+            self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
+            self.resampler_dim = config.resampler_dim if hasattr(config, "resampler_dim") else 64
+            self.perceiver = OtterPerceiverResampler(dim=self.vis_dim, max_num_frames=self.max_num_frames, dim_head = self.resampler_dim)
+
+            self.lang_encoder.init_otter(
+                media_token_id=self.media_token_id,
+                vis_hidden_size=self.vis_dim,
+                cross_attn_every_n_layers=self.cross_attn_every_n_layers,
+                use_media_placement_augmentation=self.use_media_placement_augmentation,
+            )
+        else:
+            mlp_gelu_match = re.match(r'^mlp(\d+)x_gelu$', config.llava_connection)
+            mlp_depth = int(mlp_gelu_match.group(1))
+            modules = [nn.Linear(self.vis_dim, config.text_config.hidden_size)]
+            for _ in range(1, mlp_depth):
+                modules.append(nn.GELU())
+                modules.append(nn.Linear(config.text_config.hidden_size, config.text_config.hidden_size))
+            self.perceiver = nn.Sequential(*modules)
+
+        # if lang_encoder.__class__.__name__ == "LlamaForCausalLM":
+        #     lang_encoder.resize_token_embeddings(len(text_tokenizer))
+
+        self.lang_encoder = lang_encoder
+
 
         if "lora_config" in config.__dict__:
             original_architecture_name = self.lang_encoder.__class__.__name__
@@ -965,19 +984,37 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
         else:
             # Case: do not use caching (i.e. this is a standard forward pass);
-            self._encode_vision_x(vision_x=vision_x)
+            if not self.llava_connection:
+                self._encode_vision_x(vision_x=vision_x)
+            else:
+                vision_x_input_embeds = self._encode_vision_x(vision_x=vision_x)
 
         # import pdb;pdb.set_trace()
-        output = self.lang_encoder(
-            input_ids=lang_x,
-            attention_mask=attention_mask,
-            labels=labels,
-            past_key_values=past_key_values,
-            use_cache=use_cache,
-            **kwargs,
-        )
+        if not self.llava_connection:
+            output = self.lang_encoder(
+                input_ids=lang_x,
+                attention_mask=attention_mask,
+                labels=labels,
+                past_key_values=past_key_values,
+                use_cache=use_cache,
+                **kwargs,
+            )
+        else:
+            lang_x_input_embeds = self.embed_tokens(lang_x)
+            image_attention_mask = torch.ones_like(vision_x_input_embeds, dtype=torch.bool)
+            attention_mask = torch.cat(image_attention_mask,attention_mask)
+            inputs_embeds = torch.cat(vision_x_input_embeds,lang_x_input_embeds)
+            output = self.lang_encoder(
+                input_ids=None,
+                attention_mask=attention_mask,
+                labels=labels,
+                past_key_values=past_key_values,
+                inputs_embeds=inputs_embeds,
+                use_cache=use_cache,
+                **kwargs,
+            )            
 
-        if clear_conditioned_layers:
+        if clear_conditioned_layers and not self.llava_connection::
             self.lang_encoder.clear_conditioned_layers()
 
         return output
@@ -1003,8 +1040,11 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
 
         vision_x = self.perceiver(vision_x)  # reshapes to (b, T, n, d)
 
-        for layer in self.lang_encoder._get_decoder_layers():
-            layer.condition_vis_x(vision_x)
+        if not self.llava_connection:
+            for layer in self.lang_encoder._get_decoder_layers():
+                layer.condition_vis_x(vision_x)
+        else:
+            return vision_x
 
     @torch.no_grad()
     def generate(
@@ -1040,13 +1080,27 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         num_beams = generate_kwargs.get("num_beams", 1)
         if num_beams > 1:
             vision_x = vision_x.repeat_interleave(num_beams, dim=0)
-        self._encode_vision_x(vision_x=vision_x)
-        output = self.lang_encoder.generate(
-            input_ids=lang_x,
-            attention_mask=attention_mask,
-            eos_token_id=self.eoc_token_id,
-            **generate_kwargs,
-        )
+        if not self.llava_connection:
+            self._encode_vision_x(vision_x=vision_x)
+            output = self.lang_encoder.generate(
+                input_ids=lang_x,
+                attention_mask=attention_mask,
+                eos_token_id=self.eoc_token_id,
+                **generate_kwargs,
+            )
+            self.lang_encoder.clear_conditioned_layers()
+        else:
+            vision_x_input_embeds = self._encode_vision_x(vision_x=vision_x)
+            lang_x_input_embeds = self.embed_tokens(lang_x)
+            image_attention_mask = torch.ones_like(vision_x_input_embeds, dtype=torch.bool)
+            attention_mask = torch.cat(image_attention_mask,attention_mask)
+            inputs_embeds = torch.cat(vision_x_input_embeds,lang_x_input_embeds)
+            output = self.lang_encoder.generate(
+                input_ids=None,
+                attention_mask=attention_mask,
+                inputs_embeds=inputs_embeds,
+                eos_token_id=self.eoc_token_id,
+                **generate_kwargs,
+            )  
 
-        self.lang_encoder.clear_conditioned_layers()
         return output

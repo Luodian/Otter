@@ -166,4 +166,4 @@ checkpoints/
 *.txt
 pipeline/serve/deploy/otterhd_endpoint.py
 pipeline/benchmarks/models/llava_model.py
-eval_results/
+# eval_results/
