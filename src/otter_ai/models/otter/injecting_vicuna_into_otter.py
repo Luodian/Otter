@@ -44,12 +44,12 @@ if model_choice == "33B":
     ]
     save_path = f"{save_root_dir}/flamingo-vicuna-33B-v1.3-init"
 elif model_choice == "7B":
-    config_file = "/mnt/petrelfs/zhangyuanhan/Otter/src/otter_ai/models/flamingo/flamingo_vicuna-7B-v1.5_clip-vit-large-patch14-336.json"
+    config_file = "/mnt/petrelfs/zhangyuanhan/Otter/checkpoints/otter_vicuna-7B-v1.5_clip-vit-large-patch14-336_resampler256_only_input_init/config.json"
     state_dict_files = [
         f"{root_dir}/pytorch_model-00001-of-00002.bin",
         f"{root_dir}/pytorch_model-00002-of-00002.bin",
     ]
-    save_path = f"{save_root_dir}/otter_vicuna-7B-v1.5_clip-vit-large-patch14-336_init"
+    save_path = f"{save_root_dir}/otter_vicuna-7B-v1.5_clip-vit-large-patch14-336_resampler256_only_input_init"
 else:
     raise ValueError("Invalid model_choice. Choose either '33B' or '7B'.")
 

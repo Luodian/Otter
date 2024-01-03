@@ -20,6 +20,7 @@ AVAILABLE_MODELS: Dict[str, str] = {
     "llava_model": "LLaVA_Model",
     "instructblip": "InstructBLIP",
     "gpt4v": "OpenAIGPT4Vision",
+    "otter_image_llava": "OtterImageLlava"
 }
 
 

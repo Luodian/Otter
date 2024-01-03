@@ -63,6 +63,24 @@ def random_seed(seed, *addl_seeds):
 import numpy as np
 
 
+def expand2square(pil_img, background_color):
+    width, height = pil_img.size
+    if width == height:
+        return pil_img
+    elif width > height:
+        result = Image.new(pil_img.mode, (width, width), background_color)
+        result.paste(pil_img, (0, (width - height) // 2))
+        return result
+    else:
+        result = Image.new(pil_img.mode, (height, height), background_color)
+        result.paste(pil_img, ((height - width) // 2, 0))
+        return result
+
+def process_image(image, image_processor):
+    image = expand2square(image, tuple(int(x*255) for x in image_processor.image_mean))
+    image = image_processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
+    return image
+
 def resample_data(data, N):
     # If N is equal to the length of the list, return the list
     if N == -1 or N == 0:
@@ -98,11 +116,12 @@ def extract_rgb_number(path):
 
 
 class MimicitDataset(Dataset):
-    def __init__(self, args, dataset_info, task_group=""):
+    def __init__(self, args, image_processor,dataset_info, task_group=""):
         self.args = args
         self.tokenizer = args.tokenizer
         self.keep_symbols = args.keep_symbols if hasattr(args, "keep_symbols") else True
         self.task_group = task_group
+        self.image_processor = image_processor
         # remove more symbols in the question and answer, make the question and answer more clean and training loss more stable.
 
         self.mimicit_paths = []
@@ -130,17 +149,18 @@ class MimicitDataset(Dataset):
         self.resample_frames = args.resample_frames
         self.wrap_sys = f"<<SYS>>\nYou are a helpful vision language assistant. You are able to understand the visual content\n<</SYS>>\n\n"
         (self.mean, self.std) = (IDEFICS_STANDARD_MEAN, IDEFICS_STANDARD_STD) if args.model_name == "idefics" else (FLAMINGO_MEAN, FLAMINGO_STD)
-        if args.model_name == "otter" or args.model_name == "fuyu":
-            self.patch_resize_transform = transforms.Compose(
-                [
-                    transforms.Resize(
-                        (args.patch_image_size, args.patch_image_size),
-                        interpolation=transforms.InterpolationMode.BICUBIC,
-                    ),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=self.mean, std=self.std),
-                ]
-            )
+        if args.model_name == "otter":
+            self.patch_resize_transform = lambda x,y: process_image(x,y).squeeze(0)
+            # self.patch_resize_transform = transforms.Compose(
+            #     [
+            #         transforms.Resize(
+            #             (args.patch_image_size, args.patch_image_size),
+            #             interpolation=transforms.InterpolationMode.BICUBIC,
+            #         ),
+            #         transforms.ToTensor(),
+            #         transforms.Normalize(mean=self.mean, std=self.std),
+            #     ]
+            # )
         elif args.model_name == "idefics":
             checkpoint_path = os.environ.get("IDEFICS_LOCAL_PATH", "HuggingFaceM4/idefics-9b-instruct")
             master_print(f"Local Idefics Checkpoints Path: {checkpoint_path}")
@@ -182,8 +202,10 @@ class MimicitDataset(Dataset):
             # Load the dataset
             assert os.path.exists(cur_mimicit_path), f"Error: The local mimicit_path {cur_mimicit_path} not exists!"
 
+            # import pdb;pdb.set_trace()
             with open(cur_mimicit_path, "rb") as f:
                 cur_mimicit_data = orjson.loads(f.read())["data"]
+                # import pdb;pdb.set_trace()
                 self.dataset.update(cur_mimicit_data)
 
             # Load the train_config
@@ -352,7 +374,7 @@ class MimicitDataset(Dataset):
             if self.args.model_name == self.args.model_name == "fuyu":
                 pil_images.append(cur_image)  # fuyu doesnt need following process.
             else:
-                cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
+                cur_patch_image = self.patch_resize_transform(cur_image,self.image_processor).unsqueeze(0)
                 if len(patch_images) == 0:
                     patch_images = cur_patch_image
                 else:
@@ -403,7 +425,7 @@ class MimicitDataset(Dataset):
         # patch_images = torch.tensor([])
         # import pdb;pdb.set_trace()
         if task_group == "TEXT_ONLY":
-            patch_images = torch.zeros(3, self.patch_image_size, self.patch_image_size).unsqueeze(0).unsqueeze(0)
+            patch_images = torch.zeros(3, self.patch_image_size, self.patch_image_size).double().unsqueeze(0).unsqueeze(0)
             pil_images = [Image.fromarray(patch_images[0, 0].numpy().astype(np.uint8).transpose(1, 2, 0))]
         elif task_group == "IMAGE_TEXT":
             pil_images, patch_images = self.process_images(all_image_ids, is_video=False, in_context=False)
@@ -689,6 +711,8 @@ if __name__ == "__main__":
     sys.path.append("/mnt/petrelfs/zhangyuanhan/Otter")
     from pipeline.train.train_utils import DistributedProxySampler
     from itertools import cycle
+    from transformers import CLIPImageProcessor
+
 
     parser = argparse.ArgumentParser(description="Main training script for the model")
 
@@ -711,7 +735,9 @@ if __name__ == "__main__":
     args.tokenizer = text_tokenizer
 
     dataset_info = preload_dataset("/mnt/petrelfs/zhangyuanhan/Otter/shared_scripts/llava_sft_noconv_nogrounp.yaml")
-    dataset = MimicitDataset(args, dataset_info["IMAGE_TEXT"], "IMAGE_TEXT")
+    image_processor = CLIPImageProcessor.from_pretrained("openai/clip-vit-large-patch14-336")
+
+    dataset = MimicitDataset(args, image_processor,dataset_info["IMAGE_TEXT"], "IMAGE_TEXT")
     sampler = RandomSampler(dataset, replacement=True, num_samples=len(dataset))
     # sampler = DistributedProxySampler(sampler, num_replicas=8, rank=7)
     # import pdb;pdb.set_trace()

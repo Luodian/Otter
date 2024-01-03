@@ -39,12 +39,11 @@ from pipeline.train.train_utils import (
     master_print,
     random_seed,
     save_checkpoint,
-    save_final_weights,
+    save_hf_weights,
     verify_yaml,
-    get_weights_for_dataloaders,
-    get_next_dataloader,
     find_and_remove_tokens,
     delete_tensors_from_dict,
+    precompute_dataloader_sequence,
 )
 from src.otter_ai.models.flamingo.modeling_flamingo import FlamingoForConditionalGeneration
 from src.otter_ai.models.otter.modeling_otter import OtterForConditionalGeneration
@@ -116,8 +115,16 @@ def forward_pass(args, model, tokenizer, images, input_ids, attention_mask, labe
 
 def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, lr_scheduler, device_id, accelerator, wandb):
     dataloader_iterators = [cycle(dataloader) for dataloader in mimicit_loaders]
-    weights = get_weights_for_dataloaders(mimicit_loaders)
-    num_batches_per_epoch = sum(len(dataloader) for dataloader in mimicit_loaders) // args.gradient_accumulation_steps
+    num_batches_per_epoch = sum(len(dataloader) for dataloader in mimicit_loaders)
+    # Precompute the sequence before starting the training loop
+    num_dataloaders = len(dataloader_iterators)
+    seed = 42 + epoch
+    dataloader_sequence = precompute_dataloader_sequence(mimicit_loaders, num_batches_per_epoch, seed)
+
+    def get_dataloader_from_sequence(sequence, current_step):
+        index = current_step % len(sequence)
+        dataloader_index = sequence[index]
+        return dataloader_iterators[dataloader_index]
 
     # Special Design for Idefics Model's prompt strategy
     if args.model_name.lower() == "idefics":
@@ -148,21 +155,30 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
         if num_steps == num_batches_per_epoch:
             break
         data_time_m.update(time.time() - end)
-        dataloader_iterator = get_next_dataloader(dataloader_iterators, weights)
-        batch_mimicit = next(dataloader_iterator)  # Fetch a batch from the chosen dataloader
         global_step = num_steps + epoch * num_batches_per_epoch
+        # dataloader_iterator = get_next_dataloader(dataloader_iterators, weights)
+        dataloader_iterator = get_dataloader_from_sequence(dataloader_sequence, num_steps)
+        # import pdb;pdb.set_trace()
+        batch_mimicit = next(dataloader_iterator)  # Fetch a batch from the chosen dataloader
 
         #### MIMIC-IT FORWARD PASS ####
-        net_input = batch_mimicit.pop("net_input")
-        images = net_input.pop("patch_images").to(device_id, non_blocking=True)
-        input_ids = net_input.pop("input_ids").to(device_id, non_blocking=True)
-        attention_mask = net_input.pop("attention_masks").to(device_id, non_blocking=True)
-        
-        labels = input_ids.clone()
-        labels[labels == tokenizer.pad_token_id] = -100
-        labels[:, 0] = -100
-        labels[labels == media_token_id] = -100
-        labels[labels == endofchunk_token_id] = -100
+        try:
+            net_input = batch_mimicit.pop("net_input")
+            images = net_input.pop("patch_images").to(device_id, non_blocking=True)
+            input_ids = net_input.pop("input_ids").to(device_id, non_blocking=True)
+            attention_mask = net_input.pop("attention_masks").to(device_id, non_blocking=True)
+            
+            labels = input_ids.clone()
+            labels[labels == tokenizer.pad_token_id] = -100
+            labels[:, 0] = -100
+            labels[labels == media_token_id] = -100
+            labels[labels == endofchunk_token_id] = -100
+        except:
+            master_print(e)
+            # print("batch_mimicit",batch_mimicit)
+            # print("dataloader_iterator":dataloader_iterator)
+            # import pdb;pdb.set_trace()
+            continue
 
         # import pdb;pdb.set_trace()
         if args.remove_answer_token:
@@ -177,18 +193,23 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                 master_print(f"model: {unwrapped_model.__class__.__name__}")
                 master_print(f"model dtype: {unwrapped_model.dtype if hasattr(unwrapped_model, 'dtype') else 'None'}")
 
-            loss_mimicit = forward_pass(
-                args,
-                model,
-                tokenizer,
-                images,
-                input_ids,
-                attention_mask,
-                labels,
-                device_id,
-                autocast_type,
-                batch_mimicit,
-            )
+            try:
+                loss_mimicit = forward_pass(
+                    args,
+                    model,
+                    tokenizer,
+                    images,
+                    input_ids,
+                    attention_mask,
+                    labels,
+                    device_id,
+                    autocast_type,
+                    batch_mimicit,
+                )
+            except Exception as e:
+                # import pdb;pdb.set_trace()
+                master_print(batch_mimicit)
+                continue
 
             if accelerator.mixed_precision == "fp16":
                 accelerator.backward(loss_mimicit.to(device_id))
@@ -199,23 +220,6 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
             mean_loss = loss_mimicit.detach().mean()
             cur_batch_max_tokens = input_ids.shape[1]
 
-            def mask_embedding(m):
-                if m.weight.requires_grad:
-                    zero_mask = torch.zeros_like(m.weight.grad)
-                    zero_mask[answer_token_id] = torch.ones_like(zero_mask[answer_token_id])
-                    # zero_mask[media_token_id] = torch.ones_like(zero_mask[media_token_id])
-                    # zero_mask[endofchunk_token_id] = torch.ones_like(zero_mask[endofchunk_token_id])
-                    m.weight.grad = m.weight.grad * zero_mask
-
-            if args.mask_lm_head and args.distributed_type != "DEEPSPEED":
-                unwrapped_model = accelerator.unwrap_model(model)
-                if isinstance(unwrapped_model, IdeficsForVisionText2Text):
-                    unwrapped_model.lm_head.apply(mask_embedding)
-                elif unwrapped_model.lang_encoder.__class__.__name__ in ["MPTForCausalLM", "MosaicGPT"]:
-                    unwrapped_model.lang_encoder.transformer.wte.apply(mask_embedding)
-                elif "LlamaForCausalLM" in unwrapped_model.lang_encoder.__class__.__name__:
-                    unwrapped_model.lang_encoder.model.embed_tokens.apply(mask_embedding)
-                    unwrapped_model.lang_encoder.lm_head.apply(mask_embedding)
 
             if accelerator.sync_gradients:
                 accelerator.clip_grad_norm_(model.parameters(), 1.0)
@@ -246,7 +250,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
                             "mimicit_samples_per_second_per_gpu": mimicit_samples_per_second_per_gpu,
                             "lr": optimizer.param_groups[0]["lr"],
                             "loss_mimicit": mean_loss,
-                            "global_step": global_step // args.gradient_accumulation_steps,
+                            "global_step": global_step,
                             group_name: mean_loss,
                         },
                         commit=True,
@@ -281,7 +285,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
 def main():
     args = parse_args()
-    verify_yaml(args)
+    # verify_yaml(args)
     accelerator = Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         mixed_precision="bf16",
@@ -485,25 +489,26 @@ def main():
         accelerator.wait_for_everyone()
         if args.save_ckpt_each_epoch:
             # save_checkpoint(epoch, model, args, accelerator)
-            save_final_weights(
+            save_hf_weights(
                 model,
                 args,
                 accelerator,
                 processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
                 tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
+                epoch=epoch + 1,
             )
             master_print(f"Saved checkpoint at epoch {epoch+1}.")
         accelerator.wait_for_everyone()
 
     # Save the final weights
-    save_final_weights(
+    save_hf_weights(
         model,
         args,
         accelerator,
         processor=processor if "idefics" in args.model_name.lower() or "fuyu" in args.model_name.lower() else None,
         tokenizer=tokenizer if "llama2" in args.model_name.lower() else None,
     )
-    # accelerator.wait_for_everyone()
+    accelerator.wait_for_everyone()
 
 
 if __name__ == "__main__":

@@ -61,6 +61,24 @@ def random_seed(seed, *addl_seeds):
 
 import numpy as np
 
+def expand2square(pil_img, background_color):
+    width, height = pil_img.size
+    if width == height:
+        return pil_img
+    elif width > height:
+        result = Image.new(pil_img.mode, (width, width), background_color)
+        result.paste(pil_img, (0, (width - height) // 2))
+        return result
+    else:
+        result = Image.new(pil_img.mode, (height, height), background_color)
+        result.paste(pil_img, ((height - width) // 2, 0))
+        return result
+
+def process_image(image, image_processor):
+    image = expand2square(image, tuple(int(x*255) for x in image_processor.image_mean))
+    image = image_processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
+    return image
+
 
 def resample_data(data, N):
     # If N is equal to the length of the list, return the list
@@ -97,11 +115,12 @@ def extract_rgb_number(path):
 
 
 class LlavaPretrainDataset(Dataset):
-    def __init__(self, args, dataset_info, task_group=""):
+    def __init__(self, args, image_processor, dataset_info, task_group=""):
         self.args = args
         self.tokenizer = args.tokenizer
         self.keep_symbols = args.keep_symbols if hasattr(args, "keep_symbols") else True
         self.task_group = task_group
+        self.image_processor = image_processor
         # remove more symbols in the question and answer, make the question and answer more clean and training loss more stable.
 
         self.mimicit_paths = []
@@ -132,16 +151,17 @@ class LlavaPretrainDataset(Dataset):
 
         (self.mean, self.std) = (IDEFICS_STANDARD_MEAN, IDEFICS_STANDARD_STD) if args.model_name == "idefics" else (FLAMINGO_MEAN, FLAMINGO_STD)
         if args.model_name == "otter" or args.model_name == "fuyu":
-            self.patch_resize_transform = transforms.Compose(
-                [
-                    transforms.Resize(
-                        (args.patch_image_size, args.patch_image_size),
-                        interpolation=transforms.InterpolationMode.BICUBIC,
-                    ),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=self.mean, std=self.std),
-                ]
-            )
+            self.patch_resize_transform = lambda x,y: process_image(x,y).squeeze(0)
+            # self.patch_resize_transform = transforms.Compose(
+            #     [
+            #         transforms.Resize(
+            #             (args.patch_image_size, args.patch_image_size),
+            #             interpolation=transforms.InterpolationMode.BICUBIC,
+            #         ),
+            #         transforms.ToTensor(),
+            #         transforms.Normalize(mean=self.mean, std=self.std),
+            #     ]
+            # )
         elif args.model_name == "idefics":
             checkpoint_path = os.environ.get("IDEFICS_LOCAL_PATH", "HuggingFaceM4/idefics-9b-instruct")
             master_print(f"Local Idefics Checkpoints Path: {checkpoint_path}")
@@ -315,7 +335,7 @@ class LlavaPretrainDataset(Dataset):
             # import pdb;pdb.set_trace()
             cur_image = Image.open(f"{self.images_paths[0]}/{cur_image_id}").convert("RGB")
 
-            cur_patch_image = self.patch_resize_transform(cur_image).unsqueeze(0)
+            cur_patch_image = self.patch_resize_transform(cur_image,self.image_processor).unsqueeze(0)
             if len(patch_images) == 0:
                 patch_images = cur_patch_image
             else:
@@ -607,7 +627,9 @@ if __name__ == "__main__":
 
     args.tokenizer = text_tokenizer
 
+    from transformers import CLIPImageProcessor
+    image_processor = CLIPImageProcessor.from_pretrained("openai/clip-vit-large-patch14-336")
     dataset_info = preload_dataset("/mnt/petrelfs/zhangyuanhan/Otter/shared_scripts/llava_pretrain.yaml")
-    dataset = LlavaPretrainDataset(args, dataset_info["IMAGE_TEXT"], "IMAGE_TEXT")
+    dataset = LlavaPretrainDataset(args, image_processor,dataset_info["IMAGE_TEXT"], "IMAGE_TEXT")
     for _ in dataset:
         print(_)

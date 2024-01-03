@@ -2,7 +2,7 @@ import argparse
 import torch
 import sys
 
-from .modeling_otter import OtterForConditionalGeneration
+from modeling_otter import OtterForConditionalGeneration
 from peft import get_peft_model, LoraConfig, TaskType
 
 MODEL_CLASSES = {
@@ -33,8 +33,11 @@ parser.add_argument(
 # Parse the input arguments
 args = parser.parse_args()
 
+precision = {"torch_dtype": torch.bfloat16}
+
 # Load the model
-model = OtterForConditionalGeneration.from_pretrained(args.checkpoint_path, device_map="auto")
+model = OtterForConditionalGeneration.from_pretrained(args.checkpoint_path, device_map="auto", **precision)
+
 
 # adding lora
 standard_modules = ["q_proj", "v_proj"]
@@ -47,15 +50,16 @@ model_to_lora_modules = {
     "mpt": ["Wqkv"],
 }
 lora_config = LoraConfig(
-    r=16,
-    lora_alpha=32,
+    r=128,
+    lora_alpha=256,
     lora_dropout=0.05,
     task_type=TaskType.CAUSAL_LM,
     target_modules=model_to_lora_modules[lang_encoder_short_name],
 )
-model.config.update({"lora_config": {"r": 16, "lora_alpha": 32, "lora_dropout": 0.05}})
+model.config.update({"lora_config": {"r": 128, "lora_alpha": 256, "lora_dropout": 0.05}})
 model.lang_encoder = get_peft_model(model.lang_encoder, lora_config)
 
 # Save the model
 checkpoint_path = args.save_path
+
 OtterForConditionalGeneration.save_pretrained(model, checkpoint_path)

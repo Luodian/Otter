@@ -30,6 +30,7 @@ class LLaVA_Model(BaseModel):
     ):
         super().__init__(model_name, model_path)
         init_model_name = get_model_name_from_path(model_path)
+        # import pdb;pdb.set_trace()
         self.tokenizer, self.model, self.image_processor, self.context_len = load_pretrained_model(model_path, model_base, init_model_name)
         self.conv_mode = conv_mode
         self.temperature = temperature

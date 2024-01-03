@@ -2,17 +2,24 @@ import base64
 import io
 from PIL import Image
 import json
-from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    confusion_matrix,
+)
 import os
 import numpy as np
 from datasets import load_dataset
 from typing import Union
-from .base_eval_dataset import BaseEvalDataset
+from .base_eval_dataset import BaseEvalDataset 
 from tqdm import tqdm
 import datetime
 import pytz
 
-utc_plus_8 = pytz.timezone("Asia/Singapore")  # You can also use 'Asia/Shanghai', 'Asia/Taipei', etc.
+utc_plus_8 = pytz.timezone(
+    "Asia/Singapore"
+)  # You can also use 'Asia/Shanghai', 'Asia/Taipei', etc.
 utc_now = pytz.utc.localize(datetime.datetime.utcnow())
 utc_plus_8_time = utc_now.astimezone(utc_plus_8)
 
@@ -27,18 +34,18 @@ eval_type_dict = {
         "scene",
         "landmark",
         "artwork",
-        "ocr",
+        "OCR",
     ],
-    "Cognition": ["commonsense", "numerical", "text", "code"],
+    "Cognition": [
+        "commonsense_reasoning",
+        "numerical_calculation",
+        "text_translation",
+        "code_reasoning",
+    ],
 }
 
 
 class MMEDataset(BaseEvalDataset):
-    def decode_base64_to_image(self, base64_string):
-        image_data = base64.b64decode(base64_string)
-        image = Image.open(io.BytesIO(image_data))
-        return image
-
     def __init__(
         self,
         data_path: str = "Otter-AI/MME",
@@ -47,7 +54,8 @@ class MMEDataset(BaseEvalDataset):
         default_output_path: str = "./logs/MME",
         split: str = "test",
         debug: bool = False,
-        prompt: str = None,
+        replace_prompt: str = "Please answer yes or no.",
+        prompt: str = "\nAnswer the question using a single word or phrase.",
     ):
         super().__init__("MMEDataset", data_path)
 
@@ -56,18 +64,23 @@ class MMEDataset(BaseEvalDataset):
         self.data = load_dataset(data_path, split=split, cache_dir=cache_dir)
         self.debug = debug
         self.prompt = prompt
+        self.replace_prompt = replace_prompt
 
         self.category_data = {}
         # for idx in range(len(self.ids)):
         for item in tqdm(self.data, desc="Loading data"):
-            id = item["id"]
-            category = id.split("_")[0].lower()
-            question = item["instruction"]
+            question_id = item["question_id"]
+            category = item["category"]
+            question = item["question"]
             answer = item["answer"]
-            image_id = item["image_ids"][0]
-            image = item["images"][0]
+            image = item["image"]
 
-            data = {"question": question, "answer": answer, "image": image}
+            data = {
+                "question_id": question_id,
+                "question": question,
+                "answer": answer,
+                "image": image,
+            }
 
             if category in eval_type_dict["Cognition"]:
                 eval_type = "Cognition"
@@ -82,10 +95,10 @@ class MMEDataset(BaseEvalDataset):
             if category not in self.category_data[eval_type]:
                 self.category_data[eval_type][category] = {}
 
-            if image_id not in self.category_data[eval_type][category]:
-                self.category_data[eval_type][category][image_id] = []
+            if question_id not in self.category_data[eval_type][category]:
+                self.category_data[eval_type][category][question_id] = []
 
-            self.category_data[eval_type][category][image_id].append(data)
+            self.category_data[eval_type][category][question_id].append(data)
 
     def parse_pred_ans(self, pred_ans):
         pred_ans = pred_ans.lower().strip().replace(".", "")
@@ -153,38 +166,56 @@ class MMEDataset(BaseEvalDataset):
     def _evaluate(self, model):
         model_score_dict = {}
 
-        self.default_output_path = os.path.join(self.default_output_path, f"{model.name}_{self.cur_datetime}")
+        self.default_output_path = os.path.join(
+            self.default_output_path, f"{self.cur_datetime}"
+        )
         if not os.path.exists(self.default_output_path):
             os.makedirs(self.default_output_path)
+
+        debug_jsonl_file = open(os.path.join(self.default_output_path, "output.jsonl"), "w")
 
         for eval_type in self.category_data.keys():
             print("===========", eval_type, "===========")
 
             scores = 0
             task_score_dict = {}
-            for task_name in tqdm(self.category_data[eval_type].keys(), desc=f"Evaluating {eval_type}"):
+            for task_name in tqdm(
+                self.category_data[eval_type].keys(), desc=f"Evaluating {eval_type}"
+            ):
                 img_num = len(self.category_data[eval_type][task_name])
                 task_other_ans_num = 0
                 task_score = 0
                 acc_plus_correct_num = 0
                 gts = []
                 preds = []
-                for image_pair in tqdm(self.category_data[eval_type][task_name].values(), desc=f"Evaluating {eval_type} {task_name}"):
+                for image_pair in tqdm(
+                    self.category_data[eval_type][task_name].values(),
+                    desc=f"Evaluating {eval_type} {task_name}",
+                ):
                     assert len(image_pair) == 2
                     img_correct_num = 0
 
                     for item in image_pair:
                         question = item["question"]
-                        image = item["image"]
-                        gt_ans = item["answer"].lower().strip().replace(".", "")
+                        if self.replace_prompt is not None:
+                            question = question.replace(self.replace_prompt, "").strip()
                         if self.prompt is not None:
                             question = f"{question}{self.prompt}"
+
+                        image = self.get_pil_image(item["image"])
+                        gt_ans = item["answer"].lower().strip().replace(".", "")
                         response = model.generate(question, image)
                         if self.debug:
-                            print(f"\n# Query: {question}")
-                            print(f"\n# Response: {response}")
-                        pred_ans = self.parse_pred_ans(response)
+                            # print(f"\n# Query: {question}")
+                            # print(f"\n# Response: {response}")
+                            jsonl_data = {
+                                "question_id": f"{item['question_id']}",
+                                "prompt": question,
+                                "text": response,
+                            }
+                            debug_jsonl_file.write(json.dumps(jsonl_data) + "\n")
 
+                        pred_ans = self.parse_pred_ans(response)
                         assert gt_ans in ["yes", "no"]
                         assert pred_ans in ["yes", "no", "other"]
 
@@ -212,7 +243,9 @@ class MMEDataset(BaseEvalDataset):
                 task_score_dict[task_name] = task_score
                 scores += task_score
 
-                output_path = os.path.join(self.default_output_path, f"{task_name}.json")
+                output_path = os.path.join(
+                    self.default_output_path, f"{task_name}.json"
+                )
                 with open(output_path, "w") as f:
                     json.dump(metric_dict, f)
 

@@ -309,7 +309,7 @@ def train_one_epoch(args, model, epoch, mimicit_loaders, tokenizer, optimizer, l
 
 def main():
     args = parse_args()
-    verify_yaml(args)
+    # verify_yaml(args)
     accelerator = Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         mixed_precision="bf16",
@@ -337,8 +337,20 @@ def main():
             )
             args.tokenizer = model.text_tokenizer
             tokenizer = model.text_tokenizer
-            image_processor = CLIPImageProcessor()
+            image_processor = model.image_processor
             # model.gradient_checkpointing_enable()
+            if args.enable_lora:
+                lora_config = LoraConfig(
+                    r=64,
+                    lora_alpha=32,
+                    lora_dropout=0.05,
+                    task_type=TaskType.CAUSAL_LM,
+                    target_modules=["q_proj", "v_proj"],
+                )
+                model.lang_encoder = get_peft_model(model.lang_encoder, lora_config)
+                model.lang_encoder.print_trainable_parameters()
+                model.lang_encoder.__class__.__name__ = f"{model.lang_encoder.__class__.__name__}LoRA"
+                master_print(f"Init LoRA model with config {lora_config}")
 
         elif args.model_name.lower() == "flamingo":
             model = FlamingoForConditionalGeneration.from_pretrained(
@@ -462,7 +474,7 @@ def main():
             name=args.run_name,
         )
 
-    mimicit_loaders = get_data(args, image_processor, tokenizer, "mimicit")
+    mimicit_loaders = get_data(args, image_processor, tokenizer, args.dataset_type)
     total_training_steps = sum(len(dataloader) for dataloader in mimicit_loaders) * args.num_epochs
     resume_from_epoch = 0
     args.external_save_dir = os.path.join(args.external_save_dir, args.run_name) if args.external_save_dir else args.run_name

@@ -35,7 +35,26 @@ def get_formatted_forward_prompt(question: str, answer: str) -> str:
     return f"<image>User: {question} GPT:<answer> {answer}"
 
 
-class OtterImage(BaseModel):
+
+def expand2square(pil_img, background_color):
+    width, height = pil_img.size
+    if width == height:
+        return pil_img
+    elif width > height:
+        result = Image.new(pil_img.mode, (width, width), background_color)
+        result.paste(pil_img, (0, (width - height) // 2))
+        return result
+    else:
+        result = Image.new(pil_img.mode, (height, height), background_color)
+        result.paste(pil_img, ((height - width) // 2, 0))
+        return result
+
+def process_image(image, image_processor):
+    image = expand2square(image, tuple(int(x*255) for x in image_processor.image_mean))
+    image = image_processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
+    return image
+
+class OtterImageLlava(BaseModel):
     def __init__(self, model_path="luodian/OTTER-Image-MPT7B", load_bit="bf16"):
         super().__init__("otter", model_path)
         precision = {}
@@ -50,6 +69,7 @@ class OtterImage(BaseModel):
         #     bnb_4bit_compute_dtype=torch.bfloat16
         # )
         self.model = OtterForConditionalGeneration.from_pretrained(model_path, device_map="auto", **precision)
+        self.image_processor = self.model.image_processor
         dirname = os.path.dirname(model_path) 
         state_dict = {}
         counter = 0
@@ -66,19 +86,20 @@ class OtterImage(BaseModel):
         self.model.text_tokenizer.padding_side = "left"
         self.tokenizer = self.model.text_tokenizer
         self.patch_image_size = 336
-        self.mean = [0.481, 0.458, 0.408]
-        self.std = [0.269, 0.261, 0.276]
+        # self.mean = [0.481, 0.458, 0.408]
+        # self.std = [0.269, 0.261, 0.276]
         # self.image_processor = transformers.CLIPImageProcessor()
-        self.image_processor = transforms.Compose(
-                [
-                    transforms.Resize(
-                        (self.patch_image_size, self.patch_image_size),
-                        interpolation=transforms.InterpolationMode.BICUBIC,
-                    ),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=self.mean, std=self.std),
-                ]
-            )
+        # self.image_processor = transforms.Compose(
+        #         [
+        #             transforms.Resize(
+        #                 (self.patch_image_size, self.patch_image_size),
+        #                 interpolation=transforms.InterpolationMode.BICUBIC,
+        #             ),
+        #             transforms.ToTensor(),
+        #             transforms.Normalize(mean=self.mean, std=self.std),
+        #         ]
+        #     )
+        self.patch_resize_transform = lambda x,y: process_image(x,y)
         self.model.eval()
 
     def generate(self, question: str, raw_image_data):
@@ -89,7 +110,7 @@ class OtterImage(BaseModel):
             else:
                 # vision_x = self.image_processor.preprocess([input_data], return_tensors="pt")["pixel_values"].unsqueeze(1).unsqueeze(0)
                 try:
-                    vision_x = self.image_processor(input_data).unsqueeze(0).unsqueeze(0).unsqueeze(0)
+                    vision_x = self.patch_resize_transform(input_data,self.image_processor).unsqueeze(0).unsqueeze(0).unsqueeze(0)
                 except:
                     import pdb;pdb.set_trace()
                 # import pdb;pdb.set_trace()

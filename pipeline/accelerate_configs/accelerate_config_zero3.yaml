@@ -1,11 +1,12 @@
 compute_environment: LOCAL_MACHINE
 deepspeed_config: 
-  gradient_accumulation_steps: 4
+  gradient_accumulation_steps: 16
   gradient_clipping: 1.0
   offload_optimizer_device: none
   offload_param_device: none
   zero3_init_flag: true
   zero3_save_16bit_model: true
+  stage3_gather_16bit_weights_on_model_save: true
   zero_stage: 3
 distributed_type: DEEPSPEED
 fsdp_config: {}
@@ -15,5 +16,5 @@ main_process_port: 20333
 main_training_function: main
 mixed_precision: bf16
 num_machines: 1
-num_processes: 4
+num_processes: 8
 use_cpu: false

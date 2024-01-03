@@ -13,7 +13,7 @@ from peft import LoraConfig, TaskType, get_peft_model
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.auto import AutoModel, AutoModelForCausalLM, AutoTokenizer
-
+from transformers import CLIPImageProcessor
 # from pipeline.utils.modeling_value_head import AutoModelForCausalLMWithValueHead
 
 import sys
@@ -214,6 +214,7 @@ class OtterPerceiverResampler(nn.Module):
         self.media_time_embs = nn.Parameter(torch.randn(max_num_media, 1, dim)) if exists(max_num_media) else None
 
         self.layers = nn.ModuleList([])
+        # import pdb;pdb.set_trace()
         for _ in range(depth):
             self.layers.append(OtterPerceiverBlock(dim=dim, dim_head=dim_head, heads=heads, mult=ff_mult))
 
@@ -475,18 +476,32 @@ class OtterLMMixin(nn.Module):
         """
         Initialize Otter by adding a new gated cross attn to the decoder. Store the media token id for computing the media locations.
         """
-
-        gated_cross_attn_layers = nn.ModuleList(
-            [
-                OtterGatedCrossAttentionBlock(
-                    dim=self.config.hidden_size,
-                    dim_visual=vis_hidden_size,
-                )
-                if (layer_idx + 1) % cross_attn_every_n_layers == 0
-                else None
-                for layer_idx, _ in enumerate(self._get_decoder_layers())
-            ]
-        )
+        # import pdb;pdb.set_trace()
+        if cross_attn_every_n_layers >= 32:
+            gated_cross_attn_layers = nn.ModuleList(
+                [
+                    OtterGatedCrossAttentionBlock(
+                        dim=self.config.hidden_size,
+                        dim_visual=vis_hidden_size,
+                    )
+                    # if (layer_idx + 1) % cross_attn_every_n_layers == 0
+                    if (layer_idx) % cross_attn_every_n_layers == 0
+                    else None
+                    for layer_idx, _ in enumerate(self._get_decoder_layers())
+                ]
+            )
+        else:
+            gated_cross_attn_layers = nn.ModuleList(
+                [
+                    OtterGatedCrossAttentionBlock(
+                        dim=self.config.hidden_size,
+                        dim_visual=vis_hidden_size,
+                    )
+                    if (layer_idx + 1) % cross_attn_every_n_layers == 0
+                    else None
+                    for layer_idx, _ in enumerate(self._get_decoder_layers())
+                ]
+            )
         self._set_decoder_layers(nn.ModuleList([OtterLayer(gated_cross_attn_layer, decoder_layer) for gated_cross_attn_layer, decoder_layer in zip(gated_cross_attn_layers, self._get_decoder_layers())]))
         self.media_token_id = media_token_id
         self.use_media_placement_augmentation = use_media_placement_augmentation
@@ -621,7 +636,7 @@ class OtterModel(OtterPreTrainedModel):
                 target_modules=model_to_lora_modules[lang_encoder_short_name],
             )
             self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
-            self.lang_encoder.master_print_trainable_parameters()
+            self.lang_encoder.print_trainable_parameters()
 
         self.post_init()
 
@@ -768,6 +783,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
                 lang_encoder = RWForCausalLM(config=config.text_config)
             elif config.text_config.architectures[0] == "LlamaForCausalLM":
                 text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
+                # torch.set_default_dtype(torch.bfloat16)
                 lang_encoder = LlamaForCausalLM(config=config.text_config)
             else:
                 import pdb
@@ -777,6 +793,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             text_tokenizer = AutoTokenizer.from_pretrained(config.text_config._name_or_path)
             lang_encoder = LlamaForCausalLM(config=config.text_config)
         vision_encoder = CLIPVisionModel(config=config.vision_config)
+        self.image_processor = CLIPImageProcessor.from_pretrained(config.vision_config._name_or_path)
 
         text_tokenizer.add_special_tokens({"additional_special_tokens": ["<|endofchunk|>", "<image>", "<answer>"]})
         if text_tokenizer.pad_token is None:
@@ -793,6 +810,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         self.lang_encoder = lang_encoder
 
         self.cross_attn_every_n_layers = config.cross_attn_every_n_layers
+        self.resampler_dim = config.resampler_dim if hasattr(config, "resampler_dim") else 64
         # use_media_placement_augmentation is strictly false for Otter model
         self.use_media_placement_augmentation = False  # config.use_media_placement_augmentation
         self.max_num_frames = config.max_num_frames if hasattr(config, "max_num_frames") else None
@@ -807,7 +825,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
         self.vision_encoder = vision_encoder
 
         self.vis_dim = 1024
-        self.perceiver = OtterPerceiverResampler(dim=self.vis_dim, max_num_frames=self.max_num_frames)
+        self.perceiver = OtterPerceiverResampler(dim=self.vis_dim, max_num_frames=self.max_num_frames, dim_head = self.resampler_dim)
 
         self.lang_encoder.init_otter(
             media_token_id=self.media_token_id,
@@ -836,7 +854,7 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
                 target_modules=model_to_lora_modules[lang_encoder_short_name],
             )
             self.lang_encoder = get_peft_model(self.lang_encoder, lora_config)
-            self.lang_encoder.master_print_trainable_parameters()
+            self.lang_encoder.print_trainable_parameters()
             self.lang_encoder.__class__.__name__ = f"{original_architecture_name}LoRA"
 
         self.post_init()
@@ -865,35 +883,15 @@ class OtterForConditionalGeneration(OtterPreTrainedModel):
             for param in self.parameters():
                 param.requires_grad = False
 
-        # Freeze all parameters in vision encoder
+        # Unfreeze all parameters in vision encoder
         if "train_vision_encoder" in self.config.__dict__ and self.config.train_vision_encoder is True:
             master_print("Unfreeze vision encoder.")
             for param in self.vision_encoder.parameters():
                 param.requires_grad = True
 
-        # Freeze all parameters in lang encoders except gated_cross_attn_layers
+        # Unfreeze all parameters in lang encoders except gated_cross_attn_layers
         if "train_lang_encoder" in self.config.__dict__ and self.config.train_lang_encoder is True:
             master_print("Unfreeze language decoder.")
-            for name, param in self.lang_encoder.named_parameters():
-                param.requires_grad = True
-
-        # Freeze all parameters in vision encoder
-        if "train_vision_encoder" in self.config.__dict__ and self.config.train_vision_encoder is True:
-            for param in self.vision_encoder.parameters():
-                param.requires_grad = True
-
-        # Freeze all parameters in lang encoders except gated_cross_attn_layers
-        if "train_lang_encoder" in self.config.__dict__ and self.config.train_lang_encoder is True:
-            for name, param in self.lang_encoder.named_parameters():
-                param.requires_grad = True
-
-        # Freeze all parameters in vision encoder
-        if "train_vision_encoder" in self.config.__dict__ and self.config.train_vision_encoder is True:
-            for param in self.vision_encoder.parameters():
-                param.requires_grad = True
-
-        # Freeze all parameters in lang encoders except gated_cross_attn_layers
-        if "train_lang_encoder" in self.config.__dict__ and self.config.train_lang_encoder is True:
             for name, param in self.lang_encoder.named_parameters():
                 param.requires_grad = True
 

@@ -28,5 +28,5 @@ datasets:
 models:
   # - name: llava_model
   #   model_path: /mnt/petrelfs/zhangyuanhan/LLaVA/checkpoints/llava-v1.5-7b
-  - name: otter_image
-    model_path: /mnt/petrelfs/zhangyuanhan/Otter/checkpoints/otter_llava_sft_nonconv_nogroup
+  - name: otter_image_llava
+    model_path: /mnt/petrelfs/zhangyuanhan/Otter/checkpoints/otter_llava_direct_sft_nopretrain_llava_transform_1epoch/epoch_1/

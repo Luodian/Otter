@@ -46,6 +46,13 @@ def parse_args():
         help="simple is for mpt/llama1, rest are in different instruction templates.",
     )
     parser.add_argument(
+        "--dataset_type",
+        type=str,
+        default="mimicit",
+        choices=["laion", "mmc4", "mimicit", "cc3m","llava_pretrain"],
+        help="dataset_type.",
+    )   
+    parser.add_argument(
         "--training_data_yaml",
         type=str,
         default="",

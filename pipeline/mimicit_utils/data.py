@@ -680,7 +680,7 @@ def get_mimicit_dataset(args, image_processor, tokenizer, epoch=0, floor=False):
     # Converting multiple types of mimic-it datasets into a unified format dataset
     for key, item in dataset_info.items():
         if item != {}:  # if the category is not empty
-            unified_dataset = MimicitDataset(args, dataset_info=dataset_info[key], task_group=key)
+            unified_dataset = MimicitDataset(args, image_processor=image_processor, dataset_info=dataset_info[key], task_group=key)
             unified_datasets.append(unified_dataset)
 
     # round_fn = math.floor if floor else math.ceil
