@@ -167,3 +167,7 @@ checkpoints/
 pipeline/serve/deploy/otterhd_endpoint.py
 pipeline/benchmarks/models/llava_model.py
 # eval_results/
+pipeline/evaluation/models/Ask_Anything
+pipeline/evaluation/models/LLaMA_Adapter
+pipeline/evaluation/models/LLaVA
+pipeline/evaluation/models/FrozenBiLM
