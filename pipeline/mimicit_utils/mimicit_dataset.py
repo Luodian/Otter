@@ -12,6 +12,7 @@ import sys
 from io import BytesIO
 import pandas as pd
 import numpy as np
+import pyarrow.parquet as pq
 import orjson
 import torch
 from PIL import Image, ImageFile
