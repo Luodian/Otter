@@ -11,9 +11,8 @@
 
 [Project Credits](https://github.com/Luodian/Otter/blob/main/docs/credits.md) | [Otter Paper](https://arxiv.org/abs/2305.03726) | [OtterHD Paper](https://arxiv.org/abs/2311.04219) | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425) | [Otter Teamspace](https://huggingface.co/Otter-AI)
 
-**Corresponding Checkpoints:**
+**Checkpoints:**
 
-- [Otter-AI/OtterHD-8B](https://huggingface.co/Otter-AI/OtterHD-8B)
 - [luodian/OTTER-Image-MPT7B](https://huggingface.co/luodian/OTTER-Image-MPT7B)
 - [luodian/OTTER-Video-LLaMA7B-DenseCaption](https://huggingface.co/luodian/OTTER-Video-LLaMA7B-DenseCaption)
 - [More at Our Research Group->Otters Embrace AI](https://huggingface.co/Otter-AI)
