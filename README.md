@@ -5,8 +5,7 @@
 ---
 ![](https://img.shields.io/badge/otter-v0.3-darkcyan)
 [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/cloudposse.svg?style=social&label=Follow%20%40Us)](https://twitter.com/BoLi68567011)
-![](https://img.shields.io/github/stars/luodian/otter?style=social)
-[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FLuodian%2Fotter&count_bg=%23FFA500&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false)](https://hits.seeyoufarm.com)
+[![Stars](https://img.shields.io/github/stars/luodian/otter?style=social)](https://github.com/EvolvingLMMs-Lab/Otter/stargazers)
 [![litellm](https://img.shields.io/badge/%20%F0%9F%9A%85%20liteLLM-OpenAI%7CAzure%7CAnthropic%7CPalm%7CCohere-blue?color=green)](https://github.com/BerriAI/litellm)
 
 [Project Credits](https://github.com/Luodian/Otter/blob/main/docs/credits.md) | [Otter Paper](https://arxiv.org/abs/2305.03726) | [OtterHD Paper](https://arxiv.org/abs/2311.04219) | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425)
