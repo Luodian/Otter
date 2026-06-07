@@ -15,6 +15,8 @@ import pytz
 import datetime
 from Levenshtein import distance
 
+from pipeline.benchmarks.utils.eval_llm import get_eval_llm_client
+
 utc_plus_8 = pytz.timezone("Asia/Singapore")  # You can also use 'Asia/Shanghai', 'Asia/Taipei', etc.
 utc_now = pytz.utc.localize(datetime.datetime.utcnow())
 utc_plus_8_time = utc_now.astimezone(utc_plus_8)
@@ -47,6 +49,8 @@ class MMVetDataset(BaseEvalDataset):
         prompt: str = MM_VET_PROMPT,
         decimail_places: int = 1,  # number of decimal places to round to
         debug: bool = False,
+        eval_provider: str = None,
+        eval_model: str = None,
     ):
         super().__init__("MMVetDataset", data_path)
         self.df = load_dataset(data_path, split=split, cache_dir=cache_dir).to_pandas()
@@ -58,8 +62,12 @@ class MMVetDataset(BaseEvalDataset):
         self.api_key = api_key
         self.cur_datetime = utc_plus_8_time.strftime("%Y-%m-%d_%H-%M-%S")
         self.debug = debug
+        self.eval_llm_client = get_eval_llm_client(
+            provider=eval_provider,
+            api_key=api_key,
+            model=eval_model or gpt_model,
+        )
         self.prepare()
-        self.client = OpenAI(api_key=api_key)
 
     def prepare(self):
         self.counter = Counter()
@@ -183,8 +191,12 @@ class MMVetDataset(BaseEvalDataset):
 
                     while not grade_sample_run_complete:
                         try:
-                            response = self.client.chat.completions.create(model=self.gpt_model, max_tokens=3, temperature=temperature, messages=messages, timeout=15)
-                            content = response["choices"][0]["message"]["content"]
+                            content, response_data = self.eval_llm_client.chat_completion_raw(
+                                messages=messages,
+                                temperature=temperature,
+                                max_tokens=3,
+                                timeout=15,
+                            )
                             flag = True
                             try_time = 1
                             while flag:
@@ -211,8 +223,12 @@ class MMVetDataset(BaseEvalDataset):
                                     messages = [
                                         {"role": "user", "content": question},
                                     ]
-                                    response = self.client.chat.completions.create(model=self.gpt_model, max_tokens=3, temperature=temperature, messages=messages, timeout=15)
-                                    content = response["choices"][0]["message"]["content"]
+                                    content, response_data = self.eval_llm_client.chat_completion_raw(
+                                        messages=messages,
+                                        temperature=temperature,
+                                        max_tokens=3,
+                                        timeout=15,
+                                    )
                                     try_time += 1
                                     temperature += 0.5
                                     print(f"{id} try {try_time} times")
@@ -222,17 +238,17 @@ class MMVetDataset(BaseEvalDataset):
                                         flag = False
                             grade_sample_run_complete = True
                         except Exception as e:
-                            # gpt4 may have token rate limit
+                            # evaluation LLM may have token rate limit
                             print(e)
                             print("sleep 15s")
                             time.sleep(15)
 
                     if len(sample_grade["model"]) >= j + 1:
-                        sample_grade["model"][j] = response["model"]
+                        sample_grade["model"][j] = response_data.get("model", self.eval_llm_client.model)
                         sample_grade["content"][j] = content
                         sample_grade["score"][j] = score
                     else:
-                        sample_grade["model"].append(response["model"])
+                        sample_grade["model"].append(response_data.get("model", self.eval_llm_client.model))
                         sample_grade["content"].append(content)
                         sample_grade["score"].append(score)
                         sample_grade["query"] = line["instruction"]

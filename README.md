@@ -8,6 +8,7 @@
 ![](https://img.shields.io/github/stars/luodian/otter?style=social)
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FLuodian%2Fotter&count_bg=%23FFA500&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false)](https://hits.seeyoufarm.com)
 [![litellm](https://img.shields.io/badge/%20%F0%9F%9A%85%20liteLLM-OpenAI%7CAzure%7CAnthropic%7CPalm%7CCohere-blue?color=green)](https://github.com/BerriAI/litellm)
+[![MiniMax](https://img.shields.io/badge/MiniMax-M3-blue)](https://www.minimax.io)
 
 [Project Credits](https://github.com/Luodian/Otter/blob/main/docs/credits.md) | [Otter Paper](https://arxiv.org/abs/2305.03726) | [OtterHD Paper](https://arxiv.org/abs/2311.04219) | [MIMIC-IT Paper](https://arxiv.org/abs/2306.05425)
 
@@ -41,6 +42,7 @@ For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.
             split: test
             prompt: Answer with the option's letter from the given choices directly.
             api_key: [Your API Key] # GPT4 or GPT3.5 to evaluate the answers and ground truth.
+            eval_provider: minimax # Optional: use "minimax" or "openai" (default)
             debug: true # put debug=true will save the model response in log file.
         - name: mme
             split: test
@@ -70,6 +72,18 @@ For who in the mainland China: [![Open in OpenXLab](https://cdn-static.openxlab.
 **[2023-08]**
 
 1. Added Support for using Azure, Anthropic, Palm, Cohere models for Self-Instruct with Syphus pipeline, for information on usage modify [this line](https://github.com/Luodian/Otter/blob/16d73b399fac6352ebff7504b1acb1f228fbf3f4/mimic-it/syphus/file_utils.py#L53) with your selected model and set your API keys in the environment. For more information see [LiteLLM](https://github.com/BerriAI/litellm/)
+2. Added [MiniMax](https://www.minimax.io) as a supported LLM provider for both the Syphus data generation pipeline and benchmark evaluation. Configure via environment variables:
+   ```bash
+   # For Syphus data generation (via liteLLM)
+   export MINIMAX_API_KEY="your-minimax-key"
+   export OPENAI_API_ENGINE="openai/MiniMax-M3"
+   export OPENAI_API_BASE="https://api.minimax.io/v1"
+
+   # For benchmark evaluation (MagnifierBench, MathVista, MM-Vet)
+   export EVAL_LLM_PROVIDER="minimax"
+   export MINIMAX_API_KEY="your-minimax-key"
+   ```
+   MiniMax M3 offers a 512K context window, up to 128K max output, and image input support. M2.7 and M2.7-highspeed remain available as alternatives. See `pipeline/benchmarks/utils/eval_llm.py` for details.
 
 **[2023-07]: Anouncing MIMIC-IT dataset for multiple interleaved image-text/video instruction tuning.**
 

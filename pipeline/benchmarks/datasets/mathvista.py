@@ -15,6 +15,8 @@ import re
 import io
 from Levenshtein import distance
 
+from pipeline.benchmarks.utils.eval_llm import get_eval_llm_client
+
 utc_plus_8 = pytz.timezone("Asia/Singapore")  # You can also use 'Asia/Shanghai', 'Asia/Taipei', etc.
 utc_now = pytz.utc.localize(datetime.datetime.utcnow())
 utc_plus_8_time = utc_now.astimezone(utc_plus_8)
@@ -65,41 +67,22 @@ import json
 import ast
 
 
-def get_chat_response(promot, api_key, model="gpt-3.5-turbo", temperature=0, max_tokens=256, n=1, patience=5, sleep_time=5):
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
+def get_chat_response(promot, api_key=None, model="gpt-3.5-turbo", temperature=0, max_tokens=256, n=1, patience=5, sleep_time=5, eval_llm_client=None):
+    if eval_llm_client is None:
+        eval_llm_client = get_eval_llm_client(api_key=api_key, model=model)
 
     messages = [
         {"role": "system", "content": "You are a helpful AI assistant."},
         {"role": "user", "content": promot},
     ]
 
-    payload = {"model": model, "messages": messages}
-
-    while patience > 0:
-        patience -= 1
-        try:
-            response = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers=headers,
-                data=json.dumps(payload),
-                timeout=30,
-            )
-            response.raise_for_status()
-            response_data = response.json()
-
-            prediction = response_data["choices"][0]["message"]["content"].strip()
-            if prediction != "" and prediction is not None:
-                return prediction
-
-        except Exception as e:
-            if "Rate limit" not in str(e):
-                print(e)
-            time.sleep(sleep_time)
-
-    return ""
+    return eval_llm_client.chat_completion(
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        patience=patience,
+        sleep_time=sleep_time,
+    )
 
 
 def create_test_prompt(demo_prompt, query, response):
@@ -109,7 +92,7 @@ def create_test_prompt(demo_prompt, query, response):
     return full_prompt
 
 
-def extract_answer(response, problem, quick_extract=False, api_key=None, pid=None, gpt_model="gpt-4-0613"):
+def extract_answer(response, problem, quick_extract=False, api_key=None, pid=None, gpt_model="gpt-4-0613", eval_llm_client=None):
     question_type = problem["question_type"]
     answer_type = problem["answer_type"]
     choices = problem["choices"]
@@ -150,7 +133,7 @@ def extract_answer(response, problem, quick_extract=False, api_key=None, pid=Non
         # general extraction
         try:
             full_prompt = create_test_prompt(demo_prompt, query, response)
-            extraction = get_chat_response(full_prompt, api_key=api_key, model=gpt_model, n=1, patience=5, sleep_time=5)
+            extraction = get_chat_response(full_prompt, api_key=api_key, model=gpt_model, n=1, patience=5, sleep_time=5, eval_llm_client=eval_llm_client)
             return extraction
         except Exception as e:
             print(e)
@@ -271,15 +254,14 @@ class MathVistaDataset(BaseEvalDataset):
         gpt_model="gpt-4-0613",
         debug=False,
         quick_extract=False,
+        eval_provider=None,
+        eval_model=None,
     ):
         super().__init__("MathVistaDataset", data_path)
         name_converter = {"dev": "validation", "test": "test"}
         self.data = load_dataset("Otter-AI/MathVista", split=name_converter[split], cache_dir=cache_dir).to_pandas()
         if debug:
             self.data = self.data.sample(5)
-        # data_path = "/home/luodian/projects/Otter/archived/testmini_image_inside.json"
-        # with open(data_path, "r", encoding="utf-8") as f:
-        #     self.data = json.load(f)
 
         self.debug = debug
         self.quick_extract = quick_extract
@@ -290,6 +272,11 @@ class MathVistaDataset(BaseEvalDataset):
         self.cur_datetime = utc_plus_8_time.strftime("%Y-%m-%d_%H-%M-%S")
         self.api_key = api_key
         self.gpt_model = gpt_model
+        self.eval_llm_client = get_eval_llm_client(
+            provider=eval_provider,
+            api_key=api_key,
+            model=eval_model or gpt_model,
+        )
 
     def create_query(self, problem, shot_type):
         ### [2] Test query
@@ -393,6 +380,7 @@ class MathVistaDataset(BaseEvalDataset):
                 api_key=self.api_key,
                 pid=idx_key,
                 gpt_model=self.gpt_model,
+                eval_llm_client=self.eval_llm_client,
             )
             results[idx_key].update({"extraction": extraction})
             answer = results[idx_key]["answer"]

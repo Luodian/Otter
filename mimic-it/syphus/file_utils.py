@@ -1,5 +1,18 @@
 """
 file utils
+
+Supports multiple LLM providers via liteLLM. Configure via environment variables:
+
+OpenAI (default):
+    export OPENAI_API_KEY="your-openai-key"
+    export OPENAI_API_ENGINE="gpt-4"
+
+MiniMax:
+    export MINIMAX_API_KEY="your-minimax-key"
+    export OPENAI_API_ENGINE="openai/MiniMax-M3"
+    export OPENAI_API_BASE="https://api.minimax.io/v1"
+
+See https://docs.litellm.ai/docs/providers for all supported providers.
 """
 
 import json
@@ -13,11 +26,15 @@ from litellm import completion
 engine = os.environ.get("OPENAI_API_ENGINE", "davinci")
 
 
-def query_gpt(inputs: dict[str], dataset_name: str) -> tuple[dict[str, str], str]:
+def query_llm(inputs: dict[str], dataset_name: str) -> tuple[dict[str, str], str]:
     """
-    Query the GPT API with the given inputs.
+    Query the LLM API with the given inputs.
+
+    Supports multiple providers via liteLLM (OpenAI, MiniMax, Anthropic, etc.).
+    Configure via OPENAI_API_ENGINE and OPENAI_API_BASE environment variables.
+
     Returns:
-        Response (dict[str, str]): the response from GPT API.
+        Response (dict[str, str]): the response from the LLM API.
         Input ID (str): the id that specifics the input.
     """
     if dataset_name == "3d.SceneNavigation":
@@ -47,13 +64,19 @@ def query_gpt(inputs: dict[str], dataset_name: str) -> tuple[dict[str, str], str
                 "content": inputs["query_input"]["sentences"],
             },
         )
+
+    # Clamp temperature for MiniMax (requires (0.0, 1.0])
+    temperature = 0.7
+    if os.environ.get("MINIMAX_API_KEY"):
+        temperature = max(temperature, 0.01)
+
     succuss = True
     while succuss:
         try:
             response = completion(
-                engine=engine,  # defined by os.environ, default engine="chatgpt0301",
+                engine=engine,  # defined by os.environ, default engine="davinci"
                 messages=messages,
-                temperature=0.7,
+                temperature=temperature,
                 max_tokens=3200,
                 top_p=0.95,
                 frequency_penalty=0,
@@ -71,6 +94,10 @@ def query_gpt(inputs: dict[str], dataset_name: str) -> tuple[dict[str, str], str
                 succuss = False
                 response = {"error_message": str(e)}
     return response, inputs["query_input"]["id"]
+
+
+# Backward-compatible alias
+query_gpt = query_llm
 
 
 def split_question_and_answer(pair_of_answer: str, file_id: str) -> tuple[bool, dict[str, str]]:
