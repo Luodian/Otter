@@ -225,7 +225,7 @@ def triton_flash_attn_fn(
 class MultiheadAttention(nn.Module):
     """Multi-head self attention.
 
-    Using torch or triton attention implemetation enables user to also use
+    Using torch or triton attention implementation enables user to also use
     additive bias.
     """
 
@@ -317,7 +317,7 @@ class MultiheadAttention(nn.Module):
 class MultiQueryAttention(nn.Module):
     """Multi-Query self attention.
 
-    Using torch or triton attention implemetation enables user to also use
+    Using torch or triton attention implementation enables user to also use
     additive bias.
     """
 
